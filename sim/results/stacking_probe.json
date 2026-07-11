@@ -1,0 +1,49 @@
+{
+  "config": {
+    "games": 1000,
+    "baseSeed": 24681357,
+    "smoke": false,
+    "landCap": 8,
+    "cityCap": 12,
+    "cityProxy": "authored wallTier >= 1 or faction capital",
+    "elapsedMs": 3782
+  },
+  "battlePhasesSampled": 14897,
+  "attackStacks": {
+    "total": 11386,
+    "meanSize": 6.810732478482347,
+    "maxSize": 49,
+    "over8": 2170,
+    "over8Share": 0.1905849288600035,
+    "overDestCap": 923,
+    "overDestCapShare": 0.081064465132619,
+    "overflowUnits": 7147
+  },
+  "defenderGarrisons": {
+    "total": 3818,
+    "overCap": 2,
+    "overCapShare": 0.0005238344683080147
+  },
+  "retreatMerges": {
+    "total": 1347,
+    "returningUnits": 2074,
+    "overCap": 1,
+    "overCapShare": 0.0007423904974016332,
+    "overflowUnits": 1,
+    "overflowUnitShare": 0.00048216007714561236
+  },
+  "garrisonOccupancy": {
+    "samples": 394761,
+    "over8": 25750,
+    "over8Share": 0.06522934129764592,
+    "overCap": 7512,
+    "overCapShare": 0.01902923541079286
+  },
+  "siegeCamps": {
+    "samples": 2264,
+    "overCap": 803,
+    "overCapShare": 0.3546819787985866
+  },
+  "gamesWithAnyExposure": 845,
+  "gamesWithAnyExposureShare": 0.845
+}

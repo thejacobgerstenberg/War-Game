@@ -1140,3 +1140,41 @@ rusher wins 110->128, so rusher viability is NOT what it protects — it
 holds Hungary's rate DOWN by pulling gold into 2/2 levy spam instead of
 the prestige engine). Effects ~additive in arm D. Verdict recorded in
 TUNING_REPORT §2.3; CONFIG unchanged.
+
+## §6.4/§7 stacking-rout parity check (2026-07-11)
+
+Engine team fixed a latent engine bug: combat rout-retreat wasn't enforcing
+canon §6.4 province stacking, letting a routed stack over-stack an owned
+province; post-fix a routed stack retreats only up to the destination's
+remaining stacking cap and the overflow surrenders (§7). Question: does the
+sim need the same fix?
+
+Finding: NO — the sim models neither half. There are no stacking caps
+anywhere (recruit/move/attack/siege-camp/`returnHome` merges are uncapped)
+and rout has no retreat pathing (routed defender survivors disperse;
+retreating/withdrawn attackers merge into the origin garrison
+unconditionally), so the engine's over-stack-on-rout bug has no sim
+counterpart and nothing to fix identically.
+
+Exposure measured instead (NEW read-only probe `src/run/stacking_probe.ts`,
+1000 games seed 24681357 — first third of the committed fullgame
+population; wraps `resolveBattles`/`returnHome`, consumes no RNG, writes
+results/stacking_probe.json):
+
+- exact engine-fix site (retreat merges into owned origin): 1,347 merges,
+  1 over cap (0.07%); 1 of 2,074 returning land units (0.05%) would
+  surrender under the §7 fix — inert;
+- the cap itself: attack stacks 8.11% over destination cap (19.06% > 8
+  anywhere; mean 6.8, max 49; 7,147 overflow units), siege camps 35.47%
+  over the invested city's cap, owned-garrison samples 1.90% over cap,
+  84.5% of games with >= 1 over-cap stack. Cap proxy: 12 for
+  authored-walled/capital provinces, else 8 (sim map has no CITY terrain).
+
+Verdict: no mechanics change, no retune (no evidence any tuned band is
+wrong IN-SIM; the divergence only bites when the engine enforces §6.4).
+Honest divergence + sensitivity note added: TUNING_REPORT §6 row 10 (former
+catch-all renumbered to 11, §6.4 pulled out of it) and RULES_MODEL.md
+(Combat rout bullet + Deliberate simplifications). Committed fullgame.json
+untouched — probe is observation-only and bit-identical trajectories were
+preserved. Follow-up flagged for the engine era: re-verify T5 capture
+curves and beeline <= r8 under real stacking caps.

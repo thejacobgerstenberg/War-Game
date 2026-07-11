@@ -183,6 +183,11 @@ Per battle round:
   starting stack rolls 1d6 each round and routs on ≤ 3 (`routOn`).
   Survivors disperse (no retreat pathing). If both would rout, the
   defender holds. Cavalry pursuit and ±1 morale effects are unmodeled.
+  Canon instead retreats routed units to an adjacent friendly/empty
+  province — capped (per the engine's 2026-07-11 fix) by the
+  destination's remaining §6.4 stacking headroom, with the overflow
+  surrendering; see "Deliberate simplifications" for the measured
+  exposure of skipping both halves.
 - The attacker voluntarily withdraws at ≤ 35% (`retreatFraction`) of its
   starting combatants; battles cap at `combat.maxRounds` (stalemate).
 - `BattleResult.decisive` = the loser was wiped or routed (feeds the §13.1
@@ -479,6 +484,23 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   blockade = any at-war enemy port/camp galley on a route zone, halving
   income (§5.2). There are no pure fleet battles (hence Pilot of the
   Narrows / Greek Fire are dead cards).
+- **No §6.4 stacking limits** (canon: 8 land units per player per
+  province, 12 in a CITY/capital, 6 naval per sea zone — "excess units
+  cannot enter"): recruiting, moves, attack commits, siege camps and the
+  post-battle/siege-lift `returnHome` merge are all uncapped, and the
+  §7.5 rout path does no retreat pathing (see Combat above). Parity
+  check vs the engine's 2026-07-11 rout-retreat fix ("retreat up to the
+  destination's remaining cap, overflow surrenders"): the sim cannot
+  reproduce the engine's over-stack bug — there is no cap to violate and
+  no rout retreat to over-fill it — and the exact fix site is inert
+  in-sim (1 of 2,074 returning land units, 0.05%, would surrender).
+  The missing cap itself is exercised, though: 8.1% of committed attack
+  stacks exceed the destination's cap and 35.5% of siege-camp samples
+  exceed the invested city's cap (1,000 games, seed 24681357,
+  `src/run/stacking_probe.ts` → `results/stacking_probe.json`).
+  Divergence + sensitivity note: TUNING_REPORT §6 row 10. Deliberately
+  NOT retrofitted — capping stacks invalidates the tuned big-stack
+  siege/assault aggregates without an agent rework.
 - Secret objectives modeled as 3 independent "hold this seeded province at
   game end" goals (+4 each, E4).
 - Scripted agents refuse to besiege an intact T5 fortress until they own
