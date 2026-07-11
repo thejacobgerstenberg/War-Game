@@ -142,6 +142,14 @@ export interface MercBidAction {
   companyId: string;
   /** Whole-gold bid; must exceed the current high bid by ≥1. */
   bid: number;
+  /**
+   * DA-3 (§6.3 step 2, CANON CLARIFICATION 3) — voluntary pass. When true the
+   * player withdraws from this offer's round-robin (recorded in
+   * `MercCompanyOffer.passedPlayerIds`) and `bid` is ignored; the auction closes
+   * when only one non-passed bidder remains. The mercenaries + actions agents
+   * implement the round-robin + pass handling.
+   */
+  pass?: boolean;
 }
 
 /** Set the taxation posture for the upcoming Income phase. */

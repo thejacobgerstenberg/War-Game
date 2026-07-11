@@ -33,6 +33,7 @@ import {
   TAX_REVOLT,
   TRADE,
   UNIT_STATS,
+  UNIQUE_UNIT_OVERRIDES,
   WALL_BUILD_COST,
   WALL_TIERS,
 } from "./balance.js";
@@ -395,6 +396,22 @@ function mercCount(stack: Army | Fleet, u: UnitType): number {
   return Math.max(0, Math.min(stack.units[u] ?? 0, m?.[u] ?? 0));
 }
 
+/**
+ * FL-10 (§4.4 / §6.3): a fielded VARIANT head is a §4.4 mercenary iff its
+ * UNIQUE_UNIT_OVERRIDES entry carries the `elite-mercenary` ability — the tag
+ * mercenaries.ts `fieldCompany` stamps on auction-fielded elite companies (e.g.
+ * the Varangian Remnant, `variant:"VARANGIAN_REMNANT"`). Such heads pay double
+ * grain upkeep and desert first, exactly like generic mercenary-tagged units;
+ * the 10 ordinary faction uniques are NOT mercenaries and pay the regular rate.
+ * (Variant heads live in `stack.variants`, not the UnitType-keyed `mercenaries`
+ * map, so they must be recognised here rather than via `mercCount`.)
+ */
+function isMercVariant(variant: string): boolean {
+  return (
+    UNIQUE_UNIT_OVERRIDES[variant]?.abilities.includes("elite-mercenary") ?? false
+  );
+}
+
 /** Grain a player owes this Income phase: Σ unit upkeep (mercenaries ×2, §4.4). */
 function grainDue(state: GameState, playerId: string): number {
   let due = 0;
@@ -412,7 +429,12 @@ function grainDue(state: GameState, playerId: string): number {
       due += regular * per + mercs * per * MERC_UPKEEP_MULTIPLIER; // §4.4 merc double
     }
     for (const v of stack.variants ?? []) {
-      due += v.count * UNIT_STATS[v.base].grainUpkeep;
+      // §4.4/§6.3 FL-10: elite-mercenary variant heads (e.g. the Varangian
+      // Remnant) owe DOUBLE grain upkeep like any mercenary; the 10 ordinary
+      // faction uniques pay the regular rate.
+      const per = UNIT_STATS[v.base].grainUpkeep;
+      const mult = isMercVariant(v.variant) ? MERC_UPKEEP_MULTIPLIER : 1;
+      due += v.count * per * mult;
     }
   }
   // §4.4 event/tactic upkeep delta: an 'upkeep_mod' modifier (CONTRACT2 §12.10)
@@ -639,11 +661,28 @@ export function upkeep(state: GameState): GameState {
       const per = UNIT_STATS[u].grainUpkeep * MERC_UPKEEP_MULTIPLIER;
       for (const stack of stacks) {
         const m = stack.mercenaries;
+        // Generic mercenary-tagged units of this type desert first (×2 relief).
         while (deficit > 0 && mercCount(stack, u) > 0) {
           stack.units[u] -= 1;
           if (m) m[u] = (m[u] ?? 0) - 1;
           record(u, 1);
           deficit -= per;
+        }
+        // §4.4/§6.3 FL-10: elite-mercenary VARIANT heads of this base type also
+        // desert first, at the same doubled rate. They are NOT in the UnitType-
+        // keyed `mercenaries` map (which clamps to generic `units`), so scan the
+        // stack's `variants` explicitly — e.g. Varangian Remnant INFANTRY/CAVALRY
+        // heads leave before any regular unit does.
+        if (deficit > 0) {
+          for (const v of stack.variants ?? []) {
+            if (v.base !== u || !isMercVariant(v.variant)) continue;
+            while (deficit > 0 && v.count > 0) {
+              v.count -= 1;
+              record(u, 1);
+              deficit -= per;
+            }
+            if (deficit <= 0) break;
+          }
         }
         if (deficit <= 0) break;
       }
@@ -664,6 +703,11 @@ export function upkeep(state: GameState): GameState {
         }
         if (deficit <= 0) break;
       }
+    }
+
+    // Drop any variant stack fully emptied by desertion (FL-10 tidy-up).
+    for (const stack of stacks) {
+      if (stack.variants) stack.variants = stack.variants.filter((v) => v.count > 0);
     }
 
     const totalDeserted = Object.values(deserted).reduce(
@@ -707,7 +751,12 @@ function bestMarketRatio(state: GameState, player: Player): number {
   if (
     provs.some((p) => hasCompletedGreatWork(p, GreatWorkType.GRAND_BAZAAR))
   ) {
-    ratio = Math.min(ratio, MARKET_RATIOS.bazaar); // 1:1 best ratio
+    // DA-1 (§4.3, CANON CLARIFICATION 3): a Grand Bazaar trades GENERAL goods at
+    // 2:1 (MARKET_RATIOS.bazaar, raised 1→2 by FIX-PREP2), NOT a universal 1:1.
+    // The owner's specialty good still trades 1:1, but via the SEPARATE specialty
+    // lane (specialtyLaneRatio / MARKET_RATIOS.specialty, applied in applyTrade),
+    // never through this general ratio.
+    ratio = Math.min(ratio, MARKET_RATIOS.bazaar); // 2:1 general
   }
   return ratio;
 }
@@ -744,12 +793,14 @@ export function applyTrade(state: GameState, action: GameAction): GameState {
     }
     let ratio = bestMarketRatio(state, player);
     // §4.3 event/tactic 'trade_mod' ratio delta (CONTRACT2 §12.10): positive
-    // improves the ratio, negative worsens it; never better than the 1:1 floor.
+    // improves the ratio, negative worsens it; never better than the 1:1 hard
+    // floor. DA-1 raised MARKET_RATIOS.bazaar to the 2:1 GENERAL ratio, so the
+    // true 1:1 floor is now MARKET_RATIOS.specialty (was bazaar).
     if (player.faction) {
       const tradeMod = sumModifierValues(state, "trade_mod", {
         faction: player.faction,
       });
-      ratio = Math.max(MARKET_RATIOS.bazaar, ratio - tradeMod);
+      ratio = Math.max(MARKET_RATIOS.specialty, ratio - tradeMod);
     }
     // §4.3/§5 specialty 1:1 lane: Venice/Genoa (own port) & Grand Bazaar trade
     // gold↔the port's specialty good at 1:1.

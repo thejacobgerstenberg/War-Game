@@ -126,6 +126,10 @@ export function createInitialState(
     betrayals: 0,
     actionsRemaining: ACTIONS_PER_ROUND,
     tacticHand: [] as TacticCardId[],
+    // FL-07 — Ottoman "Ghazi Empire" sacked-high-value-cities counter (init 0).
+    // FL-08 — Church-Union acceptance flag left undefined (= refused) until the
+    // events agent sets it true on Omen #17 ACCEPT.
+    sackedHighValueCities: 0,
   }));
 
   // Asymmetric starting armies & fleets per province (docs/FACTIONS.md), placed

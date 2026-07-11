@@ -654,8 +654,14 @@ export const MARKET_RATIOS = {
   base: 3,
   market: 2,
   port: 2,
-  bazaar: 1,
-  /** gold↔port specialty. */
+  /**
+   * DA-1 (§4.3, CANON CLARIFICATION 3) — Grand Bazaar GENERAL trade ratio = 2:1
+   * (2 give per 1 get), NOT a universal 1:1. The specialty gold↔specialty lane
+   * stays 1:1 via `specialty` below; economy.ts `bestMarketRatio` uses this 2:1
+   * general ratio and relies on the `specialty` 1:1 for the specialty lane.
+   */
+  bazaar: 2,
+  /** gold↔port specialty (the Grand Bazaar's specialty-lane 1:1). */
   specialty: 1,
 } as const;
 
@@ -700,8 +706,13 @@ export const VASSAL = {
    * roll rather than auto-succeed.
    */
   prestigeTierCap: 2,
-  /** Standing NAP or marriage bribe grants +1 to the roll. */
-  napBonus: 1,
+  /**
+   * @deprecated DA-2 (§11.5, CANON CLARIFICATION 3) — DROPPED. Minors hold no
+   * treaties in the model, so a "standing NAP with a minor" is undefined; the
+   * clause is removed. Set to 0 so any lingering reader is a no-op; the export is
+   * KEPT (=0) so diplomacy.ts still compiles until its agent deletes the use.
+   */
+  napBonus: 0,
   marriageBribeBonus: 1,
   marriageBribeGold: 4,
   /** Half the bribe is refunded on a failed attempt. */

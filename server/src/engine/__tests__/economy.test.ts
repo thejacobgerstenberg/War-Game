@@ -154,14 +154,24 @@ describe("applyTrade CONVERT — §4.3 market ratios", () => {
     expect(out.players[0].treasury.gold).toBe(4);
   });
 
-  it("improves to 1:1 with a completed Grand Bazaar", () => {
+  it("Grand Bazaar trades general goods 2:1 and only its specialty 1:1 (DA-1, §4.3)", () => {
     const state = fresh();
-    state.players[0].treasury.gold = 6;
+    state.players[0].treasury = { gold: 6, grain: 0, timber: 0, marble: 0, faith: 0 };
     state.provinces
       .find((p) => p.id === "selymbria")!
       .greatWorks.push({ type: GreatWorkType.GRAND_BAZAAR, progress: 2 });
-    const out = applyTrade(state, convert("p1", { gold: 1 }, { grain: 1 }));
-    expect(out.players[0].treasury.gold).toBe(5);
+    // selymbria's dominant secondary yield (grain 2) is the port's specialty.
+    // GENERAL good (marble, non-specialty) trades 2:1 — 1 gold for 1 marble is
+    // under-paid and rejected...
+    expect(() => applyTrade(state, convert("p1", { gold: 1 }, { marble: 1 }))).toThrow(
+      EngineError,
+    );
+    // ...but 2 gold for 1 marble clears at the 2:1 general Grand-Bazaar ratio.
+    const general = applyTrade(state, convert("p1", { gold: 2 }, { marble: 1 }));
+    expect(general.players[0].treasury.gold).toBe(4);
+    // SPECIALTY good (grain) still trades 1:1 via the specialty lane: 1 gold buys 1.
+    const specialty = applyTrade(state, convert("p1", { gold: 1 }, { grain: 1 }));
+    expect(specialty.players[0].treasury.gold).toBe(5);
   });
 
   it("refuses to trade faith (non-tradeable §4.3)", () => {
@@ -619,5 +629,81 @@ describe("upkeep — §4.4 mercenary double-rate desertion", () => {
     expect(a.units[UnitType.LEVY]).toBe(1);
     expect(a.mercenaries?.[UnitType.LEVY]).toBe(1); // survivor is still merc-tagged
     expect(out.players[0].treasury.grain).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §4.4/§6.3 Elite-mercenary VARIANT heads (Varangian Remnant) — FL-10
+// ---------------------------------------------------------------------------
+
+/** Army carrying named variant heads (auction-fielded elite mercenaries). */
+function variantArmy(
+  ownerId: string,
+  locationId: string,
+  variants: { base: UnitType; variant: string; count: number }[],
+  units: Partial<Record<UnitType, number>> = {},
+): Army {
+  return {
+    id: `av-${ownerId}`,
+    ownerId,
+    locationId,
+    units: { ...emptyUnits(), ...units },
+    variants,
+  };
+}
+
+describe("upkeep — §4.4/§6.3 elite-mercenary variant heads (FL-10)", () => {
+  it("charges Varangian Remnant variant heads DOUBLE grain upkeep (elite-mercenary)", () => {
+    const state = fresh();
+    // The full VARANGIAN_REMNANT company: INFANTRY×4 + CAVALRY×2 fielded as variants.
+    state.armies = [
+      variantArmy("p1", "selymbria", [
+        { base: UnitType.INFANTRY, variant: "VARANGIAN_REMNANT", count: 4 },
+        { base: UnitType.CAVALRY, variant: "VARANGIAN_REMNANT", count: 2 },
+      ]),
+    ];
+    state.fleets = [];
+    state.players[0].treasury.grain = 20;
+    const out = upkeep(state);
+    // §4.4 ×2 merc upkeep: 4 INF×1×2 + 2 CAV×2×2 = 8 + 8 = 16; 20 − 16 = 4 remains
+    // (the regular rate would owe only 8, leaving 12).
+    expect(out.players[0].treasury.grain).toBe(4);
+  });
+
+  it("does NOT double a non-mercenary faction unique (Varangian GUARD stays regular)", () => {
+    const state = fresh();
+    // VARANGIAN_GUARD is one of the 10 faction uniques — no `elite-mercenary` tag.
+    state.armies = [
+      variantArmy("p1", "selymbria", [
+        { base: UnitType.INFANTRY, variant: "VARANGIAN_GUARD", count: 4 },
+      ]),
+    ];
+    state.fleets = [];
+    state.players[0].treasury.grain = 20;
+    const out = upkeep(state);
+    // Regular rate: 4 INF × 1 = 4; 20 − 4 = 16 (NOT the ×2 = 8 a mercenary would owe).
+    expect(out.players[0].treasury.grain).toBe(16);
+  });
+
+  it("variant mercenaries desert FIRST, before regular units, at the doubled rate", () => {
+    const state = fresh();
+    // One regular LEVY plus one VARANGIAN_REMNANT INFANTRY head.
+    state.armies = [
+      variantArmy(
+        "p1",
+        "selymbria",
+        [{ base: UnitType.INFANTRY, variant: "VARANGIAN_REMNANT", count: 1 }],
+        { [UnitType.LEVY]: 1 },
+      ),
+    ];
+    state.fleets = [];
+    // due = LEVY 1 (regular) + INF variant merc 1×1×2 = 3; treasury 1 → deficit 2.
+    // The variant merc (2 grain relief) deserts first, clearing the deficit and
+    // sparing the cheaper regular LEVY — §4.4 desert-first now scans variant heads.
+    state.players[0].treasury.grain = 1;
+    const out = upkeep(state);
+    const a = out.armies[0];
+    expect(a.variants ?? []).toHaveLength(0); // Varangian head fled first...
+    expect(a.units[UnitType.LEVY]).toBe(1); // ...regular LEVY survives
   });
 });

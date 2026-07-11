@@ -246,6 +246,11 @@ export function refreshMercMarket(state: GameState): GameState {
     currentBid: 0,
     highBidderId: null,
     sold: false,
+    // DA-3 (§6.3 step 2, CANON CLARIFICATION 3): each offer runs a true round-robin
+    // voluntary-pass auction. Seed the pass set empty and leave the round-robin
+    // pointer unset (first raise/pass populates it). Prep4 added these fields.
+    passedPlayerIds: [],
+    activeBidderId: undefined,
   }));
 
   // New top-level object (never mutate the input); persist the advanced cursor.
@@ -264,16 +269,108 @@ export function refreshMercMarket(state: GameState): GameState {
 }
 
 // ---------------------------------------------------------------------------
-// applyMercBid — turn-order raise-or-pass bidding (§6.3)
+// Round-robin auction close (§6.3 step 2 / CANON CLARIFICATION 3, DA-3)
 // ---------------------------------------------------------------------------
 
 /**
- * Apply a MERC_BID action (§6.3). Validates the raise (an opening bid ≥ the
- * company's minimum, or a raise of ≥ minBidRaise over the current high bid — a
- * player who does neither has effectively passed) and that the bidder holds the
- * gold, then records the new high bid. Bidding closes when no other player can
- * legally out-raise, at which point the winner is fielded immediately (gold sink
- * + instant fielding). Throws {@link EngineError} on any illegal bid. Pure.
+ * The ordered set of players eligible to bid on an offer: turn order (§6.3 step 2
+ * "bidders take turns in turn-order"), filtered to seated players, with any player
+ * missing from `turnOrder` appended defensively. Pure, deterministic.
+ */
+function biddersOf(state: GameState): string[] {
+  const ids = state.players.map((p) => p.id);
+  const order = state.turnOrder.filter((id) => ids.includes(id));
+  for (const id of ids) if (!order.includes(id)) order.push(id);
+  return order;
+}
+
+/**
+ * The next active (non-passed) bidder in cyclic turn order after the current high
+ * bidder — the round-robin pointer (`activeBidderId`) whose turn it is to respond.
+ * Undefined when nobody but the high bidder is still active. Pure.
+ */
+function nextActiveBidder(
+  bidders: string[],
+  active: Set<string>,
+  highBidderId: string | null,
+): string | undefined {
+  const others = bidders.filter((id) => id !== highBidderId && active.has(id));
+  if (others.length === 0) return undefined;
+  if (highBidderId == null) return others[0];
+  const start = bidders.indexOf(highBidderId);
+  for (let k = 1; k <= bidders.length; k++) {
+    const id = bidders[(start + k) % bidders.length];
+    if (id !== highBidderId && active.has(id)) return id;
+  }
+  return others[0];
+}
+
+/**
+ * Resolve one step of the §6.3 step 2 round-robin after a raise or pass has been
+ * recorded on the offer:
+ *  1. AUTO-PASS sweep — CANON CLARIFICATION 3 keeps affordability ONLY as an
+ *     auto-pass: a still-active rival (not the high bidder) who cannot afford the
+ *     minimum legal raise (`currentBid + minBidRaise`) is forced to pass.
+ *  2. Advance the round-robin pointer (`activeBidderId`) to the next active bidder.
+ *  3. CLOSE when only one non-passed bidder remains (§6.3 step 2). If that lone
+ *     survivor is the high bidder, field the company at once — winner pays the
+ *     current high bid at face value (step 3, gold sink). With no high bid yet
+ *     (everyone else passed on an unopened offer) the offer is left unsold for the
+ *     `refreshMercMarket` NPC-hire roll.
+ * Pure, deterministic — consumes no RNG. `state` is already a working clone.
+ */
+function resolveAuctionRound(state: GameState, companyId: string): GameState {
+  const offer = state.mercMarket.find((o) => o.companyId === companyId && !o.sold);
+  if (!offer) return state;
+  const passed = new Set(offer.passedPlayerIds ?? []);
+  const bidders = biddersOf(state);
+
+  // 1) Auto-pass sweep (affordability = forced pass ONLY, CANON CLARIFICATION 3).
+  if (offer.highBidderId != null) {
+    const minRaise = offer.currentBid + MERC_MARKET.minBidRaise;
+    for (const id of bidders) {
+      if (passed.has(id) || id === offer.highBidderId) continue;
+      const p = state.players.find((x) => x.id === id);
+      if (!p || p.treasury.gold < minRaise) passed.add(id); // cannot afford → forced pass
+    }
+  }
+  offer.passedPlayerIds = [...passed];
+
+  // 2) Active (non-passed) bidders + round-robin pointer.
+  const active = new Set(bidders.filter((id) => !passed.has(id)));
+  offer.activeBidderId = nextActiveBidder(bidders, active, offer.highBidderId);
+
+  // 3) §6.3 step 2 close: only one non-passed bidder remains.
+  if (active.size <= 1) {
+    if (offer.highBidderId != null) {
+      offer.activeBidderId = undefined;
+      return fieldCompany(state, companyId); // step 3: winner pays face value, fields
+    }
+    // No bid ever placed → leave unsold; refreshMercMarket runs the NPC-hire roll.
+  }
+  return state;
+}
+
+// ---------------------------------------------------------------------------
+// applyMercBid — round-robin raise-or-pass bidding (§6.3 step 2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply a MERC_BID action (§6.3 step 2, the TRUE round-robin voluntary-pass
+ * auction ratified by CANON CLARIFICATION 3 / DA-3). A MERC_BID is either:
+ *  - a RAISE — an opening bid ≥ the company minimum, or a raise of ≥ minBidRaise
+ *    over the current high bid; the bidder must hold the gold. Records the new
+ *    high bid and makes the issuer the high bidder.
+ *  - a voluntary PASS (`action.pass === true`) — the issuer withdraws from this
+ *    offer's round-robin (recorded in `passedPlayerIds`); `bid` is ignored.
+ *
+ * After the raise/pass is recorded the round-robin advances
+ * ({@link resolveAuctionRound}): rivals who cannot afford the minimum legal raise
+ * are AUTO-passed (affordability is retained ONLY as a forced pass — CANON
+ * CLARIFICATION 3), and the auction CLOSES when only one non-passed bidder
+ * remains, whereupon that lone survivor (the high bidder) is fielded at once and
+ * pays the current high bid at FACE VALUE (§6.3 step 3, gold sink). Throws
+ * {@link EngineError} on any illegal bid/pass. Pure — consumes no RNG.
  */
 export function applyMercBid(state: GameState, action: GameAction): GameState {
   if (action.type !== "MERC_BID") {
@@ -299,13 +396,48 @@ export function applyMercBid(state: GameState, action: GameAction): GameState {
     );
   }
   const def = MERC_COMPANIES[action.companyId];
+
+  // §6.3 step 2: a bidder who has already passed is out of this offer's
+  // round-robin and may not re-enter (voluntary passes are permanent — the
+  // "one non-passed bidder remains" close only converges if passing is monotonic).
+  const alreadyPassed = offer.passedPlayerIds ?? [];
+  if (alreadyPassed.includes(player.id)) {
+    throw new EngineError(
+      "MERC_PASSED",
+      `${player.name} has already passed on ${def.name} and cannot bid again.`,
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Voluntary pass (DA-3): withdraw from the round-robin; the auction closes if
+  // this leaves only one non-passed bidder (§6.3 step 2).
+  // -------------------------------------------------------------------------
+  if (action.pass === true) {
+    let next = structuredClone(state) as GameState;
+    const offerRef = next.mercMarket.find((o) => o.companyId === action.companyId)!;
+    offerRef.passedPlayerIds = [...(offerRef.passedPlayerIds ?? []), player.id];
+    next = appendLog(next, {
+      round: next.round,
+      phase: next.phase,
+      type: "mercenary",
+      actors: [player.id],
+      targets: [action.companyId],
+      message: `${player.name} passes on the ${def.name}.`,
+      data: { companyId: action.companyId, pass: true },
+    });
+    return resolveAuctionRound(next, action.companyId);
+  }
+
+  // -------------------------------------------------------------------------
+  // Raise (opening bid or out-raise).
+  // -------------------------------------------------------------------------
   const bid = action.bid;
   if (!Number.isInteger(bid) || bid <= 0) {
     throw new EngineError("BAD_MERC_BID", "A bid must be a positive whole-gold amount.");
   }
 
   // §6.3 opening bid ≥ the company minimum; a raise must exceed the high bid by
-  // at least minBidRaise. Failing either means the player has passed, not bid.
+  // at least minBidRaise (a bidder unwilling/unable to do so should PASS instead).
   if (offer.highBidderId == null) {
     if (bid < def.minBid) {
       throw new EngineError(
@@ -342,21 +474,8 @@ export function applyMercBid(state: GameState, action: GameAction): GameState {
     data: { companyId: action.companyId, bid },
   });
 
-  // §6.3 step 2: bidding proceeds round-robin in turn order; each rival either
-  // raises by ≥ minBidRaise or passes, and the auction closes when all but the
-  // high bidder have passed, whereupon the winner is fielded at once (step 3).
-  //
-  // Proper pass tracking needs per-offer state (which rivals have passed / whose
-  // turn it is) that the frozen `MercCompanyOffer` does not carry — see
-  // NEEDS-FROM-INTEGRATOR. Deterministic fallback until those fields land: a rival
-  // who cannot afford a legal raise (currentBid + minBidRaise) is treated as
-  // having passed, so once no rival can out-raise the standing bid the auction
-  // closes and the winner is fielded. This is pure and seed-independent.
-  const someoneCanRaise = next.players.some(
-    (p) => p.id !== player.id && p.treasury.gold >= bid + MERC_MARKET.minBidRaise,
-  );
-  if (!someoneCanRaise) {
-    next = fieldCompany(next, action.companyId);
-  }
-  return next;
+  // §6.3 step 2 (CANON CLARIFICATION 3 / DA-3): advance the true round-robin —
+  // auto-pass rivals who cannot afford the minimum raise, then close the auction
+  // (and field the winner at face value) when only one non-passed bidder remains.
+  return resolveAuctionRound(next, action.companyId);
 }

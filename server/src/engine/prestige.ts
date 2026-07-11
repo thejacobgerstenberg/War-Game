@@ -105,62 +105,40 @@ function hasTradeMonopoly(state: GameState, playerId: string): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * FL-08 (FACTIONS Byz #3): "Hagia Sophia intact" — the player controls a
- * province holding a COMPLETED (progress ≥ required rounds) HAGIA_SOPHIA great
- * work. Destruction is not separately modelled, so a completed work is "intact".
- * NOTE (see NEEDS-FROM-INTEGRATOR): Byzantium's start does NOT seed constantinople
- * with a HAGIA_SOPHIA great work (it is a faction power), so today this gate only
- * passes once the great work is built; gameState should seed it (or this check
- * needs a faction-power fallback).
+ * FL-08 (FACTIONS Byz #3 / §13.1): "Hagia Sophia intact" — Byzantium holds
+ * CONSTANTINOPLE and that City holds a COMPLETED (progress ≥ required rounds)
+ * HAGIA_SOPHIA great work (per the PR reading: Byzantium must actually have built
+ * the Hagia Sophia Repair — it is NOT pre-seeded). Destruction is not separately
+ * modelled, so a completed work is "intact". The Great Work must be in
+ * Constantinople specifically, not merely in any owned province.
  */
 function hasIntactHagiaSophia(state: GameState, player: Player): boolean {
   const need = GREAT_WORK_COSTS[GreatWorkType.HAGIA_SOPHIA].rounds;
-  return state.provinces.some(
-    (p) =>
-      p.ownerId === player.id &&
-      p.greatWorks.some(
-        (gw) => gw.type === GreatWorkType.HAGIA_SOPHIA && gw.progress >= need,
-      ),
+  const cple = state.provinces.find((p) => p.id === CONSTANTINOPLE_ID);
+  if (!cple || cple.ownerId !== player.id) return false;
+  return cple.greatWorks.some(
+    (gw) => gw.type === GreatWorkType.HAGIA_SOPHIA && gw.progress >= need,
   );
 }
 
 /**
- * FL-08 (FACTIONS Byz #3): did this faction resolve Council of Florence in the
- * Union's favour? Recorded as a persistent/game-scoped `church_union` modifier
- * with `data.accepted === true` targeting the faction. Absence ⇒ the faction
- * never accepted (i.e. "refused"), which is the doc default. NOTE (see
- * NEEDS-FROM-INTEGRATOR): events/cards.ts `e17` ACCEPT must post this marker;
- * it currently does not, so acceptance is not yet distinguishable and this
- * defaults to "refused".
+ * FL-08 (FACTIONS Byz #3 / §13.1): did this player resolve the Council of
+ * Florence in the Union's favour? Prep4 wired the canonical boolean
+ * `Player.acceptedChurchUnion` (set by the events subsystem when Omen #17 is
+ * resolved `choice:"ACCEPT"`). Absence/false ⇒ the player REFUSED the Union,
+ * which is the doc default (FIX-PREP2: undefined = refused).
  */
-function acceptedChurchUnion(state: GameState, faction: Faction | null): boolean {
-  if (!faction) return false;
-  return state.activeModifiers.some(
-    (m) =>
-      m.kind === "church_union" &&
-      m.data?.accepted === true &&
-      (m.target?.faction === faction || m.data?.faction === faction),
-  );
+function acceptedChurchUnion(player: Player): boolean {
+  return player.acceptedChurchUnion === true;
 }
 
 /**
- * FL-07 (FACTIONS Ottoman #3): count DISTINCT high-value (HV ≥ 3) cities this
- * player has sacked over the game. Derived from the chronicle: a sack is logged
- * with `data.sacked === true`, the sacker as `actors[0]`, and the sacked
- * province in `targets[0]`. NOTE (see NEEDS-FROM-INTEGRATOR): combat does not yet
- * emit `data.sacked`, so this reads 0 until that log flag is added.
+ * FL-07 (FACTIONS Ottoman #3): number of high-value cities this player has sacked
+ * over the game. Prep4 wired the canonical counter `Player.sackedHighValueCities`
+ * (incremented by combat.ts on capture of an enemy high-value city; absent ⇒ 0).
  */
-function countSackedHighValueCities(state: GameState, playerId: string): number {
-  const sacked = new Set<string>();
-  for (const entry of state.log) {
-    if (entry.data?.sacked !== true) continue;
-    if (entry.actors[0] !== playerId) continue;
-    const provId = entry.targets?.[0];
-    if (!provId) continue;
-    const prov = state.provinces.find((p) => p.id === provId);
-    if (prov && (prov.highValue ?? 0) >= 3) sacked.add(provId);
-  }
-  return sacked.size;
+function countSackedHighValueCities(player: Player): number {
+  return player.sackedHighValueCities ?? 0;
 }
 
 /**
@@ -192,8 +170,9 @@ function objectiveSatisfied(state: GameState, player: Player, obj: SecretObjecti
   // Hagia Sophia intact in a held province (FL-08).
   if (obj.requiresHagiaSophia && !hasIntactHagiaSophia(state, player)) return false;
 
-  // Refused Church Union (FL-08): never resolved Council of Florence for the Union.
-  if (obj.refusedChurchUnion && acceptedChurchUnion(state, player.faction)) return false;
+  // Refused Church Union (FL-08): never resolved Council of Florence for the Union
+  // (reads Prep4's Player.acceptedChurchUnion; undefined/false = refused).
+  if (obj.refusedChurchUnion && acceptedChurchUnion(player)) return false;
 
   // Imperial-scale gates (FL-07) — ALTERNATIVES (OR) to one another.
   const scaleGates: boolean[] = [];
@@ -202,7 +181,7 @@ function objectiveSatisfied(state: GameState, player: Player, obj: SecretObjecti
     scaleGates.push(count >= obj.minProvinces);
   }
   if (obj.sackedHighValueCities !== undefined) {
-    scaleGates.push(countSackedHighValueCities(state, player.id) >= obj.sackedHighValueCities);
+    scaleGates.push(countSackedHighValueCities(player) >= obj.sackedHighValueCities);
   }
   if (scaleGates.length > 0 && !scaleGates.some(Boolean)) return false;
 
