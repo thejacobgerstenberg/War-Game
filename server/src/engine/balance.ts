@@ -470,7 +470,7 @@ export const COMBAT_MODS = {
 // ---------------------------------------------------------------------------
 
 /** Max tactic cards a player may hold; discard down to this at Cleanup (§7.7 / CANON). */
-export const TACTIC_HAND_LIMIT = 3;
+export const TACTIC_HAND_LIMIT = 4;
 
 /**
  * Tactic-deck timing/composition constants (§7.7 / CANON clarification 2).
@@ -481,7 +481,7 @@ export const TACTIC = {
   /** Cards a player draws each Income phase (before University bonuses). */
   drawPerIncome: 1,
   /** Hand limit (mirrors {@link TACTIC_HAND_LIMIT}). */
-  handLimit: 3,
+  handLimit: 4,
   /** Max tactic cards a side may play per battle ROUND (reactions exempt). */
   maxPlaysPerBattleRound: 1,
   /** University adds this many extra tactic draws per round (§9.1). */
@@ -676,7 +676,7 @@ export const MERC_MARKET = {
  */
 export const MERC_REVOLT_PILLAGE = {
   /** Gold pillaged from the host province owner on unpaid-merc desertion. */
-  pillageGold: 4,
+  pillageGold: 2,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -859,12 +859,19 @@ export const CONQUEST_PRESTIGE = {
   holdEnemyCapitalPerRound: 3,
 } as const;
 
-/** Prestige victory threshold by player count (§13.2). */
+/**
+ * Prestige victory threshold by player count (§13.2). RATIFIED balance §2.13
+ * (VICTORY_THRESHOLD_BY_PLAYER_COUNT): the pre-tuning 25/30/35 placeholders are
+ * superseded — final prestige sources (conquest rows + monopoly/capital income)
+ * raise total inflow far beyond them. Values derived empirically per count
+ * (results/thresholds.json); 5-player is the ratified VICTORY_THRESHOLD = 80
+ * (was 84 pre-errata). Checked at Cleanup only.
+ */
 export const PRESTIGE_THRESHOLDS: Record<number, number> = {
-  2: 25,
-  3: 30,
-  4: 35,
-  5: 35,
+  2: 72,
+  3: 78,
+  4: 80,
+  5: 80,
 };
 
 // ---------------------------------------------------------------------------
