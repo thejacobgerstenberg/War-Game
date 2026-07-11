@@ -368,9 +368,10 @@ first** by default (configurable in the assault action).
 **Ottoman attacker** enters a Byzantine **HILLS** province:
 
 * Attacker: 4 `INFANTRY` (CV atk 2), 2 `ARCHER` (CV atk 2, ranged), 2 `CAVALRY`
-  (CV atk 3; no charge — hills negate it), 1 `SIEGE` (no field dice).
+  (CV atk 3; no charge — hills negate it) — a full 8-unit stack.
 * Defender: 3 `INFANTRY` (CV def 3), 2 `ARCHER` (CV def 1, ranged), 3 `LEVY`
-  (CV def 1). Terrain gives defender **+1**.
+  (CV def 1) — also 8 (both stacks within the §6.4 limit). Terrain gives
+  defender **+1**.
 
 **Ranged step.**
 Attacker archers: hit on `7−2−0 = 5+`. 2 dice → roll {5,2} → **1 hit**.
@@ -378,14 +379,16 @@ Defender archers: hit on `7−1−1(terrain) = 5+`. 2 dice → roll {6,4} → **
 Casualties: defender loses 1 `LEVY`; attacker loses 1 `ARCHER`.
 
 **Melee step.**
-Attacker rolls 4 INF (5+), 2 CAV (4+), 1 ARCHER (5+) — SIEGE idle.
+Attacker rolls 4 INF (5+), 2 CAV (4+), 1 ARCHER (5+).
 → INF {6,5,3,4}=2 hits, CAV {4,2}=1 hit, ARCHER {5}=1 hit → **4 hits**.
 Defender rolls 3 INF (`7−3−1=3+`), 2 LEVY (`7−1−1=5+`), 2 ARCHER (5+).
 → INF {5,2,4}=2 hits, LEVY {6,1}=1 hit, ARCHER {3,2}=0 → **3 hits**.
 Casualties: defender removes 4 lowest-value (2 LEVY, then 2 ARCHER-then-INF per
 rule) → down to 3 INF; attacker removes 3 lowest (1 ARCHER, 2 INFANTRY).
 
-**Morale check** (§7.5): defender lost 5 of 8 (>50%) → **rout check**.
+**Morale check** (§7.5): defender lost 5 of 8 (>50%) → **rout check**. Attacker
+lost 4 of 8 — exactly 50%, which also meets the ≥ 50% mark — so **both sides
+check**.
 
 ### 7.5 Retreat & rout
 

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Ragusan Tribute</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- the sea before the harbor -->
+  <rect x="0" y="104" width="260" height="56" fill="#2C5F7C"/>
+  <path d="M0 118 Q10 112 20 118 T40 118 T60 118 T80 118 T100 118 T120 118 T140 118 T160 118 T180 118 T200 118 T220 118 T240 118 T260 118" fill="none" stroke="#F0E6D2" stroke-width="3"/>
+  <path d="M0 146 Q10 140 20 146 T40 146 T60 146 T80 146 T100 146 T120 146 T140 146 T160 146 T180 146 T200 146 T220 146 T240 146 T260 146" fill="none" stroke="#F0E6D2" stroke-width="3"/>
+
+  <!-- Ragusa: small, white-walled, unarmed -->
+  <rect x="8" y="76" width="56" height="30" fill="#F0E6D2" stroke="#2B2118" stroke-width="2.5"/>
+  <rect x="10" y="67" width="8" height="11" fill="#F0E6D2" stroke="#2B2118" stroke-width="2"/>
+  <rect x="24" y="67" width="8" height="11" fill="#F0E6D2" stroke="#2B2118" stroke-width="2"/>
+  <rect x="38" y="67" width="8" height="11" fill="#F0E6D2" stroke="#2B2118" stroke-width="2"/>
+  <rect x="52" y="67" width="8" height="11" fill="#F0E6D2" stroke="#2B2118" stroke-width="2"/>
+  <rect x="25" y="46" width="18" height="32" fill="#F0E6D2" stroke="#2B2118" stroke-width="2.5"/>
+  <polygon points="23,46 34,32 45,46" fill="#C9A227"/>
+  <rect x="31" y="56" width="6" height="9" fill="#2B2118"/>
+  <path d="M29 106 L29 94 Q36 85 43 94 L43 106 Z" fill="#2B2118"/>
+
+  <!-- the tribute skiff: gold and wine, handsomely worded -->
+  <path d="M24 122 Q58 130 92 122 Q86 142 58 142 Q30 142 24 122 Z" fill="#2B2118"/>
+  <circle cx="44" cy="117" r="5" fill="#C9A227"/>
+  <circle cx="54" cy="111" r="5" fill="#C9A227"/>
+  <circle cx="64" cy="117" r="5" fill="#C9A227"/>
+  <circle cx="49" cy="121" r="5" fill="#C9A227"/>
+  <circle cx="59" cy="121" r="5" fill="#C9A227"/>
+  <rect x="71" y="85" width="10" height="4" fill="#7A1F2B"/>
+  <rect x="73" y="88" width="6" height="8" fill="#7A1F2B"/>
+  <path d="M76 94 Q84 96 83 106 Q82 116 78 120 L74 120 Q70 116 69 106 Q68 96 76 94 Z" fill="#7A1F2B"/>
+
+  <!-- the strong fleet standing off the harbor -->
+  <polygon points="132,116 150,109 150,123" fill="#2B2118"/>
+  <path d="M144 104 L260 104 L260 142 Q214 132 176 136 Q152 138 146 126 Q142 114 144 104 Z" fill="#2B2118"/>
+  <path d="M150 104 Q136 84 142 56 Q144 46 154 44 Q160 44 158 52 Q148 76 162 104 Z" fill="#2B2118"/>
+  <circle cx="149" cy="48" r="5" fill="#C9A227"/>
+  <circle cx="168" cy="116" r="5" fill="#C9A227"/>
+  <circle cx="190" cy="104" r="7" fill="#7A1F2B"/>
+  <circle cx="214" cy="104" r="7" fill="#7A1F2B"/>
+  <circle cx="238" cy="104" r="7" fill="#7A1F2B"/>
+  <rect x="206" y="20" width="5" height="84" fill="#2B2118"/>
+  <polygon points="211,22 258,28 246,38 258,48 211,54" fill="#7A1F2B"/>
+  <circle cx="224" cy="38" r="5" fill="#C9A227"/>
+  <polygon points="172,132 177,134 164,156 159,154" fill="#2B2118"/>
+  <polygon points="200,130 205,132 192,154 187,152" fill="#2B2118"/>
+  <polygon points="228,128 233,130 220,152 215,150" fill="#2B2118"/>
+</svg>

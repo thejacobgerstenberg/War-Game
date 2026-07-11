@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Corsair Raid</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- low evening sun over open water -->
+  <circle cx="230" cy="26" r="11" fill="#C9A227"/>
+
+  <!-- the harbor town, burning behind the raiders -->
+  <rect x="6" y="86" width="48" height="26" fill="#2B2118"/>
+  <rect x="6" y="80" width="7" height="8" fill="#2B2118"/>
+  <rect x="20" y="80" width="7" height="8" fill="#2B2118"/>
+  <rect x="34" y="80" width="7" height="8" fill="#2B2118"/>
+  <rect x="18" y="58" width="18" height="30" fill="#2B2118"/>
+  <polygon points="14,60 20,38 26,52 32,32 38,50 44,40 46,60" fill="#7A1F2B"/>
+  <polygon points="22,60 27,46 31,56 36,44 40,60" fill="#C9A227"/>
+
+  <!-- the sea -->
+  <path d="M-4 116 Q9 104 22 116 Q35 104 48 116 Q61 104 74 116 Q87 104 100 116 Q113 104 126 116 Q139 104 152 116 Q165 104 178 116 Q191 104 204 116 Q217 104 230 116 Q243 104 256 116 Q269 104 282 116 L282 164 L-4 164 Z" fill="#2C5F7C"/>
+  <path d="M14 138 Q27 130 40 138 Q53 130 66 138" stroke="#F0E6D2" stroke-width="3" fill="none"/>
+  <path d="M196 142 Q209 134 222 142 Q235 134 248 142" stroke="#F0E6D2" stroke-width="3" fill="none"/>
+
+  <!-- focal subject: the corsair galliot, prow to open sea -->
+  <rect x="122" y="24" width="4" height="82" fill="#2B2118"/>
+  <polygon points="126,26 156,31 126,40" fill="#C9A227"/>
+  <path d="M80 76 L186 32" stroke="#2B2118" stroke-width="4" fill="none"/>
+  <polygon points="82,74 184,34 144,98" fill="#7A1F2B"/>
+  <path d="M139 55 A12 12 0 1 0 139 79 A14 14 0 0 1 139 55" fill="#C9A227"/>
+  <polygon points="62,100 178,100 196,84 202,104 184,118 74,118 60,110" fill="#2B2118"/>
+  <polygon points="196,96 232,88 198,108" fill="#2B2118"/>
+  <path d="M92 112 L80 138 M114 112 L102 138 M136 112 L124 138 M158 112 L146 138 M176 110 L188 134" stroke="#2B2118" stroke-width="4" fill="none"/>
+
+  <!-- taken gold sinking into the wake -->
+  <circle cx="66" cy="132" r="4" fill="#C9A227"/>
+  <circle cx="52" cy="124" r="3.5" fill="#C9A227"/>
+</svg>

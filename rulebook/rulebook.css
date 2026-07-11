@@ -1,0 +1,1044 @@
+/* ==========================================================================
+   IMPERIUM: Twilight of Empires — Rulebook stylesheet ("Illuminated Edition")
+   Palette + typography + layout + print. No external assets: the two faces
+   (Cinzel, EB Garamond) are self-hosted from ../client/public/fonts/ via the
+   @font-face rules below; everything else is inline CSS / data-URI SVG.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. Self-hosted fonts (latin subsets, variable-weight woff2 — the same
+      files the client serves from /fonts). font-display: swap keeps the
+      serif fallbacks visible until the files arrive.
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400 900; /* variable file; covers the 400/600/700 uses below */
+  font-display: swap;
+  src: url("../client/public/fonts/cinzel-latin-600-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 400 800; /* variable file; covers 400/600/700 */
+  font-display: swap;
+  src: url("../client/public/fonts/eb-garamond-latin-400-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: italic;
+  font-weight: 400 800; /* variable file */
+  font-display: swap;
+  src: url("../client/public/fonts/eb-garamond-latin-italic-400.woff2") format("woff2");
+}
+
+/* --------------------------------------------------------------------------
+   1. Design tokens
+   -------------------------------------------------------------------------- */
+:root {
+  --porphyry: #4B1F3F;
+  --gold: #C9A227;
+  --parchment: #F0E6D2;
+  --ink: #2B2118;
+  --lapis: #1F4E79;
+
+  /* Derived shades (mixes of the five canon colours only) */
+  --parchment-deep: #E6D9BE;
+  --parchment-pale: #F7F0E1;
+  --gold-pale: #E3CE8B;
+  --porphyry-deep: #35152C;
+  --ink-soft: rgba(43, 33, 24, 0.62);
+  --rule-hairline: rgba(75, 31, 63, 0.28);
+
+  --font-display: "Cinzel", Georgia, "Times New Roman", serif;
+  --font-body: "EB Garamond", Georgia, "Times New Roman", serif;
+
+  --measure: 52rem;         /* article column */
+  --toc-width: 15.5rem;     /* sticky sidebar */
+  --gutter: clamp(1rem, 4vw, 2.5rem);
+
+  /* Greek-key meander tile: gold stroke, transparent ground (laid on porphyry) */
+  --greek-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M2 21V3h19v13H10V9.5h7' fill='none' stroke='%23C9A227' stroke-width='2.4'/%3E%3C/svg%3E");
+
+  /* Laurel ornament: two gold branches flanking a lozenge */
+  --laurel: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='26' viewBox='0 0 140 26'%3E%3Cg fill='none' stroke='%23C9A227' stroke-width='1.6'%3E%3Cpath d='M10 15 Q38 4 58 13'/%3E%3Cpath d='M130 15 Q102 4 82 13'/%3E%3C/g%3E%3Cg fill='%23C9A227'%3E%3Cpath d='M18 12q2-7 7-4q-2 6-7 4z'/%3E%3Cpath d='M32 9q2-7 7-4q-2 6-7 4z'/%3E%3Cpath d='M46 8q2-7 7-4q-2 6-7 4z'/%3E%3Cpath d='M122 12q-2-7-7-4q2 6 7 4z'/%3E%3Cpath d='M108 9q-2-7-7-4q2 6 7 4z'/%3E%3Cpath d='M94 8q-2-7-7-4q2 6 7 4z'/%3E%3Cpath d='M70 5l5.5 8L70 21l-5.5-8z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* --------------------------------------------------------------------------
+   2. Base / reset-adjacent
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Hidden .term tooltip bubbles must never inflate the scroll surface */
+  overflow-x: clip;
+}
+
+body {
+  margin: 0;
+  overflow-x: clip;
+  color: var(--ink);
+  background-color: var(--parchment);
+  /* Parchment mottling + vignette, all in gradients (no images) */
+  background-image:
+    radial-gradient(ellipse 120% 90% at 50% 0%, rgba(247, 240, 225, 0.9), rgba(247, 240, 225, 0) 60%),
+    radial-gradient(ellipse 140% 120% at 50% 55%, rgba(43, 33, 24, 0) 55%, rgba(43, 33, 24, 0.14) 100%),
+    radial-gradient(ellipse 60% 40% at 12% 88%, rgba(201, 162, 39, 0.07), rgba(201, 162, 39, 0) 70%),
+    radial-gradient(ellipse 60% 40% at 88% 12%, rgba(201, 162, 39, 0.07), rgba(201, 162, 39, 0) 70%);
+  background-attachment: fixed;
+  font-family: var(--font-body);
+  font-size: clamp(1.05rem, 0.95rem + 0.35vw, 1.2rem);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+::selection {
+  background: var(--gold);
+  color: var(--porphyry-deep);
+}
+
+a {
+  color: var(--lapis);
+  text-decoration-color: rgba(31, 78, 121, 0.45);
+  text-underline-offset: 0.15em;
+}
+
+a:hover {
+  color: var(--porphyry);
+  text-decoration-color: var(--gold);
+}
+
+:focus-visible {
+  outline: 2px solid var(--lapis);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   3. Typography
+   -------------------------------------------------------------------------- */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--porphyry);
+  line-height: 1.2;
+  margin: 0 0 0.6em;
+}
+
+h1 {
+  font-size: clamp(1.9rem, 1.3rem + 2.6vw, 3.2rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+h2 {
+  font-size: clamp(1.45rem, 1.2rem + 1vw, 2rem);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+h3 {
+  font-size: clamp(1.15rem, 1.05rem + 0.4vw, 1.4rem);
+  color: var(--lapis);
+  letter-spacing: 0.03em;
+  margin-top: 1.8em;
+}
+
+h4 {
+  font-size: 1.05em;
+  letter-spacing: 0.04em;
+  margin-top: 1.4em;
+}
+
+p {
+  margin: 0 0 1em;
+}
+
+ul,
+ol {
+  margin: 0 0 1.1em;
+  padding-left: 1.5em;
+}
+
+li {
+  margin-bottom: 0.35em;
+}
+
+strong {
+  color: var(--porphyry-deep);
+}
+
+blockquote {
+  margin: 1.4em 0;
+  padding: 0.2em 0 0.2em 1.2em;
+  border-left: 3px solid var(--gold);
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+code,
+kbd {
+  font-family: "Courier New", monospace;
+  font-size: 0.9em;
+  background: rgba(75, 31, 63, 0.07);
+  border: 1px solid var(--rule-hairline);
+  border-radius: 3px;
+  padding: 0.05em 0.35em;
+}
+
+/* --------------------------------------------------------------------------
+   4. Page frame: masthead, layout grid, sticky TOC
+   -------------------------------------------------------------------------- */
+.masthead {
+  text-align: center;
+  padding: clamp(2rem, 6vw, 4rem) var(--gutter) 1.6rem;
+  border-bottom: 4px double var(--gold);
+  background: linear-gradient(rgba(75, 31, 63, 0.03), rgba(75, 31, 63, 0));
+}
+
+/* meander strip belongs at the very top of the masthead, on porphyry */
+.masthead::before {
+  content: "";
+  display: block;
+  height: 24px;
+  margin: calc(-1 * clamp(2rem, 6vw, 4rem)) calc(-1 * var(--gutter)) clamp(1.6rem, 4vw, 3rem);
+  background-color: var(--porphyry);
+  background-image: var(--greek-key);
+  background-repeat: repeat-x;
+  background-position: center;
+  border-bottom: 2px solid var(--gold);
+}
+
+.masthead h1 {
+  margin-bottom: 0.15em;
+}
+
+.masthead .subtitle {
+  font-family: var(--font-display);
+  font-size: clamp(0.95rem, 0.85rem + 0.5vw, 1.25rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-shadow: 0 0 1px rgba(75, 31, 63, 0.5);
+  margin: 0 0 0.4em;
+}
+
+.masthead .era {
+  font-style: italic;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gutter);
+  max-width: calc(var(--toc-width) + var(--measure) + 3 * var(--gutter));
+  margin: 0 auto;
+  padding: clamp(1.2rem, 3vw, 2.5rem) var(--gutter) 3rem;
+}
+
+.content {
+  max-width: var(--measure);
+  min-width: 0;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ----- Table of contents ----- */
+.toc {
+  font-family: var(--font-display);
+}
+
+.toc summary {
+  cursor: pointer;
+  font-size: 1rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--porphyry);
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--gold);
+  background: var(--parchment-pale);
+  list-style-position: inside;
+}
+
+.toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--rule-hairline);
+  border-top: none;
+  background: var(--parchment-pale);
+}
+
+.toc li {
+  margin: 0;
+  border-bottom: 1px solid var(--rule-hairline);
+}
+
+.toc li:last-child {
+  border-bottom: none;
+}
+
+.toc a {
+  display: block;
+  padding: 0.45rem 0.2rem;
+  font-size: 0.92rem;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.toc a::before {
+  content: "\2726\00a0\00a0"; /* ✦ */
+  color: var(--gold);
+}
+
+.toc a:hover,
+.toc a:focus-visible {
+  color: var(--porphyry);
+  background: rgba(201, 162, 39, 0.12);
+}
+
+/* Nested TOC level: the h3 subsections under each chapter entry */
+.toc ol ol {
+  margin: 0 0 0.4rem;
+  padding: 0 0 0 1.15rem;
+  border: none;
+  background: transparent;
+}
+
+.toc ol ol li {
+  border-bottom: none;
+}
+
+.toc ol ol a {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  padding: 0.18rem 0.2rem;
+  color: var(--ink-soft);
+}
+
+.toc ol ol a::before {
+  content: "\00B7\00a0\00a0"; /* · */
+  color: var(--gold);
+}
+
+/* Wide screens: sidebar column, always-open sticky TOC */
+@media (min-width: 64rem) {
+  .layout {
+    grid-template-columns: var(--toc-width) minmax(0, var(--measure));
+    justify-content: center;
+    align-items: start;
+  }
+
+  .toc {
+    position: sticky;
+    top: 1.25rem;
+    max-height: calc(100vh - 2.5rem);
+    overflow-y: auto;
+  }
+
+  .toc summary {
+    pointer-events: none;    /* disclosure behaviour only on narrow screens */
+    list-style: none;
+    border-bottom: 2px solid var(--gold);
+  }
+
+  .toc summary::-webkit-details-marker,
+  .toc summary::marker {
+    display: none;
+    content: "";
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Chapters (sections) — Greek-key headers, drop caps, dividers
+   -------------------------------------------------------------------------- */
+.chapter {
+  margin: 0 0 3.2rem;
+  scroll-margin-top: 1.5rem;
+}
+
+/* Greek-key band across the top of every chapter */
+.chapter::before {
+  content: "";
+  display: block;
+  height: 22px;
+  background-color: var(--porphyry);
+  background-image: var(--greek-key);
+  background-repeat: repeat-x;
+  background-position: left center;
+  border: 1px solid var(--porphyry-deep);
+  border-bottom: 2px solid var(--gold);
+  box-shadow: 0 2px 4px rgba(43, 33, 24, 0.18);
+  margin-bottom: 1.4rem;
+}
+
+.chapter > h2 {
+  text-align: center;
+  border-bottom: 3px double var(--gold);
+  padding-bottom: 0.45em;
+  margin-bottom: 1.1em;
+}
+
+/* Drop cap: opening paragraph of a chapter carries class="dropcap" */
+.dropcap::first-letter {
+  float: left;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--gold);
+  background: var(--porphyry);
+  border: 1px solid var(--gold);
+  box-shadow: inset 0 0 0 2px var(--porphyry), inset 0 0 0 3px var(--gold-pale);
+  font-size: 3.1em;
+  line-height: 1;
+  padding: 0.12em 0.18em 0.08em;
+  margin: 0.06em 0.16em 0 0;
+}
+
+/* The five phases of a round: gilded roman numerals in porphyry plaques */
+.phase-list {
+  list-style: none;
+  counter-reset: phase;
+  margin: 1.2em 0 1.4em;
+  padding-left: 0;
+}
+
+.phase-list > li {
+  counter-increment: phase;
+  position: relative;
+  padding-left: 2.9em;
+  margin-bottom: 0.6em;
+  min-height: 1.8em;
+}
+
+.phase-list > li::before {
+  content: counter(phase, upper-roman);
+  position: absolute;
+  left: 0;
+  top: 0.12em;
+  width: 2.1em;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.82em;
+  line-height: 1.55;
+  color: var(--gold);
+  background: var(--porphyry);
+  border: 1px solid var(--gold);
+  box-shadow: inset 0 0 0 1px var(--porphyry-deep);
+}
+
+/* Laurel / ornament divider between major sub-topics */
+.ornament-divider {
+  border: none;
+  height: 26px;
+  margin: 2.2rem auto;
+  background-image:
+    linear-gradient(var(--rule-hairline), var(--rule-hairline)),
+    linear-gradient(var(--rule-hairline), var(--rule-hairline)),
+    var(--laurel);
+  background-repeat: no-repeat;
+  background-size: calc(50% - 90px) 1px, calc(50% - 90px) 1px, 140px 26px;
+  background-position: left center, right center, center center;
+}
+
+/* --------------------------------------------------------------------------
+   6. Tables (action costs, modifiers, references)
+   -------------------------------------------------------------------------- */
+.table-scroll {
+  overflow-x: auto;
+  margin: 1.4em 0;
+  /* keep the gold frame visible while scrolling */
+  border: 1px solid var(--gold);
+}
+
+.table-scroll > .rules-table {
+  margin: 0;
+  border: none;
+  min-width: 34rem;
+}
+
+.rules-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.4em 0;
+  border: 1px solid var(--gold);
+  background: var(--parchment-pale);
+  font-size: 0.95em;
+}
+
+.rules-table caption {
+  caption-side: top;
+  font-family: var(--font-display);
+  font-size: 0.9em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--porphyry);
+  padding: 0.4em 0;
+}
+
+.rules-table th {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.82em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--parchment);
+  background: var(--porphyry);
+  padding: 0.55em 0.8em;
+  border-bottom: 2px solid var(--gold);
+}
+
+.rules-table td {
+  padding: 0.5em 0.8em;
+  border-bottom: 1px solid var(--rule-hairline);
+  vertical-align: top;
+}
+
+.rules-table tbody tr:nth-child(even) {
+  background: rgba(201, 162, 39, 0.07);
+}
+
+.rules-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.rules-table td.num,
+.rules-table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   7. Scribe's notes (worked examples / asides) — lapis
+   -------------------------------------------------------------------------- */
+.scribe-note {
+  margin: 1.6em 0;
+  padding: 1em 1.2em 0.8em;
+  background: linear-gradient(rgba(31, 78, 121, 0.06), rgba(31, 78, 121, 0.02));
+  border: 1px solid rgba(31, 78, 121, 0.35);
+  border-left: 4px solid var(--lapis);
+  font-size: 0.95em;
+}
+
+.scribe-note::before {
+  content: "\2767\00a0\00a0" attr(data-title); /* ❧ */
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lapis);
+  margin-bottom: 0.5em;
+}
+
+.scribe-note > :last-child {
+  margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------
+   8. Keyword terms with tooltips — hover AND keyboard focus
+   Markup: <span class="term" tabindex="0" data-tip="...">keyword</span>
+   -------------------------------------------------------------------------- */
+.term {
+  position: relative;
+  font-weight: 600;
+  color: var(--porphyry);
+  border-bottom: 2px dotted var(--gold);
+  cursor: help;
+}
+
+.term::after {
+  content: attr(data-tip);
+  display: none; /* fully removed while hidden — no ghost box widening the page */
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.55em);
+  transform: translateX(-50%) translateY(4px);
+  width: max-content;
+  max-width: min(20rem, 74vw);
+  padding: 0.5em 0.8em;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--parchment);
+  background: var(--porphyry-deep);
+  border: 1px solid var(--gold);
+  box-shadow: 0 3px 10px rgba(43, 33, 24, 0.35);
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.term::before {
+  content: "";
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.15em);
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--gold);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.term:hover::after,
+.term:focus::after,
+.term:focus-visible::after,
+.term:hover::before,
+.term:focus::before,
+.term:focus-visible::before {
+  display: block;
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* --------------------------------------------------------------------------
+   9. Faction cards with crest slot
+   -------------------------------------------------------------------------- */
+.faction-card {
+  margin: 2rem 0;
+  border: 4px double var(--gold);
+  background:
+    linear-gradient(160deg, rgba(75, 31, 63, 0.06), rgba(75, 31, 63, 0) 40%),
+    var(--parchment-pale);
+  box-shadow: 0 2px 8px rgba(43, 33, 24, 0.15);
+  padding: 1.3rem clamp(1rem, 3vw, 1.8rem) 1.1rem;
+  scroll-margin-top: 1.5rem;
+}
+
+.faction-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1.1rem;
+  align-items: center;
+  border-bottom: 2px solid var(--gold);
+  padding-bottom: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.faction-head h3 {
+  margin: 0;
+  color: var(--porphyry);
+  font-size: 1.45em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.faction-head .epithet {
+  margin: 0.15em 0 0;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+/* Crest slot: gold-ringed porphyry roundel; the crest <img> sits on top.
+   If the SVG is missing, onerror adds .crest-missing and the ornamental
+   roundel + fleuron show through instead. */
+.crest-slot {
+  position: relative;
+  margin: 0;
+  width: 6rem;
+  height: 6rem;
+  flex: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(201, 162, 39, 0.25), rgba(201, 162, 39, 0) 60%),
+    var(--porphyry);
+  border: 3px solid var(--gold);
+  box-shadow:
+    inset 0 0 0 2px var(--porphyry-deep),
+    inset 0 0 0 3px var(--gold-pale),
+    0 2px 6px rgba(43, 33, 24, 0.3);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.crest {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+}
+
+.crest.crest-missing {
+  visibility: hidden;
+}
+
+/* Ornamental fallback fleuron when the crest failed to load */
+.crest-slot:has(.crest-missing)::after {
+  content: "\269C"; /* ⚜ fleur-de-lis */
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 2.6rem;
+  color: var(--gold);
+}
+
+.faction-body > :last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 30rem) {
+  .faction-head {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   10. Footer
+   -------------------------------------------------------------------------- */
+.colophon {
+  border-top: 4px double var(--gold);
+  margin-top: 2rem;
+  padding: 1.6rem var(--gutter) 2.4rem;
+  text-align: center;
+  font-style: italic;
+  color: var(--ink-soft);
+  font-size: 0.92em;
+}
+
+.colophon::after {
+  content: "";
+  display: block;
+  height: 26px;
+  margin-top: 1.2rem;
+  background-image: var(--laurel);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 140px 26px;
+}
+
+/* --------------------------------------------------------------------------
+   11. Print — target ≈12 A4 pages, black on white, porphyry headers
+   -------------------------------------------------------------------------- */
+@page {
+  size: A4;
+  margin: 11mm 10mm 12mm;
+}
+
+@media print {
+  :root {
+    --measure: 100%;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+    /* 7.6pt (was 7.8pt) keeps the booklet within its 14-page budget now that
+       the doc-contradiction flags (Unresolved Rule asides) add copy */
+    font-size: 7.6pt;
+    line-height: 1.22;
+  }
+
+  /* Hide navigation chrome */
+  .toc,
+  nav {
+    display: none !important;
+  }
+
+  .layout {
+    display: block;
+    max-width: none;
+    padding: 0;
+  }
+
+  /* Two-column magazine layout keeps the sheet count near the 12-page target */
+  .content {
+    max-width: none;
+    column-count: 2;
+    column-gap: 6mm;
+  }
+
+  .masthead {
+    background: #fff;
+    border-bottom: 2pt double var(--porphyry);
+    padding: 0 0 4pt;
+    margin-bottom: 6pt;
+  }
+
+  .masthead::before {
+    display: none; /* no ink-heavy meander band on paper */
+  }
+
+  .masthead h1 {
+    font-size: 16pt;
+  }
+
+  .masthead .subtitle {
+    font-size: 9pt;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--porphyry);
+  }
+
+  h2 {
+    font-size: 12.5pt;
+    column-span: all;
+    margin: 3pt 0 3pt;
+    padding-bottom: 2pt;
+  }
+
+  h3 {
+    font-size: 10pt;
+    margin: 8pt 0 3pt;
+  }
+
+  h4 {
+    font-size: 9pt;
+    margin: 6pt 0 3pt;
+  }
+
+  p {
+    margin-bottom: 5pt;
+  }
+
+  ul,
+  ol {
+    margin-bottom: 5pt;
+    padding-left: 1.15em;
+  }
+
+  li {
+    margin-bottom: 1.5pt;
+  }
+
+  .phase-list > li {
+    padding-left: 2.3em;
+    min-height: 0;
+    margin-bottom: 2pt;
+  }
+
+  .dropcap::first-letter {
+    font-size: 2em;
+    padding: 0.05em 0.12em 0.03em;
+  }
+
+  a {
+    color: #000;
+    text-decoration: none;
+  }
+
+  /* Chapters flow continuously in print — forced page breaks quadruple the sheet count */
+  .chapter {
+    break-before: auto;
+    page-break-before: auto;
+    margin-bottom: 8pt;
+  }
+
+  .chapter::before {
+    height: 5pt;
+    background-image: none;
+    background-color: transparent;
+    border: none;
+    border-top: 2pt solid var(--porphyry);
+    border-bottom: 0.75pt solid var(--gold);
+    box-shadow: none;
+    margin-bottom: 3pt;
+  }
+
+  h2 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  h3,
+  h4 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Keep small rules units intact; large blocks may break across columns */
+  .rules-table tr,
+  .scribe-note,
+  blockquote,
+  figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .table-scroll {
+    overflow: visible;
+    border: none;
+    margin: 4pt 0;
+  }
+
+  .table-scroll > .rules-table {
+    min-width: 0; /* must fit a print column, not the 34rem screen minimum */
+  }
+
+  .rules-table {
+    font-size: 6.6pt;
+    background: #fff;
+    margin: 4pt 0;
+  }
+
+  .rules-table caption {
+    padding: 2pt 0;
+  }
+
+  .rules-table th,
+  .rules-table td {
+    padding: 1pt 2.5pt;
+  }
+
+  .rules-table th {
+    color: #fff;
+    background: var(--porphyry) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .rules-table tbody tr:nth-child(even) {
+    background: rgba(75, 31, 63, 0.06) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .scribe-note {
+    background: #fff;
+    border-color: #000;
+    border-left-color: var(--porphyry);
+    font-size: 7.2pt;
+    padding: 4pt 6pt 3pt;
+    margin: 5pt 0;
+  }
+
+  .scribe-note::before {
+    color: var(--porphyry);
+    margin-bottom: 2pt;
+  }
+
+  /* Tooltips make no sense on paper: keep the keyword, drop the balloon */
+  .term {
+    border-bottom: none;
+    font-weight: 600;
+    color: #000;
+    cursor: auto;
+  }
+
+  .term::before,
+  .term::after {
+    display: none;
+  }
+
+  .faction-card {
+    box-shadow: none;
+    background: #fff;
+    border: 1.5pt solid var(--porphyry);
+    padding: 5pt 7pt 4pt;
+    margin: 6pt 0;
+  }
+
+  .faction-head {
+    gap: 6pt;
+    padding-bottom: 4pt;
+    margin-bottom: 5pt;
+  }
+
+  .faction-head h3 {
+    font-size: 11pt;
+    margin: 0;
+  }
+
+  .crest-slot {
+    box-shadow: none;
+    background: #fff;
+    border-color: var(--porphyry);
+    width: 2.4rem;
+    height: 2.4rem;
+    border-width: 1.5pt;
+  }
+
+  .crest-slot:has(.crest-missing)::after {
+    font-size: 1.1rem;
+  }
+
+  .dropcap::first-letter {
+    background: #fff;
+    color: var(--porphyry);
+    border-color: var(--porphyry);
+    box-shadow: none;
+  }
+
+  /* Ornament dividers are noise on paper */
+  .ornament-divider {
+    display: none;
+  }
+
+  .phase-list > li::before {
+    background: #fff;
+    color: var(--porphyry);
+    border-color: var(--porphyry);
+    box-shadow: none;
+  }
+
+  /* The tear-out reference sheet must always start on its own page.
+     .content is a multicol in print, where a forced page break is ignored;
+     spanning all columns re-exposes the section to page fragmentation so
+     break-before: page is honoured, and its own 2-column flow keeps the
+     sheet as dense as before. */
+  #quick-reference {
+    break-before: page;
+    page-break-before: always;
+    column-span: all;
+    columns: 2;
+    column-gap: 6mm;
+  }
+
+  /* Keep the reference sheet terse and dense */
+  #quick-reference li {
+    margin-bottom: 1pt;
+  }
+
+  #quick-reference .rules-table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* The colophon is screen flavour; on paper it would burn a page for one line */
+  .colophon {
+    display: none;
+  }
+}
