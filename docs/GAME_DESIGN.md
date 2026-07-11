@@ -73,7 +73,7 @@ coastal provinces and carry fleets and trade.
 Terrain is the [`TerrainType`](../shared/src/types/gameState.ts) enum. Base yield
 is the province's default; named/key cities and buildings modify it (see
 `MAP.md`). All yields are a [`ResourceBundle`](../shared/src/types/gameState.ts)
-`{gold, grain, timber, stone, faith}`.
+`{gold, grain, timber, marble, faith}`.
 
 | Terrain | Base yield | Move cost | Combat note |
 |---|---|---|---|
@@ -85,9 +85,10 @@ is the province's default; named/key cities and buildings modify it (see
 | `CITY` | gold 3, faith 1 | 1 | may hold walls & great works; garrison bonus |
 
 > **Note on resource names.** The secondary building resource is **Marble**,
-> stored in the `stone` field of `ResourceBundle` — a legacy code-level field
-> name. Rules text, tables, and UI say *Marble* throughout; older drafts called
-> it "stone". "Faith" is a non-tradeable prestige/religion resource (see §4).
+> stored in the `marble` field of
+> [`ResourceBundle`](../shared/src/types/gameState.ts). Rules text, tables, UI,
+> and code all say *Marble*; older drafts called the resource "stone". "Faith"
+> is a non-tradeable prestige/religion resource (see §4).
 
 ### 3.2 Key cities
 

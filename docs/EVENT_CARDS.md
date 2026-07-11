@@ -1,6 +1,7 @@
 # IMPERIUM: Twilight of Empires — EVENT CARDS (The Omen Deck)
 
-Each **year (round)**, before players act, the game runs the **Omen Phase**: the active omen deck is
+Each **round** (each round spans **3–4 years** of the 1400 → 1453 timeline — 16 rounds in all,
+`GAME_DESIGN.md` §10), before players act, the game runs the **Omen Phase**: the active omen deck is
 drawn from and the card resolves. Events reshape the map through the systems in `MAP.md` and `FACTIONS.md`
 — resources, units, wall tiers, prestige, sea-zone blockades, crusades, loans and vassals.
 
@@ -11,7 +12,9 @@ touch **vassals/minor states** cross-reference `MAP.md §5`; the full vassalage 
 Every card also carries a stable **`slug`** (kebab-case, unique) — the join key to its flavor text in
 `lore/events/flavor.md` (PR #3). Where a card's concept matches a lore entry, the lore slug is adopted
 verbatim; cards and lore slugs that do not yet line up are listed in the **Unreconciled** section at the
-bottom of this file.
+bottom of this file. Slugs are **namespaced per deck** — the omen (event) deck and the tactic deck
+(`GAME_DESIGN.md` §7.7) are separate namespaces, so the same slug may legally appear in both
+(e.g. `papal-indulgence`).
 
 ---
 
@@ -92,7 +95,7 @@ matching the current era:
 
 | # | Card | Slug | Type | Historical flavor & trigger | Mechanical effect |
 |---|------|------|------|------------------------------|-------------------|
-| 34 | **The Great Bombard Forged** | `great-bombard-forged` | Good *(Ottoman)* | Orban casts the monster cannon before the walls. | The Ottoman immediately unlocks and may build the **Great Bombard** (rolls **double wall-damage dice** — up to 6 Wall HP/round, `GAME_DESIGN.md` §8.2 — enough to batter even the Tier-5 Theodosian Walls). If no Ottoman is in play, the founder Orban sells to the **highest bidder** (auction, 🪙+🪨 marble), granting them one bombard. **Persistent.** |
+| 34 | **The Great Bombard Forged** | `great-bombard-forged` | Good *(Ottoman)* | Orban casts the monster cannon before the walls. | The **Great Bombard** enters play **at no cost** in the recipient's capital (or any owned `CITY`), per `GAME_DESIGN.md` §8.4: the **Ottoman** receives it if in play; otherwise the founder Orban **auctions it to the highest bidder** (🪙+🪨 marble bids). It rolls **double wall-damage dice** — up to 6 Wall HP/round, `GAME_DESIGN.md` §8.2 — enough to batter even the Tier-5 Theodosian Walls. One per game; it can **never be recruited or built**. **Persistent.** |
 | 35 | **Black Death Returns** | `black-death-returns` | Ill | Pestilence rides the trade roads once more. | For **2 rounds**, every `city` and high-value (`HV`) province produces **−1 🌾 and −1 🪙**; each faction **destroys 1 levy/infantry per 3 such units** it fields (densest provinces first). |
 | 36 | **Gunpowder Revolution** | `gunpowder-revolution` | Mixed *(tech)* | The age of the cannon dawns for all. | For the rest of the game, **bombards & handgunners cost −1** and gain **+1 siege**, but old-style **stone walls defend at −1 tier** against them. Favors attackers everywhere. **Persistent.** |
 | 37 | **The Final Crusade** | `final-crusade` | Mixed | Christendom's last appeal before the City falls. | All Christian factions may pool units into a grand Crusade targeting any Ottoman-held city. Success: **+4 prestige** to joiners and the city changes hands. Failure or non-participation: each abstaining Christian faction **−1 prestige** (the West stood idle). |
