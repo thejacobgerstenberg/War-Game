@@ -4,25 +4,51 @@ import boardSvgRaw from "./assets/board.svg?raw";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-function parseTemplate(): SVGSVGElement {
-  const doc = new DOMParser().parseFromString(boardSvgRaw, "image/svg+xml");
-  // A vendored build asset failing to parse is a programming error.
+/** Parse SVG markup into a detached svg root; throws on malformed input. */
+export function parseBoardSvgText(text: string, label = "board.svg"): SVGSVGElement {
+  const doc = new DOMParser().parseFromString(text, "image/svg+xml");
   if (doc.querySelector("parsererror")) {
-    throw new Error("board.svg failed to parse as image/svg+xml");
+    throw new Error(`${label} failed to parse as image/svg+xml`);
   }
   return doc.documentElement as unknown as SVGSVGElement;
 }
 
 // Parsed once at module scope; every caller gets a deep clone (React 18
 // StrictMode double-mounts, and two Board instances must not share a node).
-const TEMPLATE = parseTemplate();
+const TEMPLATE = parseBoardSvgText(boardSvgRaw);
 
-export function loadBoardSvg(): SVGSVGElement {
-  const svg = TEMPLATE.cloneNode(true) as SVGSVGElement;
+function cloneForMount(template: SVGSVGElement): SVGSVGElement {
+  const svg = template.cloneNode(true) as SVGSVGElement;
   svg.setAttribute("width", "100%");
   svg.setAttribute("height", "100%");
   svg.style.display = "block";
   return svg;
+}
+
+export function loadBoardSvg(): SVGSVGElement {
+  return cloneForMount(TEMPLATE);
+}
+
+// One fetch+parse per URL; repeat mounts (StrictMode, remounted demos)
+// clone the cached template instead of refetching.
+const templateByUrl = new Map<string, Promise<SVGSVGElement>>();
+
+/**
+ * Load an alternate board SVG by URL (Board's `svgUrl` override — used by
+ * tests to inject a canon-id fixture). Resolves to a fresh clone per call.
+ */
+export async function loadBoardSvgFromUrl(url: string): Promise<SVGSVGElement> {
+  let template = templateByUrl.get(url);
+  if (!template) {
+    template = fetch(url).then(async (res) => {
+      if (!res.ok) throw new Error(`fetching ${url} failed: HTTP ${res.status}`);
+      return parseBoardSvgText(await res.text(), url);
+    });
+    // A failed fetch must not poison the cache for later retries.
+    template.catch(() => templateByUrl.delete(url));
+    templateByUrl.set(url, template);
+  }
+  return cloneForMount(await template);
 }
 
 /** Province/sea-zone path ids in document order. */

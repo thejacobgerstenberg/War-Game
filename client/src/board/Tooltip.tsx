@@ -11,7 +11,7 @@ const RESOURCE_ORDER: ReadonlyArray<keyof ResourceBundle> = [
   "gold",
   "grain",
   "timber",
-  "stone",
+  "marble",
   "faith",
 ];
 
