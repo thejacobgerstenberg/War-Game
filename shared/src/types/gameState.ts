@@ -230,12 +230,20 @@ export interface Treaty {
   type: TreatyType;
   /** Player ids party to the treaty. */
   parties: string[];
+  /** Round the treaty was concluded (for duration/casus-belli bookkeeping). */
+  startedRound?: number;
   /** Round at which the treaty lapses; null = indefinite. */
   expiresRound: number | null;
   /** For TRIBUTE: the bundle paid each Income phase. */
   tribute?: Partial<ResourceBundle>;
   /** For TRIBUTE: player id of the payer. */
   payerId?: string;
+  /** For TRIBUTE: player id paying the tribute (explicit direction). */
+  tributeFrom?: string;
+  /** For TRIBUTE: player id receiving the tribute. */
+  tributeTo?: string;
+  /** For TRIBUTE: flat gold amount per Income phase (convenience alt to `tribute`). */
+  tributeAmount?: number;
 }
 
 /** A neutral NPC minor state (Serbia, Ragusa, Knights of Rhodes, …). */
@@ -254,6 +262,8 @@ export interface NpcMinor {
   conquered?: boolean;
   /** Rounds until this vassal may next answer a levy call. */
   levyCooldown?: number;
+  /** Rounds until this minor next raises a levy for its overlord (alias of levyCooldown). */
+  roundsUntilLevy?: number;
 }
 
 /** An open bid on a free mercenary company in the round's merc market. */
@@ -270,6 +280,8 @@ export interface MercCompanyOffer {
 
 /** An in-progress siege of a walled province. */
 export interface SiegeState {
+  /** Stable siege id (optional; assign when the combat subsystem needs a handle). */
+  id?: string;
   provinceId: string;
   /** Player id of the besieging power. */
   besiegerId: string;
@@ -277,12 +289,20 @@ export interface SiegeState {
   besiegingArmyIds: string[];
   /** Siege rounds elapsed. */
   roundsElapsed: number;
+  /** Rounds the province has been under siege (alias of roundsElapsed for the combat subsystem). */
+  roundsBesieged?: number;
   /** Remaining garrison hold-out rounds before starvation begins. */
   grainStores: number;
+  /** Accumulated starvation ticks once grain stores are exhausted. */
+  starvationCounter?: number;
+  /** Current wall HP snapshot mirrored onto the siege (optional convenience). */
+  wallHp?: number;
   /** True once wall HP has reached 0. */
   breached: boolean;
   /** True once the besieging army is locked in place. */
   circumvallated: boolean;
+  /** Free-form siege phase tag (e.g. "invest" | "bombard" | "assault"). */
+  phase?: string;
 }
 
 /** A battle declared this round, resolved during the COMBAT phase. */
@@ -293,14 +313,61 @@ export interface PendingBattle {
   /** Naval battle location. */
   seaZoneId?: string;
   attackerId: string;
-  defenderId: string;
+  /** Defending player id, or null for an unowned/neutral-garrison tile. */
+  defenderId: string | null;
   /** Army/fleet ids on each side. */
   attackerStackIds: string[];
   defenderStackIds: string[];
+  /** Aggregate attacking unit stack (same shape as Army/Fleet.units) — optional
+   *  convenience for subsystems that pre-resolve the committed force. */
+  attackingUnits?: Record<UnitType, number>;
+  /** True for a sea-zone engagement (complements isSiege; mirrors seaZoneId). */
+  isNaval?: boolean;
   /** Attacker arrived from a sea zone (amphibious −1). */
   amphibious?: boolean;
   /** This battle is an assault on walls (drives siege resolution). */
   isSiege?: boolean;
+}
+
+/**
+ * A round/persistent effect side-channel posted mostly by event (Omen) cards and
+ * read by the combat / economy / movement subsystems. This decouples "a card
+ * happened" from "a subsystem reacts": a card calls `addModifier(...)`; the
+ * relevant subsystem calls `getModifiers(state, kind, target?)` at the point it
+ * needs the effect, and the round loop calls `expireRoundModifiers` at cleanup.
+ * (Engine helpers live in `server/src/engine/modifiers.ts`.)
+ *
+ * `kind` is an open string so subsystems can add their own effect classes;
+ * conventional values: 'combat_mod' | 'move_mod' | 'upkeep_mod' | 'faith_income'
+ * | 'trade_mod' | 'freeze_sea' | 'no_recruit' | 'no_build' | 'siege_mod' | 'morale'.
+ */
+export interface ActiveModifier {
+  /** Stable id (e.g. `<cardId>:<kind>` or an engine counter). */
+  id: string;
+  /** Omen/event card that posted this effect, if any. */
+  sourceCardId?: string;
+  /** Lifetime: one round, until explicitly cleared, or the whole game. */
+  scope: "round" | "persistent" | "game";
+  /** Effect class the reading subsystem switches on (open-ended; see above). */
+  kind: string;
+  /** Optional narrowing of who/where the effect applies to. */
+  target?: { faction?: Faction; provinceId?: string; seaZoneId?: string };
+  /** Signed magnitude the subsystem applies (e.g. +1 combat, −2 income). */
+  value?: number;
+  /** Arbitrary structured payload for richer effects. */
+  data?: Record<string, unknown>;
+  /** Round after which the modifier lapses (for `persistent`/`game` timers). */
+  expiresRound?: number;
+}
+
+/** An active state of war between two players (for casus-belli / "win war +3"). */
+export interface WarState {
+  /** One belligerent player id. */
+  a: string;
+  /** The other belligerent player id. */
+  b: string;
+  /** Round the war was declared. */
+  startedRound: number;
 }
 
 /**
@@ -370,6 +437,9 @@ export interface Player {
   betrayals: number;
   /** Actions left in the current round (budget bookkeeping). */
   actionsRemaining: number;
+  /** Per-round prestige-accrual scratch: net prestige gained this round (reset
+   *  each round by the prestige subsystem; used for the End-phase log/summary). */
+  prestigeThisRound?: number;
 }
 
 /**
@@ -408,6 +478,10 @@ export interface GameState {
   pendingBattles: PendingBattle[];
   /** Active sieges (mirrors the per-province `siege` field). */
   siegeStates: SiegeState[];
+  /** Active states of war (casus-belli, "win a war +3 prestige", peace checks). */
+  wars: WarState[];
+  /** Round/persistent effect side-channel posted by cards, read by subsystems. */
+  activeModifiers: ActiveModifier[];
   /** Constantinople sudden-death tracker. */
   constantinopleHold: { faction: Faction | null; rounds: number };
   /** Winner faction once the game has ended. */

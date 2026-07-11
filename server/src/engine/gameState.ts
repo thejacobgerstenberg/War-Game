@@ -157,6 +157,8 @@ export function createInitialState(
     minors: NPC_MINORS.map((m) => ({ ...m, provinceIds: [...m.provinceIds] })),
     pendingBattles: [],
     siegeStates: [],
+    wars: [],
+    activeModifiers: [],
     constantinopleHold: { faction: null, rounds: 0 },
     rngSeed,
     rngCursor: rng.cursor,
