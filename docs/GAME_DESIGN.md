@@ -841,14 +841,16 @@ and a **seeded RNG** to draw deterministically (see
 
 The game ends at the **Cleanup** (§10, phase 5) in which a player reaches the
 **prestige threshold**, scaled to player count — all prestige is scored at
-Cleanup (§13), so Cleanup is the only point where victory is checked. The
-values below are **ratified**, per the balance tuning report (PR #11):
+Cleanup (§13), so Cleanup is the only point where victory is checked. Victory
+thresholds are **balance-owned constants** (see `sim/TUNING_REPORT` §2 and
+`server/src/engine/balance.ts`); current values: **72 / 75 / 80 / 78** for
+2 / 3 / 4 / 5 players, per the balance tuning report (PR #11 @ `ac39705`):
 
 | Players | Threshold |
 |---|---|
-| 2 | **71** |
-| 3 | **74** |
-| 4 | **76** |
+| 2 | **72** |
+| 3 | **75** |
+| 4 | **80** |
 | 5 | **78** |
 
 ### 13.3 The 1453 endgame & sudden death
