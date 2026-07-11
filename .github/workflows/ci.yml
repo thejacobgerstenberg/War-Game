@@ -83,8 +83,17 @@ jobs:
         run: npm run lint --if-present
       - name: Build
         run: npm run build --if-present
-      - name: Test
-        run: npm run test --if-present
+      # Run the test script of every workspace that has one (server today,
+      # client once it gains a "test" script) — npm silently skips workspaces
+      # without the script. Falls back to the root script when the repo has no
+      # workspaces configured, since `--workspaces` errors in that case.
+      - name: Unit tests (workspaces)
+        run: |
+          if node -e "const w = require('./package.json').workspaces; process.exit(Array.isArray(w) && w.length ? 0 : 1)"; then
+            npm run test --workspaces --if-present
+          else
+            npm run test --if-present
+          fi
 
   e2e:
     needs: detect
