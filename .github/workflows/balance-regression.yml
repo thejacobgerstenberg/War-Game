@@ -1,0 +1,91 @@
+name: Balance Regression
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '17 6 * * 1'   # weekly, Monday 06:17 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  balance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check sim present
+        id: guard
+        run: |
+          if [ -d sim ] && [ -f sim/package.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.guard.outputs.present == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install sim deps
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          cd sim
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Run full balance suite
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          cd sim
+          npm run sim:full --if-present && npm run sim:regression --if-present && npm run test --if-present
+          npm run sim:report --if-present
+
+      - name: Collect report artifacts
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          mkdir -p balance-artifacts
+          {
+            echo "Balance Regression run"
+            echo "Timestamp (UTC): $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "Ref: ${GITHUB_REF:-unknown}"
+            echo "SHA: ${GITHUB_SHA:-unknown}"
+            echo "Run ID: ${GITHUB_RUN_ID:-unknown}"
+          } > balance-artifacts/README.txt
+
+          # Top-level tuning report
+          if [ -f sim/TUNING_REPORT.md ]; then
+            cp sim/TUNING_REPORT.md balance-artifacts/ || true
+          fi
+
+          # Any nested TUNING_REPORT*.md under sim/
+          find sim -type f -name 'TUNING_REPORT*.md' -print0 2>/dev/null \
+            | xargs -0 -I{} cp --parents {} balance-artifacts/ 2>/dev/null || true
+
+          # sim/reports/ contents
+          if [ -d sim/reports ]; then
+            mkdir -p balance-artifacts/reports
+            cp -r sim/reports/. balance-artifacts/reports/ 2>/dev/null || true
+          fi
+
+          # JSON/CSV results under sim/out or sim/results
+          for d in sim/out sim/results; do
+            if [ -d "$d" ]; then
+              find "$d" -type f \( -name '*.json' -o -name '*.csv' \) -print0 2>/dev/null \
+                | xargs -0 -I{} cp --parents {} balance-artifacts/ 2>/dev/null || true
+            fi
+          done
+
+      - name: Upload artifact
+        if: always() && steps.guard.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: balance-report
+          path: balance-artifacts/
+          if-no-files-found: warn
