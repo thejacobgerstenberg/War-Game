@@ -613,6 +613,26 @@ export const GREAT_BOMBARD = {
   movePerRound: 1,
 } as const;
 
+/**
+ * §7.2 step 1 / §8.4 assault row (RAW canon): in a siege ASSAULT the besieger's
+ * SIEGE engines roll their OWN attack dice (at the SIEGE +3-vs-walls threshold)
+ * that ADD to the storming troops' hits. When `true` those engine dice roll in
+ * EVERY assault round INCLUDING at a breach (Wall-HP = 0) — the +3-vs-walls die is
+ * a property of the gun, not of a standing wall, so it is NOT dropped at breach.
+ * Set `false` to silence the engines once the wall is breached (they would then
+ * only contribute while a wall stands). Read by combat.ts's siege-assault path.
+ */
+export const SIEGE_ENGINES_FIGHT_AT_BREACH = true;
+
+/**
+ * §8.4 assault row (RAW canon): an emplaced Great Bombard present in the besieging
+ * force adds EXACTLY this many assault dice to a siege storm — rolled at the same
+ * SIEGE +3-vs-walls engine threshold, breach included. This is DISTINCT from its
+ * wall-battering `GREAT_BOMBARD.bombardDice` (2): the assault contribution is one
+ * die. Read by combat.ts's siege-assault path.
+ */
+export const GREAT_BOMBARD_ASSAULT_DICE = 1;
+
 // ---------------------------------------------------------------------------
 // §6.3 Mercenaries
 // ---------------------------------------------------------------------------
@@ -878,17 +898,24 @@ export const CONQUEST_PRESTIGE = {
  * Prestige victory threshold by player count (§13.2). RATIFIED balance §2.13
  * (VICTORY_THRESHOLD_BY_PLAYER_COUNT): the pre-tuning 25/30/35 placeholders are
  * superseded — final prestige sources (conquest rows + monopoly/capital income)
- * raise total inflow far beyond them. Values re-derived empirically per count at
- * the engine-reconciliation config (results/thresholds.json); each sits at
- * ≈14.9–15.3× that count's mean winner accrual/round. The canon §9.2 per-work
- * prestige adoption lowered winner accrual, so the 5-player VICTORY_THRESHOLD
- * fell 80 → 78 (and the pre-reconciliation 72/78/80/80 transcription is
- * superseded by 71/74/76/78). Checked at Cleanup only.
+ * raise total inflow far beyond them. Values re-derived empirically per count
+ * (results/thresholds.json); each sits at ≈14.8–15.7× that count's mean winner
+ * accrual/round. FINAL values from the balance STACKING-config re-sweep
+ * (feature/balance-sim @ac39705, §2.13): 2p=72 / 3p=75 / 4p=80 / 5p=78. This
+ * supersedes the earlier engine-reconciliation set 71/74/76/78 (2p/3p each +1;
+ * 4p 76→80; 5p unchanged — the canon §9.2 per-work adoption had already dropped
+ * 5p from 80→78). Checked at Cleanup only.
+ *
+ * NOTE (4p=80): 80 is TIE-BREAK-DRIVEN. Per §2.13, 4p=76 still passes every
+ * selection criterion (62.8% threshold-decided), but the ~55%-target tie-break
+ * selects 80 (48.2%). The resulting non-monotone 4p(80) > 5p(78) ordering is a
+ * two-adjacent-passing-cells artifact, not a pacing cliff; 76 is the MONOTONIC
+ * ALTERNATIVE and either 76 or 80 ships green for 4p.
  */
 export const PRESTIGE_THRESHOLDS: Record<number, number> = {
-  2: 71,
-  3: 74,
-  4: 76,
+  2: 72,
+  3: 75,
+  4: 80, // tie-break-driven (§2.13); 76 is the monotonic alternative
   5: 78,
 };
 

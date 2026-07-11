@@ -27,7 +27,9 @@ import {
   COMBAT_MODS,
   CONQUEST_PRESTIGE,
   GREAT_BOMBARD,
+  GREAT_BOMBARD_ASSAULT_DICE,
   SIEGE,
+  SIEGE_ENGINES_FIGHT_AT_BREACH,
   STACKING,
   UNIQUE_UNIT_OVERRIDES,
   UNIT_STATS,
@@ -97,12 +99,29 @@ interface BattleCtx {
   wallsHp: number;
   wallDefBonus: number;
   /**
-   * §8.4 assault row / §8.2 step 4 (FL-13): flat attacker bonus contributed by
-   * storming SIEGE units (and an emplaced Great Bombard) vs a STANDING wall
-   * during a siege assault. Applied by {@link attackerFlat} only while wallsHp>0;
-   * absent for field/naval battles (SIEGE lends no field dice, §6.1).
+   * §7.2 step 1 / §8.4 assault row (RAW canon): true on a siege ASSAULT, where the
+   * besieger's SIEGE engines (and an emplaced Great Bombard) roll their OWN attack
+   * dice that ADD to the storming troops' hits (see {@link rollSiegeEngineHits}).
+   * Absent/false for field and naval battles (SIEGE lends no field dice, §6.1), so
+   * their RNG streams are untouched.
    */
-  siegeAssaultBonus?: number;
+  siegeEnginesActive?: boolean;
+  /**
+   * §7.2 step 1 / §8.4: when true the SIEGE engine dice roll in EVERY assault round
+   * INCLUDING at a breach (wallsHp = 0). When false they fall silent once the wall
+   * is breached. Sourced from balance.SIEGE_ENGINES_FIGHT_AT_BREACH.
+   */
+  siegeEnginesFightAtBreach?: boolean;
+  /**
+   * §8.4: dice threshold modifier for the engine dice — the standard SIEGE
+   * +3-vs-walls (balance.SIEGE.bombardVsWalls). With SIEGE CV 0 this resolves to a
+   * hit on d6 >= clamp(7 − 0 − 3, 2, 6) = 4+ (parity with the balance sim).
+   */
+  siegeEngineMod?: number;
+  /** §8.4 delta 3: whether an emplaced Great Bombard is past its emplacement round. */
+  bombardEmplaced?: boolean;
+  /** §8.4: assault dice an emplaced Great Bombard adds (balance.GREAT_BOMBARD_ASSAULT_DICE). */
+  bombardAssaultDice?: number;
   amphibious: boolean;
   /** Unit types that fire in the pre-melee ranged step. */
   rangedTypes: UnitType[];
@@ -228,9 +247,9 @@ function attackerFlat(
   let m = 0;
   if (ctx.amphibious) m += COMBAT_MODS.amphibiousAttacker; // §7.3 amphibious −1
   if (ctx.wallsHp > 0) m += COMBAT_MODS.escalade; // §7.3 escalade −1 vs un-breached walls
-  // §8.4 assault row / §8.2 step 4 (FL-13): storming SIEGE units (incl. an
-  // emplaced Great Bombard) add the standard SIEGE +3 vs a STANDING wall.
-  if (ctx.wallsHp > 0 && ctx.siegeAssaultBonus) m += ctx.siegeAssaultBonus;
+  // §7.2 step 1 / §8.4 (RAW canon): the storming TROOPS get NO flat +3 here — the
+  // +3-vs-walls now lives on the besieger's SIEGE engines' OWN dice, which roll
+  // separately in {@link rollSiegeEngineHits} and ADD to the attacker's hits.
   // §7.3 outnumber ≥2:1 → larger side +1
   if (defTotal > 0 && atkTotal >= COMBAT_MODS.outnumberRatio * defTotal) {
     m += COMBAT_MODS.outnumber;
@@ -517,6 +536,56 @@ function generateHits(
   return hits;
 }
 
+/**
+ * §7.2 step 1 / §8.4 assault row (RAW canon): the number of assault dice the
+ * besieger's SIEGE engines roll THIS round. Each generic SIEGE unit (plain or a
+ * non-Bombard SIEGE variant) rolls ONE die; an emplaced Great Bombard adds
+ * {@link BattleCtx.bombardAssaultDice} dice. Counted from the LIVE attacker stacks
+ * each round so engines destroyed mid-storm stop rolling. Returns 0 when this is
+ * not a siege assault, or at a breach when {@link BattleCtx.siegeEnginesFightAtBreach}
+ * is false.
+ */
+function siegeEngineDiceCount(ctx: BattleCtx): number {
+  if (!ctx.siegeEnginesActive) return 0;
+  if (ctx.wallsHp <= 0 && !ctx.siegeEnginesFightAtBreach) return 0;
+  let dice = 0;
+  for (const w of ctx.attackers) {
+    dice += w.units[UnitType.SIEGE] ?? 0;
+    for (const v of w.variants) {
+      if (v.base !== UnitType.SIEGE) continue;
+      if (v.variant === GREAT_BOMBARD.variant) {
+        // Only an EMPLACED Bombard contributes its assault die(s) (§8.4 delta 3).
+        if (ctx.bombardEmplaced) dice += v.count * (ctx.bombardAssaultDice ?? 0);
+      } else {
+        dice += v.count; // a generic SIEGE variant rolls one die like a plain SIEGE
+      }
+    }
+  }
+  return dice;
+}
+
+/**
+ * Roll `dice` SIEGE-engine assault dice at the §8.4 engine threshold and return the
+ * hits. Uses the SAME §7.1 kernel: hit on d6 >= clamp(7 − CV − mod, 2, 6) where
+ * CV = UNIT_STATS[SIEGE].combatValue (0) and mod = the +3-vs-walls
+ * ({@link BattleCtx.siegeEngineMod}), so engines hit on 4+ — parity with the
+ * balance sim's derived "CV 0 + 3, hit on 4+" curve. `dice` is precomputed by
+ * {@link siegeEngineDiceCount}; a 0 count consumes NO rng (stream-preserving for
+ * every non-siege battle and for sieges with no engines).
+ */
+function rollSiegeEngineHits(dice: number, ctx: BattleCtx, rng: Rng): number {
+  if (dice <= 0) return 0;
+  const cv = UNIT_STATS[UnitType.SIEGE].combatValue;
+  const threshold = clamp(
+    COMBAT_MODS.hitBase - cv - (ctx.siegeEngineMod ?? 0),
+    COMBAT_MODS.hitClampMin,
+    COMBAT_MODS.hitClampMax,
+  );
+  let hits = 0;
+  for (const r of rng.rollDice(dice)) if (r >= threshold) hits += 1;
+  return hits;
+}
+
 /** Remove `n` units from a side, lowest-value first, generic before variant (§7.1). */
 function removeCasualties(side: Working[], n: number): void {
   let remaining = n;
@@ -644,14 +713,28 @@ function runEngine(
       s = playSideTactic(s, ctx, "defender", rng);
     }
 
-    // 1. Ranged step (§7.2): compute both sides' hits pre-removal (simultaneous).
-    if (ctx.rangedTypes.length > 0) {
+    // 1. Ranged step (§7.2 step 1): ARCHERs fire, and — in a siege assault (§8.4) —
+    // the besieger's SIEGE engines / emplaced Great Bombard roll their OWN dice at
+    // the +3-vs-walls engine threshold, ADDING to the attacker's hits (breach
+    // included). All hits are computed pre-removal (simultaneous). The engine dice
+    // are counted from the LIVE besiegers each round; a 0 count consumes no rng, so
+    // field/naval battles keep their exact stream.
+    const engineDice = siegeEngineDiceCount(ctx);
+    if (ctx.rangedTypes.length > 0 || engineDice > 0) {
       const at = sideTotal(ctx.attackers);
       const dt = sideTotal(ctx.defenders);
       const af = attackerFlat(s, ctx, at, dt);
       const df = defenderFlat(s, ctx, at, dt);
-      const ah = generateHits(s, ctx.attackers, "attacker", "ranged", af, ctx, rng);
-      const dh = generateHits(s, ctx.defenders, "defender", "ranged", df, ctx, rng);
+      let ah =
+        ctx.rangedTypes.length > 0
+          ? generateHits(s, ctx.attackers, "attacker", "ranged", af, ctx, rng)
+          : 0;
+      // §7.2 step 1 / §8.4: SIEGE engines roll here, after the attacker's archers.
+      ah += rollSiegeEngineHits(engineDice, ctx, rng);
+      const dh =
+        ctx.rangedTypes.length > 0
+          ? generateHits(s, ctx.defenders, "defender", "ranged", df, ctx, rng)
+          : 0;
       removeCasualties(ctx.defenders, ah);
       removeCasualties(ctx.attackers, dh);
       if (sideTotal(ctx.attackers) === 0 || sideTotal(ctx.defenders) === 0) break;
@@ -1543,23 +1626,13 @@ export function resolveSiege(
   } else if (assaultTroops === 0) {
     // No storming troops: no assault this round (walls/garrison untouched by combat).
   } else {
-    // §8.4 assault row / §8.2 step 4 (FL-13): storming SIEGE units (and an
-    // emplaced Great Bombard) lend the standard SIEGE +3 vs a standing wall.
-    const hasBombardSupport = besiegers.some((w) =>
-      w.variants.some((v) => v.variant === GREAT_BOMBARD.variant && v.count > 0),
-    );
-    const hasGenericSiegeSupport = besiegers.some(
-      (w) =>
-        (w.units[UnitType.SIEGE] ?? 0) > 0 ||
-        w.variants.some(
-          (v) => v.base === UnitType.SIEGE && v.variant !== GREAT_BOMBARD.variant && v.count > 0,
-        ),
-    );
-    const siegeAssaultBonus = hasBombardSupport
-      ? GREAT_BOMBARD.bombardVsWalls
-      : hasGenericSiegeSupport
-        ? SIEGE.bombardVsWalls
-        : 0;
+    // §7.2 step 1 / §8.4 assault row (RAW canon): the storming TROOPS fight at
+    // field odds (vs the standing wall's defBonus + escalade −1 while HP>0, at
+    // field odds once breached) with NO flat +3. IN ADDITION the besieger's SIEGE
+    // engines and an emplaced Great Bombard roll their OWN dice at the +3-vs-walls
+    // engine threshold (hit on 4+), ADDING to the attacker's hits — in every
+    // assault round, breach included (SIEGE_ENGINES_FIGHT_AT_BREACH). `bombardEmplaced`
+    // was computed for the bombardment step above and is reused here.
     const ctx: BattleCtx = {
       attackers: besiegers,
       defenders,
@@ -1568,13 +1641,18 @@ export function resolveSiege(
       terrain: prov.terrain,
       wallsHp: prov.walls.hp, // §8.2.4 wall bonus + escalade only while HP > 0
       wallDefBonus: WALL_TIERS[prov.walls.tier]?.defBonus ?? 0,
-      siegeAssaultBonus,
       amphibious: false,
       rangedTypes: [UnitType.ARCHER],
       isNaval: false,
       provinceId: prov.id,
       attackerFaction: factionOf(next, siege.besiegerId),
       defenderFaction,
+      // §7.2 step 1 / §8.4: the besieger's engines roll their own assault dice.
+      siegeEnginesActive: true,
+      siegeEnginesFightAtBreach: SIEGE_ENGINES_FIGHT_AT_BREACH,
+      siegeEngineMod: SIEGE.bombardVsWalls,
+      bombardEmplaced,
+      bombardAssaultDice: GREAT_BOMBARD_ASSAULT_DICE,
     };
     // No PendingBattle drives a siege assault (ctx.battle undefined), so no tactic
     // is played and runEngine returns the same state reference.

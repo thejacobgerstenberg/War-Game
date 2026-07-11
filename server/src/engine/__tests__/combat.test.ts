@@ -750,6 +750,151 @@ describe("Great Bombard 1-round emplacement (§8.4, delta 3)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// §7.2 step 1 + §8.4 assault row (RAW canon, balance §2 @ac39705): in a siege
+// ASSAULT the storming TROOPS fight at field odds (wall bonus + escalade while the
+// wall stands, field odds at breach) with NO flat +3; the besieger's SIEGE engines
+// and an emplaced Great Bombard roll their OWN dice at the +3-vs-walls threshold
+// (SIEGE CV 0 + 3 → hit on 4+) that ADD to the attacker's hits, in EVERY assault
+// round INCLUDING at a breach (HP=0). Replaces the old flat siegeAssaultBonus model.
+// ---------------------------------------------------------------------------
+
+describe("siege-assault engine dice (§7.2/§8.4, RAW canon)", () => {
+  /** A breached-wall assault: INFANTRY storm + `siegeCount` engines vs a 14-INF garrison-army. */
+  const breachAssault = (siegeCount: number): GameState =>
+    makeState({
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.PLAINS,
+          walls: { tier: 0, hp: 0 }, // breached → troops fight at field odds
+          garrison: 0,
+        }),
+      ],
+      armies: [
+        army("a1", "p1", "keep", { [UnitType.INFANTRY]: 6, [UnitType.SIEGE]: siegeCount }),
+        army("d1", "p2", "keep", { [UnitType.INFANTRY]: 14 }),
+      ],
+      siegeStates: [siegeState({ besiegingArmyIds: ["a1"], breached: true })],
+    });
+  const defendersLeft = (s: GameState): number =>
+    s.armies
+      .filter((a) => a.ownerId === "p2")
+      .reduce((n, a) => n + Object.values(a.units).reduce((x, y) => x + y, 0), 0);
+
+  it("SIEGE engines fight at a BREACH (HP=0): they roll and score engine-attributable hits (§7.2 step 1)", () => {
+    // Identical breached assault, engines present vs removed. The storming INFANTRY
+    // are the same in both runs; the ONLY combat difference is the engine dice.
+    const withEngines = breachAssault(20);
+    const noEngines = breachAssault(0);
+    const wRes = resolveSiege(withEngines, withEngines.siegeStates[0], makeRng(SEED, 0));
+    const nRes = resolveSiege(noEngines, noEngines.siegeStates[0], makeRng(SEED, 0));
+    // With 20 engines rolling on 4+ at the breach, the storm carries the city and
+    // wipes the garrison; the identical INFANTRY-only storm cannot.
+    expect(nRes.captured).toBe(false);
+    expect(wRes.captured).toBe(true);
+    // Engine-attributable casualties: the defenders lose strictly more with engines.
+    expect(defendersLeft(wRes.state)).toBeLessThan(defendersLeft(nRes.state));
+  });
+
+  it("an emplaced Great Bombard adds EXACTLY one assault die at the 4+ threshold, breach included (§8.4)", () => {
+    // A breached wall so troops fight at field odds; the Bombard's contribution is a
+    // single assault die (GREAT_BOMBARD_ASSAULT_DICE = 1), NOT its bombardDice (2).
+    const forceState = (a1: Army, gb?: GameState["greatBombard"]): GameState =>
+      makeState({
+        provinces: [
+          province("keep", { ownerId: "p2", terrain: TerrainType.PLAINS, walls: { tier: 0, hp: 0 }, garrison: 0 }),
+        ],
+        armies: [a1, army("d1", "p2", "keep", { [UnitType.INFANTRY]: 14 })],
+        siegeStates: [siegeState({ besiegingArmyIds: ["a1"], breached: true })],
+        ...(gb ? { greatBombard: gb } : {}),
+      });
+    const infOnly = army("a1", "p1", "keep", { [UnitType.INFANTRY]: 6 });
+    const infPlusBombard = (): Army => ({
+      ...army("a1", "p1", "keep", { [UnitType.INFANTRY]: 6 }),
+      variants: [{ base: UnitType.SIEGE, variant: GREAT_BOMBARD.variant, count: 1 }],
+    });
+    const infPlus2Guns = army("a1", "p1", "keep", { [UnitType.INFANTRY]: 6, [UnitType.SIEGE]: 2 });
+    const emplaced: GameState["greatBombard"] = {
+      inPlay: true, ownerId: "p1", provinceId: "keep", emplacedRound: 2, // < round 3 → emplaced
+    };
+    const notEmplaced: GameState["greatBombard"] = {
+      inPlay: true, ownerId: "p1", provinceId: "keep", emplacedRound: 3, // == round 3 → still emplacing
+    };
+    const dLeft = (st: GameState): number => {
+      const res = resolveSiege(st, st.siegeStates[0], makeRng(SEED, 0));
+      return res.state.armies
+        .filter((a) => a.ownerId === "p2")
+        .reduce((n, a) => n + Object.values(a.units).reduce((x, y) => x + y, 0), 0);
+    };
+    const baseline = dLeft(forceState(infOnly)); // 0 engine dice
+    const bombard = dLeft(forceState(infPlusBombard(), emplaced)); // +1 assault die
+    const bombardCold = dLeft(forceState(infPlusBombard(), notEmplaced)); // still emplacing → +0
+    const twoGuns = dLeft(forceState(infPlus2Guns)); // +2 assault dice
+    // The emplaced Bombard's single 4+ assault die scores one extra casualty vs the
+    // INFANTRY-only baseline (proves it fights at the breach)…
+    expect(bombard).toBe(baseline - 1);
+    // …a not-yet-emplaced Bombard contributes nothing (identical to the baseline)…
+    expect(bombardCold).toBe(baseline);
+    // …and its assault contribution is ONE die, strictly fewer than two generic guns
+    // — it does NOT roll its wall-battering bombardDice (2) as assault dice.
+    //   (bombard shares the two guns' identical bombardment RNG, so this is isolated.)
+    expect(twoGuns).toBeLessThan(bombard);
+  });
+
+  it("a WALLS-STANDING assault gives the storming troops FIELD odds (wall bonus + escalade), with NO flat +3", () => {
+    // A troops-only siege assault on a standing wall must resolve the storming
+    // troops on EXACTLY the same odds as a field assault of the same troops on the
+    // same standing wall (both apply the wall's defBonus to the garrison and the
+    // escalade −1 to the attacker; NEITHER grants a +3). Byte-for-byte identical
+    // combat exchange (same rng cursor, same survivors) pins the "no flat +3" model.
+    const standingWall = (): Province =>
+      province("keep", {
+        ownerId: "p2",
+        terrain: TerrainType.CITY,
+        walls: { tier: 3, hp: 6 }, // standing → wall +3 to the garrison, escalade −1 to the storm
+        garrison: 10,
+      });
+    // Siege assault (troops only → no engine dice, no bombardment RNG).
+    const sState = makeState({
+      provinces: [standingWall()],
+      armies: [army("a1", "p1", "keep", { [UnitType.INFANTRY]: 9 })],
+      siegeStates: [siegeState({ besiegingArmyIds: ["a1"], grainStores: 99 })],
+    });
+    const sRes = resolveSiege(sState, sState.siegeStates[0], makeRng(SEED, 0));
+    // Field assault: same troops, same standing wall, garrison stands in as INFANTRY.
+    const fState = makeState({
+      provinces: [standingWall()],
+      armies: [army("a1", "p1", "keep", { [UnitType.INFANTRY]: 9 })],
+    });
+    const fBattle: PendingBattle = {
+      id: "fb", provinceId: "keep", attackerId: "p1", defenderId: "p2",
+      attackerStackIds: ["a1"], defenderStackIds: [],
+    };
+    const fRes = resolveBattle(fState, fBattle, makeRng(SEED, 0));
+    const atkLeft = (s: GameState): number =>
+      s.armies.filter((a) => a.ownerId === "p1").reduce((n, a) => n + Object.values(a.units).reduce((x, y) => x + y, 0), 0);
+    // Identical exchange → the storming troops enjoyed NO siege-only +3.
+    expect(sRes.state.rngCursor).toBe(fRes.state.rngCursor);
+    expect(atkLeft(sRes.state)).toBe(atkLeft(fRes.state));
+    expect(sRes.state.provinces[0].garrison ?? 0).toBe(fRes.state.provinces[0].garrison ?? 0);
+  });
+
+  it("is deterministic through the engine-dice path: same state + seed → identical SiegeResult", () => {
+    const build = (): GameState =>
+      makeState({
+        provinces: [province("keep", { ownerId: "p2", terrain: TerrainType.CITY, walls: { tier: 3, hp: 4 }, garrison: 8 })],
+        armies: [army("a1", "p1", "keep", { [UnitType.INFANTRY]: 8, [UnitType.ARCHER]: 2, [UnitType.SIEGE]: 4 })],
+        siegeStates: [siegeState({ besiegingArmyIds: ["a1"] })],
+      });
+    const s1 = build();
+    const s2 = build();
+    const r1 = resolveSiege(s1, s1.siegeStates[0], makeRng(SEED, 0));
+    const r2 = resolveSiege(s2, s2.siegeStates[0], makeRng(SEED, 0));
+    expect(r1).toEqual(r2);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // §8.4 delta 3 — CAPTURE-PASSES-INTACT: the Great Bombard is never destroyed by
 // battle. When the escort stack carrying it is DEFEATED/destroyed, the gun passes
 // INTACT to the victor (transferred onto the winner's stack + the singleton

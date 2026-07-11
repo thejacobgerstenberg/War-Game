@@ -29,6 +29,7 @@ import { ERA_BOUNDARIES, OMEN_DRAW } from "../balance.js";
 import {
   EVENT_CARD_BY_ID,
   EVENT_EFFECT_BY_ID,
+  retryPendingGreatBombard,
   type EventCard,
   type EventEffectContext,
 } from "./cards.js";
@@ -230,7 +231,10 @@ function buildCardModifiers(
  */
 export function drawOmen(state: GameState): GameState {
   const rng = makeRng(state.rngSeed, state.rngCursor);
-  let s: GameState = state;
+  // §6.4/§8.4: retire a DEFERRED Great Bombard forge first — if a prior Omen #34
+  // could not emplace the gun (recipient's territory was at the stacking cap), it
+  // enters play here the moment a stack has freed room. No-op when nothing pends.
+  let s: GameState = retryPendingGreatBombard(state);
 
   // (1) §12 era transition: retire the previous deck, shuffle in the new era's.
   const targetEra = eraForRound(state.round);

@@ -13,6 +13,7 @@
 import { describe, it, expect } from "vitest";
 import { Faction, UnitType, type GameState } from "@imperium/shared";
 import { createInitialState, type SeatInput } from "../gameState.js";
+import { neighborsOf } from "../adjacency.js";
 import { drawOmen, resolveCard } from "./index.js";
 import { omenCardId, OMEN_CARD_BY_ID } from "./cards.js";
 
@@ -41,6 +42,41 @@ function fresh(seats: SeatInput[]): GameState {
 
 function player(state: GameState, id: string) {
   return state.players.find((p) => p.id === id)!;
+}
+
+/** A full UnitType record with `counts` applied over zeroes (test fixture). */
+function unitsWith(counts: Partial<Record<UnitType, number>>): Record<UnitType, number> {
+  const u = {} as Record<UnitType, number>;
+  for (const t of Object.values(UnitType)) u[t] = counts[t] ?? 0;
+  return u;
+}
+
+/** Land-stack size an owner has at a province (generic + variant counts). */
+function landUnitsAt(state: GameState, ownerId: string, provId: string): number {
+  let n = 0;
+  for (const a of state.armies) {
+    if (a.ownerId !== ownerId || a.locationId !== provId) continue;
+    for (const t of Object.values(UnitType)) n += a.units[t] ?? 0;
+    for (const v of a.variants ?? []) n += v.count;
+  }
+  return n;
+}
+
+/** Pack the Ottoman (p2) capital edirne to the §6.4 city/capital cap of 12. */
+function withFullOttomanCapital(state: GameState): GameState {
+  return {
+    ...state,
+    armies: [
+      ...state.armies.filter((a) => !(a.ownerId === "p2" && a.locationId === "edirne")),
+      {
+        id: "fill-edirne",
+        ownerId: "p2",
+        locationId: "edirne",
+        units: unitsWith({ [UnitType.LEVY]: 12 }),
+        variants: [],
+      },
+    ],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -254,6 +290,54 @@ describe("resolveCard — representative card effects", () => {
     expect(twice.greatBombard!.provinceId).toBe(firstProvince);
     expect(twice.greatBombard!.emplacedRound).toBe(11); // NOT re-set to 14
     expect(twice.log.some((e) => e.data && "alreadyInPlay" in e.data)).toBe(true);
+  });
+
+  // §6.4 over-stacking guard (regression: the forge used to over-stack a full
+  // capital 12→13). When the Ottoman capital is at the §6.4 cap, the gun must be
+  // emplaced in an adjacent OWNED province with room, never on top of the cap.
+  it("#34 forge with the Ottoman capital FULL (12/12) emplaces the gun in an adjacent owned province, leaving the capital at 12", () => {
+    const s = withFullOttomanCapital(fresh(seats4)); // Ottoman = p2, capital edirne
+    s.round = 11;
+    expect(landUnitsAt(s, "p2", "edirne")).toBe(12); // capital packed to the §6.4 cap
+    const after = resolveCard(s, omenCardId(34));
+    expect(after.greatBombard!.inPlay).toBe(true);
+    expect(after.greatBombard!.ownerId).toBe("p2");
+    // Placed in an owned province ADJACENT to the full capital, NOT in the capital.
+    const dest = after.greatBombard!.provinceId!;
+    expect(dest).not.toBe("edirne");
+    expect(neighborsOf("edirne")).toContain(dest);
+    expect(player(after, "p2").faction).toBe(Faction.OTTOMAN);
+    // §6.4 respected everywhere: the destination stays within its land cap (8)...
+    expect(landUnitsAt(after, "p2", dest)).toBeLessThanOrEqual(8);
+    // ...and the capital is NOT over-stacked — it stays at 12 (the pre-fix bug → 13).
+    expect(landUnitsAt(after, "p2", "edirne")).toBe(12);
+    // The one GREAT_BOMBARD piece sits at the destination, not the capital.
+    const piece = after.armies.find((a) =>
+      (a.variants ?? []).some((v) => v.variant === "GREAT_BOMBARD" && v.count > 0),
+    );
+    expect(piece!.locationId).toBe(dest);
+    expect(piece!.locationId).not.toBe("edirne");
+  });
+
+  it("#34 forge with room in the capital still emplaces the gun in the capital (behaviour unchanged)", () => {
+    const s = fresh(seats4); // edirne holds 5 starting p2 units → room for the gun
+    s.round = 11;
+    expect(landUnitsAt(s, "p2", "edirne")).toBeLessThan(12);
+    const after = resolveCard(s, omenCardId(34));
+    expect(after.greatBombard!.inPlay).toBe(true);
+    expect(after.greatBombard!.provinceId).toBe("edirne"); // capital, as before
+  });
+
+  it("#34 forge placement is deterministic — same seed/state → same emplacement province (lowest-id tiebreak)", () => {
+    const build = () => {
+      const s = withFullOttomanCapital(fresh(seats4));
+      s.round = 11;
+      return resolveCard(s, omenCardId(34)).greatBombard!.provinceId;
+    };
+    const first = build();
+    expect(build()).toBe(first);
+    // gallipoli and philippopolis both tie on room (7); lowest province id wins.
+    expect(first).toBe("gallipoli");
   });
 
   it("#28 Papal Interdict does NOT post a global faith modifier (EVENT_CARDS Era II #28 targets one faction)", () => {

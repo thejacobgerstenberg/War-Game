@@ -684,6 +684,15 @@ export interface GameState {
     ownerId: string | null;
     provinceId: string | null;
     emplacedRound: number;
+    /**
+     * §6.4/§8.4 deferred-forge marker: set (with `inPlay:false`) when Omen #34
+     * forges the gun but the recipient's whole territory is at the stacking cap,
+     * so it CANNOT be emplaced without over-stacking. The Omen sub-phase retries
+     * the stacking-safe placement each round until a stack frees room, at which
+     * point the gun enters play and this marker is cleared. Degenerate / near-
+     * impossible in real play; exists only to GUARANTEE no §6.4 over-stack.
+     */
+    pendingForge?: { ownerId: string };
   };
   /** Winner faction once the game has ended. */
   winner?: Faction;

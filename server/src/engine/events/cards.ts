@@ -28,7 +28,8 @@ import type { Army, GameState, Player, Province, ResourceBundle } from "@imperiu
 import { Faction, TerrainType, UnitType } from "@imperium/shared";
 import type { Rng } from "../rng.js";
 import { appendLog } from "../logEntry.js";
-import { GREAT_BOMBARD, WALL_TIERS } from "../balance.js";
+import { GREAT_BOMBARD, STACKING, WALL_TIERS } from "../balance.js";
+import { neighborsOf } from "../adjacency.js";
 
 // ---------------------------------------------------------------------------
 // FROZEN contract types (unchanged shapes)
@@ -756,21 +757,130 @@ function zeroUnits(): Record<UnitType, number> {
   return u;
 }
 
+/** §6.4 stacking cap for a province: 12 for a CITY/capital, else 8 ordinary land. */
+function stackingCap(prov: Province): number {
+  return prov.terrain === TerrainType.CITY || prov.isCapitalOf !== undefined
+    ? STACKING.city
+    : STACKING.land;
+}
+
+/** Units `ownerId` already stacks at `provId` (generic + variant counts). */
+function ownUnitsAt(state: GameState, ownerId: string, provId: string): number {
+  let n = 0;
+  for (const a of state.armies) {
+    if (a.ownerId !== ownerId || a.locationId !== provId) continue;
+    for (const t of Object.values(UnitType)) n += a.units[t] ?? 0;
+    for (const v of a.variants ?? []) n += v.count;
+  }
+  return n;
+}
+
 /**
- * The province the Great Bombard is emplaced in for `recipient` (GD §8.4:
- * "the recipient's capital (or any owned CITY)"): its faction capital first,
- * else any owned CITY, else any owned province.
+ * §6.4 stacking room remaining for `ownerId` at `prov`: the cap (12 city/capital,
+ * else 8 land) minus the units the owner ALREADY stacks there. Never negative.
+ * Mirrors the per-(owner,province) room concept combat.ts uses to clamp a rout
+ * retreat so placement can never over-stack the destination.
  */
-function bombardCapital(state: GameState, recipient: Player): Province | undefined {
+function stackingRoom(state: GameState, ownerId: string, prov: Province): number {
+  return Math.max(0, stackingCap(prov) - ownUnitsAt(state, ownerId, prov.id));
+}
+
+/**
+ * §8.4 + §6.4-safe emplacement province for `recipient`'s Great Bombard. GD §8.4
+ * hands the forged gun to the recipient's capital; §6.4 caps a stack at 12
+ * (city/capital) / 8 (land) per (owner, province). Deterministic preference:
+ *   1. the recipient's CAPITAL if it has room (own units < cap);
+ *   2. else the recipient-OWNED province ADJACENT to the capital with the MOST
+ *      remaining room (tie → lowest province id), if room >= 1;
+ *   3. else ANY recipient-owned province with the MOST remaining room (same
+ *      tiebreak), if room >= 1;
+ *   4. else `undefined` — the recipient is at the cap EVERYWHERE (degenerate,
+ *      effectively impossible in real play): the caller DEFERS rather than
+ *      over-stacking.
+ * Placing the gun in an adjacent owned province when the capital is full is a
+ * best-reading of §8.4 (the gun still enters the recipient's territory and never
+ * violates §6.4); this is pending coordinator ratification.
+ */
+function bombardEmplacement(state: GameState, recipient: Player): Province | undefined {
   const cap = recipient.faction
     ? state.provinces.find((p) => p.isCapitalOf === recipient.faction)
     : undefined;
-  if (cap) return cap;
-  const city = state.provinces.find(
-    (p) => p.ownerId === recipient.id && p.terrain === TerrainType.CITY,
-  );
-  if (city) return city;
-  return state.provinces.find((p) => p.ownerId === recipient.id);
+  if (cap && stackingRoom(state, recipient.id, cap) > 0) return cap;
+
+  // Owned province with the MOST room (>= 1); deterministic tie → lowest id.
+  const bestByRoom = (candidates: Province[]): Province | undefined => {
+    let best: Province | undefined;
+    let bestRoom = 0;
+    for (const p of candidates) {
+      const room = stackingRoom(state, recipient.id, p);
+      if (room < 1) continue;
+      if (room > bestRoom || (room === bestRoom && best !== undefined && p.id < best.id)) {
+        best = p;
+        bestRoom = room;
+      }
+    }
+    return best;
+  };
+
+  const owned = state.provinces.filter((p) => p.ownerId === recipient.id);
+  if (cap) {
+    const adj = new Set(neighborsOf(cap.id));
+    const adjacent = bestByRoom(owned.filter((p) => adj.has(p.id)));
+    if (adjacent) return adjacent;
+  }
+  return bestByRoom(owned);
+}
+
+/**
+ * Set the singleton `GameState.greatBombard` tracker (inPlay, ownerId, provinceId,
+ * emplacedRound = current round; pendingForge CLEARED) and emplace the
+ * `GREAT_BOMBARD` variant piece (base SIEGE) as a dedicated singleton army for
+ * `recipient` at `target`. Provinces carry no variant stacks (variants live on
+ * Army/Fleet per CONTRACT §1), so the gun is fielded as its own army.
+ */
+function emplaceGreatBombard(state: GameState, recipient: Player, target: Province): GameState {
+  const piece: Army = {
+    id: "army-great-bombard", // fixed id — exactly one exists per game
+    ownerId: recipient.id,
+    locationId: target.id,
+    units: zeroUnits(),
+    variants: [{ base: UnitType.SIEGE, variant: GREAT_BOMBARD.variant, count: 1 }],
+  };
+  return {
+    ...state,
+    greatBombard: {
+      inPlay: true,
+      ownerId: recipient.id,
+      provinceId: target.id,
+      emplacedRound: state.round,
+    },
+    armies: [...state.armies.filter((a) => a.id !== piece.id), piece],
+  };
+}
+
+/**
+ * §6.4/§8.4 deferred-forge retry: if a forged Great Bombard is pending (the
+ * recipient's territory was at the stacking cap everywhere when Omen #34 resolved),
+ * attempt the same stacking-safe emplacement now. No-op unless a pending forge
+ * exists AND some recipient-owned province has room. Called at the head of the
+ * Omen sub-phase each round so the gun enters play as soon as a stack frees room.
+ */
+export function retryPendingGreatBombard(state: GameState): GameState {
+  const gb = state.greatBombard;
+  if (!gb || gb.inPlay || !gb.pendingForge) return state;
+  const recipient = state.players.find((p) => p.id === gb.pendingForge!.ownerId);
+  if (!recipient) return state;
+  const target = bombardEmplacement(state, recipient);
+  if (!target) return state; // still full everywhere — remain pending
+  const s = emplaceGreatBombard(state, recipient, target);
+  return appendLog(s, {
+    round: s.round,
+    phase: s.phase,
+    type: "event_card",
+    actors: [],
+    message: `The Great Bombard, long waiting in Orban's foundry, is finally emplaced at ${target.id} now that a stack has room.`,
+    data: { greatBombard: true, pendingForgeResolved: true, provinceId: target.id },
+  });
 }
 
 /**
@@ -807,31 +917,34 @@ function spawnGreatBombard(
   recipient: Player,
   auction: boolean,
 ): GameState {
-  const capital = bombardCapital(state, recipient);
-  const provinceId = capital?.id ?? null;
-  let s: GameState = {
-    ...state,
-    greatBombard: {
-      inPlay: true,
-      ownerId: recipient.id,
-      provinceId,
-      emplacedRound: state.round,
-    },
-  };
-  if (provinceId) {
-    const piece: Army = {
-      id: "army-great-bombard", // fixed id — exactly one exists per game
-      ownerId: recipient.id,
-      locationId: provinceId,
-      units: zeroUnits(),
-      variants: [{ base: UnitType.SIEGE, variant: GREAT_BOMBARD.variant, count: 1 }],
+  const target = bombardEmplacement(state, recipient);
+  // §6.4 degenerate case: the recipient is at the stacking cap EVERYWHERE, so the
+  // gun cannot be emplaced without over-stacking. DEFER — mark it pending (inPlay
+  // stays false, no piece placed) and let the Omen sub-phase retry the stacking-
+  // safe placement each round (retryPendingGreatBombard) until a stack frees room.
+  if (!target) {
+    const s: GameState = {
+      ...state,
+      greatBombard: {
+        inPlay: false,
+        ownerId: recipient.id,
+        provinceId: null,
+        emplacedRound: state.round,
+        pendingForge: { ownerId: recipient.id },
+      },
     };
-    s = { ...s, armies: [...s.armies.filter((a) => a.id !== piece.id), piece] };
+    return eventLog(
+      s,
+      ctx,
+      `The Great Bombard Forged: ${recipient.name}'s territory is packed to the stacking cap (§6.4) — Orban's monster gun waits in the foundry until a stack has room.`,
+      { greatBombard: true, auction, grantedTo: recipient.id, pendingForge: true },
+    );
   }
-  const at = provinceId ?? "the reserve";
+  const provinceId = target.id;
+  const s = emplaceGreatBombard(state, recipient, target);
   const message = auction
-    ? `The Great Bombard Forged: no Ottoman in play — Orban sells to the highest bidder (gold + marble). ${recipient.name} wins the auction and receives the Great Bombard free, emplaced at ${at}.`
-    : `The Great Bombard Forged: Orban casts the monster cannon — the Ottoman receives the Great Bombard free, emplaced at ${at}.`;
+    ? `The Great Bombard Forged: no Ottoman in play — Orban sells to the highest bidder (gold + marble). ${recipient.name} wins the auction and receives the Great Bombard free, emplaced at ${provinceId}.`
+    : `The Great Bombard Forged: Orban casts the monster cannon — the Ottoman receives the Great Bombard free, emplaced at ${provinceId}.`;
   return eventLog(s, ctx, message, {
     greatBombard: true,
     auction,
