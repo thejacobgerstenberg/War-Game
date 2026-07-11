@@ -9,7 +9,7 @@ import type {
 } from "@imperium/shared";
 
 const SERVER_URL: string =
-  import.meta.env.VITE_SERVER_URL ?? "http://localhost:4000";
+  import.meta.env.VITE_SERVER_URL ?? "http://localhost:8080";
 
 export type ImperiumSocket = Socket<
   ServerToClientEvents,

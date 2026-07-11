@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "IMPERIUM: Twilight of Empires — a browser strategy game set in the late Roman/Byzantine world (~1400–1453).",
+  "engines": {
+    "node": ">=20"
+  },
   "workspaces": [
     "shared",
     "server",

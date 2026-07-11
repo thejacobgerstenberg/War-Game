@@ -29,18 +29,83 @@ export interface Room {
   players: LobbyPlayerState[];
   startedByHost: boolean;
   state: GameState | null;
+  /**
+   * Epoch-ms timestamp of when the room last became empty (0 connected
+   * players), or null while at least one player is connected. Drives the
+   * ROOM_TTL_SECONDS reaper (deploy/OPERATIONS.md §2).
+   */
+  emptySince: number | null;
 }
 
 const ROOM_CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const ROOM_CODE_LENGTH = 6;
 const MIN_PLAYERS_TO_START = 2;
 
+/** Constructor options; the clock is injectable for deterministic tests. */
+export interface LobbyManagerOptions {
+  /** Epoch-ms clock; defaults to Date.now. */
+  now?: () => number;
+}
+
 export class LobbyManager {
   private readonly rooms = new Map<string, Room>();
+  private readonly now: () => number;
+  private shuttingDown = false;
+
+  constructor(options: LobbyManagerOptions = {}) {
+    this.now = options.now ?? Date.now;
+  }
 
   /** Read-only lookup (used by the socket layer and tests). */
   getRoom(code: string): Room | undefined {
     return this.rooms.get(code);
+  }
+
+  /** O(1) live-room count, read by `GET /healthz`. */
+  get roomCount(): number {
+    return this.rooms.size;
+  }
+
+  /** True once {@link beginShutdown} has been called. */
+  get isShuttingDown(): boolean {
+    return this.shuttingDown;
+  }
+
+  /**
+   * Enter shutdown mode (SIGTERM/SIGINT, deploy/OPERATIONS.md §3): new rooms
+   * are refused with a LobbyError while existing rooms keep playing.
+   */
+  beginShutdown(): void {
+    this.shuttingDown = true;
+  }
+
+  /**
+   * Recompute a room's empty-since marker after any connectivity change.
+   * A room is "empty" when it has zero connected players.
+   */
+  private refreshEmptySince(room: Room): void {
+    if (room.players.some((p) => p.connected)) {
+      room.emptySince = null;
+    } else if (room.emptySince === null) {
+      room.emptySince = this.now();
+    }
+  }
+
+  /**
+   * Delete every room that has been empty (0 connected players) for at least
+   * `ttlSeconds`. Returns the reaped room codes so the caller can log
+   * `room_reaped` for each. Called from a periodic sweep in index.ts.
+   */
+  reapEmptyRooms(ttlSeconds: number): string[] {
+    const reaped: string[] = [];
+    const ttlMs = ttlSeconds * 1000;
+    for (const [code, room] of this.rooms) {
+      if (room.emptySince !== null && this.now() - room.emptySince >= ttlMs) {
+        this.rooms.delete(code);
+        reaped.push(code);
+      }
+    }
+    return reaped;
   }
 
   /** Find the room a given player belongs to, if any. */
@@ -65,6 +130,9 @@ export class LobbyManager {
 
   /** Create a new room hosted by the given player. */
   createGame(playerName: string): { room: Room; player: LobbyPlayerState } {
+    if (this.shuttingDown) {
+      throw new LobbyError("Server restarting, retry shortly.");
+    }
     const name = playerName.trim();
     if (!name) throw new LobbyError("A player name is required.");
 
@@ -81,6 +149,7 @@ export class LobbyManager {
       players: [player],
       startedByHost: false,
       state: null,
+      emptySince: null,
     };
     this.rooms.set(code, room);
     return { room, player };
@@ -108,6 +177,7 @@ export class LobbyManager {
       connected: true,
     };
     room.players.push(player);
+    this.refreshEmptySince(room);
     return { room, player };
   }
 
@@ -183,6 +253,7 @@ export class LobbyManager {
     if (removed.isHost) {
       room.players[0].isHost = true;
     }
+    this.refreshEmptySince(room);
     return { room };
   }
 
@@ -192,6 +263,7 @@ export class LobbyManager {
     if (!room) return null;
     const player = room.players.find((p) => p.id === playerId)!;
     player.connected = true;
+    this.refreshEmptySince(room);
     return { room, player };
   }
 
@@ -201,6 +273,7 @@ export class LobbyManager {
     if (!room) return null;
     const player = room.players.find((p) => p.id === playerId)!;
     player.connected = false;
+    this.refreshEmptySince(room);
     return room;
   }
 

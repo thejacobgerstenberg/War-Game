@@ -21,6 +21,7 @@ export const SOCKET_EVENTS = {
   GAME_STARTED: "game_started",
   ERROR_MSG: "error_msg",
   STATE_UPDATE: "state_update",
+  SERVER_SHUTDOWN: "server_shutdown",
 } as const;
 
 export type SocketEvent = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];
@@ -82,6 +83,16 @@ export interface StateUpdatePayload {
 }
 
 /**
+ * Broadcast to every connected socket when the server begins a graceful
+ * shutdown (SIGTERM/SIGINT). Clients should surface a "server restarting"
+ * state and schedule their first reconnect attempt after `reconnectAfterMs`.
+ */
+export interface ServerShutdownPayload {
+  /** Suggested initial reconnect delay, in milliseconds. */
+  reconnectAfterMs: number;
+}
+
+/**
  * Strongly-typed maps of event name -> payload, usable to parameterise a
  * Socket.IO server/client (`Server<ClientToServerEvents, ServerToClientEvents>`).
  */
@@ -99,4 +110,5 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.GAME_STARTED]: (payload: GameStartedPayload) => void;
   [SOCKET_EVENTS.ERROR_MSG]: (payload: ErrorMsgPayload) => void;
   [SOCKET_EVENTS.STATE_UPDATE]: (payload: StateUpdatePayload) => void;
+  [SOCKET_EVENTS.SERVER_SHUTDOWN]: (payload: ServerShutdownPayload) => void;
 }
