@@ -6,7 +6,7 @@ Each slug is stable and unique; join on the heading.
 ## Era I — rounds 1–5 (minor)
 
 ### council-of-florence
-The Latin and Greek prelates sit beneath one roof at last, and the quills scratch toward union. In Constantinople the bells ring for concord; in the streets men mutter that a signed peace with Rome is a sold soul. Faith, it seems, is easier to promise than to keep.
+The union is signed at Florence, and the ink is scarcely dry upon the parchment. In Constantinople the bells ring for concord, while in the streets men already mutter that a peace sealed with Rome is a sold soul. Faith, it seems, is easier to sign than to keep.
 
 ### genoese-venetian-war
 Two republics that share a sea cannot share a market. Their galleys trade broadsides from the Golden Horn to the Aegean, and every sunk hull is a rival's ledger set right. The Levant watches, and quietly raises its prices.
@@ -226,7 +226,7 @@ The bombards speak, and stone that stood a thousand years answers in dust. Every
 The last summons goes out from Rome: take the cross, or watch the City die from a safe distance. For once the appeal is more than rhetoric — hosts are gathering, galleys are fitting out, and the road east fills with men who mean it. The chronicle keeps two lists, those who marched and those who found reasons, and no prince should doubt which page his name goes on.
 
 ### drought
-The rains do not come, and the Nile, which fed Pharaoh, runs thin and shameful between its banks. Plains that fed empires crack like old parchment, and the grain barges of Alexandria ride high and empty. The sky withholds, and no siege engine ever built can be turned against it.
+The rains do not come, and from Thrace to the Morea the rivers run thin and shameful between their banks. The herds of Anatolia stand grey with dust on cracked earth, and the granaries of the Balkans echo before the first snow. The sky withholds, and no siege engine ever built can be turned against it.
 
 ### financial-crisis
 A rumor runs through the counting-houses of Genoa, and by evening the doors of the great banks are barred from within. Credit, that invisible empire, collapses in an afternoon, and debts written in fine Italian hands all come due at once. Gold buried in cellars proves no safer; in a fearful season, even a full strongbox pays its tithe.

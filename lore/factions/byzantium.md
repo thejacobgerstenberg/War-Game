@@ -1,12 +1,14 @@
 # Byzantium
 
+*IMPERIUM: Twilight of Empires* — faction lore. Capital: Constantinople.
+
 ## Illuminated Intro
 
-You are the last Caesar, and your empire is a single city. Where Rome once ruled from Britain to the desert, you hold Constantinople and the distant Morea, and little else that is not merely remembered. The purple has gone threadbare; the gold leaf peels from the domes. Yet the walls of Theodosius have never been stormed, and beneath the great dome of Holy Wisdom the liturgy rises as it has for nine hundred years.
+Byzantium is the last of Rome, an empire shrunk to a single city. Where Rome once ruled from Britain to the desert, the Basileus holds Constantinople and the distant Morea, and little else that is not merely remembered. The purple has gone threadbare; the gold leaf peels from the domes. Yet the walls of Theodosius have never been stormed, and beneath the great dome of Holy Wisdom the liturgy rises as it has for nine hundred years.
 
-The Sultan's lands lap at your gates on every side. Your treasury is a rumor, your fleet a memory, your granaries all but empty. To live, you must beg: sail west, kneel to the Latin pope, and trade the Church's freedom for a promise of ships that may never come. Your people would sooner see the turban than the tiara.
+The Sultan's lands lap at the City's gates on every side. The treasury is a rumor, the fleet a memory, the granaries all but empty. To live, the empire must beg: sail west, kneel to the Latin pope, and trade the Church's freedom for a promise of ships that may never come. The people would sooner see the turban than the tiara.
 
-Hold the City. Everything you were depends on stone, and faith, and time.
+So Byzantium holds the City. Everything it was depends on stone, and faith, and time.
 
 ## Motto
 

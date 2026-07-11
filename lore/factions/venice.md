@@ -1,5 +1,7 @@
 # Venice
 
+*IMPERIUM: Twilight of Empires* — faction lore. Capital: Venice.
+
 ## Illuminated Intro
 
 Venice was the Most Serene Republic, and the sea was her dominion. No prince ruled her; a Doge presided, and the Council watched even him. She kept no walls of stone — the lagoon was her rampart, and the Arsenal her forge, where, so her shipwrights boasted, a war galley slid finished into the water between dawn and dusk. From the Rialto her ducats reached every port that mattered, from Crete to the Golden Horn.
