@@ -469,8 +469,11 @@ export const COMBAT_MODS = {
 // §7.7 Tactic cards
 // ---------------------------------------------------------------------------
 
-/** Max tactic cards a player may hold; discard down to this at Cleanup (§7.7 / CANON). */
-export const TACTIC_HAND_LIMIT = 4;
+/**
+ * Max tactic cards a player may hold; discard down to this at Cleanup (§7.7 / CANON).
+ * hand limit = 3 per coordinator ratification (CANON); §2.9 table row (4) is stale/GD §7.7 docs error.
+ */
+export const TACTIC_HAND_LIMIT = 3;
 
 /**
  * Tactic-deck timing/composition constants (§7.7 / CANON clarification 2).
@@ -480,8 +483,8 @@ export const TACTIC_HAND_LIMIT = 4;
 export const TACTIC = {
   /** Cards a player draws each Income phase (before University bonuses). */
   drawPerIncome: 1,
-  /** Hand limit (mirrors {@link TACTIC_HAND_LIMIT}). */
-  handLimit: 4,
+  /** Hand limit (mirrors {@link TACTIC_HAND_LIMIT}); = 3 per coordinator ratification (CANON), §2.9 row (4) is stale. */
+  handLimit: 3,
   /** Max tactic cards a side may play per battle ROUND (reactions exempt). */
   maxPlaysPerBattleRound: 1,
   /** University adds this many extra tactic draws per round (§9.1). */
