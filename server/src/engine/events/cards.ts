@@ -309,7 +309,7 @@ function pickFrom(ctx: EventEffectContext, options: string[]): string {
 // #1 Bumper Harvest — every plains/grain-primary province +1 grain to its holder.
 const e1: EventEffect = (state, ctx) => {
   const plains = state.provinces.filter((p) => p.terrain === TerrainType.PLAINS).map((p) => p.id);
-  let s = grantToControllers(state, plains, { grain: 1 });
+  const s = grantToControllers(state, plains, { grain: 1 });
   return eventLog(s, ctx, "Bumper Harvest: +1 grain from every plains province; grain sells favourably.");
 };
 

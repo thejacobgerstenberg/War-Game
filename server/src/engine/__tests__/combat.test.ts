@@ -31,6 +31,7 @@ import { emptyUnits } from "../gameState.js";
 import { makeRng } from "../rng.js";
 import { CONQUEST_PRESTIGE, GREAT_BOMBARD, SIEGE } from "../balance.js";
 import { resolveBattle, resolveNaval, resolveSiege } from "../combat.js";
+import { playTactic } from "../tactics/index.js";
 
 // The tactic subsystem is a sibling module; mock its combat entry-point so the
 // §7.7 tactic HOOK inside combat can be unit-tested in isolation (order, ≤1/side,
@@ -38,8 +39,6 @@ import { resolveBattle, resolveNaval, resolveSiege } from "../combat.js";
 vi.mock("../tactics/index.js", () => ({
   playTactic: vi.fn((state: GameState) => state),
 }));
-// eslint-disable-next-line import/first
-import { playTactic } from "../tactics/index.js";
 
 // ---------------------------------------------------------------------------
 // Fixtures
