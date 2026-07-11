@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="board" viewBox="0 0 1600 1000" font-family="serif">
+  <title>TEST FIXTURE - canon-id board (not game art)</title>
+  <!--
+    E2E TEST FIXTURE ONLY - NOT ART.
+
+    A minimal board SVG keyed to the canonical docs/MAP.md id scheme, used
+    by client/e2e/board.spec.ts through the Board component's `svgUrl`
+    override until the rebuilt canon-id art board lands. It follows the
+    board.svg structural contract (svg#board, #board-provinces path[id],
+    #board-seas path[id], .province/.sea-zone classes, faction CSS
+    variables) but draws every location as a plain labeled rectangle.
+
+    Contents: 10 canon provinces (constantinople, selymbria, pera, edirne,
+    gallipoli, bithynia, bursa, nicaea, venice, rome) and 3 canon sea zones
+    (bosphorus, sea-of-marmara, aegean).
+  -->
+
+  <style>
+    svg#board {
+      --faction-byzantium: #4B1F3F;
+      --faction-ottomans: #7A1F2B;
+      --faction-venice: #1F4E79;
+      --faction-genoa: #C9A227;
+      --faction-hungary: #4A5D3A;
+    }
+    .province {
+      fill: #F0E6D2;
+      stroke: #2B2118;
+      stroke-width: 1.5;
+      stroke-linejoin: round;
+    }
+    .province.owner-byzantium { fill: var(--faction-byzantium); fill-opacity: .55; }
+    .province.owner-ottomans  { fill: var(--faction-ottomans);  fill-opacity: .55; }
+    .province.owner-venice    { fill: var(--faction-venice);    fill-opacity: .55; }
+    .province.owner-genoa     { fill: var(--faction-genoa);     fill-opacity: .55; }
+    .province.owner-hungary   { fill: var(--faction-hungary);   fill-opacity: .55; }
+    .province:hover { stroke-width: 3; cursor: pointer; }
+    .sea-zone {
+      fill: #2C5F7C;
+      fill-opacity: .16;
+      stroke: #1F4E79;
+      stroke-width: .8;
+    }
+    .sea-zone:hover { stroke-width: 2.4; cursor: pointer; }
+    .fixture-label {
+      fill: #2B2118;
+      font-size: 24px;
+      pointer-events: none;
+    }
+  </style>
+
+  <rect x="0" y="0" width="1600" height="1000" fill="#DCE8EE"/>
+
+  <g id="board-provinces">
+    <path id="venice" class="province" d="M60,60 L360,60 L360,280 L60,280 Z"/>
+    <path id="rome" class="province" d="M400,60 L700,60 L700,280 L400,280 Z"/>
+    <path id="edirne" class="province" d="M740,60 L1040,60 L1040,280 L740,280 Z"/>
+    <path id="selymbria" class="province" d="M1080,60 L1300,60 L1300,280 L1080,280 Z"/>
+    <path id="pera" class="province" d="M1340,60 L1540,60 L1540,280 L1340,280 Z"/>
+    <path id="constantinople" class="province" d="M60,320 L360,320 L360,540 L60,540 Z"/>
+    <path id="bithynia" class="province" d="M400,320 L700,320 L700,540 L400,540 Z"/>
+    <path id="bursa" class="province" d="M740,320 L1040,320 L1040,540 L740,540 Z"/>
+    <path id="nicaea" class="province" d="M1080,320 L1300,320 L1300,540 L1080,540 Z"/>
+    <path id="gallipoli" class="province" d="M1340,320 L1540,320 L1540,540 L1340,540 Z"/>
+  </g>
+
+  <g id="board-seas">
+    <path id="bosphorus" class="sea-zone" d="M60,600 L520,600 L520,940 L60,940 Z"/>
+    <path id="sea-of-marmara" class="sea-zone" d="M560,600 L1020,600 L1020,940 L560,940 Z"/>
+    <path id="aegean" class="sea-zone" d="M1060,600 L1540,600 L1540,940 L1060,940 Z"/>
+  </g>
+
+  <g id="board-labels" aria-hidden="true">
+    <text class="fixture-label" x="70" y="95">venice</text>
+    <text class="fixture-label" x="410" y="95">rome</text>
+    <text class="fixture-label" x="750" y="95">edirne</text>
+    <text class="fixture-label" x="1090" y="95">selymbria</text>
+    <text class="fixture-label" x="1350" y="95">pera</text>
+    <text class="fixture-label" x="70" y="355">constantinople</text>
+    <text class="fixture-label" x="410" y="355">bithynia</text>
+    <text class="fixture-label" x="750" y="355">bursa</text>
+    <text class="fixture-label" x="1090" y="355">nicaea</text>
+    <text class="fixture-label" x="1350" y="355">gallipoli</text>
+    <text class="fixture-label" x="70" y="635">bosphorus</text>
+    <text class="fixture-label" x="570" y="635">sea-of-marmara</text>
+    <text class="fixture-label" x="1070" y="635">aegean</text>
+  </g>
+</svg>
