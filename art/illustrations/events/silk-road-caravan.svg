@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Silk Road Caravan</title>
+  <!-- parchment field -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- woodcut sun -->
+  <polygon points="40,8 35,18 45,18" fill="#C9A227"/>
+  <polygon points="40,64 35,54 45,54" fill="#C9A227"/>
+  <polygon points="68,36 58,31 58,41" fill="#C9A227"/>
+  <polygon points="12,36 22,31 22,41" fill="#C9A227"/>
+  <polygon points="60,16 55,27 49,21" fill="#C9A227"/>
+  <polygon points="20,16 31,21 25,27" fill="#C9A227"/>
+  <polygon points="60,56 55,45 49,51" fill="#C9A227"/>
+  <polygon points="20,56 31,51 25,45" fill="#C9A227"/>
+  <circle cx="40" cy="36" r="15" fill="#C9A227"/>
+  <!-- ground band and road line -->
+  <rect x="0" y="128" width="260" height="32" fill="#E2D3B3"/>
+  <rect x="0" y="127" width="260" height="4" fill="#2B2118"/>
+  <!-- trailing camel of the train, cropped at left edge -->
+  <path fill="#2B2118" d="M -10,110
+    C -12,98 -8,88 0,84
+    C 4,79 12,79 15,84
+    C 18,89 23,89 26,84
+    C 29,79 37,79 40,84
+    C 45,89 49,94 53,98
+    C 55,92 56,85 57,79
+    C 57,74 62,71 66,72
+    C 70,73 73,76 75,79
+    L 72,82
+    C 68,84 65,83 63,83
+    C 61,91 60,98 59,104
+    C 40,110 8,112 -10,110 Z"/>
+  <polygon points="-4,108 2,108 1,131 -4,131" fill="#2B2118"/>
+  <polygon points="8,110 14,110 16,131 10,131" fill="#2B2118"/>
+  <polygon points="34,110 40,110 39,131 33,131" fill="#2B2118"/>
+  <polygon points="46,108 52,108 55,131 49,131" fill="#2B2118"/>
+  <!-- lead camel: body, humps, neck, head -->
+  <path fill="#2B2118" d="M 88,98
+    C 85,86 88,70 100,63
+    C 105,56 117,56 121,63
+    C 125,70 133,70 137,63
+    C 141,56 153,56 157,63
+    C 163,69 170,77 177,84
+    C 180,75 182,64 184,55
+    C 184,47 191,42 198,44
+    C 204,46 208,50 211,55
+    L 207,60
+    C 201,62 196,61 193,61
+    C 190,73 188,85 186,96
+    C 156,103 116,103 88,98 Z"/>
+  <!-- tail -->
+  <path fill="#2B2118" d="M 89,82 C 81,84 78,92 81,101 L 86,99 C 84,93 87,87 93,87 Z"/>
+  <!-- legs -->
+  <polygon points="96,96 104,96 102,131 96,131" fill="#2B2118"/>
+  <polygon points="110,98 117,98 120,131 114,131" fill="#2B2118"/>
+  <polygon points="156,98 163,98 161,131 155,131" fill="#2B2118"/>
+  <polygon points="170,96 177,96 181,131 175,131" fill="#2B2118"/>
+  <!-- silk bale lashed across the humps -->
+  <rect x="112" y="42" width="34" height="26" rx="10" fill="#7A1F2B"/>
+  <rect x="118" y="42" width="4" height="28" fill="#C9A227"/>
+  <rect x="138" y="42" width="4" height="28" fill="#C9A227"/>
+  <!-- gold saddlebag on the flank -->
+  <rect x="120" y="70" width="20" height="16" rx="3" fill="#C9A227"/>
+  <!-- lead rope -->
+  <path d="M 208,61 C 214,72 220,82 228,92" fill="none" stroke="#2B2118" stroke-width="3" stroke-linecap="round"/>
+  <!-- caravan-master walking ahead -->
+  <circle cx="228" cy="82" r="6" fill="#2B2118"/>
+  <polygon points="222,88 234,88 240,131 214,131" fill="#2B2118"/>
+  <polygon points="232,92 244,84 246,88 235,98" fill="#2B2118"/>
+  <polygon points="243,74 247,74 247,131 243,131" fill="#2B2118"/>
+</svg>

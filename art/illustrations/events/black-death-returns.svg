@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>black death returns</title>
+
+  <!-- parchment field -->
+  <rect width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- vellum ground strip -->
+  <rect y="136" width="260" height="24" fill="#E2D3B3"/>
+
+  <!-- crimson halo: the plague sanctified, mosaic-style -->
+  <circle cx="130" cy="46" r="36" fill="#7A1F2B"/>
+
+  <!-- plague doctor: robe -->
+  <path d="M112 58 L148 58 L172 160 L88 160 Z" fill="#2B2118"/>
+
+  <!-- arm reaching to staff -->
+  <polygon points="146,78 186,92 184,100 144,88" fill="#2B2118"/>
+
+  <!-- head -->
+  <circle cx="130" cy="44" r="16" fill="#2B2118"/>
+
+  <!-- beak mask -->
+  <polygon points="142,38 176,54 142,56" fill="#2B2118"/>
+
+  <!-- wide-brimmed hat -->
+  <rect x="98" y="28" width="64" height="7" fill="#2B2118"/>
+  <polygon points="110,28 150,28 145,10 115,10" fill="#2B2118"/>
+
+  <!-- gold eye lens -->
+  <circle cx="137" cy="42" r="5" fill="#C9A227"/>
+
+  <!-- physician's staff -->
+  <rect x="184" y="46" width="6" height="114" fill="#C9A227"/>
+  <circle cx="187" cy="42" r="6" fill="#C9A227"/>
+
+  <!-- gloved hand on staff -->
+  <circle cx="186" cy="95" r="6" fill="#2B2118"/>
+
+  <!-- rat, fleeing left -->
+  <ellipse cx="38" cy="148" rx="13" ry="5.5" fill="#2B2118"/>
+  <polygon points="27,145 14,150 28,152" fill="#2B2118"/>
+  <path d="M51 148 Q64 150 68 142" fill="none" stroke="#2B2118" stroke-width="3"/>
+
+  <!-- rat, fleeing right -->
+  <ellipse cx="222" cy="149" rx="13" ry="5.5" fill="#2B2118"/>
+  <polygon points="233,146 246,151 232,153" fill="#2B2118"/>
+  <path d="M209 149 Q196 151 192 143" fill="none" stroke="#2B2118" stroke-width="3"/>
+
+  <!-- miasma: plague tokens drifting the trade winds -->
+  <circle cx="56" cy="58" r="5" fill="#7A1F2B"/>
+  <circle cx="206" cy="32" r="4" fill="#7A1F2B"/>
+  <circle cx="72" cy="104" r="4" fill="#7A1F2B"/>
+</svg>

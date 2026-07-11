@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Council of Florence</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <rect x="14" y="150" width="232" height="10" fill="#2B2118"/>
+  <rect x="14" y="58" width="12" height="102" fill="#2B2118"/>
+  <rect x="234" y="58" width="12" height="102" fill="#2B2118"/>
+  <path d="M 14 64 Q 130 -20 246 64 L 234 64 Q 130 0 26 64 Z" fill="#2B2118"/>
+  <rect x="126" y="36" width="8" height="28" fill="#C9A227"/>
+  <rect x="117" y="45" width="26" height="8" fill="#C9A227"/>
+  <circle cx="78" cy="66" r="19" fill="#C9A227"/>
+  <circle cx="182" cy="66" r="19" fill="#C9A227"/>
+  <polygon points="66,70 78,46 90,70" fill="#2B2118"/>
+  <circle cx="78" cy="72" r="10" fill="#2B2118"/>
+  <rect x="172" y="46" width="20" height="24" fill="#2B2118"/>
+  <circle cx="182" cy="72" r="10" fill="#2B2118"/>
+  <polygon points="174,78 190,78 182,98" fill="#2B2118"/>
+  <path d="M 44 160 Q 46 92 78 86 Q 108 92 112 160 Z" fill="#7A1F2B"/>
+  <path d="M 216 160 Q 214 92 182 86 Q 152 92 148 160 Z" fill="#4B1F3F"/>
+  <rect x="114" y="92" width="32" height="36" fill="#F0E6D2" stroke="#2B2118" stroke-width="3"/>
+  <rect x="121" y="99" width="18" height="4" fill="#2B2118"/>
+  <rect x="121" y="107" width="18" height="4" fill="#2B2118"/>
+  <rect x="121" y="115" width="11" height="4" fill="#2B2118"/>
+  <polygon points="94,96 124,100 124,112 92,110" fill="#7A1F2B"/>
+  <polygon points="166,96 136,100 136,112 168,110" fill="#4B1F3F"/>
+  <rect x="128" y="128" width="4" height="8" fill="#2B2118"/>
+  <circle cx="130" cy="141" r="7" fill="#7A1F2B" stroke="#2B2118" stroke-width="2"/>
+</svg>

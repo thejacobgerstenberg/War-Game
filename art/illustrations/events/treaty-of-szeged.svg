@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Treaty of Szeged</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- treaty scroll -->
+  <rect x="40" y="35" width="180" height="80" fill="#E2D3B3"/>
+  <rect x="32" y="27" width="14" height="96" rx="7" fill="#2B2118"/>
+  <rect x="214" y="27" width="14" height="96" rx="7" fill="#2B2118"/>
+  <!-- gold cross, sworn on the Gospel -->
+  <rect x="80" y="46" width="12" height="44" fill="#C9A227"/>
+  <rect x="66" y="60" width="40" height="12" fill="#C9A227"/>
+  <!-- gold crescent, sworn on the Koran -->
+  <circle cx="172" cy="67" r="18" fill="#C9A227"/>
+  <circle cx="181" cy="67" r="15" fill="#E2D3B3"/>
+  <!-- lines of script -->
+  <rect x="58" y="96" width="46" height="5" fill="#2B2118"/>
+  <rect x="58" y="105" width="34" height="5" fill="#2B2118"/>
+  <rect x="152" y="96" width="46" height="5" fill="#2B2118"/>
+  <rect x="164" y="105" width="34" height="5" fill="#2B2118"/>
+  <!-- pendant wax seal on its ribbon -->
+  <rect x="125" y="106" width="10" height="14" fill="#7A1F2B"/>
+  <circle cx="130" cy="130" r="24" fill="#7A1F2B"/>
+  <!-- the oath torn: jagged rupture through scroll and seal -->
+  <polygon points="129,34 121,44 132,58 122,74 133,90 123,106 132,120 124,136 129,158 137,136 141,120 132,106 142,90 131,74 141,58 130,44 137,34" fill="#2B2118"/>
+</svg>

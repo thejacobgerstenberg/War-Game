@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Pilgrim Season</title>
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- sun disc -->
+  <circle cx="34" cy="30" r="14" fill="#C9A227"/>
+  <!-- rolling laurel hill -->
+  <path d="M0,120 Q60,100 130,112 Q200,124 260,102 L260,160 L0,160 Z" fill="#4A5D3A"/>
+  <!-- pilgrim road winding to the shrine -->
+  <path d="M60,150 Q115,132 168,122 Q205,113 234,106 L241,111 Q210,120 178,131 Q130,147 92,160 L60,160 Z" fill="#F0E6D2"/>
+  <!-- distant shrine with gold dome -->
+  <rect x="226" y="92" width="16" height="18" fill="#2B2118"/>
+  <path d="M224,92 A10,10 0 0 1 244,92 Z" fill="#C9A227"/>
+  <!-- coins spent along the way -->
+  <circle cx="95" cy="120" r="4" fill="#C9A227"/>
+  <circle cx="85" cy="131" r="4" fill="#C9A227"/>
+  <circle cx="76" cy="142" r="3.5" fill="#C9A227"/>
+  <!-- pilgrim: legs -->
+  <path d="M104,130 L112,131 L102,148 L95,146 Z" fill="#2B2118"/>
+  <path d="M126,131 L134,130 L138,148 L130,148 Z" fill="#2B2118"/>
+  <!-- pilgrim: crimson cloak -->
+  <path d="M118,62 L92,134 Q118,144 144,134 Z" fill="#7A1F2B"/>
+  <!-- satchel strap and gold purse -->
+  <path d="M121,66 L127,70 L109,102 L103,98 Z" fill="#2B2118"/>
+  <circle cx="105" cy="103" r="9" fill="#C9A227"/>
+  <!-- head and broad hat -->
+  <circle cx="118" cy="60" r="9" fill="#2B2118"/>
+  <path d="M94,56 Q118,46 142,56 Q118,66 94,56 Z" fill="#2B2118"/>
+  <path d="M104,56 Q118,36 132,56 Z" fill="#2B2118"/>
+  <!-- gold pilgrim badge on the hat -->
+  <circle cx="130" cy="56" r="5" fill="#C9A227"/>
+  <!-- reaching arm, staff, gripping hand -->
+  <path d="M114,76 L146,88 L143,96 L111,84 Z" fill="#7A1F2B"/>
+  <path d="M156,38 L161,40 L146,144 L141,142 Z" fill="#2B2118"/>
+  <circle cx="146" cy="91" r="5" fill="#2B2118"/>
+</svg>
