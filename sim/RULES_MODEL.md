@@ -18,6 +18,14 @@ seeded omen draw uniform over rounds 11-16) + 1-round emplacement, E4 three
 independent secret objectives (+4 each), E5 betrayal/aggression costs
 (unjustified-war −1 prestige; mercenary-revolt pillage on unpaid desertion).
 
+**STACKING ROUND (2026-07-11, this revision)**: canon **§6.4 stacking limits
+are now ENFORCED RAW** (8 land units per player per province, 12 in a
+CITY/capital, "excess cannot enter") together with **§7.5 rout/withdrawal
+retreat pathing** (retreat to ONE adjacent friendly province up to the
+destination's remaining headroom; the **overflow SURRENDERS** — the engine's
+2026-07-11 rout-retreat fix). See "Stacking (canon §6.4)" below; the reading
+is **engine-matched** (feature/engine-core @ c79a453).
+
 ## Round structure (16 rounds, 1400–1453; §10)
 
 1. **Omen** — exactly ONE event card per table per round (§12). Model: an
@@ -152,6 +160,50 @@ WARSHIP (blended into the galley slot; Venetian/Genoese overrides carry the
 Galeazza/Carrack edge). Cavalry charge/pursuit, Greek-Fire Dromon, and
 Crossbowmen brokerage income are unmodeled (divergence appendix).
 
+## Stacking (canon §6.4) — ENFORCED RAW, engine-matched
+
+Modeled since the stacking round (2026-07-11); `CONFIG.stacking`
+(`STACKING_LAND_PER_PROVINCE` 8, `STACKING_CITY` 12,
+`STACKING_NAVAL_PER_ZONE` 6). The reading matches the engine
+(feature/engine-core @ c79a453) exactly:
+
+- **Caps bind PER (owner, province)** — each player's own units only; a
+  besieger and the garrison it invests never sum against one another.
+- **No separate camp tile**: a besieger camp CO-LOCATES on the besieged
+  city's own province and counts against **that province's cap** for the
+  besieger — the max legal besieging stack in Constantinople (CITY cap) is
+  **12 land units total, siege engines included**. Reinforcements can only
+  top the camp back up to 12.
+- **CITY proxy**: the engine's `isCityProvince` = CITY terrain OR any
+  faction's capital. The sim map authors no CITY terrain, so the cap-12
+  class is **authored `wallTier >= 1` OR a faction capital** (canon §3.2:
+  key cities carry pre-built walls). Player-built wall upgrades do NOT
+  re-terrain a province — the cap reads the authored tier.
+- **Land units** = levy + professional + mercenary + **siege engines**;
+  galleys are naval (§6.4 counts them per SEA ZONE, cap 6/player). The
+  unique Great Bombard is a flag, not an Army unit — it consumes no
+  headroom (canon §8.4: never recruited).
+- **"Excess cannot enter" — enforcement points**: recruit (`actRecruit`,
+  non-galley), friendly moves incl. harbor ferries (`actMove`), attack-stack
+  assembly and siege reinforcement (`actAttack` via `planForce`), §7.5
+  retreats (`retreatCapped`, overflow surrenders — see Combat), the
+  volunteers omen (excess volunteers turned away), and relief stacks
+  (a relief force entering its own invested city obeys the same
+  per-(owner,province) cap, counting the garrison inside). Same-round
+  commitments (pending recruits + pending attack stacks) count against
+  headroom at action time so the battle phase can never overfill a cap.
+  Agents read `Game.stackHeadroom` and assemble legal stacks (engines
+  reserved first, best fighters fill the rest); feasibility gates price
+  the stack that can legally enter, not the whole garrison.
+- **Naval 6/zone is declared but unexercised**: the sim has no at-sea
+  stacks (galleys ride in port garrisons; sea-zone presence is computed,
+  not positioned), so the naval cap has nothing to bind on — flagged for
+  the engine, which must enforce it on real fleets.
+- Verification: `src/run/stacking_probe.ts` (now a POST-ENFORCEMENT
+  invariant probe) → `results/stacking_probe.json`: 0 over-cap stacks in
+  1,000 committed games; the §7.5 surrender rule fires live (see
+  TUNING_REPORT §3).
+
 ## Combat (src/combat.ts) — CANON KERNEL (§7)
 
 Per battle round:
@@ -180,14 +232,25 @@ Per battle round:
   lowest-value first: levy → professional → mercenary → galley (§4.4 value
   order; canon lets the loser choose — the sim fixes the default).
 - **Rout (§7.5)**: a side that has lost ≥ 50% (`routLossFraction`) of its
-  starting stack rolls 1d6 each round and routs on ≤ 3 (`routOn`).
-  Survivors disperse (no retreat pathing). If both would rout, the
-  defender holds. Cavalry pursuit and ±1 morale effects are unmodeled.
-  Canon instead retreats routed units to an adjacent friendly/empty
-  province — capped (per the engine's 2026-07-11 fix) by the
-  destination's remaining §6.4 stacking headroom, with the overflow
-  surrendering; see "Deliberate simplifications" for the measured
-  exposure of skipping both halves.
+  starting stack rolls 1d6 each round and routs on ≤ 3 (`routOn`). If both
+  would rout, the defender holds. Cavalry pursuit and ±1 morale effects are
+  unmodeled. **Retreat pathing IS modeled since the stacking round
+  (2026-07-11)**: the kernel leaves rout/withdrawal survivors in the Army
+  object and the game layer retreats them per §7.5 under the §6.4 cap
+  (`Game.retreatCapped`): the stack falls back to ONE friendly province —
+  its origin when still owned, else an owned land-adjacent province of the
+  battlefield (first that fits the whole stack, else the roomiest) — and
+  only the destination's remaining per-(owner,province) headroom may enter;
+  the **overflow SURRENDERS** (removed, lowest-value first; the engine's
+  2026-07-11 rout-retreat fix). With no reachable owned province with
+  headroom the whole stack surrenders (§7.5 "if none exists they
+  surrender"). This applies to routed defenders (previously: outright
+  dispersal — harsher than canon), routed/withdrawn attackers, beaten
+  siege camps, and lifted sieges. Canon also allows retreating into an
+  **empty non-owned** province; mid-phase occupation is outside the sim's
+  state model, so only owned destinations qualify — a conservative
+  documented divergence. Neutral-minor garrisons have no retreat network
+  (they disperse as before).
 - The attacker voluntarily withdraws at ≤ 35% (`retreatFraction`) of its
   starting combatants; battles cap at `combat.maxRounds` (stalemate).
 - `BattleResult.decisive` = the loser was wiped or routed (feeds the §13.1
@@ -315,7 +378,14 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   4. The attacker may **assault** at any time: full wall bonus to the
      defender while HP > 0 plus **escalade −1** to the attacker (§8.2.4);
      at 0 HP (breach) the fight is at field odds. Siege engines add their
-     §6.1 "+3 vs walls" dice during an escalade.
+     §6.1 "+3 vs walls" dice during an escalade **and — canon §7.2 RAW
+     re-reading, stacking round 2026-07-11 — in BREACH assaults too**
+     ("only ARCHER (and, in sieges, SIEGE) roll" is unscoped by wall HP;
+     `combat.siegeEnginesFightAtBreach`). The previous
+     engines-idle-at-breach reading was a sim gap-fill; the RAW reading is
+     load-bearing once §6.4 caps a besieger at 12 total units (a legal
+     camp needs its train's dice to carry a breach assault). Engines stay
+     idle in FIELD battles either way.
 - **The Great Bombard (GD §8.4, EVENT_CARDS #34; RATIFIED ERRATA E3,
   2026-07-11)**: unique, one per game, never recruited. Enters when the
   Era III omen `great-bombard-forged` resolves — **canon draw model**: the
@@ -331,7 +401,12 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   different siege) it is placed for **1 full siege round before it first
   fires** — no wall damage from it, and no masonry-cap lift, during the
   emplacement round (`greatBombard.emplacementRounds`, tracked in
-  `Game.bombardEmplacement`; the siege module applies the same rule). In
+  `Game.bombardEmplacement`; the siege module applies the same rule).
+  **Canon §8.4 Assault row (modeled since the stacking round): the
+  emplaced Bombard "adds the standard SIEGE +3 vs walls"** — one extra
+  engine-threshold die in assaults (`greatBombard.assaultDice` 1, via
+  `CombatModifiers.attackerEngineExtraDice`; it is a flag, not an Army
+  unit, so it consumes no §6.4 headroom). In
   the full game its owner deploys it at their most valuable siege
   (Constantinople first). Unmodeled: 3-grain upkeep/silence, 1-province
   movement, no-mountains, sink-on-transport-loss, capture-as-loot (it
@@ -342,16 +417,19 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   flagged as a sensitivity note for the engine team; the T5 targets were
   calibrated without it per the coordinator's target spec.
 - Calibrated consequence (full-scale results/siege.json, 20k iters/cell,
-  errata E3 curve): (a) direct assault on the intact T5 walls: ≤ ~0.3% win
-  for any stack 1-12 vs garrisons 6-10; (b) no Bombard + no blockade: 0%
-  capture within 12 siege rounds (sea resupply + masonry cap); (c) no
-  Bombard + full blockade: starve-out works (≥ 99.9%), median capture at
-  siege round 7/9/11 for garrisons 6/8/10; (d) with the Bombard:
-  emplacement in siege round 1, breach in rounds 2-3, capture at median
-  siege round 3 — **capture within 4 rounds of its FIRST SHOT (siege
-  rounds ≤ 5) with 91.7-100% probability** (the re-derived T5d target,
-  >50%). With the omen drawn uniformly r11-16, the City falls ~r13-16 —
-  the 1453 anchor holds in expectation (fullgame SD completions all r12+).
+  §6.4-LEGAL stacks — the Constantinople besieger is the strongest legal
+  12-unit stack, 11 mercenaries + 1 engine + the Bombard flag): (a) direct
+  assault on the intact T5 walls: ≤ ~0.31% win for any stack 1-12 vs
+  garrisons 6-10; (b) no Bombard + no blockade: 0% capture within 12 siege
+  rounds (sea resupply + masonry cap); (c) no Bombard + full blockade:
+  starve-out works (≥ 92.2%), median capture at siege round 7/9/11 for
+  garrisons 6/8/10; (d) with the Bombard: emplacement in siege round 1,
+  breach in rounds 3-4, capture at median siege round 4 — **capture within
+  4 rounds of its FIRST SHOT (siege rounds ≤ 5) with 55.9-98.4%
+  probability** (the re-derived T5d target, >50%; the pre-stacking 19-unit
+  camp scored 91.7-100%). With the omen drawn uniformly r11-16, the City
+  falls ~r13-16 — the 1453 anchor holds in expectation (fullgame SD
+  completions all r12+).
 
 ## Economy & map
 
@@ -484,23 +562,14 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   blockade = any at-war enemy port/camp galley on a route zone, halving
   income (§5.2). There are no pure fleet battles (hence Pilot of the
   Narrows / Greek Fire are dead cards).
-- **No §6.4 stacking limits** (canon: 8 land units per player per
-  province, 12 in a CITY/capital, 6 naval per sea zone — "excess units
-  cannot enter"): recruiting, moves, attack commits, siege camps and the
-  post-battle/siege-lift `returnHome` merge are all uncapped, and the
-  §7.5 rout path does no retreat pathing (see Combat above). Parity
-  check vs the engine's 2026-07-11 rout-retreat fix ("retreat up to the
-  destination's remaining cap, overflow surrenders"): the sim cannot
-  reproduce the engine's over-stack bug — there is no cap to violate and
-  no rout retreat to over-fill it — and the exact fix site is inert
-  in-sim (1 of 2,074 returning land units, 0.05%, would surrender).
-  The missing cap itself is exercised, though: 8.1% of committed attack
-  stacks exceed the destination's cap and 35.5% of siege-camp samples
-  exceed the invested city's cap (1,000 games, seed 24681357,
-  `src/run/stacking_probe.ts` → `results/stacking_probe.json`).
-  Divergence + sensitivity note: TUNING_REPORT §6 row 10. Deliberately
-  NOT retrofitted — capping stacks invalidates the tuned big-stack
-  siege/assault aggregates without an agent rework.
+- **§6.4 stacking limits are ENFORCED since the stacking round**
+  (2026-07-11) — see "Stacking (canon §6.4)" above; the former
+  no-caps divergence (8.1% of attack stacks / 35.5% of siege camps over
+  cap in the pre-enforcement probe) is CLOSED and TUNING_REPORT §6 row 10
+  moved to modeled. Remaining §6.4 gaps: the naval 6/zone cap has no
+  at-sea stacks to bind on, and §7.5's "retreat to an adjacent **empty**
+  (non-owned) province" is narrowed to owned destinations (mid-phase
+  occupation is outside the state model) — both conservative.
 - Secret objectives modeled as 3 independent "hold this seeded province at
   game end" goals (+4 each, E4).
 - Scripted agents refuse to besiege an intact T5 fortress until they own

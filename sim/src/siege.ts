@@ -237,6 +237,8 @@ export function runSiege(
           attackerBonus: escalade,
           terrainBonus,
           wallBonus,
+          siegeAssault: true, // canon §7.2 RAW: engines keep rolling in breach assaults (siegeEnginesFightAtBreach)
+          attackerEngineExtraDice: bombardFires ? s.greatBombard.assaultDice : 0, // canon §8.4: the Bombard's own assault die
           attackerFaction: setup.attackerFaction,
           defenderFaction: setup.defenderFaction,
         }),

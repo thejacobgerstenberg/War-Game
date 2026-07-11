@@ -31,8 +31,12 @@
  *   folded into unit CVs — see RULES_MODEL.md.)
  * - Rout (§7.5): after casualties, a side that has lost >= routLossFraction
  *   (50%) of its starting stack rolls 1d6 and routs on <= routOn (3).
- *   A routing side loses the battle; its survivors disperse (no retreat
- *   pathing in the kernel). Cavalry pursuit is unmodeled.
+ *   A routing side loses the battle; its survivors stay in the Army object
+ *   (BattleResult.*Remaining) — the kernel does no retreat pathing, the
+ *   GAME layer retreats them per §7.5 under the §6.4 stacking clamp
+ *   (game.ts retreatCapped: one adjacent friendly province up to headroom,
+ *   overflow surrenders). Standalone-module callers that drop the army
+ *   reproduce the old disperse behavior. Cavalry pursuit is unmodeled.
  *   Gap-fill: a garrison behind unbreached walls does not rout.
  * - resolveBattle loops rounds until a side is destroyed or routs, the
  *   attacker's combatants fall to/below retreatFraction of the starting
@@ -152,6 +156,8 @@ export function modifiers(partial: Partial<CombatModifiers>): CombatModifiers {
     defenderRerolls: partial.defenderRerolls ?? 0,
     attackerFirstRoundOnly: partial.attackerFirstRoundOnly,
     defenderFirstRoundOnly: partial.defenderFirstRoundOnly,
+    siegeAssault: partial.siegeAssault,
+    attackerEngineExtraDice: partial.attackerEngineExtraDice,
     attackerFaction: partial.attackerFaction,
     defenderFaction: partial.defenderFaction,
   };
@@ -229,11 +235,18 @@ export function resolveCombatRound(
     attDice += n;
   }
   // Canon §6.1: SIEGE "+3 vs walls" — engines roll while assaulting
-  // UNBREACHED walls (escalade support); idle at field odds.
-  if (mods.wallBonus > 0 && attacker.siegeEngine > 0) {
+  // UNBREACHED walls (escalade support), and — canon §7.2 RAW ("in
+  // sieges, SIEGE roll"), siegeEnginesFightAtBreach — in BREACH assaults
+  // of a siege too. Idle at field odds. attackerEngineExtraDice adds the
+  // Great Bombard's canon §8.4 assault die at the same threshold.
+  const engineDice = attacker.siegeEngine + (mods.attackerEngineExtraDice ?? 0);
+  if (
+    engineDice > 0 &&
+    (mods.wallBonus > 0 || (mods.siegeAssault === true && cc.siegeEnginesFightAtBreach))
+  ) {
     const th = hitThreshold(cc.siegeEngineEscaladeBonus, attMods);
-    attHits += rollHits(attacker.siegeEngine, th, rng);
-    attDice += attacker.siegeEngine;
+    attHits += rollHits(engineDice, th, rng);
+    attDice += engineDice;
     if (th < attBest) attBest = th;
   }
 

@@ -255,6 +255,28 @@ export const CONFIG = {
     mercsArriveInstantly: true, // canon §6.2: mercenaries available immediately; others muster at end of round
   },
 
+  /**
+   * Canon §6.4 stacking limits RAW (modeled since the stacking round,
+   * 2026-07-11) — ENGINE-MATCHED reading (feature/engine-core @ c79a453):
+   * caps bind PER (owner, province); a besieger camp CO-LOCATES on the
+   * invested province and counts against that province's cap for ITS
+   * owner, but besieger and garrison never sum against each other.
+   * "CITY" (a canon terrain the sim map does not author) is proxied as
+   * authored wallTier >= 1 OR any faction capital — the engine's
+   * isCityProvince (CITY terrain or capital); player-built wall upgrades
+   * do not re-terrain a province. "Excess cannot enter": recruit, move,
+   * attack-stack assembly and siege-camp reinforcement all clamp at
+   * action time (game.ts stackHeadroom). §7.5 rout/withdrawal retreats
+   * admit only up to the destination's remaining headroom and the
+   * OVERFLOW SURRENDERS (the engine's 2026-07-11 rout-retreat fix).
+   */
+  stacking: {
+    landPerProvince: 8, // STACKING_LAND_PER_PROVINCE (canon §6.4: 8 land units per player per province)
+    cityCap: 12, // STACKING_CITY (canon §6.4: 12 in a CITY/capital province)
+    navalPerZone: 6, // STACKING_NAVAL_PER_ZONE (canon §6.4) — declared for the engine; unexercised in-sim (no at-sea stacks: galleys ride in port garrisons and count against no land cap)
+    routOverflowSurrenders: true, // §7.5 + engine rout fix: retreat overflow beyond headroom surrenders (false = legacy uncapped merge)
+  },
+
   factions: {
     byzantium: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.0, capitalExtraGold: 2, cityCapturePrestige: 0 }, // rich capital (Hagia Sophia income proxy)
     ottomans: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 2, tradeIncomeMult: 1.0, capitalExtraGold: 0, cityCapturePrestige: 2 }, // devshirme levy bulk + Ghaza city-capture prestige (1 -> 2 in the adversarial fix round: the canon §8.2.3 harbor-reinforcement fixes slowed the Ottoman siege game; recalibrated within the §14 asymmetry budget)
@@ -283,7 +305,18 @@ export const CONFIG = {
     wallCoverSaveOn: 3, // gap-fill: while walls are UNBREACHED, each hit on the garrison is deflected on 1d6 <= this (battlement cover); 0 disables
     retreatFraction: 0.35, // attacker voluntarily withdraws at/below this fraction of starting combatants
     maxRounds: 25, // battle round cap => stalemate (siege continues instead)
-    siegeEngineEscaladeBonus: 3, // canon §6.1: SIEGE "+3 vs walls" — engines roll at CV 0+3 while assaulting UNBREACHED walls (idle at field odds)
+    siegeEngineEscaladeBonus: 3, // canon §6.1: SIEGE "+3 vs walls" — engines roll at CV 0+3 in siege assaults (idle at field odds)
+    /**
+     * Canon §7.2 RAW re-reading (stacking round, 2026-07-11): "only ARCHER
+     * (and, in sieges, SIEGE) roll" is unscoped by wall HP, so SIEGE
+     * engines keep rolling their §6.1 "+3 vs walls" dice in a BREACH
+     * assault too (storming the circuit is still a siege); the previous
+     * engines-idle-at-breach reading was a sim gap-fill. Load-bearing for
+     * T5d once §6.4 caps the besieger at 12 total units: a legal camp
+     * (e.g. 9 fighters + 3 engines) needs its train's dice to carry a
+     * breach assault against a 10-strong garrison. false = legacy reading.
+     */
+    siegeEnginesFightAtBreach: true,
     terrain: { plains: 0, hills: 1, mountains: 1, forest: 1, marsh: 1 } satisfies Record<Terrain, number>, // defender threshold bonus (canon §7.3: +1 in rough terrain)
     riverCrossingPenalty: 1, // attacker -1 when attacking across a strait / amphibiously (canon §7.3 "amphibious")
   },
@@ -342,6 +375,7 @@ export const CONFIG = {
       drawRoundMax: 16, // latest omen-draw round (uniform per-game seeded draw; ERRATA E3 — replaces the tuned fixed r15 reveal)
       goldCost: 40, // auction price when no Ottoman is in play (canon: Ottoman gets it free)
       damageDice: 2, // wall-damage dice per siege round (canon §8.4: up to 6 HP/round, ~4 avg)
+      assaultDice: 1, // canon §8.4 RAW Assault row: the Bombard "adds the standard SIEGE +3 vs walls" — one engine-threshold die in assaults once emplaced (modeled since the stacking round; it is a flag, not an Army unit, so it consumes no §6.4 headroom)
       emplacementRounds: 1, // ERRATA E3: siege rounds of emplacement before the Bombard first fires
     },
   },

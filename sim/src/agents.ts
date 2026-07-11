@@ -17,7 +17,7 @@
  * actions). Exploration randomness comes from game.agentRng (seeded).
  */
 
-import type { FactionId, UnitType } from './types';
+import type { Army, FactionId, UnitType } from './types';
 import { CONFIG, nextAffordableGreatWork, nextUnbuiltGreatWork, statsFor, wallUpgradeCost } from './rules';
 import { combatants } from './combat';
 import { PROVINCE_BY_ID } from './map';
@@ -83,6 +83,26 @@ function garrisonToLeave(g: Game, f: FactionId, pid: string): number {
   return PROVINCE_BY_ID.get(pid)!.keyCity || pid === CAPITALS[f] ? 2 : 1;
 }
 
+/**
+ * armyPower of the `fighters` best troops planForce would detach
+ * (professional -> mercenary -> levy, the same best-first order): the
+ * feasibility gates must price the stack that can LEGALLY enter under the
+ * §6.4 cap, not the whole garrison.
+ */
+function detachmentPower(garr: Army, fighters: number): number {
+  let want = Math.max(0, fighters);
+  let pw = 0;
+  const take = (n: number, w: number) => {
+    const k = Math.min(n, want);
+    pw += w * k;
+    want -= k;
+  };
+  take(garr.professional, 2);
+  take(garr.mercenary, 2);
+  take(garr.levy, 1);
+  return pw;
+}
+
 interface AttackOpts {
   /** Required power ratio vs defenseScore for unwalled targets. */
   minRatio: number;
@@ -106,7 +126,8 @@ function tryAttack(g: Game, f: FactionId, o: AttackOpts): boolean {
   let bestFrom = '';
   let bestTo = '';
   let bestScore = -Infinity;
-  let bestWalled = false;
+  let bestFighters = 0;
+  let bestEngines = 0;
   for (const from of g.ownedProvinces(f)) {
     if (g.isBesieged(from)) continue;
     const garr = g.province(from).garrison;
@@ -136,22 +157,32 @@ function tryAttack(g: Game, f: FactionId, o: AttackOpts): boolean {
         if (garr.galley < Math.ceil(Math.min(land, n) / 2)) continue;
       }
       const walled = t.wallTier > 0 && combatants(t.garrison) > 0 && !(s && s.attacker === f);
+      // Canon §6.4 legal-stack assembly: only the destination's remaining
+      // headroom can enter — reserve engines first (siege trains), fill
+      // with the best fighters, and gate feasibility on the power of the
+      // stack that can LEGALLY go, not the whole garrison.
+      const room = g.stackHeadroom(f, r.to);
+      if (room <= 0) continue;
+      const engSend = walled ? Math.min(garr.siegeEngine, room) : 0;
+      const fSend = Math.min(n - leave, room - engSend);
+      if (fSend <= 0) continue;
+      const sendPower = fSend < n - leave ? detachmentPower(garr, fSend) : myPower;
       // Leader pressure must change FEASIBILITY, not just target ordering:
       // the +5 targetValue bonus alone was measured inert (0.2% decision
       // changes) because leader provinces never passed the odds gates.
       const gateScale = t.owner !== null && t.owner === leader ? 0.85 : 1;
       let feasible: boolean;
       if (s && s.attacker === f) {
-        feasible = n >= 2; // reinforcing an existing siege is cheap
+        feasible = fSend >= 2; // reinforcing an existing siege is cheap (headroom permitting)
       } else if (walled) {
-        feasible = myPower >= o.walledRatio * gateScale * (armyPower(t.garrison) + 1);
+        feasible = sendPower >= o.walledRatio * gateScale * (armyPower(t.garrison) + 1);
         // Tier-5 fortresses (the Theodosian Walls) are a siege tar pit
         // without the Great Bombard: the canon §8.3 masonry cap limits an
         // ordinary train to 1 wall HP/round and the open sea feeds the city
         // (§8.2.3). Stay away unless we own the Bombard.
         if (t.wallTier >= 5 && g.wallBonusAt(r.to) > 0 && !g.faction(f).hasGreatBombard) feasible = false;
       } else {
-        feasible = myPower >= o.minRatio * gateScale * g.defenseScore(r.to);
+        feasible = sendPower >= o.minRatio * gateScale * g.defenseScore(r.to);
       }
       if (!feasible) continue;
       const score = targetValue(g, f, r.to) - (walled ? 2 : 0) - (r.sea ? 1 : 0);
@@ -159,15 +190,13 @@ function tryAttack(g: Game, f: FactionId, o: AttackOpts): boolean {
         bestScore = score;
         bestFrom = from;
         bestTo = r.to;
-        bestWalled = walled;
+        bestFighters = fSend;
+        bestEngines = engSend;
       }
     }
   }
   if (bestScore === -Infinity) return false;
-  const garr = g.province(bestFrom).garrison;
-  const n = combatants(garr) - garr.galley;
-  const leave = garrisonToLeave(g, f, bestFrom);
-  return g.actAttack(f, bestFrom, bestTo, n - leave, bestWalled ? garr.siegeEngine : 0);
+  return g.actAttack(f, bestFrom, bestTo, bestFighters, bestEngines);
 }
 
 /** Relieve an own besieged province with the strongest adjacent stack. */

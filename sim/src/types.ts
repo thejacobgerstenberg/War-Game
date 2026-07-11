@@ -131,6 +131,21 @@ export interface CombatModifiers {
   /** Card effects (extra dice / rerolls) apply only in the first battle round ("one round of ..." cards). */
   attackerFirstRoundOnly?: boolean;
   defenderFirstRoundOnly?: boolean;
+  /**
+   * This battle is a siege ASSAULT (canon §8.2.4) — set by siege.ts/game.ts
+   * assault paths. With combat.siegeEnginesFightAtBreach, the attacker's
+   * SIEGE engines keep rolling their canon §6.1 "+3 vs walls" dice even
+   * once the wall is BREACHED (canon §7.2 RAW: "in sieges, SIEGE roll" —
+   * unscoped by wall HP); in a FIELD battle they stay idle either way.
+   */
+  siegeAssault?: boolean;
+  /**
+   * Extra engine-threshold dice for the attacker in a siege assault —
+   * canon §8.4 RAW: the Great Bombard "adds the standard SIEGE +3 vs
+   * walls" in an Assault (it is not an Army unit in-sim, so its assault
+   * die enters as a modifier; CONFIG.siege.greatBombard.assaultDice).
+   */
+  attackerEngineExtraDice?: number;
   /** Faction whose unit-stat table (CONFIG.factionUnits) the side rolls with; null/undefined = neutral base stats. */
   attackerFaction?: FactionId | null;
   defenderFaction?: FactionId | null;

@@ -36,6 +36,16 @@
  *   attacked first). E5b: deserting unpaid mercs pillage their province.
  * - A province under siege yields nothing, cannot recruit, and its garrison
  *   cannot move; relief armies fight the besieger in the field.
+ * - Canon §6.4 stacking RAW (stacking round, 2026-07-11; engine-matched
+ *   reading, feature/engine-core @ c79a453): a province holds at most 8 land
+ *   units PER PLAYER (12 in a CITY/capital — proxied as authored walls or a
+ *   capital); recruit/move/attack/siege-reinforce clamp at action time
+ *   ("excess cannot enter"; see stackHeadroom), a besieger camp co-locates
+ *   on the invested province and counts against ITS cap for the besieger
+ *   (garrison and camp never sum), and §7.5 retreats/routs path to ONE
+ *   friendly province up to its remaining headroom with the OVERFLOW
+ *   SURRENDERING (retreatCapped). Naval stacking (6/zone) is declared in
+ *   CONFIG.stacking but unexercised (no at-sea stacks).
  */
 
 import type { Army, BattleResult, CombatModifiers, FactionId, PrestigeLedger, UnitType } from './types';
@@ -250,6 +260,41 @@ function buildReach(): Map<string, Reach[]> {
   return out;
 }
 const REACH: Map<string, Reach[]> = buildReach();
+
+// --------------------------------------------------- stacking (canon §6.4)
+
+/** Canon §6.4 land units (levy+professional+mercenary+siegeEngine); galleys are naval. */
+export function landUnits(a: Army): number {
+  return a.levy + a.professional + a.mercenary + a.siegeEngine;
+}
+
+const CAPITAL_ID_SET = new Set<string>(Object.values(CAPITALS));
+
+/**
+ * Canon §6.4 per-(owner,province) land stacking cap — ENGINE-MATCHED
+ * (feature/engine-core @ c79a453): the CITY cap (12) applies to the
+ * engine's isCityProvince = CITY terrain OR any faction capital, proxied
+ * in-sim (no CITY terrain is authored) as AUTHORED wallTier >= 1 or a
+ * capital; everything else caps at 8. Player-built wall upgrades do not
+ * re-terrain a province, so the cap reads the authored map tier.
+ */
+export function stackCapOf(pid: string): number {
+  const st = CONFIG.stacking;
+  return PROVINCE_BY_ID.get(pid)!.wallTier >= 1 || CAPITAL_ID_SET.has(pid) ? st.cityCap : st.landPerProvince;
+}
+
+/**
+ * Remove k land units lowest-value first (levy -> professional ->
+ * mercenary -> siege engine): the §7.5 retreat-overflow SURRENDER order
+ * (canon §4.4 value order; the retreating owner saves the best troops).
+ */
+function surrenderLand(a: Army, k: number): void {
+  let r = k;
+  let t = Math.min(a.levy, r); a.levy -= t; r -= t;
+  t = Math.min(a.professional, r); a.professional -= t; r -= t;
+  t = Math.min(a.mercenary, r); a.mercenary -= t; r -= t;
+  t = Math.min(a.siegeEngine, r); a.siegeEngine -= t; r -= t;
+}
 
 // ------------------------------------------------------------ army helpers
 
@@ -632,7 +677,7 @@ export class Game {
         if (!pid) continue;
         const prov = this.provinces.get(pid)!;
         const g = prov.garrison;
-        if (mag > 0) g.levy += mag;
+        if (mag > 0) g.levy += Math.min(mag, Math.max(0, this.stackHeadroom(f, pid))); // §6.4: excess volunteers cannot enter
         else {
           const floor = prov.wallTier > 0 && (this.sieges.has(pid) || pid === CAPITALS[f]) ? 3 : 1;
           removeCasualties(g, Math.min(-mag, Math.max(0, combatants(g) - floor)));
@@ -798,6 +843,7 @@ export class Game {
       defenderBonus: (base.defenderBonus ?? 0) + (defCard?.flatDefenderBonus ?? 0),
       terrainBonus: base.terrainBonus ?? 0,
       wallBonus,
+      siegeAssault: base.siegeAssault,
       attackerExtraDice: attCard?.extraDice ?? 0,
       defenderExtraDice: defCard?.extraDice ?? 0,
       attackerRerolls: attCard?.rerollsPerRound ?? 0,
@@ -1073,18 +1119,52 @@ export class Game {
   }
 
   /**
+   * Land units of `f` committed to province `pid` under the canon §6.4
+   * per-(owner,province) reading: the owned garrison, f's siege camp
+   * co-located on an invested `pid`, plus everything already queued to
+   * arrive there this round (end-of-round recruit musters and pending
+   * attack stacks) — so cumulative same-round commitments cannot overfill
+   * the cap at resolution time.
+   */
+  private landCommitted(f: FactionId, pid: string): number {
+    let n = 0;
+    const p = this.provinces.get(pid);
+    if (p && p.owner === f) n += landUnits(p.garrison);
+    const s = this.sieges.get(pid);
+    if (s && s.attacker === f) n += landUnits(s.army);
+    for (const r of this.pendingRecruits) if (r.faction === f && r.province === pid && r.unit !== 'galley') n += r.count;
+    for (const pa of this.pendingAttacks) if (pa.faction === f && pa.to === pid) n += landUnits(pa.army);
+    return n;
+  }
+
+  /**
+   * Remaining §6.4 land-stacking headroom of faction `f` at province
+   * `pid` ("excess cannot enter"). Read by agents to assemble legal
+   * stacks and by every action / retreat path to clamp entry.
+   */
+  stackHeadroom(f: FactionId, pid: string): number {
+    return stackCapOf(pid) - this.landCommitted(f, pid);
+  }
+
+  /**
    * Plan a detachment: `fighters` combat troops best-first, plus engines,
-   * plus galley escort for sea moves (1 per 2 land units). Returns null if
-   * the plan is empty or escort is unavailable. Mutates nothing.
+   * plus galley escort for sea moves (1 per 2 land units). `maxLand` is
+   * the destination's §6.4 stacking headroom ("excess cannot enter"):
+   * engines are reserved first (they are requested deliberately, for
+   * sieges), fighters fill the rest. Returns null if the plan is empty or
+   * escort is unavailable. Mutates nothing.
    */
   private planForce(
     g: Army,
     fighters: number,
     engines: number,
     sea: boolean,
+    maxLand: number,
   ): Army | null {
+    if (maxLand <= 0) return null;
     const out = emptyArmy();
-    let want = Math.max(0, fighters);
+    out.siegeEngine = Math.min(g.siegeEngine, Math.max(0, engines), maxLand);
+    let want = Math.min(Math.max(0, fighters), maxLand - out.siegeEngine);
     const take = (t: 'professional' | 'mercenary' | 'levy') => {
       const k = Math.min(g[t], want);
       out[t] = k;
@@ -1093,7 +1173,6 @@ export class Game {
     take('professional');
     take('mercenary');
     take('levy');
-    out.siegeEngine = Math.min(g.siegeEngine, Math.max(0, engines));
     const land = out.levy + out.professional + out.mercenary + out.siegeEngine;
     if (land === 0) return null;
     if (sea) {
@@ -1141,6 +1220,7 @@ export class Game {
     let n = Math.min(count, cap, cost > 0 ? Math.floor(fs.gold / cost) : count);
     if (st.timberCost > 0) n = Math.min(n, Math.floor(fs.timber / st.timberCost));
     if (st.marbleCost > 0) n = Math.min(n, Math.floor(fs.marble / st.marbleCost));
+    if (unit !== 'galley') n = Math.min(n, this.stackHeadroom(f, pid)); // canon §6.4: excess cannot enter (galleys are naval)
     if (n <= 0) return false;
     fs.gold -= n * cost;
     fs.timber -= n * st.timberCost;
@@ -1168,7 +1248,10 @@ export class Game {
     const reach = this.reachEntry(from, to);
     if (!reach) return false;
     if (this.sieges.has(to) && !(reach.sea && this.harborOpen(to))) return false;
-    const plan = this.planForce(pf.garrison, count, withEngines ? pf.garrison.siegeEngine : 0, reach.sea);
+    const plan = this.planForce(
+      pf.garrison, count, withEngines ? pf.garrison.siegeEngine : 0, reach.sea,
+      this.stackHeadroom(f, to), // canon §6.4: excess cannot enter
+    );
     if (!plan) return false;
     this.extract(pf.garrison, plan);
     mergeArmy(pt.garrison, plan);
@@ -1190,7 +1273,10 @@ export class Game {
     if (pt.owner === f && (!siege || siege.attacker === f)) return false; // nothing to attack
     const reach = this.reachEntry(from, to);
     if (!reach) return false;
-    const plan = this.planForce(pf.garrison, count, engines, reach.sea);
+    // Canon §6.4 (engine-matched, per-(owner,province)): the attack stack —
+    // including a siege camp it may become or reinforce — may not exceed the
+    // DESTINATION's cap for this faction; excess cannot enter.
+    const plan = this.planForce(pf.garrison, count, engines, reach.sea, this.stackHeadroom(f, to));
     if (!plan || combatants(plan) === 0) return false;
     this.extract(pf.garrison, plan);
     if (siege && siege.attacker === f) {
@@ -1313,11 +1399,66 @@ export class Game {
 
   // ------------------------------------------------------- battle resolution
 
-  private returnHome(f: FactionId, origin: string, army: Army): void {
-    if (combatants(army) === 0) return;
-    const p = this.provinces.get(origin);
-    if (p && p.owner === f) mergeArmy(p.garrison, army);
-    // else: retreat path lost, the force disperses
+  /**
+   * Canon §7.5 retreat/rout pathing under §6.4 stacking (engine-matched,
+   * feature/engine-core @ c79a453). The retreating stack falls back to ONE
+   * friendly province: its origin when still owned, else an owned
+   * land-adjacent province of the battlefield; the first candidate whose
+   * remaining per-(owner,province) headroom fits the whole stack wins,
+   * otherwise the roomiest. Only the destination's remaining headroom may
+   * enter — the OVERFLOW SURRENDERS (removed, lowest-value first; the
+   * engine's 2026-07-11 rout-retreat fix). With no reachable friendly
+   * province with headroom, the whole stack surrenders (§7.5 "if none
+   * exists they surrender"); its galleys are lost with it. Galleys are
+   * otherwise naval (§6.4 counts them per sea zone, not per province) and
+   * follow the stack without consuming land headroom. Canon also allows
+   * retreating into an EMPTY non-owned province; a mid-phase occupation is
+   * outside the sim's state model, so only owned destinations qualify —
+   * documented divergence (RULES_MODEL.md).
+   *
+   * Returns { admitted, surrendered } land-unit counts (instrumentation:
+   * src/run/stacking_probe.ts).
+   */
+  private retreatCapped(
+    f: FactionId,
+    origin: string | null,
+    army: Army,
+    battlefield: string,
+  ): { admitted: number; surrendered: number } {
+    const need = landUnits(army);
+    if (need === 0 && army.galley === 0) return { admitted: 0, surrendered: 0 };
+    const candidates: string[] = [];
+    if (origin) candidates.push(origin);
+    for (const adj of PROVINCE_BY_ID.get(battlefield)?.adjacentProvinces ?? []) {
+      if (adj !== origin) candidates.push(adj);
+    }
+    let dest: string | null = null;
+    let destRoom = 0;
+    for (const pid of candidates) {
+      const p = this.provinces.get(pid);
+      if (!p || p.owner !== f) continue;
+      const s = this.sieges.get(pid);
+      if (s && s.attacker !== f) continue; // own province invested by an enemy: cannot be entered
+      const room = this.stackHeadroom(f, pid);
+      if (room <= 0) continue;
+      if (room >= need) {
+        dest = pid;
+        destRoom = room;
+        break; // first candidate that fits the whole stack
+      }
+      if (room > destRoom) {
+        dest = pid;
+        destRoom = room;
+      }
+    }
+    if (!dest) return { admitted: 0, surrendered: need }; // no retreat path: the stack surrenders
+    let surrendered = 0;
+    if (CONFIG.stacking.routOverflowSurrenders && need > destRoom) {
+      surrendered = need - destRoom;
+      surrenderLand(army, surrendered);
+    }
+    mergeArmy(this.provinces.get(dest)!.garrison, army);
+    return { admitted: need - surrendered, surrendered };
   }
 
   private resolveBattles(): void {
@@ -1362,10 +1503,13 @@ export class Game {
         );
         if (r.winner === 'attacker') {
           this.sieges.delete(pa.to);
-          if (p.owner === pa.faction) mergeArmy(p.garrison, pa.army); // enter the relieved city
-          else this.returnHome(pa.faction, pa.from, pa.army);
+          // §7.5: the beaten camp's survivors (routed, r.defenderRemaining > 0)
+          // retreat toward their origin under the §6.4 headroom clamp.
+          if (r.defenderRemaining > 0) this.retreatCapped(siege.attacker, siege.origin, siege.army, pa.to);
+          if (p.owner === pa.faction) mergeArmy(p.garrison, pa.army); // enter the relieved city (cap held at commit time)
+          else this.retreatCapped(pa.faction, pa.from, pa.army, pa.to);
         } else {
-          this.returnHome(pa.faction, pa.from, pa.army);
+          this.retreatCapped(pa.faction, pa.from, pa.army, pa.to);
         }
         continue;
       }
@@ -1415,8 +1559,18 @@ export class Game {
         r.winner === 'attacker' ? att0 : def0,
         r.winner === 'attacker' ? def0 : att0,
       );
-      if (r.winner === 'attacker') this.capture(pa.to, pa.faction, pa.army, true);
-      else this.returnHome(pa.faction, pa.from, pa.army);
+      if (r.winner === 'attacker') {
+        // §7.5: routed defender survivors (r.defenderRemaining > 0) retreat
+        // to an adjacent friendly province up to headroom; overflow (or a
+        // cut-off stack) surrenders. Neutral minors have no retreat network.
+        if (p.owner && r.defenderRemaining > 0) {
+          const survivors = copyArmy(p.garrison);
+          this.retreatCapped(p.owner, null, survivors, pa.to);
+        }
+        this.capture(pa.to, pa.faction, pa.army, true);
+      } else {
+        this.retreatCapped(pa.faction, pa.from, pa.army, pa.to);
+      }
     }
   }
 
@@ -1628,7 +1782,7 @@ export class Game {
       }
       if (combatants(s.army) <= 2) {
         this.sieges.delete(pid); // camp too weak: lift the siege
-        this.returnHome(s.attacker, s.origin, s.army);
+        this.retreatCapped(s.attacker, s.origin, s.army, pid);
         continue;
       }
       // 3. assault decision per the attacker's policy
@@ -1654,7 +1808,15 @@ export class Game {
         s.army,
         p.garrison,
         this.battleMods(
-          { attackerBonus: escalade, terrainBonus: CONFIG.combat.terrain[prov.terrain], wallBonus },
+          {
+            attackerBonus: escalade,
+            terrainBonus: CONFIG.combat.terrain[prov.terrain],
+            wallBonus,
+            siegeAssault: true,
+            // canon §8.4: the emplaced Great Bombard adds its own SIEGE
+            // "+3 vs walls" die to the assault (it is a flag, not a unit)
+            attackerEngineExtraDice: bombardFiresAt === pid ? sc.greatBombard.assaultDice : 0,
+          },
           s.attacker, p.owner, attCard, defCard,
         ),
         this.rngCombat,
@@ -1666,11 +1828,18 @@ export class Game {
         r.winner === 'attacker' ? def0 : att0,
       );
       if (r.winner === 'attacker') {
+        // §7.5: a garrison routed through a BREACH (defenderRoutsBehindWalls
+        // gap-fill keeps intact-wall garrisons in place) retreats to an
+        // adjacent friendly province up to headroom; overflow surrenders.
+        if (p.owner && r.defenderRemaining > 0) {
+          const survivors = copyArmy(p.garrison);
+          this.retreatCapped(p.owner, null, survivors, pid);
+        }
         p.garrison.siegeEngine = 0;
         this.capture(pid, s.attacker, s.army, true);
       } else if (combatants(s.army) <= 2) {
         this.sieges.delete(pid);
-        this.returnHome(s.attacker, s.origin, s.army);
+        this.retreatCapped(s.attacker, s.origin, s.army, pid);
       }
       // failed assault with strength left: the siege grinds on
     }
