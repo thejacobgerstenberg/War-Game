@@ -87,7 +87,7 @@ The committed `results/` were produced at the shipped CONFIG by:
 npm run sim:combat && npm run sim:siege && npm run sim:economy && npm run sim:pacing
 GAMES=3000 SEED=24681357 npm run sim:fullgame      # committed results/fullgame.json
 GAMES=5000 SEED=987654321 npm run sim:fullgame     # the independent 5,000-game verify quoted in TUNING_REPORT §1
-npx tsx src/adversarial/run_cple_beeline.ts        # and the other five run_*.ts hunters
+GAMES=1000 npx tsx src/adversarial/run_cple_beeline.ts   # and the other five run_*.ts hunters (committed beeline JSON is 1,000 games/arm)
 npm run sim:report
 ```
 
@@ -100,10 +100,12 @@ the committed file is the 3,000-game fresh-seed final run.)
 - **T2** every policy wins 10–40% of seats
 - **T3** median game ends rounds 12–16, <10% before round 11, 40–70%
   threshold-decided
-- **T4** sudden death (Fall of Constantinople) decides 1–15% of games, never
-  before round 10
+- **T4** sudden death (Fall of Constantinople) decides 1–15% of games
+  (ratified-errata brief: <15%), never before round 10
 - **T5** Constantinople capture curves: intact-assault <2%, un-blockaded
   un-Bombarded capture <10% in 12 rounds, blockade starve-out median ≥6
-  rounds, with-Bombard capture ≤4 rounds >50%
+  rounds, with-Bombard capture within 2–4 siege rounds AFTER it first
+  fires >50% (errata E3: the Bombard is emplaced 1 siege round before
+  firing, so the window is siege rounds ≤5)
 - **T6** every faction × archetype stays solvent through round 16 and can
   field a credible strike force by rounds 4–5

@@ -839,3 +839,123 @@ victoryThreshold 82 -> 84; ottomans.cityCapturePrestige 1 -> 2.
 map.ts: pera gold 3 -> 2; bursa gold 3 -> 4.
 game.ts/agents.ts/byz_guard.ts/runaway_leader.ts: engine + agent changes
 enumerated above. All results/*.json regenerated at this config.
+
+---
+
+## Ratified errata round (2026-07-11) — coordinator errata E1-E5 implemented + re-measured
+
+The coordinator ratified errata + additions to the game rules (resolving
+register items 1, 2, 5a, 7, 8 and the Bombard-round divergence flag).
+Mechanics changes (all in game.ts/rules.ts/siege.ts; RULES_MODEL.md updated
+per ruling):
+
+- **E1 TREASON-AT-THE-GATE**: playable only vs a garrison of <= 4 units,
+  AND its consecutive-siege-round clock counts only siege rounds in game
+  round >= 6 (card def gains `maxGarrison: 4`,
+  `siegeRoundsCountFromGameRound: 6`; engine tracks `Siege.treasonRounds`).
+- **E2 MONOPOLY PRESTIGE**: diminishing returns — +2/round first monopoly,
+  +1/round each additional (`tradeMonopolyAdditionalPerRound: 1`); no
+  escort requirement. Applied in game.ts cleanup and the pacing model.
+- **E3 GREAT BOMBARD**: canon draw model — the omen is drawn at a per-game
+  seeded round uniform over 11-16 (`drawRoundMin/Max`, own RNG fork;
+  replaces the tuned fixed r15 `availableFromRound`); PLUS 1-round
+  emplacement before it first fires (`emplacementRounds: 1`, no wall damage
+  from it that round; `Game.bombardEmplacement` / siege-module round-1
+  skip). Agents now gate on `game.bombardForged`, not a round number.
+- **E4 SECRET OBJECTIVES**: 3 objectives per faction (canon), +4 each
+  INDEPENDENTLY at game end (was: one all-3-provinces objective). Each of
+  the 3 seeded provinces is now its own objective;
+  `GameResult.objectivesCompleted` reports per-faction completion 0-3 in
+  every game.
+- **E5a UNJUSTIFIED WAR**: declaring war without justification costs 1
+  prestige (`prestige.unjustifiedWar: -1`), charged once at war start.
+  Sim justification mapping: target holds one of your objective provinces
+  / target is the prestige leader / target attacked you first this game.
+- **E5b MERC REVOLT PILLAGE**: unpaid/unfed mercenary desertion pillages
+  the host province per canon EVENT_CARDS #22 (-2 stored gold, yield 0
+  next round; `economy.mercRevolt`); camp deserters cost gold only.
+
+### Retune: victoryThreshold 84 -> 80 (single lever)
+
+The E2 monopoly nerf lowered winner accrual (traders) while the E3 earlier
+Bombard raised SD; at 84 the threshold-decided share fell to 37.4% (T3
+floor 40%) and SD hit 14.6%; on the fresh seed Venice fell to 11.6% (T1
+floor 12%). A/B at 1000 games seed 14530000: 84 -> thr 37.4%/SD 14.6%/ven
+12.6; 82 -> 47.2%/13.7%/12.9 (but ven 11.6% on SEED=24681357); 80 ->
+57.6%/12.2%/13.4 and ven 12.3-13.4% across all three seeds. Shipped 80
+(pacing window 78-84; multiple 80/5.277 = 15.2x winner accrual/round on
+the committed run).
+
+### Final verification (all at the shipped errata CONFIG, threshold 80)
+
+- FULLGAME 1000 @ 14530000: byz 18.4 / ott 17.3 / ven 13.4 / gen 27.1 /
+  hun 23.8; policies 13.8/25.8/18.3/22.0; thr 57.6% / cap 30.2% / SD 12.2%.
+- COMMITTED 3000 @ 24681357: byz 17.7 / ott 17.3 / ven 12.3 / gen 26.3 /
+  hun 26.4 — T1 PASS; rusher 13.9 / trader 25.7 / turtler 17.7 /
+  opportunist 22.7 — T2 PASS; median 15, mean 15.03, 0.50% end < r11,
+  thr-decided 57.6% — T3 PASS; SD 12.3%, ALL completions r12+ — T4 PASS;
+  eliminations 0. Winner accrual 5.277/round (mean winner final 78.7).
+- VERIFY 5000 @ 987654321: byz 18.2 / ott 17.0 / ven 13.2 / gen 25.3 /
+  hun 26.3; thr 57.5% / SD 11.9%; 0.50% < r11 — green.
+- SIEGE (20k iters/cell): T5a worst 0.31% (<2%); T5b 0.0% (<10%); T5c
+  minCap 99.9% / minMedian 7 (>=6); T5d RE-DERIVED for E3 emplacement —
+  capture within 4 siege rounds of the Bombard's FIRST SHOT (k <= 5):
+  worst 91.7% (>50%), median capture siege round 3 (was 2). T5 PASS.
+- ECONOMY: 15/15 solvency, 5/5 strike >= 8 (9/13.8/11.6/11/8.7) — T6 PASS
+  (pre-existing informational reds unchanged).
+- PACING: all-criteria window 78-84, rec 81; shipped 80 inside the window
+  (fullgame is ground truth).
+- COMBAT MC: 0 monotonicity/ordering violations (kernel untouched).
+- Errata telemetry (fullgame 1000 @ 14530000): unjustified-war charges
+  0.79/game; per-objective completion 6.1%; SD winners 100% Ottoman
+  (Bombard), SD rounds 12-16.
+
+### Adversarial re-measures (base seeds unchanged)
+
+- CPLE-BEELINE (1000/arm, seed 311002), BOTH treason brakes: solo_ottoman
+  SD 22.6% -> 16.2%, <=r8 15.0% -> 8.3%; solo_genoa 18.8% -> 13.2% /
+  11.4% -> 5.9%; solo_venice 6.5% -> 6.2% / 1.3% -> 0.6%; duo 23.1% ->
+  17.7% / 15.4% -> 8.2%; guard_ottoman 23.8% -> 7.3% / 16.6% -> 0.0%;
+  guard_genoa 17.5% -> 0.0%. ALL brief bars PASS (<=20% one-beeliner SD,
+  <=10% <=r8). noTreason arms are no longer 0.0% (2.8%/7.0%): the E3
+  r11-16 Bombard draw opens the walls legitimately in some games — the
+  same priced-in late-game SD as fullgame T4.
+- TURTLE-DOMINANCE (seed 311003), diminishing monopoly returns:
+  monopolyMax Venice 66.2% -> 57.5%, Genoa 61.7% -> 60.0%; tradeMax
+  Venice 36.8%, Genoa 55.7%; ctrlTrader Venice 39.8%, Genoa 60.0% (the
+  Genoa trade-seat ceiling persists — residual driver is trade INCOME
+  funding great works, not monopoly prestige; register item stays open).
+  All-turtle near-ties (margin < 2, any type) 48.3%; lone turtle 16.6-18.8%.
+- ECONOMY-EXPLOIT war-poke (1000/arm, seed 311005): trader-Genoa under
+  the dedicated griefer 34.7% vs control 48.7%; blockade-mechanism
+  attribution 0.0pp (34.7% with mechanism ON == OFF); passive-picket
+  griefer 0.0% (total self-sacrifice). The 2-unit self-lifting poke is
+  now PRICED by E5a but only once per war (a live siege keeps the war
+  warm), so a dedicated campaign still costs <= ~1 prestige total —
+  residual documented (register "still open" #5). Levy flood: never
+  beats the faction's best honest policy (max delta +3.5pp ottomans,
+  inside its rusher line). Omen swings 0.20-0.35x mean round income.
+- RUNAWAY-LEADER (2000/arm, seed 311004): P(r8 unique leader wins) 72.8%
+  -> 69.4% (UNDER the 70% line for the first time); keys>=2@r6 19.2% ->
+  18.5%; objective-reveal flips 0.0% -> 9.6% of unique-leader cap games
+  (E4 live, far under the 30% kingmaker bar); per-objective completion
+  6.0% (hist 0/1/2/3 = 8455/1309/219/17 per surviving faction-game);
+  objectives scored in cap games: 459 across 323 of 595 cap games.
+- MERC-RUSH + FACTION-FLOOR: re-run at the final config (E5b prices the
+  stiff-the-mercs line; see results JSONs; numbers in TUNING_REPORT §4).
+
+### Config deltas this round
+
+rules.ts: treason-at-the-gate + `maxGarrison: 4`,
+`siegeRoundsCountFromGameRound: 6` (E1); + `tradeMonopolyAdditionalPerRound:
+1` (E2); greatBombard `availableFromRound: 15` -> `drawRoundMin: 11` /
+`drawRoundMax: 16` + `emplacementRounds: 1` (E3); + `prestige.unjustifiedWar:
+-1` (E5a); + `economy.mercRevolt {pillageGold: 2, pillageYieldRounds: 1}`
+(E5b); `victoryThreshold` 84 -> 80. game.ts: E1 treason clock + garrison
+gate, E2 diminishing monopoly scoring, E3 seeded draw round + emplacement
+tracker, E4 3-independent-objective end scoring + telemetry, E5a
+declareWar/justification/attackedEver, E5b mercRevoltPillage +
+ProvinceState.pillagedUntilRound. siege.ts: E3 emplacement in runSiege.
+pacing.ts: E2 + E4. agents.ts + adversarial copies: `bombardForged` gate.
+run/siege.ts: T5d re-derived (capture <= emplacement+4 after first fire).
+All results/*.json regenerated at this config.

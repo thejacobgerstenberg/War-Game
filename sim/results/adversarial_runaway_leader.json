@@ -3,8 +3,8 @@
     "baseSeed": 311004,
     "gamesPerArm": 2000,
     "smoke": false,
-    "elapsedMs": 19860,
-    "victoryThreshold": 84,
+    "elapsedMs": 19373,
+    "victoryThreshold": 80,
     "secretObjective": 4,
     "exploitCriteria": {
       "r8LeaderWins": ">0.70",
@@ -17,191 +17,50 @@
     "pressureOn": {
       "arm": "pressureOn",
       "games": 2000,
-      "scoringHits": 2328,
-      "attackPicks": 25365,
-      "decisionsChanged": 142,
+      "scoringHits": 2201,
+      "attackPicks": 25323,
+      "decisionsChanged": 131,
       "gamesWithHits": 486,
-      "gamesWithChanged": 110,
+      "gamesWithChanged": 103,
       "victoryTypes": {
-        "threshold": 910,
-        "cap": 950,
-        "suddenDeath": 140,
+        "threshold": 1191,
+        "cap": 595,
+        "suddenDeath": 214,
         "elimination": 0
       },
       "byFaction": {
         "byzantium": {
-          "wins": 380,
+          "wins": 365,
           "games": 2000
         },
         "ottomans": {
-          "wins": 258,
+          "wins": 319,
           "games": 2000
         },
         "venice": {
-          "wins": 264,
-          "games": 2000
-        },
-        "genoa": {
-          "wins": 561,
-          "games": 2000
-        },
-        "hungary": {
-          "wins": 537,
-          "games": 2000
-        }
-      },
-      "byPolicy": {
-        "rusher": {
-          "wins": 317,
-          "games": 2500
-        },
-        "trader": {
-          "wins": 671,
-          "games": 2500
-        },
-        "turtler": {
-          "wins": 464,
-          "games": 2500
-        },
-        "opportunist": {
-          "wins": 548,
-          "games": 2500
-        }
-      },
-      "leader": [
-        {
-          "round": 4,
-          "eligibleGames": 2000,
-          "uniqueLeader": 1841,
-          "leaderWins": 700,
-          "ties": 159,
-          "marginSum": 6528
-        },
-        {
-          "round": 6,
-          "eligibleGames": 2000,
-          "uniqueLeader": 1840,
-          "leaderWins": 852,
-          "ties": 160,
-          "marginSum": 7933
-        },
-        {
-          "round": 8,
-          "eligibleGames": 2000,
-          "uniqueLeader": 1809,
-          "leaderWins": 1317,
-          "ties": 191,
-          "marginSum": 8766
-        },
-        {
-          "round": 10,
-          "eligibleGames": 1999,
-          "uniqueLeader": 1872,
-          "leaderWins": 1423,
-          "ties": 127,
-          "marginSum": 13929
-        },
-        {
-          "round": 12,
-          "eligibleGames": 1983,
-          "uniqueLeader": 1879,
-          "leaderWins": 1530,
-          "ties": 104,
-          "marginSum": 15217
-        }
-      ],
-      "r8MarginBuckets": [
-        {
-          "minMargin": 0,
-          "games": 1809,
-          "wins": 1317
-        },
-        {
-          "minMargin": 3,
-          "games": 1283,
-          "wins": 1022
-        },
-        {
-          "minMargin": 6,
-          "games": 657,
-          "wins": 557
-        },
-        {
-          "minMargin": 10,
-          "games": 143,
-          "wins": 131
-        }
-      ],
-      "keys2AtR6": {
-        "wins": 385,
-        "games": 2002
-      },
-      "keys3AtR6": {
-        "wins": 95,
-        "games": 146
-      },
-      "keys2AtR6AndLeaderR8": {
-        "wins": 220,
-        "games": 304
-      },
-      "objective": {
-        "capGames": 950,
-        "capUniqueLeader": 900,
-        "capPreRevealTies": 50,
-        "flips": 0,
-        "flipWinnerGainedObjective": 0,
-        "gamesAnyObjectiveScored": 8,
-        "objectivesScoredTotal": 8
-      },
-      "medianRounds": 16
-    },
-    "pressureOff": {
-      "arm": "pressureOff",
-      "games": 2000,
-      "scoringHits": 0,
-      "attackPicks": 25306,
-      "decisionsChanged": 0,
-      "gamesWithHits": 0,
-      "gamesWithChanged": 0,
-      "victoryTypes": {
-        "threshold": 905,
-        "cap": 959,
-        "suddenDeath": 136,
-        "elimination": 0
-      },
-      "byFaction": {
-        "byzantium": {
-          "wins": 381,
-          "games": 2000
-        },
-        "ottomans": {
           "wins": 247,
           "games": 2000
         },
-        "venice": {
-          "wins": 268,
-          "games": 2000
-        },
         "genoa": {
-          "wins": 564,
+          "wins": 530,
           "games": 2000
         },
         "hungary": {
-          "wins": 540,
+          "wins": 539,
           "games": 2000
         }
       },
       "byPolicy": {
         "rusher": {
-          "wins": 314,
+          "wins": 353,
           "games": 2500
         },
         "trader": {
-          "wins": 671,
+          "wins": 667,
           "games": 2500
         },
         "turtler": {
-          "wins": 471,
+          "wins": 436,
           "games": 2500
         },
         "opportunist": {
@@ -213,140 +72,148 @@
         {
           "round": 4,
           "eligibleGames": 2000,
-          "uniqueLeader": 1841,
-          "leaderWins": 698,
-          "ties": 159,
-          "marginSum": 6528
+          "uniqueLeader": 1828,
+          "leaderWins": 716,
+          "ties": 172,
+          "marginSum": 6511
         },
         {
           "round": 6,
           "eligibleGames": 2000,
-          "uniqueLeader": 1840,
-          "leaderWins": 857,
-          "ties": 160,
-          "marginSum": 7933
+          "uniqueLeader": 1842,
+          "leaderWins": 845,
+          "ties": 158,
+          "marginSum": 7851
         },
         {
           "round": 8,
           "eligibleGames": 2000,
-          "uniqueLeader": 1809,
-          "leaderWins": 1320,
-          "ties": 191,
-          "marginSum": 8774
+          "uniqueLeader": 1836,
+          "leaderWins": 1275,
+          "ties": 164,
+          "marginSum": 8747
         },
         {
           "round": 10,
           "eligibleGames": 1999,
-          "uniqueLeader": 1868,
-          "leaderWins": 1422,
-          "ties": 131,
-          "marginSum": 13916
+          "uniqueLeader": 1876,
+          "leaderWins": 1363,
+          "ties": 123,
+          "marginSum": 13869
         },
         {
           "round": 12,
-          "eligibleGames": 1982,
-          "uniqueLeader": 1879,
-          "leaderWins": 1532,
-          "ties": 103,
-          "marginSum": 15189
+          "eligibleGames": 1978,
+          "uniqueLeader": 1878,
+          "leaderWins": 1462,
+          "ties": 100,
+          "marginSum": 14770
         }
       ],
       "r8MarginBuckets": [
         {
           "minMargin": 0,
-          "games": 1809,
-          "wins": 1320
+          "games": 1836,
+          "wins": 1275
         },
         {
           "minMargin": 3,
-          "games": 1284,
-          "wins": 1027
+          "games": 1292,
+          "wins": 990
         },
         {
           "minMargin": 6,
-          "games": 656,
-          "wins": 560
+          "games": 649,
+          "wins": 544
         },
         {
           "minMargin": 10,
-          "games": 145,
-          "wins": 135
+          "games": 130,
+          "wins": 117
         }
       ],
       "keys2AtR6": {
-        "wins": 386,
+        "wins": 371,
         "games": 2002
       },
       "keys3AtR6": {
-        "wins": 94,
-        "games": 146
+        "wins": 86,
+        "games": 137
       },
       "keys2AtR6AndLeaderR8": {
-        "wins": 223,
-        "games": 304
+        "wins": 211,
+        "games": 284
       },
       "objective": {
-        "capGames": 959,
-        "capUniqueLeader": 909,
-        "capPreRevealTies": 50,
-        "flips": 0,
-        "flipWinnerGainedObjective": 0,
-        "gamesAnyObjectiveScored": 7,
-        "objectivesScoredTotal": 7
+        "capGames": 595,
+        "capUniqueLeader": 553,
+        "capPreRevealTies": 42,
+        "flips": 53,
+        "flipWinnerGainedObjective": 53,
+        "gamesAnyObjectiveScored": 323,
+        "objectivesScoredTotal": 459,
+        "objectiveSlotsAllGames": 30000,
+        "objectivesCompletedAllGames": 1798,
+        "completedCountHist": {
+          "0": 8455,
+          "1": 1309,
+          "2": 219,
+          "3": 17
+        }
       },
       "medianRounds": 16
     },
-    "pressureStrong": {
-      "arm": "pressureStrong",
+    "pressureOff": {
+      "arm": "pressureOff",
       "games": 2000,
-      "scoringHits": 2435,
-      "attackPicks": 25427,
-      "decisionsChanged": 180,
-      "gamesWithHits": 508,
-      "gamesWithChanged": 129,
+      "scoringHits": 0,
+      "attackPicks": 25299,
+      "decisionsChanged": 0,
+      "gamesWithHits": 0,
+      "gamesWithChanged": 0,
       "victoryTypes": {
-        "threshold": 908,
-        "cap": 951,
-        "suddenDeath": 141,
+        "threshold": 1189,
+        "cap": 600,
+        "suddenDeath": 211,
         "elimination": 0
       },
       "byFaction": {
         "byzantium": {
-          "wins": 374,
+          "wins": 370,
           "games": 2000
         },
         "ottomans": {
-          "wins": 258,
+          "wins": 310,
           "games": 2000
         },
         "venice": {
-          "wins": 258,
+          "wins": 247,
           "games": 2000
         },
         "genoa": {
-          "wins": 558,
+          "wins": 534,
           "games": 2000
         },
         "hungary": {
-          "wins": 552,
+          "wins": 539,
           "games": 2000
         }
       },
       "byPolicy": {
         "rusher": {
-          "wins": 322,
+          "wins": 350,
           "games": 2500
         },
         "trader": {
-          "wins": 663,
+          "wins": 667,
           "games": 2500
         },
         "turtler": {
-          "wins": 466,
+          "wins": 437,
           "games": 2500
         },
         "opportunist": {
-          "wins": 549,
+          "wins": 546,
           "games": 2500
         }
       },
@@ -354,127 +221,291 @@
         {
           "round": 4,
           "eligibleGames": 2000,
-          "uniqueLeader": 1841,
-          "leaderWins": 697,
-          "ties": 159,
-          "marginSum": 6528
+          "uniqueLeader": 1828,
+          "leaderWins": 717,
+          "ties": 172,
+          "marginSum": 6511
         },
         {
           "round": 6,
           "eligibleGames": 2000,
-          "uniqueLeader": 1840,
-          "leaderWins": 845,
-          "ties": 160,
-          "marginSum": 7926
+          "uniqueLeader": 1841,
+          "leaderWins": 843,
+          "ties": 159,
+          "marginSum": 7848
         },
         {
           "round": 8,
           "eligibleGames": 2000,
-          "uniqueLeader": 1808,
-          "leaderWins": 1303,
-          "ties": 192,
-          "marginSum": 8780
+          "uniqueLeader": 1836,
+          "leaderWins": 1282,
+          "ties": 164,
+          "marginSum": 8757
         },
         {
           "round": 10,
-          "eligibleGames": 2000,
-          "uniqueLeader": 1872,
-          "leaderWins": 1413,
+          "eligibleGames": 1999,
+          "uniqueLeader": 1871,
+          "leaderWins": 1367,
           "ties": 128,
-          "marginSum": 13932
+          "marginSum": 13873
         },
         {
           "round": 12,
-          "eligibleGames": 1984,
+          "eligibleGames": 1979,
           "uniqueLeader": 1881,
-          "leaderWins": 1520,
-          "ties": 103,
-          "marginSum": 15246
+          "leaderWins": 1474,
+          "ties": 98,
+          "marginSum": 14821
         }
       ],
       "r8MarginBuckets": [
         {
           "minMargin": 0,
-          "games": 1808,
-          "wins": 1303
+          "games": 1836,
+          "wins": 1282
         },
         {
           "minMargin": 3,
-          "games": 1282,
-          "wins": 1013
+          "games": 1290,
+          "wins": 997
         },
         {
           "minMargin": 6,
-          "games": 658,
-          "wins": 554
+          "games": 653,
+          "wins": 550
         },
         {
           "minMargin": 10,
-          "games": 142,
-          "wins": 130
+          "games": 129,
+          "wins": 119
         }
       ],
       "keys2AtR6": {
-        "wins": 379,
+        "wins": 376,
         "games": 2002
       },
       "keys3AtR6": {
-        "wins": 92,
-        "games": 145
+        "wins": 88,
+        "games": 137
       },
       "keys2AtR6AndLeaderR8": {
-        "wins": 216,
-        "games": 304
+        "wins": 214,
+        "games": 284
       },
       "objective": {
-        "capGames": 951,
-        "capUniqueLeader": 904,
-        "capPreRevealTies": 47,
-        "flips": 0,
-        "flipWinnerGainedObjective": 0,
-        "gamesAnyObjectiveScored": 8,
-        "objectivesScoredTotal": 8
+        "capGames": 600,
+        "capUniqueLeader": 561,
+        "capPreRevealTies": 39,
+        "flips": 53,
+        "flipWinnerGainedObjective": 53,
+        "gamesAnyObjectiveScored": 324,
+        "objectivesScoredTotal": 467,
+        "objectiveSlotsAllGames": 30000,
+        "objectivesCompletedAllGames": 1809,
+        "completedCountHist": {
+          "0": 8452,
+          "1": 1306,
+          "2": 223,
+          "3": 19
+        }
+      },
+      "medianRounds": 16
+    },
+    "pressureStrong": {
+      "arm": "pressureStrong",
+      "games": 2000,
+      "scoringHits": 2364,
+      "attackPicks": 25438,
+      "decisionsChanged": 159,
+      "gamesWithHits": 507,
+      "gamesWithChanged": 115,
+      "victoryTypes": {
+        "threshold": 1190,
+        "cap": 597,
+        "suddenDeath": 213,
+        "elimination": 0
+      },
+      "byFaction": {
+        "byzantium": {
+          "wins": 365,
+          "games": 2000
+        },
+        "ottomans": {
+          "wins": 318,
+          "games": 2000
+        },
+        "venice": {
+          "wins": 244,
+          "games": 2000
+        },
+        "genoa": {
+          "wins": 530,
+          "games": 2000
+        },
+        "hungary": {
+          "wins": 543,
+          "games": 2000
+        }
+      },
+      "byPolicy": {
+        "rusher": {
+          "wins": 355,
+          "games": 2500
+        },
+        "trader": {
+          "wins": 658,
+          "games": 2500
+        },
+        "turtler": {
+          "wins": 440,
+          "games": 2500
+        },
+        "opportunist": {
+          "wins": 547,
+          "games": 2500
+        }
+      },
+      "leader": [
+        {
+          "round": 4,
+          "eligibleGames": 2000,
+          "uniqueLeader": 1828,
+          "leaderWins": 711,
+          "ties": 172,
+          "marginSum": 6511
+        },
+        {
+          "round": 6,
+          "eligibleGames": 2000,
+          "uniqueLeader": 1842,
+          "leaderWins": 837,
+          "ties": 158,
+          "marginSum": 7845
+        },
+        {
+          "round": 8,
+          "eligibleGames": 2000,
+          "uniqueLeader": 1835,
+          "leaderWins": 1266,
+          "ties": 165,
+          "marginSum": 8736
+        },
+        {
+          "round": 10,
+          "eligibleGames": 1999,
+          "uniqueLeader": 1875,
+          "leaderWins": 1359,
+          "ties": 124,
+          "marginSum": 13844
+        },
+        {
+          "round": 12,
+          "eligibleGames": 1979,
+          "uniqueLeader": 1881,
+          "leaderWins": 1460,
+          "ties": 98,
+          "marginSum": 14826
+        }
+      ],
+      "r8MarginBuckets": [
+        {
+          "minMargin": 0,
+          "games": 1835,
+          "wins": 1266
+        },
+        {
+          "minMargin": 3,
+          "games": 1292,
+          "wins": 985
+        },
+        {
+          "minMargin": 6,
+          "games": 650,
+          "wins": 542
+        },
+        {
+          "minMargin": 10,
+          "games": 130,
+          "wins": 116
+        }
+      ],
+      "keys2AtR6": {
+        "wins": 371,
+        "games": 2002
+      },
+      "keys3AtR6": {
+        "wins": 83,
+        "games": 136
+      },
+      "keys2AtR6AndLeaderR8": {
+        "wins": 209,
+        "games": 283
+      },
+      "objective": {
+        "capGames": 597,
+        "capUniqueLeader": 556,
+        "capPreRevealTies": 41,
+        "flips": 51,
+        "flipWinnerGainedObjective": 51,
+        "gamesAnyObjectiveScored": 322,
+        "objectivesScoredTotal": 457,
+        "objectiveSlotsAllGames": 30000,
+        "objectivesCompletedAllGames": 1798,
+        "completedCountHist": {
+          "0": 8453,
+          "1": 1312,
+          "2": 219,
+          "3": 16
+        }
       },
       "medianRounds": 16
     }
   },
   "paired": {
-    "winnerDiffers": 34,
-    "winnerDiffersRate": 0.017,
-    "winnerDiffersWithChanged": 22,
-    "winnerDiffersStrongVsOff": 55,
+    "winnerDiffers": 36,
+    "winnerDiffersRate": 0.018,
+    "winnerDiffersWithChanged": 23,
+    "winnerDiffersStrongVsOff": 51,
     "gamesWithHitsOn": 486,
-    "gamesWithChangedOn": 110,
+    "gamesWithChangedOn": 103,
     "hitGames": {
-      "n": 437,
-      "onLeaderWins": 256,
-      "offLeaderWins": 257
+      "n": 439,
+      "onLeaderWins": 237,
+      "offLeaderWins": 242
     }
   },
   "summary": {
-    "p_r8_leader_wins_on": 0.7280265339966833,
-    "p_r8_leader_wins_off": 0.7296849087893864,
-    "p_r8_leader_wins_strong": 0.7206858407079646,
-    "p_win_given_2keys_r6_on": 0.19230769230769232,
-    "p_win_given_2keys_r6_off": 0.1928071928071928,
-    "p_win_given_3keys_r6_on": 0.6506849315068494,
-    "objectiveFlipShare_on": 0,
-    "objectiveFlipShare_off": 0,
+    "p_r8_leader_wins_on": 0.6944444444444444,
+    "p_r8_leader_wins_off": 0.6982570806100218,
+    "p_r8_leader_wins_strong": 0.6899182561307902,
+    "p_win_given_2keys_r6_on": 0.1853146853146853,
+    "p_win_given_2keys_r6_off": 0.1878121878121878,
+    "p_win_given_3keys_r6_on": 0.6277372262773723,
+    "objectiveFlipShare_on": 0.09584086799276673,
+    "objectiveFlipShare_off": 0.0944741532976827,
+    "perObjectiveCompletionRate_on": 0.05993333333333333,
+    "objectiveCompletedCountHist_on": {
+      "0": 8455,
+      "1": 1309,
+      "2": 219,
+      "3": 17
+    },
     "leaderPressure": {
       "scoringHits": {
-        "on": 2328,
+        "on": 2201,
         "off": 0,
-        "strong": 2435
+        "strong": 2364
       },
       "decisionsChanged": {
-        "on": 142,
+        "on": 131,
         "off": 0,
-        "strong": 180
+        "strong": 159
       },
       "attackPicks": {
-        "on": 25365,
-        "off": 25306,
-        "strong": 25427
+        "on": 25323,
+        "off": 25299,
+        "strong": 25438
       }
     }
   }

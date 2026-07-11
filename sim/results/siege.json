@@ -3,7 +3,7 @@
     "seed": 20260711,
     "iterationsPerCell": 20000,
     "smoke": false,
-    "elapsedMs": 12903,
+    "elapsedMs": 13248,
     "gridAttacker": "12 professionals + <engines> siege engines (landlocked city)",
     "cpleAttacker": {
       "professional": 12,
@@ -57,9 +57,11 @@
         "assaultAllowedAnytime": true,
         "seaResupplyEnabled": true,
         "greatBombard": {
-          "availableFromRound": 15,
+          "drawRoundMin": 11,
+          "drawRoundMax": 16,
           "goldCost": 40,
-          "damageDice": 2
+          "damageDice": 2,
+          "emplacementRounds": 1
         }
       },
       "combat": {
@@ -86,7 +88,7 @@
         "riverCrossingPenalty": 1
       }
     },
-    "note": "FINAL canon (2b42386): walls T1-T5, binary wall bonus, escalade -1, stores-then-starve, sea resupply (blockade = every adjacent zone enemy-held), T5 masonry cap 1 HP/round lifted by the Great Bombard (2 wall-damage dice). Bombard scenarios assume game round >= siege.greatBombard.availableFromRound."
+    "note": "FINAL canon (2b42386) + ratified errata E3 (2026-07-11): walls T1-T5, binary wall bonus, escalade -1, stores-then-starve, sea resupply (blockade = every adjacent zone enemy-held), T5 masonry cap 1 HP/round lifted by the Great Bombard (2 wall-damage dice) AFTER a 1-siege-round emplacement (no Bombard wall damage in siege round 1). Bombard scenarios assume the great-bombard-forged omen has been drawn (per-game seeded draw round, uniform over rounds 11-16 in the full game)."
   },
   "grid": [
     {
@@ -3084,14 +3086,14 @@
       "blockaded": false,
       "iterations": 20000,
       "captureProb": 1,
-      "expectedRoundsToCapture": 2.0402,
-      "medianRoundsToCapture": 2,
-      "capturedByAssault": 0.9998,
-      "capturedByStarvation": 0.0002,
+      "expectedRoundsToCapture": 3.01225,
+      "medianRoundsToCapture": 3,
+      "capturedByAssault": 0.99955,
+      "capturedByStarvation": 0.00045,
       "pCaptureWithinK": [
         0,
-        0.9598,
-        1,
+        0.0045,
+        0.98325,
         1,
         1,
         1,
@@ -3108,24 +3110,24 @@
       "greatBombard": true,
       "blockaded": false,
       "iterations": 20000,
-      "captureProb": 0.99715,
-      "expectedRoundsToCapture": 2.0906082334653764,
-      "medianRoundsToCapture": 2,
-      "capturedByAssault": 0.966,
-      "capturedByStarvation": 0.03115,
+      "captureProb": 0.994,
+      "expectedRoundsToCapture": 3.081891348088531,
+      "medianRoundsToCapture": 3,
+      "capturedByAssault": 0.9527,
+      "capturedByStarvation": 0.0413,
       "pCaptureWithinK": [
         0,
-        0.90995,
+        0.004,
+        0.91075,
+        0.9919,
+        0.99395,
         0.994,
-        0.99715,
-        0.99715,
-        0.99715,
-        0.99715,
-        0.99715,
-        0.99715,
-        0.99715,
-        0.99715,
-        0.99715
+        0.994,
+        0.994,
+        0.994,
+        0.994,
+        0.994,
+        0.994
       ]
     },
     {
@@ -3133,24 +3135,24 @@
       "greatBombard": true,
       "blockaded": false,
       "iterations": 20000,
-      "captureProb": 0.94505,
-      "expectedRoundsToCapture": 2.265858949261944,
-      "medianRoundsToCapture": 2,
-      "capturedByAssault": 0.8619,
-      "capturedByStarvation": 0.08315,
+      "captureProb": 0.917,
+      "expectedRoundsToCapture": 3.262649945474373,
+      "medianRoundsToCapture": 3,
+      "capturedByAssault": 0.83135,
+      "capturedByStarvation": 0.08565,
       "pCaptureWithinK": [
         0,
-        0.70885,
-        0.9303,
-        0.94475,
-        0.94505,
-        0.94505,
-        0.94505,
-        0.94505,
-        0.94505,
-        0.94505,
-        0.94505,
-        0.94505
+        0.00305,
+        0.6827,
+        0.90745,
+        0.91695,
+        0.917,
+        0.917,
+        0.917,
+        0.917,
+        0.917,
+        0.917,
+        0.917
       ]
     },
     {
@@ -3159,14 +3161,14 @@
       "blockaded": true,
       "iterations": 20000,
       "captureProb": 1,
-      "expectedRoundsToCapture": 2.04035,
-      "medianRoundsToCapture": 2,
-      "capturedByAssault": 0.9998,
-      "capturedByStarvation": 0.0002,
+      "expectedRoundsToCapture": 3.0117,
+      "medianRoundsToCapture": 3,
+      "capturedByAssault": 0.9995,
+      "capturedByStarvation": 0.0005,
       "pCaptureWithinK": [
         0,
-        0.9597,
-        0.99995,
+        0.00425,
+        0.98405,
         1,
         1,
         1,
@@ -3183,24 +3185,24 @@
       "greatBombard": true,
       "blockaded": true,
       "iterations": 20000,
-      "captureProb": 0.99705,
-      "expectedRoundsToCapture": 2.087508149039667,
-      "medianRoundsToCapture": 2,
-      "capturedByAssault": 0.96665,
-      "capturedByStarvation": 0.0304,
+      "captureProb": 0.99655,
+      "expectedRoundsToCapture": 3.0835382068135067,
+      "medianRoundsToCapture": 3,
+      "capturedByAssault": 0.94715,
+      "capturedByStarvation": 0.0494,
       "pCaptureWithinK": [
         0,
-        0.9124,
-        0.99445,
-        0.99705,
-        0.99705,
-        0.99705,
-        0.99705,
-        0.99705,
-        0.99705,
-        0.99705,
-        0.99705,
-        0.99705
+        0.0042,
+        0.91015,
+        0.9955,
+        0.99655,
+        0.99655,
+        0.99655,
+        0.99655,
+        0.99655,
+        0.99655,
+        0.99655,
+        0.99655
       ]
     },
     {
@@ -3208,24 +3210,24 @@
       "greatBombard": true,
       "blockaded": true,
       "iterations": 20000,
-      "captureProb": 0.9455,
-      "expectedRoundsToCapture": 2.265785298783712,
-      "medianRoundsToCapture": 2,
-      "capturedByAssault": 0.85695,
-      "capturedByStarvation": 0.08855,
+      "captureProb": 0.9486,
+      "expectedRoundsToCapture": 3.2842610162344505,
+      "medianRoundsToCapture": 3,
+      "capturedByAssault": 0.8298,
+      "capturedByStarvation": 0.1188,
       "pCaptureWithinK": [
         0,
-        0.7109,
-        0.92905,
-        0.94525,
-        0.9455,
-        0.9455,
-        0.9455,
-        0.9455,
-        0.9455,
-        0.9455,
-        0.9455,
-        0.9455
+        0.0031,
+        0.6836,
+        0.9409,
+        0.94855,
+        0.9486,
+        0.9486,
+        0.9486,
+        0.9486,
+        0.9486,
+        0.9486,
+        0.9486
       ]
     }
   ],
@@ -3243,8 +3245,9 @@
       "minMedianRounds": 7,
       "met": true
     },
-    "t5d_withBombardWithin4Over50pct": {
-      "worst": 0.94475,
+    "t5d_withBombardWithin4OfFirstFireOver50pct": {
+      "windowSiegeRounds": 5,
+      "worst": 0.91695,
       "met": true
     }
   }
