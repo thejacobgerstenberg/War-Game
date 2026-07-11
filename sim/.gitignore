@@ -1,0 +1,4 @@
+# dependencies
+node_modules/
+
+# NOTE: results/ is intentionally NOT ignored — simulation outputs are committed.

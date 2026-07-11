@@ -44,7 +44,7 @@ jobs:
     outputs:
       present: ${{ steps.check.outputs.present }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: check
         name: Check that the workspace scaffold exists
         run: |
@@ -60,7 +60,7 @@ jobs:
     needs: scaffold-present
     if: needs.scaffold-present.outputs.present == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: docker/setup-buildx-action@v3
 
@@ -92,7 +92,7 @@ jobs:
     needs: scaffold-present
     if: needs.scaffold-present.outputs.present == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: docker/setup-buildx-action@v3
 
