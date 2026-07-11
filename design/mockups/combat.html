@@ -1,0 +1,517 @@
+<!-- =========================================================================
+  IMPERIUM: Twilight of Empires — Phase 3 UI mockups
+  combat.html — Battle resolution modal: hosts arrayed, the dice cascade,
+  modifiers, the tactic hand, and the result banner (both variants shown
+  as spec apparatus).
+
+  THIS FILE IS A PHASE 3 IMPLEMENTATION CONTRACT.
+  What is annotated here is deliberate. Where this page and README.md
+  disagree, README.md wins.
+
+  - Static HTML/CSS only. Renders fully offline: no CDNs, no external
+    fonts, no external anything. No JS on this screen.
+  - Tokens and components come from mockups.css (linked below); only the
+    small screen-specific CSS in the <style> block belongs to this page.
+  - Game art is referenced by RELATIVE path (../../art/...) and wrapped in
+    the .asset fallback box: on this branch, unmerged assets render as
+    labeled hatched placeholders. That is expected and correct.
+  - Numbered .callout circles and the .legend at the foot are spec
+    apparatus for the client team — they do not ship. So are the two
+    stacked result-banner variants: at runtime exactly ONE banner shows,
+    replacing the dice cascade when the battle ends.
+  - Audio contract (README §4): battle opens on sword_clash, then
+    battle_distant loops while this modal is open; battle_drums overlays
+    the music with campaign_ambient ducked to 30%. Casting dice plays
+    dice_roll; playing a tactic plays card_flip; the victory banner lands
+    on horn_fanfare, the defeat banner on defeat_drum.
+
+  Worked example shown: the Field at Kosovo, Anno Domini 1448 — the host
+  of Hungary (attacker) against the host of the Ottomans (defender).
+  Numbers are illustrative; hit thresholds and modifier magnitudes are
+  design's to ratify (see lore/tactics/cards.md, "proposed").
+========================================================================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IMPERIUM — Twilight of Empires · Battle Resolution</title>
+  <link rel="stylesheet" href="mockups.css">
+  <style>
+    /* ---- combat.html screen-specific styles (kept small) --------------- */
+
+    /* The stage: dimmed campaign board with the battle modal centered on it */
+    .battle-stage {
+      position: relative;
+      display: grid;
+      place-items: center;
+      padding: var(--space-6) var(--space-4);
+      min-height: 92vh;
+      overflow: hidden;
+    }
+    .board-backdrop { position: absolute; inset: 0; border: none; border-radius: 0; }
+    .stage-scrim {
+      position: absolute;
+      inset: 0;
+      background: color-mix(in srgb, var(--ink) 62%, transparent);
+    }
+    .battle-modal { position: relative; width: min(62rem, 100%); }
+
+    /* Modal header */
+    .battle-vignette { height: 110px; }
+    .battle-head { text-align: center; }
+    .battle-head h2 { margin-bottom: var(--space-1); }
+    .battle-head .rubric { margin: 0 0 var(--space-3); font-style: italic;
+      color: color-mix(in srgb, var(--ink) 72%, var(--parchment)); }
+
+    /* Armies arrayed: attacker · ⚔ · defender */
+    .armies {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: var(--space-4);
+      align-items: start;
+    }
+    .army { display: flex; gap: var(--space-3); align-items: flex-start; }
+    .army--defender { flex-direction: row-reverse; text-align: right; }
+    .army .asset--crest { width: 4.5rem; flex: none; }
+    .army h3 { margin: 0 0 var(--space-1); }
+    .army .commander { font-style: italic; font-size: var(--text-sm); margin: var(--space-1) 0 0; }
+    .versus {
+      align-self: center;
+      font-size: var(--text-2xl);
+      color: var(--crimson);
+      text-shadow: 1px 1px 0 var(--gold);
+    }
+
+    /* Dice cascade */
+    .dice-row { display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap; }
+    .die-slot { display: grid; justify-items: center; gap: var(--space-1); }
+    .die {
+      display: grid;
+      grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+      gap: 2px;
+      width: 3.4rem;
+      height: 3.4rem;
+      padding: 0.5rem;
+      background: var(--parchment);
+      border: 2px solid var(--ink);
+      border-radius: var(--radius-2);
+    }
+    .dice-row--attacker .die { box-shadow: 0 0 0 3px var(--gold), var(--shadow-1); }
+    .dice-row--defender .die { box-shadow: 0 0 0 3px var(--lapis), var(--shadow-1); }
+    .die .pip { background: var(--ink); border-radius: 50%; }
+    .p-tl { grid-area: 1 / 1; } .p-tr { grid-area: 1 / 3; }
+    .p-ml { grid-area: 2 / 1; } .p-c  { grid-area: 2 / 2; } .p-mr { grid-area: 2 / 3; }
+    .p-bl { grid-area: 3 / 1; } .p-br { grid-area: 3 / 3; }
+    .die-verdict {
+      font-family: var(--font-display);
+      font-variant: small-caps;
+      font-size: var(--text-xs);
+      letter-spacing: 0.05em;
+    }
+    .die-verdict.is-miss { opacity: 0.55; }
+
+    /* The reckoning strip between the two rows */
+    .reckoning {
+      text-align: center;
+      margin: var(--space-4) 0;
+      padding: var(--space-3) var(--space-4);
+      background: var(--vellum);
+      border-block: 2px solid var(--gold);
+      font-size: var(--text-sm);
+    }
+    .reckoning p { margin: 0 0 var(--space-1); }
+    .reckoning .tally { display: flex; gap: var(--space-3); justify-content: center;
+      flex-wrap: wrap; margin-top: var(--space-2); }
+
+    /* Modifiers readout */
+    .modifier-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+    .modifier-list li {
+      display: flex;
+      gap: var(--space-3);
+      align-items: baseline;
+      padding: var(--space-2) var(--space-3);
+      background: var(--parchment);
+      border: 1px solid var(--vellum-shade);
+      border-left: 4px solid var(--gold);
+      border-radius: var(--radius-1);
+      font-size: var(--text-sm);
+    }
+    .modifier-list .mod-glyph { flex: none; font-size: var(--text-lg); color: var(--porphyry); }
+    .modifier-list .mod-name {
+      flex: none;
+      font-family: var(--font-display);
+      font-variant: small-caps;
+      letter-spacing: 0.05em;
+    }
+
+    /* Tactic hand */
+    .tactic-hand {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: var(--space-4);
+      align-items: stretch;
+    }
+    .tactic-card {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      background: var(--parchment);
+      border: 1px solid var(--ink);
+      border-radius: var(--radius-2);
+      box-shadow: var(--shadow-1);
+      font-size: var(--text-sm);
+    }
+    .tactic-card.is-playable { box-shadow: 0 0 0 3px var(--gold), var(--shadow-2); }
+    .tactic-card.is-dimmed { opacity: 0.5; }
+    .tactic-card h4 { margin: 0; display: flex; gap: 0.5em; align-items: center; }
+    .tactic-card .flavor { font-style: italic; margin: 0; }
+    .tactic-card .effect { margin: 0; }
+    .tactic-card .withheld { margin: 0; font-style: italic; font-size: var(--text-xs);
+      color: var(--crimson); }
+
+    /* Result banners (spec variants; one shows at runtime) */
+    .result-banner {
+      display: flex;
+      gap: var(--space-4);
+      align-items: center;
+      flex-wrap: wrap;
+      padding: var(--space-4) var(--space-5);
+      color: var(--parchment);
+      border: 2px solid var(--gold);
+      border-radius: var(--radius-2);
+      box-shadow: var(--shadow-3);
+    }
+    .result-banner--victory { background: var(--laurel); }
+    .result-banner--defeat  { background: var(--crimson); }
+    .result-banner .banner-glyph { width: 3rem; height: 3rem; flex: none; }
+    .result-banner h3 { margin: 0 0 var(--space-1); color: var(--gold-soft); }
+    .result-banner p { margin: 0; }
+    .result-banner .banner-body { flex: 1 1 24ch; }
+    .variant-label { margin-bottom: var(--space-2); }
+
+    .spec-main { max-width: 62rem; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+    .spec-main .legend { color: var(--ink); }
+  </style>
+</head>
+<body class="theme-night">
+
+  <!-- ZONE 1 · The stage: campaign board dimmed under a scrim, battle modal
+       centered. The scrim does NOT dismiss on click — a battle, once joined,
+       must be resolved. -->
+  <div class="battle-stage zone">
+    <b class="callout" style="top: var(--space-3); left: var(--space-3);">1</b>
+
+    <figure class="asset asset--cover board-backdrop">
+      <img src="../../art/map/board.svg" alt="The campaign board, dimmed beneath the battle">
+    </figure>
+    <div class="stage-scrim" aria-hidden="true"></div>
+
+    <section class="modal battle-modal" role="dialog" aria-modal="true"
+             aria-labelledby="battle-title">
+
+      <!-- Modal header: battle-phase glyph, battlefield name, vignette -->
+      <header class="battle-head">
+        <figure class="asset asset--cover battle-vignette">
+          <img src="../../art/illustrations/events/second-kosovo.svg"
+               alt="The field at Kosovo — banners meet upon the plain">
+        </figure>
+        <h2 id="battle-title" style="margin-top: var(--space-3);">
+          <span class="asset asset--glyph" style="vertical-align: -0.35em;"><img
+            src="../../art/icons/phase-battle.svg" alt="Battle phase"></span>
+          The Field at Kosovo
+        </h2>
+        <p class="rubric">Round 9 · Anno Domini 1448 · The host of Hungary comes
+          against the Porte across the Sitnica, and the plain remembers.</p>
+      </header>
+
+      <!-- ZONE 2 · The armies arrayed: attacker left, defender right.
+           Role is triple-channeled: label pill, rim color on the dice below
+           (attacker gold, defender lapis), and the crest itself. -->
+      <div class="armies zone">
+        <b class="callout" style="top: -0.75rem; left: -0.75rem;">2</b>
+
+        <article class="army army--attacker" data-faction="hungary">
+          <figure class="asset asset--crest"><img src="../../art/crests/hungary.svg" alt="Crest of Hungary"></figure>
+          <div>
+            <p style="margin: 0 0 var(--space-1);"><span class="pill pill--gold">⚔ Attacker</span></p>
+            <h3><span class="faction-swatch" aria-hidden="true"></span> Hungary</h3>
+            <span class="resource-chip"><span class="asset asset--icon"><img
+              src="../../art/icons/army.svg" alt="Host"></span>
+              <b class="value">6</b><span class="name">Levies</span></span>
+            <p class="commander">John Hunyadi, Voivode of Transylvania,
+              war-captain of the Regnum</p>
+          </div>
+        </article>
+
+        <span class="versus" aria-hidden="true">⚔</span>
+
+        <article class="army army--defender" data-faction="ottomans">
+          <figure class="asset asset--crest"><img src="../../art/crests/ottomans.svg" alt="Crest of the Ottomans"></figure>
+          <div>
+            <p style="margin: 0 0 var(--space-1);"><span class="pill pill--lapis">⛨ Defender</span></p>
+            <h3><span class="faction-swatch" aria-hidden="true"></span> The Ottomans</h3>
+            <span class="resource-chip"><span class="asset asset--icon"><img
+              src="../../art/icons/army.svg" alt="Host"></span>
+              <b class="value">4</b><span class="name">Levies</span></span>
+            <p class="commander">Kurt Agha, Agha of the Janissaries</p>
+          </div>
+        </article>
+      </div>
+
+      <hr style="margin: var(--space-4) auto;">
+
+      <!-- ZONE 3 · The dice cascade. One die per levy (less modifiers);
+           a die of five or six strikes home. Verdict glyphs double the
+           pips — color is never the only channel (README §3). -->
+      <div class="zone">
+        <b class="callout" style="top: -0.75rem; left: -0.75rem;">3</b>
+
+        <div class="dice-row dice-row--attacker" role="group"
+             aria-label="Attacker's dice — Hungary, gold-rimmed">
+          <span class="die-slot">
+            <span class="die" role="img" aria-label="Attacker die: six — a hit">
+              <i class="pip p-tl"></i><i class="pip p-tr"></i><i class="pip p-ml"></i>
+              <i class="pip p-mr"></i><i class="pip p-bl"></i><i class="pip p-br"></i>
+            </span>
+            <span class="die-verdict">⚔ Hit</span>
+          </span>
+          <span class="die-slot">
+            <span class="die" role="img" aria-label="Attacker die: five — a hit">
+              <i class="pip p-tl"></i><i class="pip p-tr"></i><i class="pip p-c"></i>
+              <i class="pip p-bl"></i><i class="pip p-br"></i>
+            </span>
+            <span class="die-verdict">⚔ Hit</span>
+          </span>
+          <span class="die-slot">
+            <span class="die" role="img" aria-label="Attacker die: five — a hit">
+              <i class="pip p-tl"></i><i class="pip p-tr"></i><i class="pip p-c"></i>
+              <i class="pip p-bl"></i><i class="pip p-br"></i>
+            </span>
+            <span class="die-verdict">⚔ Hit</span>
+          </span>
+          <span class="die-slot">
+            <span class="die" role="img" aria-label="Attacker die: three — a miss">
+              <i class="pip p-tl"></i><i class="pip p-c"></i><i class="pip p-br"></i>
+            </span>
+            <span class="die-verdict is-miss">· Miss</span>
+          </span>
+          <span class="die-slot">
+            <span class="die" role="img" aria-label="Attacker die: two — a miss">
+              <i class="pip p-tr"></i><i class="pip p-bl"></i>
+            </span>
+            <span class="die-verdict is-miss">· Miss</span>
+          </span>
+        </div>
+
+        <!-- The reckoning: hits weighed against the modifiers of Zone 4 -->
+        <div class="reckoning" aria-label="The reckoning of this round">
+          <p><b>The attacker strikes thrice;</b> the camp walls turn two blows away —
+            <b>one hit stands.</b></p>
+          <p><b>The defender strikes once</b> — <b>one hit stands.</b></p>
+          <p style="font-style: italic;">A die of five or six strikes home.
+            Each hit that stands fells one levy.</p>
+          <div class="tally">
+            <span class="pill pill--gold">⚔ Attacker · 1 hit stands</span>
+            <span class="pill pill--lapis">⚔ Defender · 1 hit stands</span>
+          </div>
+        </div>
+
+        <div class="dice-row dice-row--defender" role="group"
+             aria-label="Defender's dice — the Ottomans, lapis-rimmed">
+          <span class="die-slot">
+            <span class="die-verdict">⚔ Hit</span>
+            <span class="die" role="img" aria-label="Defender die: six — a hit">
+              <i class="pip p-tl"></i><i class="pip p-tr"></i><i class="pip p-ml"></i>
+              <i class="pip p-mr"></i><i class="pip p-bl"></i><i class="pip p-br"></i>
+            </span>
+          </span>
+          <span class="die-slot">
+            <span class="die-verdict is-miss">· Miss</span>
+            <span class="die" role="img" aria-label="Defender die: four — a miss">
+              <i class="pip p-tl"></i><i class="pip p-tr"></i>
+              <i class="pip p-bl"></i><i class="pip p-br"></i>
+            </span>
+          </span>
+          <span class="die-slot">
+            <span class="die-verdict is-miss">· Miss</span>
+            <span class="die" role="img" aria-label="Defender die: two — a miss">
+              <i class="pip p-tr"></i><i class="pip p-bl"></i>
+            </span>
+          </span>
+          <span class="die-slot">
+            <span class="die-verdict is-miss">· Miss</span>
+            <span class="die" role="img" aria-label="Defender die: one — a miss">
+              <i class="pip p-c"></i>
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <hr style="margin: var(--space-4) auto;">
+
+      <!-- ZONE 4 · Modifiers readout: plain labels, effects in the design
+           vocabulary (dice, hits, the wall bonus). Side pill names whom
+           each favors. -->
+      <section class="zone" aria-label="Modifiers upon this battle">
+        <b class="callout" style="top: -0.75rem; left: -0.75rem;">4</b>
+        <ul class="modifier-list">
+          <li>
+            <span class="mod-glyph" aria-hidden="true">⛨</span>
+            <span class="mod-name">Walls II</span>
+            <span class="pill pill--lapis">Defender</span>
+            <span>The Porte's host stands behind the ditch and palisade of its
+              camp: the first 2 hits against the defender each round are turned away.</span>
+          </li>
+          <li>
+            <span class="mod-glyph" aria-hidden="true">≋</span>
+            <span class="mod-name">River Crossing</span>
+            <span class="pill pill--gold">Attacker</span>
+            <span>The attacker fords the Sitnica under arms: the attacker casts
+              1 die fewer this round — six levies, five dice.</span>
+          </li>
+        </ul>
+      </section>
+
+      <hr style="margin: var(--space-4) auto;">
+
+      <!-- ZONE 5 · The tactic hand. The window is open: hits are reckoned
+           but not yet dealt. Playable cards carry the gold rim; withheld
+           cards are dimmed and state their reason in voice (README §1).
+           Final card faces render on the frame at
+           ../../art/cards/tactic-card.svg (feature/visual-assets). -->
+      <section class="zone" aria-label="Your tactic hand">
+        <b class="callout" style="top: -0.75rem; left: -0.75rem;">5</b>
+        <div class="tactic-hand">
+
+          <article class="tactic-card is-playable">
+            <h4><span class="asset asset--icon"><img src="../../art/icons/army.svg"
+              alt="Land battle"></span> Feigned Retreat</h4>
+            <p class="flavor">“They fled just badly enough to be believed.”</p>
+            <p class="effect"><b>Effect:</b> before hits are dealt, withdraw your
+              host in good order to an adjacent province you control; the battle ends.</p>
+            <button class="btn btn--primary" type="button">Play the Card</button>
+          </article>
+
+          <article class="tactic-card is-dimmed" aria-disabled="true">
+            <h4><span class="asset asset--icon"><img src="../../art/icons/fleet.svg"
+              alt="Fleet battle"></span> Greek Fire</h4>
+            <p class="flavor">“The sea itself burned, and water would not put it out.”</p>
+            <p class="effect"><b>Effect:</b> win one fleet battle outright, before
+              any dice are cast; then discard this card.</p>
+            <p class="withheld">Withheld — no fleet stands upon this field;
+              the sea is far from Kosovo.</p>
+          </article>
+
+          <article class="tactic-card is-dimmed" aria-disabled="true">
+            <h4><span class="asset asset--icon"><img src="../../art/icons/siege.svg"
+              alt="Siege"></span> The Bribed Gatekeeper</h4>
+            <p class="flavor">“His price was forty ducats and a fast horse.
+              The wall's price was higher.”</p>
+            <p class="effect"><b>Effect:</b> cancel the wall bonus for one round
+              of a siege you are pressing.</p>
+            <p class="withheld">Withheld — this is a pitched battle, not a siege;
+              there is no gate here to buy.</p>
+          </article>
+
+        </div>
+      </section>
+
+      <!-- Modal actions: accept the round, or study the reckoning. No
+           destructive branch here — the dice, once cast, are history. -->
+      <div class="modal-actions">
+        <button class="btn btn--quiet" type="button">Review the Reckoning</button>
+        <button class="btn btn--primary" type="button">Let the Blow Fall</button>
+      </div>
+
+    </section>
+  </div>
+
+  <!-- ZONE 6 · Result banner — SPEC VARIANTS, stacked for review. At
+       runtime exactly one shows, replacing the dice cascade (Zone 3) when
+       the battle ends. Victory lands on horn_fanfare; defeat on
+       defeat_drum (README §4). -->
+  <section class="spec-main zone" aria-label="Result banner variants">
+    <b class="callout" style="top: var(--space-4); left: -0.25rem;">6</b>
+    <h2>The Result Banner — Two States</h2>
+    <p class="rubric">Spec apparatus: both variants shown; the table sees only one.</p>
+
+    <div class="stack" style="gap: var(--space-5); margin-top: var(--space-4);">
+
+      <div>
+        <p class="variant-label"><span class="pill pill--laurel">Variant A · Victory</span></p>
+        <div class="result-banner result-banner--victory">
+          <figure class="asset asset--crest banner-glyph"><img
+            src="../../art/icons/prestige.svg" alt="Laurel of Prestige"></figure>
+          <div class="banner-body">
+            <h3>The Day Is Yours</h3>
+            <p>The enemy host breaks and streams from the field. Kosovo is held,
+              and the chronicle will say so.</p>
+          </div>
+          <span class="pill pill--gold">+2 Prestige</span>
+          <button class="btn btn--primary" type="button">So It Is Written</button>
+        </div>
+      </div>
+
+      <div>
+        <p class="variant-label"><span class="pill pill--crimson">Variant B · Defeat</span></p>
+        <div class="result-banner result-banner--defeat">
+          <span class="banner-glyph" aria-hidden="true" style="display: grid;
+            place-items: center; font-size: var(--text-3xl); color: var(--gold-soft);">⚑</span>
+          <div class="banner-body">
+            <h3>The Field Is Lost</h3>
+            <p>Your host breaks; what remains of it retires back across the Sitnica.
+              The Porte holds the ground, and the chronicle is theirs to write.</p>
+          </div>
+          <span class="pill">2 levies fall</span>
+          <button class="btn" type="button">Let the Scribes Be Kind</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Spec legend — apparatus for the client team; does not ship. -->
+  <div class="spec-main" style="padding-top: 0;">
+    <ol class="legend">
+      <li><b class="callout">1</b> <b>Stage and scrim.</b> The campaign board
+        (<code>../../art/map/board.svg</code>) dims under the standard modal scrim; the battle
+        modal centers over it. The scrim does <b>not</b> dismiss on click — a battle, once
+        joined, resolves. Opening plays <code>sword_clash</code>, then <code>battle_distant</code>
+        loops; <code>battle_drums</code> overlays the music bed with <code>campaign_ambient</code>
+        ducked to 30 of 100 (README §4). The vignette in the modal head reuses the event
+        illustration <code>../../art/illustrations/events/second-kosovo.svg</code>.</li>
+      <li><b class="callout">2</b> <b>The armies arrayed.</b> Attacker left, defender right; each
+        shows crest (<code>../../art/crests/</code>), faction name with <code>data-faction</code>
+        swatch (colorblind hatches per mockups.css §16), levy count as a resource chip
+        (<code>../../art/icons/army.svg</code>), and the commander line. Role is carried by
+        label pill <i>and</i> dice-rim color <i>and</i> position — never color alone.</li>
+      <li><b class="callout">3</b> <b>The dice cascade.</b> One die per levy, less modifiers;
+        attacker row rimmed gold, defender row rimmed lapis; flat parchment faces, ink pips,
+        hard shadows — woodblock, not casino. A die of five or six strikes home. Each die
+        carries a verdict label with a glyph (⚔ hit, · miss): glyph doubling per README §3.
+        Casting plays <code>dice_roll</code>; dice tumble at most 400ms and settle instantly
+        under <code>prefers-reduced-motion</code>. The middle strip is the reckoning: hits
+        weighed against modifiers, then the standing total per side as tally pills.</li>
+      <li><b class="callout">4</b> <b>Modifiers readout.</b> Plain label + side pill + effect
+        sentence in the design vocabulary (dice, hits, the wall bonus). Shown here: the wall
+        bonus at strength two (“Walls II”, shield glyph ⛨) and terrain (“River Crossing”, ≋).
+        Magnitudes are proposed — design to ratify.</li>
+      <li><b class="callout">5</b> <b>The tactic hand.</b> Three cards from the real set
+        (<code>lore/tactics/cards.md</code>): name, one line of flavor, effect. The playable
+        card carries the gold rim and its play button; withheld cards dim to opacity 0.5 and
+        state their reason in voice — a dimmed card must give its reason on hover <i>and</i>
+        tap (README §1). Playing a card plays <code>card_flip</code>. Final card faces render
+        on the frame <code>../../art/cards/tactic-card.svg</code>.</li>
+      <li><b class="callout">6</b> <b>Result banner.</b> Two states, one shown at runtime in
+        place of the dice cascade: victory (laurel ground, laurel-of-Prestige glyph from
+        <code>../../art/icons/prestige.svg</code>, <code>horn_fanfare</code>) and defeat
+        (crimson ground, broken-banner glyph ⚑, <code>defeat_drum</code>). Both grounds carry
+        the gold rule and a glyph — color is never the only channel. Closing the banner
+        returns to the board and releases the battle music overlay.</li>
+    </ol>
+  </div>
+
+</body>
+</html>

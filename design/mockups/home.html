@@ -1,0 +1,301 @@
+<!-- =========================================================================
+  IMPERIUM: Twilight of Empires — Phase 3 UI mockups
+  home.html — Home / landing: illuminated masthead, the three paths
+  (Convene / Answer a Summons / The Book of Rules), faction crest strip.
+
+  THIS FILE IS A PHASE 3 IMPLEMENTATION CONTRACT.
+  What is annotated here is deliberate. Where this page and README.md
+  disagree, README.md wins.
+
+  - Static HTML/CSS only. Renders fully offline: no CDNs, no external
+    fonts, no external anything. No JS on this screen.
+  - Tokens and components come from mockups.css (linked below); only the
+    small screen-specific CSS in the <style> block belongs to this page.
+  - Game art is referenced by RELATIVE path (../../art/...) and wrapped in
+    the .asset fallback box: on this branch, unmerged assets render as
+    labeled hatched placeholders. That is expected and correct.
+  - Numbered .callout circles and the .legend at the foot are spec
+    apparatus for the client team — they do not ship.
+  - Audio contract (README §4): menu_theme loops beneath this screen;
+    the first press anywhere doubles as the browser audio unlock.
+========================================================================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IMPERIUM — Twilight of Empires · Home</title>
+  <link rel="stylesheet" href="mockups.css">
+  <style>
+    /* ---- home.html screen-specific styles (kept small) ----------------- */
+    .masthead {
+      text-align: center;
+      padding: var(--space-7) var(--space-4) var(--space-6);
+      background: linear-gradient(180deg, var(--ink), var(--night));
+      color: var(--parchment);
+      border-bottom: 4px double var(--gold);
+    }
+    .masthead .ornament {
+      display: block;
+      color: var(--gold);
+      font-size: var(--text-lg);
+      letter-spacing: 1.1em;
+      margin-bottom: var(--space-3);
+      /* trailing letter-space of the last glyph nudges center; compensate */
+      padding-left: 1.1em;
+    }
+    .masthead h1 {
+      color: var(--gold);
+      font-size: clamp(var(--text-2xl), 6vw, 3.4rem);
+      letter-spacing: 0.14em;
+      margin-bottom: var(--space-2);
+    }
+    .masthead .masthead-sub {
+      font-family: var(--font-display);
+      font-variant: small-caps;
+      font-size: var(--text-xl);
+      letter-spacing: 0.22em;
+      color: var(--parchment);
+      margin: 0 0 var(--space-2);
+    }
+    .masthead .masthead-era {
+      font-style: italic;
+      color: var(--gold-soft);
+      margin: 0;
+    }
+    .home-main { max-width: 1100px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+
+    .board-glimpse { height: 190px; }
+    .board-glimpse img { object-position: center 30%; }
+    .board-caption {
+      text-align: center;
+      font-style: italic;
+      font-size: var(--text-sm);
+      margin: var(--space-2) 0 0;
+      color: color-mix(in srgb, var(--ink) 78%, var(--parchment));
+    }
+    .board-caption cite {
+      font-style: normal;
+      font-family: var(--font-display);
+      font-variant: small-caps;
+      font-size: var(--text-xs);
+      color: var(--porphyry);
+    }
+
+    .path-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: var(--space-5);
+      align-items: stretch;
+    }
+    .path-card { display: grid; grid-template-rows: auto auto 1fr auto; gap: var(--space-3); text-align: center; }
+    .path-card .path-glyph { width: 3rem; height: 3rem; margin: 0 auto; border: none; }
+    .path-card h3 { margin: 0; }
+    .path-card .path-rubric { font-style: italic; margin: 0; }
+    .path-card .btn--grand { justify-content: center; font-size: var(--text-md); padding: 0.7em 1.4em; }
+
+    .code-entry { display: flex; gap: var(--space-1); justify-content: center; }
+    .code-entry input {
+      width: 2.2rem; height: 2.8rem;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: var(--text-lg);
+      text-transform: uppercase;
+      color: var(--ink);
+      background: var(--parchment);
+      border: 1px solid var(--ink);
+      border-radius: var(--radius-1);
+      box-shadow: inset 1px 1px 0 var(--ink-ghost);
+    }
+    .code-hint { font-size: var(--text-xs); font-style: italic; margin: 0; color: color-mix(in srgb, var(--ink) 70%, var(--vellum)); }
+
+    .crest-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: var(--space-4);
+      list-style: none;
+      margin: 0; padding: 0;
+    }
+    .crest-card { text-align: center; }
+    .crest-card .asset--crest { width: min(9rem, 100%); margin: 0 auto var(--space-2); }
+    .crest-card .crest-name {
+      font-family: var(--font-display);
+      font-variant: small-caps;
+      font-size: var(--text-md);
+      letter-spacing: 0.05em;
+      margin: 0 0 var(--space-1);
+    }
+    .crest-card .crest-motto { font-style: italic; font-size: var(--text-sm); margin: 0; }
+
+    .site-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: var(--space-4);
+      border-top: 1px solid var(--gold);
+      font-size: var(--text-sm);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ZONE 1 · Illuminated masthead — gold on ink, small-caps, ornamented -->
+  <header class="masthead zone">
+    <b class="callout" style="top: var(--space-3); left: var(--space-3);">1</b>
+    <span class="ornament" aria-hidden="true">✦ ❦ ✦</span>
+    <h1>Imperium</h1>
+    <p class="masthead-sub">— Twilight of Empires —</p>
+    <p class="masthead-era">Anno Domini 1400–1453 · Five powers, one failing age — and every road ends at the City.</p>
+  </header>
+
+  <main class="home-main stack" style="gap: var(--space-6);">
+
+    <!-- A glimpse of the board beneath the masthead; art on feature/visual-assets -->
+    <section aria-label="The board">
+      <figure class="asset asset--cover board-glimpse">
+        <img src="../../art/map/board.svg"
+             alt="The game board — from the lagoon of Venice to the walls of the Queen of Cities">
+      </figure>
+      <p class="board-caption">“Before you lies a map that has grown smaller every year of my life.
+        Look upon it while it is still ours to look upon.”
+        <cite>— Demetrios Choumnos, Grand Logothete</cite></p>
+    </section>
+
+    <!-- ZONE 2 · The three paths: Create / Join by code / How to play -->
+    <section class="zone" aria-label="The three paths">
+      <b class="callout" style="top: -0.75rem; left: -0.75rem;">2</b>
+      <div class="path-grid">
+
+        <!-- Path: Create game -->
+        <article class="panel panel--parchment path-card">
+          <span class="asset path-glyph"><img src="../../art/icons/prestige.svg" alt="Prestige laurel"></span>
+          <h3>Convene a Game</h3>
+          <p class="path-rubric">Summon rival princes to your table. You set the seats;
+            whether they dare to fill them is their affair.</p>
+          <p><a class="btn btn--primary btn--grand" href="02-lobby-faction-select.html">Convene a Game</a></p>
+        </article>
+
+        <!-- Path: Join by code. ZONE 3 is the six-letter summons code. -->
+        <article class="panel panel--parchment path-card zone">
+          <b class="callout" style="top: var(--space-2); right: var(--space-2);">3</b>
+          <span class="asset path-glyph"><img src="../../art/icons/fleet.svg" alt="Fleet"></span>
+          <h3>Answer a Summons</h3>
+          <p class="path-rubric">A herald has brought you six letters. Set them down,
+            and a seat awaits.</p>
+          <div class="stack" style="gap: var(--space-2);">
+            <div class="code-entry" role="group" aria-label="Summons code, six letters">
+              <input maxlength="1" value="G" aria-label="First letter">
+              <input maxlength="1" value="A" aria-label="Second letter">
+              <input maxlength="1" value="L" aria-label="Third letter">
+              <input maxlength="1" value="A" aria-label="Fourth letter">
+              <input maxlength="1" value="T" aria-label="Fifth letter">
+              <input maxlength="1" value="A" aria-label="Sixth letter">
+            </div>
+            <p class="code-hint">Letters only, as the herald spoke them. Great or small, it is all one.</p>
+            <p style="margin: 0;"><a class="btn btn--grand" href="02-lobby-faction-select.html">Take Your Seat</a></p>
+          </div>
+        </article>
+
+        <!-- Path: How to play -->
+        <article class="panel panel--parchment path-card">
+          <span class="asset path-glyph"><img src="../../art/icons/faith.svg" alt="Faith"></span>
+          <h3>The Book of Rules</h3>
+          <p class="path-rubric">How the age is played: phases and omens, hosts and levies,
+            ledgers and the fall of cities — set down fair, as the monks would have it.</p>
+          <!-- Rules screen is not yet in the Phase 3 file map; link is a placeholder. -->
+          <p><a class="btn btn--grand" href="#book-of-rules">Open the Book</a></p>
+        </article>
+
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ZONE 4 · Faction crest strip — display only; the choosing happens
+         in the lobby (02-lobby-faction-select.html). Crests carry
+         data-faction so the colorblind pattern overlays (mockups.css §16)
+         apply wherever a swatch appears. -->
+    <section class="zone" aria-label="The five powers">
+      <b class="callout" style="top: -0.75rem; left: -0.75rem;">4</b>
+      <h2 style="text-align: center;">The Five Powers</h2>
+      <p class="rubric" style="text-align: center; margin-bottom: var(--space-5);">
+        Five claimants to a failing age. The choosing is done in the lobby;
+        the regretting, at the table.</p>
+      <ul class="crest-strip">
+        <li class="crest-card" data-faction="byzantium">
+          <figure class="asset asset--crest"><img src="../../art/crests/byzantium.svg" alt="Crest of Byzantium"></figure>
+          <p class="crest-name"><span class="faction-swatch" aria-hidden="true"></span> Byzantium</p>
+          <p class="crest-motto">“The purple fades; the walls do not.”</p>
+        </li>
+        <li class="crest-card" data-faction="ottomans">
+          <figure class="asset asset--crest"><img src="../../art/crests/ottomans.svg" alt="Crest of the Ottomans"></figure>
+          <p class="crest-name"><span class="faction-swatch" aria-hidden="true"></span> The Ottomans</p>
+          <p class="crest-motto">“The crescent climbs; the Red Apple falls.”</p>
+        </li>
+        <li class="crest-card" data-faction="venice">
+          <figure class="asset asset--crest"><img src="../../art/crests/venice.svg" alt="Crest of Venice"></figure>
+          <p class="crest-name"><span class="faction-swatch" aria-hidden="true"></span> Venice</p>
+          <p class="crest-motto">“Venetians first, then Christians.”</p>
+        </li>
+        <li class="crest-card" data-faction="genoa">
+          <figure class="asset asset--crest"><img src="../../art/crests/genoa.svg" alt="Crest of Genoa"></figure>
+          <p class="crest-name"><span class="faction-swatch" aria-hidden="true"></span> Genoa</p>
+          <p class="crest-motto">“La Superba bows to none but the ledger.”</p>
+        </li>
+        <li class="crest-card" data-faction="hungary">
+          <figure class="asset asset--crest"><img src="../../art/crests/hungary.svg" alt="Crest of Hungary"></figure>
+          <p class="crest-name"><span class="faction-swatch" aria-hidden="true"></span> Hungary</p>
+          <p class="crest-motto">“The shield of Christendom holds the Danube.”</p>
+        </li>
+      </ul>
+    </section>
+
+  </main>
+
+  <!-- ZONE 5 · Footer: version line + settings gear. The gear opens the
+       Settings modal demonstrated on 01-title-menu.html (sound buses,
+       The Scribe's Aids). -->
+  <footer class="site-footer zone">
+    <b class="callout" style="top: -0.75rem; left: -0.75rem;">5</b>
+    <p style="margin: 0;">Twilight of Empires · a chronicle in the making ·
+      <span class="counter">v0.1.0 “Golden Horn”</span> ·
+      <i>the scribes beg pardon for all errors of the pen.</i></p>
+    <button class="btn btn--quiet" type="button" aria-label="Open Settings">
+      <span aria-hidden="true">⚙</span> Settings
+    </button>
+  </footer>
+
+  <!-- Spec legend — apparatus for the client team; does not ship. -->
+  <div class="home-main" style="padding-top: 0;">
+    <ol class="legend">
+      <li><b class="callout">1</b> <b>Masthead.</b> Illuminated title, gold on ink, Cinzel small-caps.
+        <code>menu_theme</code> loops beneath this screen (Music bus, gain 0.40); the first press
+        anywhere on the page doubles as the browser audio unlock (README §4). The board glimpse
+        beneath is decorative — non-interactive on this screen.</li>
+      <li><b class="callout">2</b> <b>The three paths.</b> Primary actions of the landing screen.
+        “Convene a Game” (gold, primary) opens the lobby (<code>02-lobby-faction-select.html</code>)
+        as host. Every press plays <code>ui_click</code>; the convened game's first round opens on
+        <code>church_bell</code>. “Open the Book” will route to the rules reader — screen not yet in
+        the Phase 3 file map; placeholder link.</li>
+      <li><b class="callout">3</b> <b>Summons code.</b> Six single-letter cells, monospace, forced to
+        capitals; typing auto-advances, pasting a whole code fills all six, and the letter case the
+        player types is all one. “Take Your Seat” stays disabled until six letters stand. An unknown
+        code raises a persistent error toast, crimson spine: <i>“No such summons is written.”</i>
+        Sample code shown: <code>GALATA</code>.</li>
+      <li><b class="callout">4</b> <b>Crest strip.</b> The five powers with crests
+        (<code>../../art/crests/</code>) and their mottos — display only here; faction choice happens
+        in the lobby. Each card carries <code>data-faction</code>, so under the <code>.colorblind</code>
+        body class the swatches gain their heraldic hatch (mockups.css §16): color is never the only
+        channel.</li>
+      <li><b class="callout">5</b> <b>Footer.</b> Version line (monospace counter) and the settings
+        gear. The gear opens the Settings modal demonstrated on <code>01-title-menu.html</code>
+        (sound bus sliders, The Scribe's Aids toggle). No destructive actions live on this screen.</li>
+    </ol>
+  </div>
+
+</body>
+</html>

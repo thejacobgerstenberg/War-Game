@@ -1,0 +1,472 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  IMPERIUM: Twilight of Empires — Phase 3 UI mockup: THE MARKET
+  (The Free Companies · The Counting-House)
+  ==========================================================================
+  THIS FILE IS A PHASE 3 IMPLEMENTATION CONTRACT. What is annotated here is
+  deliberate; where this screen and design/mockups/README.md disagree, the
+  README wins. Numbered .callout circles and the .legend at the foot are
+  spec apparatus — they do not ship.
+
+  Point of view: GENOA. The treasury stands at 14 Gold, 9 Grain, 6 Timber,
+  2 Marble, 5 Faith. Venice holds the grain monopoly of the Euxine, so every
+  Grain bargain in the Counting-House pays the lion a toll. On the mercenary
+  block, Genoa's own captain-for-hire — Corrado Doria — is being courted by
+  Venice; the viewer has selected his company and raised a counter-purse of
+  eight Gold, not yet committed.
+
+  Static HTML/CSS only. NO JS — the two leaves switch by the CSS-only
+  .tab-group radio pattern from mockups.css §13. No external requests — art
+  is referenced by relative path and degrades to the .asset hatched
+  placeholder until the sibling branches (feature/visual-assets) merge.
+  Hatched boxes here are expected and correct.
+
+  Sound contract (README §4): ui_click on steppers and tab presses;
+  quill_scratch when the purse is committed ("Raise the Purse" — the
+  two-step commit); coin_purse when a bargain is struck in the
+  Counting-House; crowd_murmur loops while the market is open
+  (proposed — AUDIO_DESIGN maps that loop to diplomacy; reconcile
+  with the audio team).
+  ==========================================================================
+-->
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IMPERIUM — The Market (Free Companies &amp; Counting-House)</title>
+<link rel="stylesheet" href="mockups.css">
+<style>
+  /* ---- Market-only CSS (screen-specific; tokens come from mockups.css) ---- */
+
+  .market { max-width: 68rem; margin: 0 auto; padding: var(--space-5) var(--space-4) var(--space-7); }
+
+  /* Treasury readout — shared header above both leaves */
+  .treasury { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .treasury__title { font-family: var(--font-display); font-variant: small-caps;
+    letter-spacing: 0.08em; font-size: var(--text-lg); margin-right: var(--space-2); }
+  .treasury__hint { flex-basis: 100%; margin: 0; font-style: italic;
+    font-size: var(--text-sm); color: var(--gold-soft); }
+
+  /* Round-timer note — the herald's cry over the block */
+  .timer-note { display: flex; align-items: center; gap: 0.6em; width: fit-content;
+    margin: 0 0 var(--space-4); padding: 0.4em 1em; font-style: italic; font-size: var(--text-sm);
+    background: var(--parchment); border: 1px solid var(--gold); border-left: 5px solid var(--gold);
+    border-radius: var(--radius-1); box-shadow: var(--shadow-1); }
+  .timer-note::before { content: "❧"; color: var(--gold); font-style: normal; }
+
+  /* Company cards — the mercenary block */
+  .company-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
+  @media (max-width: 56rem) { .company-grid { grid-template-columns: 1fr; } }
+  .company-card { display: grid; gap: var(--space-2); align-content: start;
+    padding: var(--space-4); background: var(--parchment);
+    border: 1px solid var(--vellum-shade); border-radius: var(--radius-2); box-shadow: var(--shadow-2); }
+  .company-card:hover { box-shadow: var(--shadow-2), 0 0 0 2px var(--gold); cursor: pointer; }
+  .company-card.is-selected { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .company-card__name { margin: 0; font-size: var(--text-lg); }
+  .company-card__captain { margin: calc(-1 * var(--space-2)) 0 0; font-style: italic;
+    font-size: var(--text-sm); color: color-mix(in srgb, var(--ink) 72%, var(--parchment)); }
+  .company-card__flavor { margin: 0; font-style: italic; font-size: var(--text-sm); }
+
+  .stat-list { list-style: none; margin: 0; padding: var(--space-2) 0 0; display: grid;
+    gap: var(--space-2); font-size: var(--text-sm); border-top: 1px solid var(--ink-ghost); }
+  .stat-list .term { display: block; font-family: var(--font-display); font-variant: small-caps;
+    font-size: var(--text-xs); letter-spacing: 0.06em; color: var(--porphyry); }
+
+  /* Strength in dice — count doubled by words; color never the only channel */
+  .die { display: inline-block; width: 1.05em; height: 1.05em; margin-right: 2px;
+    vertical-align: -0.18em; position: relative; background: var(--parchment);
+    border: 1px solid var(--ink); border-radius: var(--radius-1); box-shadow: var(--shadow-1); }
+  .die::after { content: ""; position: absolute; inset: 0; margin: auto;
+    width: 0.3em; height: 0.3em; border-radius: 50%; background: var(--ink); }
+
+  .bid-line { display: inline-flex; align-items: center; gap: 0.4em; }
+  .bid-line .asset--icon { width: 1.6em; height: 1.6em; }
+
+  /* Bid control — steppers + the committed purse */
+  .bid-control { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+    padding-top: var(--space-3); border-top: 1px dashed var(--ink-faint); }
+  .stepper { display: inline-flex; align-items: stretch; background: var(--parchment);
+    border: 1px solid var(--ink); border-radius: var(--radius-1); box-shadow: var(--shadow-1); }
+  .stepper button { width: 2rem; font-family: var(--font-display); font-weight: 700;
+    font-size: var(--text-md); color: var(--ink); background: var(--vellum);
+    border: none; cursor: pointer; }
+  .stepper button:hover { box-shadow: inset 0 0 0 2px var(--gold); }
+  .stepper button:first-child { border-right: 1px solid var(--ink-faint); }
+  .stepper button:last-child { border-left: 1px solid var(--ink-faint); }
+  .stepper__value { min-width: 2.8rem; display: grid; place-items: center;
+    font-family: var(--font-mono); font-weight: 700; }
+  .bid-hint { flex-basis: 100%; margin: 0; font-style: italic; font-size: var(--text-xs);
+    color: color-mix(in srgb, var(--ink) 72%, var(--parchment)); }
+
+  /* Monopoly banner — the lion's paw on the grain */
+  .monopoly-banner { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
+    margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4);
+    background: var(--faction-color, var(--lapis)); color: var(--parchment);
+    border: 1px solid var(--gold); border-radius: var(--radius-2); box-shadow: var(--shadow-2); }
+  .monopoly-banner .asset--crest { width: 3.2rem; flex: 0 0 auto; }
+  .monopoly-banner__body { display: grid; gap: 2px; flex: 1 1 16rem; }
+  .monopoly-banner__title { font-family: var(--font-display); font-variant: small-caps;
+    letter-spacing: 0.05em; font-size: var(--text-lg); }
+  .monopoly-banner__note { font-style: italic; font-size: var(--text-sm); color: var(--gold-soft); }
+
+  /* Exchange rows — the rates of the house */
+  .exchange-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+  .exchange-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3); background: var(--parchment);
+    border: 1px solid var(--vellum-shade); border-radius: var(--radius-1); box-shadow: var(--shadow-1); }
+  .exchange-side { display: inline-flex; align-items: center; gap: 0.4em;
+    font-variant: small-caps; font-family: var(--font-display); font-size: var(--text-sm);
+    letter-spacing: 0.03em; }
+  .exchange-side .asset--icon { width: 1.5em; height: 1.5em; }
+  .exchange-for { font-style: italic; color: color-mix(in srgb, var(--ink) 60%, var(--parchment)); }
+  .exchange-row .rate-pill { margin-left: auto; }
+  .exchange-row.is-barred { opacity: 0.6; box-shadow: none; }
+  .exchange-reason { flex-basis: 100%; margin: 0; font-style: italic;
+    font-size: var(--text-xs); color: var(--crimson); }
+
+  /* Trade-route summary strip */
+  .route-strip { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+    margin-top: var(--space-4); padding: var(--space-3); background: var(--parchment);
+    border: 1px solid var(--vellum-shade); border-radius: var(--radius-2); }
+  .route-strip__label { font-family: var(--font-display); font-variant: small-caps;
+    font-size: var(--text-xs); letter-spacing: 0.06em; }
+  .route-total { margin-left: auto; font-family: var(--font-display); font-variant: small-caps;
+    font-size: var(--text-sm); letter-spacing: 0.04em; }
+  @media (max-width: 56rem) { .route-total { margin-left: 0; flex-basis: 100%; } }
+
+  /* One counsel closes each leaf */
+  .tab-panel > .advisor-bubble { margin-top: var(--space-5); }
+</style>
+
+<div class="market">
+
+  <header>
+    <h1>The Market</h1>
+    <p class="rubric">Two doors under one roof: swords for hire at the first, ledgers at the second. Both open on Gold.</p>
+  </header>
+
+  <!-- ZONE 1 · The treasury readout — shared by both leaves -->
+  <section class="panel panel--porphyry treasury zone" aria-label="The treasury of Genoa">
+    <b class="callout" style="top:-10px; left:-10px">1</b>
+    <span class="treasury__title">The Treasury of Genoa</span>
+    <span class="resource-chip">
+      <span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span>
+      <b class="value">14</b><span class="name">Gold</span>
+    </span>
+    <span class="resource-chip">
+      <span class="asset asset--icon"><img src="../../art/icons/grain.svg" alt="Grain"></span>
+      <b class="value">9</b><span class="name">Grain</span>
+    </span>
+    <span class="resource-chip">
+      <span class="asset asset--icon"><img src="../../art/icons/timber.svg" alt="Timber"></span>
+      <b class="value">6</b><span class="name">Timber</span>
+    </span>
+    <span class="resource-chip is-short">
+      <span class="asset asset--icon"><img src="../../art/icons/marble.svg" alt="Marble"></span>
+      <b class="value">2</b><span class="name">Marble</span>
+    </span>
+    <span class="resource-chip">
+      <span class="asset asset--icon"><img src="../../art/icons/faith.svg" alt="Faith"></span>
+      <b class="value">5</b><span class="name">Faith</span>
+    </span>
+    <p class="treasury__hint">The vaults as they stand. Every purse and every bargain below draws upon them.</p>
+  </section>
+
+  <hr>
+
+  <!-- ZONE 2 · The two leaves — CSS-only tabs (mockups.css §13) -->
+  <div class="tab-group zone">
+    <b class="callout" style="top:-10px; left:-10px">2</b>
+    <input type="radio" name="market-leaf" id="leaf-companies" checked>
+    <input type="radio" name="market-leaf" id="leaf-counting-house">
+    <div class="tab-row" role="tablist">
+      <label class="tab" for="leaf-companies">The Free Companies</label>
+      <label class="tab" for="leaf-counting-house">The Counting-House</label>
+    </div>
+
+    <div class="tab-panels">
+
+      <!-- ============================================================
+           LEAF ONE · THE FREE COMPANIES — the mercenary bid market
+           ============================================================ -->
+      <section class="tab-panel" aria-label="The Free Companies">
+
+        <!-- ZONE 3 · The round-timer note -->
+        <p class="timer-note zone">
+          <b class="callout" style="top:-12px; right:-12px">3</b>
+          Bids close at the Council phase — the herald cries twice more before the hammer falls.
+        </p>
+
+        <!-- ZONE 4 · The three companies on the block -->
+        <section class="panel zone" aria-label="The companies on the block">
+          <b class="callout" style="top:-10px; left:-10px">4</b>
+          <h2 class="panel-title">Upon the Block This Round</h2>
+          <div class="company-grid">
+
+            <!-- Selected company — the viewer's counter-bid in progress -->
+            <article class="company-card is-selected zone" aria-pressed="true">
+              <h3 class="company-card__name">The Company of the Galleys</h3>
+              <p class="company-card__captain">Corrado Doria, captain-for-hire</p>
+              <p class="company-card__flavor">Genoese by birth, anyone's by contract. He counts a war
+                in wages and steel, and dies for no man's cause but his own pay.</p>
+              <ul class="stat-list">
+                <li>
+                  <b class="term">Strength</b>
+                  <span class="die" aria-hidden="true"></span><span class="die" aria-hidden="true"></span><span class="die" aria-hidden="true"></span>
+                  Three dice upon the sea
+                  <span class="asset asset--icon"><img src="../../art/icons/fleet.svg" alt="Fleet"></span>
+                </li>
+                <li>
+                  <b class="term">Upkeep</b>
+                  <span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span>
+                  Two Gold each round, paid before he sails
+                </li>
+                <li>
+                  <b class="term">Highest Bid</b>
+                  <span class="bid-line">
+                    <figure class="asset asset--icon"><img src="../../art/crests/venice.svg" alt="Crest of Venice"></figure>
+                    Venice bids seven Gold — the lagoon covets Genoese oars
+                  </span>
+                </li>
+              </ul>
+
+              <!-- ZONE 5 · The bid control — choose with the steppers, commit with the purse -->
+              <div class="bid-control zone">
+                <b class="callout" style="top:-12px; right:-12px">5</b>
+                <span class="stepper" role="group" aria-label="Set your purse in Gold">
+                  <button type="button" aria-label="Lighten the purse by one Gold">−</button>
+                  <b class="stepper__value">8</b>
+                  <button type="button" aria-label="Weight the purse by one Gold">+</button>
+                </span>
+                <button class="btn btn--primary" type="button">Raise the Purse</button>
+                <p class="bid-hint">Your purse stands at eight Gold; it must better the lagoon's seven.
+                  Until the purse is raised, the Gold stays in the vault.</p>
+              </div>
+            </article>
+
+            <article class="company-card" tabindex="0">
+              <h3 class="company-card__name">Gattamelata's Lances</h3>
+              <p class="company-card__captain">Erasmo of Narni, called the Honeyed Cat</p>
+              <p class="company-card__flavor">Soft of speech, heavy of lance. The cat purrs until
+                the contract is signed, and afterward the purring stops.</p>
+              <ul class="stat-list">
+                <li>
+                  <b class="term">Strength</b>
+                  <span class="die" aria-hidden="true"></span><span class="die" aria-hidden="true"></span><span class="die" aria-hidden="true"></span><span class="die" aria-hidden="true"></span>
+                  Four dice afield
+                  <span class="asset asset--icon"><img src="../../art/icons/army.svg" alt="Host"></span>
+                </li>
+                <li>
+                  <b class="term">Upkeep</b>
+                  <span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span>
+                  Three Gold each round, and stabling for the horses
+                </li>
+                <li>
+                  <b class="term">Highest Bid</b>
+                  <span class="bid-line">
+                    <figure class="asset asset--icon"><img src="../../art/crests/byzantium.svg" alt="Crest of Byzantium"></figure>
+                    Byzantium bids five Gold — bravely, given the state of its vaults
+                  </span>
+                </li>
+              </ul>
+            </article>
+
+            <article class="company-card" tabindex="0">
+              <h3 class="company-card__name">Piccinino's Free Lances</h3>
+              <p class="company-card__captain">Niccolò Piccinino, condottiero of Perugia</p>
+              <p class="company-card__flavor">A small captain with a long bill. He has broken bigger
+                men than his paymasters — now and then for his paymasters.</p>
+              <ul class="stat-list">
+                <li>
+                  <b class="term">Strength</b>
+                  <span class="die" aria-hidden="true"></span><span class="die" aria-hidden="true"></span><span class="die" aria-hidden="true"></span><span class="die" aria-hidden="true"></span><span class="die" aria-hidden="true"></span>
+                  Five dice afield
+                  <span class="asset asset--icon"><img src="../../art/icons/army.svg" alt="Host"></span>
+                </li>
+                <li>
+                  <b class="term">Upkeep</b>
+                  <span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span>
+                  Four Gold each round, and he counts the round short
+                </li>
+                <li>
+                  <b class="term">Highest Bid</b>
+                  <span class="bid-line">No purse yet opened — the hammer waits.</span>
+                </li>
+              </ul>
+            </article>
+
+          </div>
+        </section>
+
+        <div class="advisor-bubble">
+          Seven Gold from the lagoon, for our own captain. Match it, and enter the wage in the
+          ledger as collateral against his loyalty — such as it is. The Bank does not mourn;
+          the Bank records.
+          <cite>— Battista Grimaldi, Protector of the Bank of Saint George</cite>
+        </div>
+
+      </section>
+
+      <!-- ============================================================
+           LEAF TWO · THE COUNTING-HOUSE — trade and exchange
+           ============================================================ -->
+      <section class="tab-panel" aria-label="The Counting-House">
+
+        <!-- ZONE 6 · The monopoly banner -->
+        <aside class="monopoly-banner zone" data-faction="venice" aria-label="Monopoly in force">
+          <b class="callout" style="top:-10px; left:-10px">6</b>
+          <figure class="asset asset--crest"><img src="../../art/crests/venice.svg" alt="Crest of Venice"></figure>
+          <div class="monopoly-banner__body">
+            <span class="monopoly-banner__title">Venice holds the grain of the Euxine</span>
+            <span class="monopoly-banner__note">Every Grain bargain in this house pays the lion a toll
+              of one Gold. Monopolies are broken on the board, not in the ledger.</span>
+          </div>
+          <span class="pill pill--gold">Monopoly in force</span>
+        </aside>
+
+        <!-- ZONE 7 · The rates of the house — exchange rows -->
+        <section class="panel zone" aria-label="The rates of the house">
+          <b class="callout" style="top:-10px; left:-10px">7</b>
+          <h2 class="panel-title">The Rates of the House</h2>
+          <ul class="exchange-list">
+
+            <li class="exchange-row">
+              <span class="exchange-side">
+                <span class="asset asset--icon"><img src="../../art/icons/timber.svg" alt="Timber"></span>
+                Three Timber
+              </span>
+              <span class="exchange-for">for</span>
+              <span class="exchange-side">
+                <span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span>
+                Two Gold
+              </span>
+              <span class="pill pill--gold rate-pill">Three Timber for two Gold</span>
+              <button class="btn" type="button">Strike the Bargain</button>
+            </li>
+
+            <li class="exchange-row" data-faction="venice">
+              <span class="exchange-side">
+                <span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span>
+                Two Gold
+              </span>
+              <span class="exchange-for">for</span>
+              <span class="exchange-side">
+                <span class="asset asset--icon"><img src="../../art/icons/grain.svg" alt="Grain"></span>
+                One Grain
+              </span>
+              <span class="pill pill--gold rate-pill">Two Gold for one Grain</span>
+              <span class="pill pill--lapis">And one Gold more for the lion's toll</span>
+              <button class="btn" type="button">Strike the Bargain</button>
+            </li>
+
+            <li class="exchange-row is-barred">
+              <span class="exchange-side">
+                <span class="asset asset--icon"><img src="../../art/icons/marble.svg" alt="Marble"></span>
+                Three Marble
+              </span>
+              <span class="exchange-for">for</span>
+              <span class="exchange-side">
+                <span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span>
+                Five Gold
+              </span>
+              <span class="pill pill--gold rate-pill">Three Marble for five Gold</span>
+              <button class="btn" type="button" disabled title="The vaults hold but two Marble.">Strike the Bargain</button>
+              <p class="exchange-reason">The vaults hold but two Marble; the quarries must speak first.</p>
+            </li>
+
+            <li class="exchange-row">
+              <span class="exchange-side">
+                <span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span>
+                Four Gold
+              </span>
+              <span class="exchange-for">for</span>
+              <span class="exchange-side">
+                <span class="asset asset--icon"><img src="../../art/icons/faith.svg" alt="Faith"></span>
+                One Faith
+              </span>
+              <span class="pill pill--gold rate-pill">Four Gold for one Faith</span>
+              <span class="pill">The Church styles it an endowment</span>
+              <button class="btn" type="button">Strike the Bargain</button>
+            </li>
+
+          </ul>
+
+          <!-- ZONE 8 · The routes held — trade-route summary strip -->
+          <div class="route-strip zone" aria-label="The routes held">
+            <b class="callout" style="top:-12px; right:-12px">8</b>
+            <span class="route-strip__label">Routes held:</span>
+            <span class="pill pill--lapis">Pera to Caffa — two Gold each round</span>
+            <span class="pill pill--lapis">Chios to Alexandria — one Gold and one Grain each round</span>
+            <span class="pill pill--lapis">Genoa to Bruges — one Gold each round</span>
+            <b class="route-total">Three routes held · the house yields four Gold and one Grain each round</b>
+          </div>
+        </section>
+
+        <div class="advisor-bubble">
+          The lion has shut his paw upon the Euxine grain, and Pera feels it first. Pay the toll
+          this season, keep the routes warm, and let rumor do its slow work upon the Rialto.
+          <cite>— Niccolò Spinola, Podestà of Pera</cite>
+        </div>
+
+      </section>
+
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- SPEC LEGEND — annotation apparatus, does not ship -->
+  <ol class="legend">
+    <li><b class="callout">1</b> <strong>The treasury readout</strong> — the five resource chips
+      (<code>.resource-chip</code>: icon from <code>../../art/icons/*.svg</code>, numeral counter, name — icon and
+      word always together, color never the only channel), shared by both leaves and pinned above the tabs. A chip
+      carrying <code>.is-short</code> (Marble here) marks a store some bargain below asks and the vaults cannot meet;
+      it mirrors the barred exchange row. Values refresh the moment any purse is raised or bargain struck, with
+      <code>coin_purse</code> on the change.</li>
+    <li><b class="callout">2</b> <strong>The two leaves</strong> — "The Free Companies" (the mercenary block) and
+      "The Counting-House" (trade), switched by the CSS-only <code>.tab-group</code> radio pattern from
+      <code>mockups.css</code> §13. No JS in this file. Tab press plays <code>ui_click</code>; the active leaf carries
+      the gold fill per README §1.</li>
+    <li><b class="callout">3</b> <strong>The round-timer note</strong> — bids close at the Council phase; the counter
+      of heralds' cries remaining ("twice more") ticks each phase. The Council falls at the head of each round's
+      Action phase <em>(design to ratify — the phase track names Omen, Income, Action, Battle)</em>. When the hammer
+      falls, each company joins the highest purse; a company no one bid upon stands the block again next round at
+      one Gold less upkeep.</li>
+    <li><b class="callout">4</b> <strong>The company cards</strong> — always three on the block per round. Each carries
+      the company name, its condottiero, one line of character, and three stats: <em>Strength</em> in dice (die
+      glyphs doubled by words — "four dice afield" — with the host or fleet icon from
+      <code>../../art/icons/army.svg</code> / <code>fleet.svg</code>), <em>Upkeep</em> in Gold each round, and the
+      <em>Highest Bid</em> with the bidder's crest (<code>../../art/crests/*.svg</code>) beside the worded sum. A
+      company with no bids reads "No purse yet opened." Hover shows the gold rim; the selected card carries
+      <code>.is-selected</code> and <code>aria-pressed</code>.</li>
+    <li><b class="callout">5</b> <strong>The bid control</strong> — two-step per README §1: the steppers choose the
+      purse (<code>ui_click</code> each press, minus disabled at one Gold above the standing bid, plus disabled at the
+      treasury's edge), and <em>"Raise the Purse"</em> commits it (<code>quill_scratch</code>; triumph toast
+      <em>"So it is written."</em>). Until raised, the Gold stays in the vault and the choice is freely revocable.
+      A purse the treasury cannot bear answers with the error toast <em>"The treasury cannot bear it."</em> Rival
+      bids arriving live update the Highest Bid line and re-floor the stepper.</li>
+    <li><b class="callout">6</b> <strong>The monopoly banner</strong> — shown whenever any faction holds a trade
+      monopoly touching this house; ground in the holder's faction color via <code>data-faction</code>, doubled by
+      crest and words. Names the holder, the good, and the consequence in one breath. The banner is not a control:
+      monopolies are broken on the board, not in the ledger.</li>
+    <li><b class="callout">7</b> <strong>The exchange rows</strong> — each row gives one store for another at the
+      house rate, worded in the gold rate pill ("Three Timber for two Gold" — never a bare figure against a figure).
+      Rows touched by a monopoly carry the toll pill in the holder's color. A row the vaults cannot meet is barred:
+      button disabled with the in-voice reason beneath and on hover/tap, row at reduced weight, treasury chip
+      flagged <code>.is-short</code>. Striking a bargain plays <code>coin_purse</code> and refreshes the treasury;
+      rates hold for the round and are re-cried at the Income phase.</li>
+    <li><b class="callout">8</b> <strong>The routes held</strong> — one lapis pill per route, each naming its ports
+      and worded yield, and a total at the strip's end ("three routes held · four Gold and one Grain each round").
+      The yield pays itself at the Income phase with <code>coin_purse</code>. A route lost to war or monopoly leaves
+      the strip by way of a herald's toast, never silently.</li>
+    <li><strong>Advisors</strong> — each leaf closes with one <code>.advisor-bubble</code>: Battista Grimaldi
+      (the Bank of Saint George) over the block, Niccolò Spinola (Podestà of Pera) over the ledger. Counsel is
+      flavor, not instruction; it never blocks input.</li>
+    <li><strong>Sound</strong> — <code>ui_click</code> on tabs and steppers; <code>quill_scratch</code> on
+      "Raise the Purse"; <code>coin_purse</code> on bargains struck and route yields; <code>crowd_murmur</code>
+      loops while the market is open <em>(proposed — AUDIO_DESIGN maps that loop to diplomacy; reconcile with the
+      audio team)</em>.</li>
+  </ol>
+
+</div>
+</html>

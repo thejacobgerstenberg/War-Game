@@ -1,0 +1,700 @@
+<!-- =========================================================================
+  IMPERIUM: Twilight of Empires — Phase 3 UI mockups
+  game.html — THE CONTRACT SCREEN: the main campaign board.
+  Full 100vh app shell: map viewport, top bar (round, era, phase track,
+  breath-timer), resource rail, prestige track, province card, action bar,
+  event toast, advisor bubble, chronicle drawer.
+
+  THIS FILE IS A PHASE 3 IMPLEMENTATION CONTRACT.
+  What is annotated here is deliberate. Where this page and README.md
+  disagree, README.md wins.
+
+  - Static HTML/CSS only. Renders fully offline: no CDNs, no external
+    fonts, no external anything. No JS on this screen.
+  - Tokens and components come from mockups.css (linked below); only the
+    small screen-specific CSS in the <style> block belongs to this page.
+  - Game art is referenced by RELATIVE path (../../art/...) and wrapped in
+    the .asset fallback box: on this branch, unmerged assets render as
+    labeled hatched placeholders. That is expected and correct.
+  - The app shell fits 1440x900 with NO page scroll; only the spec legend
+    below the shell scrolls. Callouts + legend are spec apparatus for the
+    client team — they do not ship.
+  - Phase glyphs: Income reuses phase-income.svg; Muster, Campaign and
+    Council reuse phase-action / phase-battle / phase-omen from
+    feature/visual-assets as stand-ins; the Twilight glyph is commissioned —
+    its path (art/icons/phase-twilight.svg) is reserved here and renders as
+    a labeled fallback (alt "Twilight") until the art session delivers it.
+    The action-bar and contextual-order glyphs beyond army/fleet/gold are
+    likewise reserved (paths under art/icons/action-*.svg, pending art) —
+    but those render as UNLABELED hatched boxes, not labeled placeholders:
+    each sits beside its button's visible text label, so the img is
+    decorative (alt="") and the README §5 alt-text label deliberately does
+    not apply. Do not add redundant alt text.
+  - Audio contract (README §4): campaign_ambient loops beneath this screen;
+    ui_click on action buttons, quill_scratch on "Set the Seal" commits,
+    page_turn when the chronicle drawer opens.
+========================================================================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IMPERIUM — Twilight of Empires · The Campaign Board</title>
+  <link rel="stylesheet" href="mockups.css">
+  <style>
+    /* ---- game.html screen-specific styles (kept small) ------------------ */
+    html, body { height: 100%; }
+
+    /* The shell: exactly one viewport tall; nothing inside it scrolls. */
+    .app-shell {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      grid-template-columns: 268px 1fr 336px;
+      grid-template-areas:
+        "top  top  top"
+        "left map  right"
+        "bar  bar  bar";
+      gap: var(--space-2);
+      padding: var(--space-2);
+      overflow: hidden;
+    }
+
+    /* -- Top bar ---------------------------------------------------------- */
+    .top-bar {
+      grid-area: top;
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      padding: var(--space-2) var(--space-4);
+      background: var(--porphyry);
+      color: var(--parchment);
+      border: 1px solid var(--gold);
+      border-radius: var(--radius-2);
+      min-width: 0;   /* the bar shrinks with the grid; it never widens the map track */
+    }
+    .reign { display: flex; align-items: center; gap: var(--space-4); }
+    .round-counter, .era-banner {
+      font-family: var(--font-display);
+      font-variant: small-caps;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+    .round-counter b { color: var(--gold); font-size: var(--text-lg); }
+    .era-banner {
+      font-size: var(--text-xs);
+      color: var(--gold-soft);
+      border-left: 1px solid var(--gold);
+      padding-left: var(--space-4);
+    }
+    .top-bar .phase-track { margin-inline: auto; min-width: 0; }
+
+    /* Breath-timer: hourglass motif + sand gauge. No clock digits, ever. */
+    .turn-timer { display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+    .turn-timer .hourglass { color: var(--gold); font-size: var(--text-lg); line-height: 1; }
+    .turn-timer .breaths {
+      font-family: var(--font-display);
+      font-variant: small-caps;
+      font-size: var(--text-xs);
+      letter-spacing: 0.06em;
+    }
+    .sand-gauge {
+      width: 90px; height: 8px;
+      background: var(--porphyry-deep);
+      border: 1px solid var(--gold);
+      border-radius: var(--radius-1);
+      overflow: hidden;
+    }
+    .sand-gauge .sand { display: block; height: 100%; width: 58%; background: var(--gold); }
+
+    /* -- Side rails ------------------------------------------------------- */
+    .side { display: flex; flex-direction: column; gap: var(--space-2); min-height: 0; }
+    .side-left  { grid-area: left; }
+    .side-right { grid-area: right; }
+    .side .panel { box-shadow: none; }        /* rails sit flush in the shell */
+
+    .resource-rail .resource-chip { width: 100%; justify-content: flex-start; }
+    .resource-rail .resource-chip .value { margin-left: auto; font-size: var(--text-md); }
+
+    /* Prestige track, turned vertical-panel: full width, tighter notches. */
+    .prestige-panel .prestige-track { width: 100%; }
+    .prestige-panel .notch { min-width: 1.55rem; height: 1.55rem; }
+
+    /* -- Map viewport ------------------------------------------------------ */
+    .map-viewport { grid-area: map; min-height: 0; }
+    .map-viewport .asset--board {
+      width: 100%; height: 100%;
+      aspect-ratio: auto;                      /* the shell row sets the height */
+      border: 2px solid var(--gold);
+    }
+    .map-viewport .asset--board > img { object-fit: cover; }
+
+    /* Selection ring mock — implemented on the board SVG as a stroked
+       province path; drawn here as an overlay for the contract only. */
+    .province-select-ring {
+      position: absolute;
+      left: 37%; top: 46%;
+      width: 13%; height: 17%;
+      border: 3px solid var(--gold);
+      outline: 2px solid var(--ink);
+      border-radius: 45% 55% 50% 48%;
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold) 35%, transparent);
+      pointer-events: none;
+    }
+    .province-select-ring .ring-label {
+      position: absolute; left: 50%; bottom: -1.7em;
+      transform: translateX(-50%);
+      font-family: var(--font-display);
+      font-variant: small-caps;
+      font-size: var(--text-xs);
+      letter-spacing: 0.08em;
+      background: var(--gold); color: var(--ink);
+      border: 1px solid var(--ink);
+      border-radius: var(--radius-1);
+      padding: 0 0.6em;
+      white-space: nowrap;
+    }
+
+    /* Host tokens — simple palette discs; strength in Roman numerals,
+       crest doubles the color channel (README §3). */
+    .host-token {
+      position: absolute;
+      width: 2.4rem; height: 2.4rem;
+      display: grid; place-items: center;
+      border-radius: 50%;
+      background: var(--faction-color, var(--vellum));
+      color: var(--parchment);
+      border: 2px solid var(--gold);
+      box-shadow: var(--shadow-1);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-sm);
+    }
+    .host-token .asset--icon {
+      position: absolute; top: -0.6em; right: -0.5em;
+      background: var(--parchment); border: 1px solid var(--ink); border-radius: 50%;
+    }
+
+    /* -- Province card (right rail) --------------------------------------- */
+    .province-card .owner-row { display: flex; align-items: center; gap: var(--space-3); }
+    .province-card .owner-crest { width: 3rem; }
+    .province-card .owner-name {
+      font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-xs); letter-spacing: 0.06em;
+    }
+    .yield-row { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: var(--space-3) 0; }
+    .yield-row .resource-chip { padding-right: 0.5em; box-shadow: none; }
+    .province-card dl { margin: 0; font-size: var(--text-sm); }
+    .province-card dt {
+      font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-xs); letter-spacing: 0.06em;
+      color: var(--porphyry); margin-top: var(--space-2);
+    }
+    .province-card dd { margin: 0; }
+    .province-card .card-actions { display: grid; gap: var(--space-2); margin-top: var(--space-3); }
+
+    /* -- Action bar --------------------------------------------------------- */
+    .action-bar {
+      grid-area: bar;
+      display: flex;
+      flex-wrap: wrap;  /* the grid row is auto: orders take a second row rather than clip */
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      background: var(--porphyry);
+      border: 1px solid var(--gold);
+      border-radius: var(--radius-2);
+      min-width: 0;     /* shrinks with the grid; never widens the map track */
+    }
+    .action-bar .btn { flex-direction: column; gap: 0.15em; padding: 0.4em 0.8em; min-width: 6.2em; }
+    .action-bar .btn .asset--glyph { border: none; background: transparent; }
+    .action-budget {
+      margin-left: auto;
+      display: flex; align-items: center; gap: var(--space-2);
+      color: var(--parchment);
+      font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-xs); letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+    .action-budget .pip {
+      display: inline-block; width: 0.9rem; height: 0.9rem;
+      border-radius: 50%; border: 2px solid var(--gold);
+      background: var(--gold);
+    }
+    .action-budget .pip.is-spent { background: transparent; }
+
+    /* -- Overlays: event toast, advisor, chronicle drawer ------------------- */
+    /* Event-card toasts on the board dock TOP-RIGHT (not the top-center
+       rack) so the phase track and map center stay clear. */
+    .event-toast {
+      position: absolute;
+      top: var(--space-3); right: var(--space-3);
+      max-width: 24rem;
+      align-items: flex-start;
+      text-align: left;
+    }
+    .event-toast .event-thumb { width: 3.4rem; aspect-ratio: 5 / 7; flex: none; }
+    .event-toast b { font-family: var(--font-display); font-variant: small-caps; letter-spacing: 0.04em; }
+
+    .advisor-seat {
+      position: absolute;
+      left: var(--space-3); bottom: var(--space-3);
+      display: flex; align-items: flex-end; gap: var(--space-2);
+    }
+    .advisor-seat .advisor-crest { width: 2.6rem; flex: none; }
+
+    .log-drawer {
+      position: absolute;
+      /* Opens below the docked event toast and ends above the advisor
+         bubble, so all three demo overlays render unoccluded at 1440×900. */
+      top: 22%; right: 0; bottom: 26%;
+      width: 21rem;
+      display: flex;
+      z-index: 60;
+    }
+    .log-drawer .drawer-tab {
+      writing-mode: vertical-rl;
+      align-self: center;
+      font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-xs); letter-spacing: 0.14em;
+      padding: var(--space-3) var(--space-1);
+      background: var(--gold); color: var(--ink);
+      border: 1px solid var(--ink); border-right: none;
+      border-radius: var(--radius-1) 0 0 var(--radius-1);
+      cursor: pointer;
+    }
+    .log-drawer .drawer-body {
+      flex: 1;
+      background: var(--parchment); color: var(--ink);
+      border: 1px solid var(--ink); border-right: none;
+      box-shadow: var(--shadow-2);
+      padding: var(--space-3) var(--space-4);
+      overflow-y: auto;
+      font-size: var(--text-sm);
+    }
+    .log-drawer .drawer-body ol { list-style: none; margin: 0; padding: 0; }
+    .log-drawer .drawer-body li {
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--ink-ghost);
+    }
+    .log-drawer .drawer-body .log-when {
+      display: block;
+      font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-xs); letter-spacing: 0.06em;
+      color: var(--porphyry);
+    }
+
+    /* -- Spec legend (below the shell; the only thing that may scroll) ------ */
+    .spec-legend { max-width: 1200px; margin: var(--space-5) auto; padding: 0 var(--space-4); color: var(--parchment); }
+
+    /* -- Narrow shells (≤1280px; verified at 1024×768) ----------------------
+       The shell tightens instead of clipping: narrower rails, glyph-only
+       phases, stacked era banner and breath caption, orders free to wrap. */
+    @media (max-width: 1280px) {
+      .app-shell { grid-template-columns: 220px 1fr 300px; }
+
+      /* Round counter and era banner stack; the gilded divider yields. */
+      .reign { flex-direction: column; align-items: flex-start; gap: 0; }
+      .era-banner { border-left: none; padding-left: 0; }
+
+      /* Phases go glyph-only; the names remain for assistive tech
+         (visually hidden, announced as before). */
+      .phase { padding: 0.35em 0.5em; }
+      .phase .phase-name {
+        position: absolute;
+        width: 1px; height: 1px;
+        margin: -1px; padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      /* Breath caption stacks beneath the sand-gauge. */
+      .turn-timer {
+        display: grid;
+        grid-template-columns: auto auto;
+        column-gap: var(--space-2);
+        align-items: center;
+      }
+      .turn-timer .hourglass { grid-row: 1 / span 2; }
+      .turn-timer .sand-gauge, .turn-timer .breaths { grid-column: 2; }
+
+      /* Orders shed their floor width and wrap to a second row as needed. */
+      .action-bar .btn { min-width: 0; }
+
+      /* Prestige notches tighten so the Renown panel fits the shorter rail. */
+      .prestige-panel .notch { min-width: 1.3rem; height: 1.3rem; }
+
+      /* The open chronicle narrows and rises with the shorter map it
+         overlays, keeping clear of the advisor bubble. */
+      .log-drawer { width: 16rem; bottom: 38%; }
+    }
+  </style>
+</head>
+<body class="theme-night">
+
+  <div class="app-shell">
+
+    <!-- ================= TOP BAR ======================================== -->
+    <header class="top-bar zone" aria-label="Round, era, phases and the breath-timer">
+      <b class="callout" style="top: -8px; left: 8px">1</b>
+      <div class="reign">
+        <div class="round-counter">Round <b>VII</b></div>
+        <div class="era-banner">Era II — Crises</div>
+      </div>
+
+      <b class="callout" style="top: -8px; left: 44%">2</b>
+      <ol class="phase-track" aria-label="The five phases of the round">
+        <li class="phase is-done">
+          <span class="phase-glyph asset"><img src="../../art/icons/phase-income.svg" alt="Income"></span>
+          <span class="phase-name">Income</span>
+        </li>
+        <li class="phase is-done">
+          <span class="phase-glyph asset"><img src="../../art/icons/phase-action.svg" alt="Muster"></span>
+          <span class="phase-name">Muster</span>
+        </li>
+        <li class="phase is-current" aria-current="step">
+          <span class="phase-glyph asset"><img src="../../art/icons/phase-battle.svg" alt="Campaign"></span>
+          <span class="phase-name">Campaign</span>
+        </li>
+        <li class="phase">
+          <span class="phase-glyph asset"><img src="../../art/icons/phase-omen.svg" alt="Council"></span>
+          <span class="phase-name">Council</span>
+        </li>
+        <li class="phase">
+          <!-- Glyph commissioned; path reserved. Renders as labeled fallback. -->
+          <span class="phase-glyph asset"><img src="../../art/icons/phase-twilight.svg" alt="Twilight"></span>
+          <span class="phase-name">Twilight</span>
+        </li>
+      </ol>
+
+      <b class="callout" style="top: -8px; right: 8px">3</b>
+      <div class="turn-timer" aria-label="Time remaining in the turn">
+        <span class="hourglass" aria-hidden="true">⧗</span>
+        <span class="sand-gauge"><span class="sand"></span></span>
+        <span class="breaths">XLII breaths remain</span>
+      </div>
+    </header>
+
+    <!-- ================= LEFT RAIL: TREASURY & RENOWN =================== -->
+    <aside class="side side-left">
+      <section class="panel resource-rail zone" aria-label="The treasury">
+        <b class="callout" style="top: 8px; right: 8px">4</b>
+        <h2 class="panel-title">The Treasury</h2>
+        <div class="stack" style="gap: var(--space-2)">
+          <span class="resource-chip">
+            <span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span>
+            <span class="name">Gold</span><b class="value">14</b>
+          </span>
+          <span class="resource-chip">
+            <span class="asset asset--icon"><img src="../../art/icons/grain.svg" alt="Grain"></span>
+            <span class="name">Grain</span><b class="value">9</b>
+          </span>
+          <span class="resource-chip">
+            <span class="asset asset--icon"><img src="../../art/icons/timber.svg" alt="Timber"></span>
+            <span class="name">Timber</span><b class="value">6</b>
+          </span>
+          <span class="resource-chip is-short">
+            <!-- .is-short: cannot afford the hovered order. Hover copy:
+                 "The quarries have given all they have." -->
+            <span class="asset asset--icon"><img src="../../art/icons/marble.svg" alt="Marble"></span>
+            <span class="name">Marble</span><b class="value">2</b>
+          </span>
+          <span class="resource-chip">
+            <span class="asset asset--icon"><img src="../../art/icons/faith.svg" alt="Faith"></span>
+            <span class="name">Faith</span><b class="value">5</b>
+          </span>
+        </div>
+      </section>
+
+      <section class="panel prestige-panel zone" aria-label="The Prestige track">
+        <b class="callout" style="top: 8px; right: 8px">5</b>
+        <h2 class="panel-title">
+          <span class="asset asset--icon"><img src="../../art/icons/prestige.svg" alt="Prestige"></span>
+          Renown
+        </h2>
+        <ol class="prestige-track" aria-label="Prestige, nought to twenty; Byzantium stands at eleven">
+          <li class="notch">0</li>
+          <li class="notch">1</li>
+          <li class="notch">2</li>
+          <li class="notch">3</li>
+          <li class="notch">4</li>
+          <li class="notch">5</li>
+          <li class="notch">6</li>
+          <li class="notch">7</li>
+          <li class="notch">8</li>
+          <li class="notch">9</li>
+          <li class="notch">10</li>
+          <li class="notch is-held" data-faction="byzantium">11
+            <span class="marker asset asset--icon"><img src="../../art/crests/byzantium.svg" alt="Byzantium"></span>
+          </li>
+          <li class="notch">12</li>
+          <li class="notch">13</li>
+          <li class="notch">14</li>
+          <li class="notch">15</li>
+          <li class="notch">16</li>
+          <li class="notch">17</li>
+          <li class="notch">18</li>
+          <li class="notch">19</li>
+          <li class="notch">20</li>
+        </ol>
+        <p style="font-style: italic; font-size: var(--text-xs); margin: var(--space-2) 0 0">
+          The regard of the world — won or squandered, never spent.
+        </p>
+      </section>
+    </aside>
+
+    <!-- ================= MAP VIEWPORT =================================== -->
+    <main class="map-viewport zone" aria-label="The campaign map">
+      <b class="callout" style="top: 10px; left: 10px">6</b>
+      <figure class="asset asset--board asset--cover">
+        <img src="../../art/map/board.svg" alt="The campaign map — the Eastern Mediterranean, 1400 to 1453">
+      </figure>
+
+      <!-- Selection ring: on the real board this is a gold stroke on the
+           province path itself; drawn as an overlay for the contract. -->
+      <div class="province-select-ring zone" aria-label="Selected province: Thessalonica">
+        <b class="callout" style="top: -12px; left: -12px">7</b>
+        <span class="ring-label">Thessalonica</span>
+      </div>
+
+      <!-- Host tokens: palette discs, strength in numerals, crest badge. -->
+      <b class="callout" style="top: 34%; left: 44.5%">8</b>
+      <div class="host-token" data-faction="byzantium" style="left: 41%; top: 50%" title="A host of Byzantium — three levies">
+        III
+        <span class="asset asset--icon"><img src="../../art/crests/byzantium.svg" alt="Byzantium"></span>
+      </div>
+      <div class="host-token" data-faction="ottomans" style="left: 55%; top: 41%" title="A host of the Ottomans — four levies">
+        IV
+        <span class="asset asset--icon"><img src="../../art/crests/ottomans.svg" alt="Ottomans"></span>
+      </div>
+
+      <!-- Event-card toast, docked top-right of the map. -->
+      <div class="toast event-toast zone" role="status">
+        <b class="callout" style="top: -10px; left: -10px">12</b>
+        <figure class="asset event-thumb">
+          <img src="../../art/illustrations/events/walls-earthquake.svg" alt="Walls Shaken">
+        </figure>
+        <span><b>Walls Shaken</b> — an earthquake tests the Theodosian stones.</span>
+      </div>
+
+      <!-- Advisor bubble, bottom-left, above the action bar. -->
+      <div class="advisor-seat zone">
+        <b class="callout" style="top: -10px; left: -6px">13</b>
+        <figure class="asset asset--crest advisor-crest">
+          <img src="../../art/crests/byzantium.svg" alt="Byzantium">
+        </figure>
+        <div class="advisor-bubble">
+          Thessalonica is a fair page in the ledger, Majesty — but the harbor tolls
+          have thinned since the Turk closed the gulf. Spend Timber on her walls
+          before you spend blood behind them.
+          <cite>— Demetrios Choumnos, Grand Logothete</cite>
+        </div>
+      </div>
+
+      <!-- Chronicle drawer: right-edge tab, shown OPEN for the contract. -->
+      <aside class="log-drawer zone" aria-label="The chronicle of the match">
+        <b class="callout" style="top: -10px; left: -10px">14</b>
+        <span class="drawer-tab" role="button" aria-expanded="true">The Chronicle</span>
+        <div class="drawer-body">
+          <ol reversed>
+            <li>
+              <span class="log-when">Round VII — Campaign</span>
+              The pretense of peace is spent. The Ottomans loose their hosts upon
+              Hungary, and the field is open between them.
+            </li>
+            <li>
+              <span class="log-when">Round VII — Muster</span>
+              Adrianople beats the drum: two fresh levies rise for the Porte.
+            </li>
+            <li>
+              <span class="log-when">Round VI — Council</span>
+              Venice closes its fist on the trade of the Morea. What flows, flows
+              for the lagoon, and the ducats flow after.
+            </li>
+            <li>
+              <span class="log-when">Round VI — Twilight</span>
+              The standing shifts: Byzantium outpaces Genoa and stands first in
+              Prestige, eleven to its name.
+            </li>
+          </ol>
+        </div>
+      </aside>
+    </main>
+
+    <!-- ================= RIGHT RAIL: PROVINCE CARD ====================== -->
+    <aside class="side side-right">
+      <section class="panel panel--parchment province-card zone" aria-label="Selected province">
+        <b class="callout" style="top: 8px; right: 8px">9</b>
+        <h2 class="panel-title">Thessalonica</h2>
+        <div class="owner-row" data-faction="byzantium">
+          <figure class="asset asset--crest owner-crest">
+            <img src="../../art/crests/byzantium.svg" alt="Byzantium">
+          </figure>
+          <div>
+            <span class="owner-name">Under the banner of Byzantium</span><br>
+            <span class="pill"><span class="faction-swatch" data-faction="byzantium"></span> Imperial demesne</span>
+          </div>
+        </div>
+
+        <dl>
+          <dt>Yields each season</dt>
+          <dd>
+            <div class="yield-row">
+              <span class="resource-chip"><span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span><b class="value">2</b></span>
+              <span class="resource-chip"><span class="asset asset--icon"><img src="../../art/icons/grain.svg" alt="Grain"></span><b class="value">2</b></span>
+              <span class="resource-chip"><span class="asset asset--icon"><img src="../../art/icons/timber.svg" alt="Timber"></span><b class="value">1</b></span>
+              <span class="resource-chip"><span class="asset asset--icon"><img src="../../art/icons/marble.svg" alt="Marble"></span><b class="value">1</b></span>
+              <span class="resource-chip"><span class="asset asset--icon"><img src="../../art/icons/faith.svg" alt="Faith"></span><b class="value">1</b></span>
+            </div>
+          </dd>
+          <dt>Works and walls</dt>
+          <dd>Walls II · Harbor</dd>
+          <dt>Garrison</dt>
+          <dd>
+            <span class="asset asset--icon"><img src="../../art/icons/army.svg" alt="Host"></span>
+            One host — three levies under the city's banner
+          </dd>
+        </dl>
+
+        <div class="card-actions zone">
+          <b class="callout" style="top: -10px; right: -6px">10</b>
+          <button class="btn btn--primary">
+            <span class="asset asset--icon"><img src="../../art/icons/army.svg" alt=""></span>
+            Muster a Levy
+          </button>
+          <button class="btn">
+            <span class="asset asset--icon"><img src="../../art/icons/timber.svg" alt=""></span>
+            Strengthen the Walls
+          </button>
+        </div>
+      </section>
+    </aside>
+
+    <!-- ================= ACTION BAR ===================================== -->
+    <footer class="action-bar zone" aria-label="The orders of the campaign">
+      <b class="callout" style="top: -10px; left: 10px">11</b>
+
+      <button class="btn" title="Recruit levies in a province you hold">
+        <span class="asset asset--glyph"><img src="../../art/icons/army.svg" alt=""></span>
+        Muster
+      </button>
+      <button class="btn is-selected" aria-pressed="true" title="Move a host or fleet — the order now being given">
+        <!-- Glyph commissioned; path reserved. Renders as an UNLABELED hatched
+             box until the art lands: the button's visible label does the
+             naming, so the img stays decorative (alt=""). -->
+        <span class="asset asset--glyph"><img src="../../art/icons/action-march.svg" alt=""></span>
+        March
+      </button>
+      <button class="btn" title="Raise walls, harbors and holy houses">
+        <span class="asset asset--glyph"><img src="../../art/icons/action-raise.svg" alt=""></span>
+        Raise
+      </button>
+      <button class="btn" title="Trade on the routes and in the counting-house">
+        <span class="asset asset--glyph"><img src="../../art/icons/gold.svg" alt=""></span>
+        Traffic
+      </button>
+      <button class="btn" title="Send envoys; make and break pacts">
+        <span class="asset asset--glyph"><img src="../../art/icons/action-parley.svg" alt=""></span>
+        Parley
+      </button>
+      <button class="btn" title="Set your agents listening at a rival's court">
+        <span class="asset asset--glyph"><img src="../../art/icons/action-whisper.svg" alt=""></span>
+        Whisper
+      </button>
+      <button class="btn" title="Play a tactic card from your hand">
+        <span class="asset asset--glyph"><img src="../../art/icons/action-stratagem.svg" alt=""></span>
+        Play a Stratagem
+      </button>
+      <button class="btn btn--quiet" title="End your turn; the council passes to the next throne">
+        <span class="asset asset--glyph"><img src="../../art/icons/action-yield.svg" alt=""></span>
+        Yield the Floor
+      </button>
+
+      <div class="action-budget" aria-label="Deeds remaining this campaign: two of three">
+        Deeds this campaign
+        <span class="pip is-spent" title="Spent"></span>
+        <span class="pip" title="Remaining"></span>
+        <span class="pip" title="Remaining"></span>
+        <span>II of III remain</span>
+      </div>
+    </footer>
+
+  </div><!-- /.app-shell -->
+
+  <!-- ================= SPEC LEGEND (does not ship; may scroll) =========== -->
+  <section class="spec-legend">
+    <h2>The Contract — zones and behaviors</h2>
+    <ol class="legend">
+      <li><b class="callout">1</b> <strong>Round counter &amp; era banner</strong> — read-only chrome.
+        Rounds are numbered in Roman numerals; the era banner changes with <code>horn_fanfare</code>
+        over a <code>church_bell</code> tail (README §4). Hover: none. Click: none.</li>
+      <li><b class="callout">2</b> <strong>Phase track</strong> — five phases: Income, Muster, Campaign,
+        Council, Twilight. Past phases render <code>.is-done</code> (faded), the current phase
+        <code>.is-current</code> (gold fill). Hover a phase for a one-line in-voice tooltip
+        (e.g. <em>"Campaign — hosts march and sieges are set."</em>). Never clickable. The Twilight
+        glyph is commissioned; its path is reserved at <code>art/icons/phase-twilight.svg</code>.</li>
+      <li><b class="callout">3</b> <strong>Breath-timer</strong> — hourglass and sand-gauge. The gauge
+        drains left-to-right; the caption counts breaths in Roman numerals ("XLII breaths remain").
+        No clock digits anywhere. Under X breaths the gauge and caption take the crimson of
+        <code>--crimson</code> and the caption pulses once per breath (respect
+        <code>prefers-reduced-motion</code>). At nought the turn yields automatically.</li>
+      <li><b class="callout">4</b> <strong>The Treasury (resource rail)</strong> — the five stores:
+        Gold, Grain, Timber, Marble, Faith; icon + word + count, always all three (README §3).
+        Hover/tap a chip for the income breakdown by province. <code>.is-short</code> (crimson rim)
+        marks a store that cannot bear the order being lined up, with in-voice hover copy
+        (<em>"The quarries have given all they have."</em>).</li>
+      <li><b class="callout">5</b> <strong>Prestige track</strong> — nought to twenty; every fifth notch
+        is a gilded milestone. Each faction's marker carries its crest (color is never the only
+        channel). Byzantium stands at eleven. Hover a held notch to read the holder and when it
+        last moved; hover a milestone to read its reward. First to twenty — or the fall of the
+        City — closes the reckoning.</li>
+      <li><b class="callout">6</b> <strong>Map viewport</strong> — <code>../../art/map/board.svg</code>,
+        pannable and zoomable (drag / wheel / pinch; keyboard arrows + <code>+</code>/<code>−</code>).
+        Hover a province: gold rim on its path and a name-plate tooltip. Click: select (see 7).
+        Clicking open water clears the selection.</li>
+      <li><b class="callout">7</b> <strong>Selected-province ring</strong> — gold stroke on the province
+        path itself (drawn here as an overlay mock), persistent until another selection is made.
+        Selection also sets the ring-label name-plate — never color alone. Selecting a province
+        fills the province card (9) and plays <code>ui_click</code>.</li>
+      <li><b class="callout">8</b> <strong>Host tokens</strong> — one disc per host, in the owner's
+        board color with gold rim, strength in Roman numerals, crest badge at the shoulder.
+        Hover: composition tooltip (levies, siege train, commanding banner). Click: select the
+        host; legal marches shade gold on the map. With March armed (11), clicking a legal
+        province gives the order — committed only at "Set the Seal" (<code>quill_scratch</code>).</li>
+      <li><b class="callout">9</b> <strong>Province card</strong> — name, owner crest, seasonal yields
+        (all five stores shown, even at nought), works ("Walls II · Harbor"), garrison. Read-only
+        summary; deeper management lives on the province detail screen.</li>
+      <li><b class="callout">10</b> <strong>Contextual orders</strong> — at most two, chosen by game
+        state (here: <em>Muster a Levy</em>, primary; <em>Strengthen the Walls</em>). Disabled
+        orders keep their place at 0.45 opacity with an in-voice reason on hover
+        (<em>"The levies are spent."</em>). Destructive orders always confirm via <code>.modal</code>.</li>
+      <li><b class="callout">11</b> <strong>Action bar</strong> — the eight orders: Muster, March,
+        Raise, Traffic, Parley, Whisper, Play a Stratagem, Yield the Floor. One order is armed at
+        a time (<code>.is-selected</code>, gold fill — March here); arming an order sets the map's
+        click-meaning. Yield the Floor is quiet-styled and always confirms. The deed pips show
+        the action budget: three per campaign, spent pips hollow; at nought all orders but
+        Yield the Floor disable.</li>
+      <li><b class="callout">12</b> <strong>Event toast</strong> — event-card notices dock top-right of
+        the map (ordinary notices keep the top-center <code>.toast-rack</code>, README §2). Thumbnail
+        from <code>../../art/illustrations/events/</code>, title + one line. Informational toasts
+        yield after about five seconds; clicking opens the full event card. At most one event
+        toast at a time; <code>card_flip</code> on arrival.</li>
+      <li><b class="callout">13</b> <strong>Advisor bubble</strong> — bottom-left, above the action bar.
+        One counsellor speaks at a time, named and attributed (here Demetrios Choumnos, Grand
+        Logothete of Byzantium). New counsel replaces old; click the bubble to dismiss it. The
+        tutorial speaks through this same seat.</li>
+      <li><b class="callout">14</b> <strong>Chronicle drawer</strong> — right-edge tab, shown open.
+        Closed: only the gilded "The Chronicle" tab shows. Open: an overlay strip above the map
+        (the shell does not reflow), newest entries first, scrollable within itself,
+        <code>page_turn</code> on open. Entries are the same in-voice lines the end-of-match
+        Chronicle is stitched from.</li>
+    </ol>
+    <p style="font-style: italic; font-size: var(--text-sm)">
+      Callouts and this legend are spec apparatus — they do not ship. The shell above fits
+      1440×900 with no page scroll; only this legend lies below the fold.
+    </p>
+  </section>
+
+</body>
+</html>
