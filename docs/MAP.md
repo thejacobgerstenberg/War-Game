@@ -86,9 +86,9 @@ Prestige/Value nodes (high-value economic & scoring cities) are flagged in **Not
 | `athens` | Athens | Greece & Aegean | city | 🪨 marble | ✝️ faith | Y | T2 | Independent | Duchy of Athens (Acciaioli). **HV(3)**. Marble. |
 | `morea` | Morea (Mistra) | Greece & Aegean | hills | 🌾 grain | ✝️ faith | N | T2 | **Byzantium** | Despotate of the Morea; Mistra. |
 | `modon` | Modon & Coron | Greece & Aegean | coast | 🪙 gold | 🌾 grain | Y | T1 | **Venice** | "The eyes of the Republic." |
-| `venice` | Venice | Italy | city | 🪙 gold | 🪵 timber | Y | T3 | **Venice** | Capital; the Arsenal. **HV(4)**. |
+| `venice` | Venice | Italy | city | 🪙 gold | 🪵 timber | Y | T3 | **Venice** | Capital; the Arsenal. **HV(4)**. Yields **🪨 marble 1/round** (balance retune, PR #11 TUNING_REPORT). |
 | `milan` | Milan | Italy | plains | 🪙 gold | 🪨 marble | N | T2 | Independent | Armorers & condottieri (Duchy of Milan). |
-| `genoa` | Genoa | Italy | city | 🪙 gold | 🪨 marble | Y | T3 | **Genoa** | Capital; the Bank of St George. **HV(4)**. |
+| `genoa` | Genoa | Italy | city | 🪙 gold | 🪨 marble | Y | T3 | **Genoa** | Capital; the Bank of St George. **HV(4)**. Yields **🪨 marble 1/round** in addition to its marble secondary (balance retune, PR #11 TUNING_REPORT). |
 | `rome` | Rome | Italy | city | ✝️ faith | 🪙 gold | Y | T4 | Independent | Papal States. **HV(4)**. Source of indulgences & crusades. |
 | `naples` | Naples | Italy | city | 🌾 grain | 🪙 gold | Y | T3 | Independent | Aragonese kingdom. **HV(3)**. |
 | `sicily` | Sicily (Palermo) | Western Mediterranean | coast | 🌾 grain | 🪙 gold | Y | T2 | Independent | Aragon's granary. |
@@ -130,6 +130,9 @@ Prestige/Value nodes (high-value economic & scoring cities) are flagged in **Not
 > land provinces** (every row above except the `damascus` placeholder). `buda` and `belgrade` are marked
 > **R** for *river port* (Danube): they can build/berth fleets on the river but are **not** on any sea zone
 > and cannot be reached by seagoing fleets.
+
+> **Balance retune (ratified):** `venice` and `genoa` each yield a flat **🪨 marble 1/round**
+> in addition to the yields listed in their registry rows (balance retune, PR #11 TUNING_REPORT).
 
 ### High-Value Nodes & Walled Cities (quick reference)
 

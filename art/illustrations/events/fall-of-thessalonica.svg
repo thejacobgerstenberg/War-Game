@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Fall of Thessalonica</title>
+  <!-- parchment sky -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- vellum ground -->
+  <rect x="0" y="130" width="260" height="30" fill="#E2D3B3"/>
+
+  <!-- church drum and dome, silent porphyry -->
+  <rect x="99" y="56" width="62" height="26" fill="#4B1F3F"/>
+  <path d="M 95 58 A 35 35 0 0 1 165 58 Z" fill="#4B1F3F"/>
+
+  <!-- gold finial pole and crescent where the cross once stood -->
+  <rect x="128" y="20" width="4" height="7" fill="#C9A227"/>
+  <circle cx="130" cy="12" r="9" fill="#C9A227"/>
+  <circle cx="130" cy="8.5" r="8" fill="#F0E6D2"/>
+
+  <!-- flanking towers -->
+  <rect x="56" y="50" width="22" height="32" fill="#2B2118"/>
+  <rect x="56" y="44" width="6" height="6" fill="#2B2118"/>
+  <rect x="64" y="44" width="6" height="6" fill="#2B2118"/>
+  <rect x="72" y="44" width="6" height="6" fill="#2B2118"/>
+  <rect x="182" y="50" width="22" height="32" fill="#2B2118"/>
+  <rect x="182" y="44" width="6" height="6" fill="#2B2118"/>
+  <rect x="190" y="44" width="6" height="6" fill="#2B2118"/>
+  <rect x="198" y="44" width="6" height="6" fill="#2B2118"/>
+
+  <!-- city wall -->
+  <rect x="0" y="78" width="260" height="52" fill="#2B2118"/>
+  <rect x="4" y="68" width="14" height="10" fill="#2B2118"/>
+  <rect x="26" y="68" width="14" height="10" fill="#2B2118"/>
+  <rect x="48" y="68" width="14" height="10" fill="#2B2118"/>
+  <rect x="70" y="68" width="14" height="10" fill="#2B2118"/>
+  <rect x="92" y="68" width="14" height="10" fill="#2B2118"/>
+  <rect x="114" y="68" width="14" height="10" fill="#2B2118"/>
+  <rect x="136" y="68" width="14" height="10" fill="#2B2118"/>
+  <rect x="158" y="68" width="14" height="10" fill="#2B2118"/>
+  <rect x="180" y="68" width="14" height="10" fill="#2B2118"/>
+  <rect x="202" y="68" width="14" height="10" fill="#2B2118"/>
+  <rect x="224" y="68" width="14" height="10" fill="#2B2118"/>
+  <rect x="246" y="68" width="14" height="10" fill="#2B2118"/>
+
+  <!-- open gate the captives were led through -->
+  <path d="M 112 130 L 112 104 A 16 16 0 0 1 144 104 L 144 130 Z" fill="#E2D3B3"/>
+
+  <!-- captives, heads bowed, led out beneath their own walls -->
+  <circle cx="28" cy="134" r="5.5" fill="#2B2118"/>
+  <path d="M 24 138 L 36 138 L 39 157 L 21 157 Z" fill="#2B2118"/>
+  <circle cx="60" cy="134" r="5.5" fill="#2B2118"/>
+  <path d="M 56 138 L 68 138 L 71 157 L 53 157 Z" fill="#2B2118"/>
+  <circle cx="92" cy="134" r="5.5" fill="#2B2118"/>
+  <path d="M 88 138 L 100 138 L 103 157 L 85 157 Z" fill="#2B2118"/>
+  <circle cx="124" cy="134" r="5.5" fill="#2B2118"/>
+  <path d="M 120 138 L 132 138 L 135 157 L 117 157 Z" fill="#2B2118"/>
+  <circle cx="156" cy="134" r="5.5" fill="#2B2118"/>
+  <path d="M 152 138 L 164 138 L 167 157 L 149 157 Z" fill="#2B2118"/>
+
+  <!-- the gold chain that binds them, pulled off toward the edge -->
+  <path d="M 2 152 Q 16 144 30 146 Q 46 154 62 146 Q 78 154 94 146 Q 110 154 126 146 Q 142 154 158 146"
+        fill="none" stroke="#C9A227" stroke-width="3" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Final Siege</title>
+
+  <!-- vellum ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#E2D3B3"/>
+
+  <!-- ottoman crescent looming in the sky, horns toward the City -->
+  <path d="M 36 12 A 18 18 0 0 0 36 48 A 22 22 0 0 1 36 12 Z" fill="#C9A227"/>
+
+  <!-- stone shot arcing in from the bombards -->
+  <circle cx="240" cy="26" r="4" fill="#2B2118"/>
+  <circle cx="225" cy="38" r="5" fill="#2B2118"/>
+  <circle cx="210" cy="50" r="4" fill="#2B2118"/>
+
+  <!-- the great dome and its daughters, behind the walls -->
+  <path d="M 90 82 A 12 12 0 0 1 114 82 Z" fill="#4B1F3F"/>
+  <path d="M 146 82 A 12 12 0 0 1 170 82 Z" fill="#4B1F3F"/>
+  <path d="M 100 82 A 30 30 0 0 1 160 82 Z" fill="#4B1F3F"/>
+  <rect x="127" y="34" width="6" height="18" fill="#C9A227"/>
+  <rect x="120" y="40" width="20" height="6" fill="#C9A227"/>
+
+  <!-- theodosian curtain wall and towers -->
+  <rect x="84" y="82" width="92" height="36" fill="#2B2118"/>
+  <rect x="88" y="74" width="8" height="8" fill="#2B2118"/>
+  <rect x="102" y="74" width="8" height="8" fill="#2B2118"/>
+  <rect x="116" y="74" width="8" height="8" fill="#2B2118"/>
+  <rect x="130" y="74" width="8" height="8" fill="#2B2118"/>
+  <rect x="144" y="74" width="8" height="8" fill="#2B2118"/>
+  <rect x="158" y="74" width="8" height="8" fill="#2B2118"/>
+
+  <rect x="60" y="58" width="24" height="60" fill="#2B2118"/>
+  <rect x="60" y="50" width="6" height="8" fill="#2B2118"/>
+  <rect x="69" y="50" width="6" height="8" fill="#2B2118"/>
+  <rect x="78" y="50" width="6" height="8" fill="#2B2118"/>
+
+  <rect x="176" y="58" width="24" height="60" fill="#2B2118"/>
+  <rect x="176" y="50" width="6" height="8" fill="#2B2118"/>
+  <rect x="185" y="50" width="6" height="8" fill="#2B2118"/>
+  <rect x="194" y="50" width="6" height="8" fill="#2B2118"/>
+
+  <!-- the crack the guns have opened -->
+  <path d="M 190 58 L 184 72 L 190 86 L 183 102 L 189 118" fill="none" stroke="#E2D3B3" stroke-width="4"/>
+  <!-- torchlight of the night masons atop the broken tower -->
+  <path d="M 188 36 C 184 41 183 46 188 50 C 193 46 192 41 188 36 Z" fill="#C9A227"/>
+
+  <!-- camp upon camp: the outer ring of tents -->
+  <polygon points="-10,140 5,118 20,140" fill="#7A1F2B"/>
+  <polygon points="20,140 35,118 50,140" fill="#2B2118"/>
+  <polygon points="50,140 65,118 80,140" fill="#7A1F2B"/>
+  <polygon points="80,140 95,118 110,140" fill="#2B2118"/>
+  <polygon points="110,140 125,118 140,140" fill="#7A1F2B"/>
+  <polygon points="140,140 155,118 170,140" fill="#2B2118"/>
+  <polygon points="170,140 185,118 200,140" fill="#7A1F2B"/>
+  <polygon points="200,140 215,118 230,140" fill="#2B2118"/>
+  <polygon points="230,140 245,118 260,140" fill="#7A1F2B"/>
+
+  <!-- the inner ring, pressed to the walls -->
+  <polygon points="-15,160 5,126 25,160" fill="#2B2118"/>
+  <polygon points="25,160 45,126 65,160" fill="#7A1F2B"/>
+  <polygon points="65,160 85,126 105,160" fill="#2B2118"/>
+  <polygon points="105,160 125,126 145,160" fill="#7A1F2B"/>
+  <polygon points="145,160 165,126 185,160" fill="#2B2118"/>
+  <polygon points="185,160 205,126 225,160" fill="#7A1F2B"/>
+  <polygon points="225,160 245,126 265,160" fill="#2B2118"/>
+
+  <!-- tent doors -->
+  <polygon points="45,140 39,160 51,160" fill="#E2D3B3"/>
+  <polygon points="125,138 118,160 132,160" fill="#E2D3B3"/>
+  <polygon points="205,140 199,160 211,160" fill="#E2D3B3"/>
+
+  <!-- crescent standards over the host -->
+  <rect x="43" y="100" width="3" height="28" fill="#2B2118"/>
+  <path d="M 44 85 A 7 7 0 0 0 44 99 A 9 9 0 0 1 44 85 Z" fill="#C9A227"/>
+  <rect x="203" y="100" width="3" height="28" fill="#2B2118"/>
+  <path d="M 204 85 A 7 7 0 0 0 204 99 A 9 9 0 0 1 204 85 Z" fill="#C9A227"/>
+</svg>

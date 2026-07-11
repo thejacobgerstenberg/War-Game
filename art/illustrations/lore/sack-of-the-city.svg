@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Sack of the City</title>
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- great dome behind the wall -->
+  <path d="M92,74 Q92,36 130,36 Q168,36 168,74 Z" fill="#4B1F3F"/>
+  <!-- toppling cross falling from the dome -->
+  <g transform="rotate(38 150 30)" fill="#C9A227">
+    <rect x="147" y="16" width="6" height="26"/>
+    <rect x="139" y="24" width="22" height="6"/>
+  </g>
+  <!-- fires rising behind the battlements -->
+  <path d="M44,76 Q38,56 50,40 Q50,56 60,46 Q62,64 54,76 Z" fill="#7A1F2B"/>
+  <path d="M66,76 Q62,62 70,52 Q72,62 78,58 Q78,70 72,76 Z" fill="#7A1F2B"/>
+  <path d="M216,76 Q222,56 210,40 Q210,56 200,46 Q198,64 206,76 Z" fill="#7A1F2B"/>
+  <path d="M194,76 Q198,62 190,52 Q188,62 182,58 Q182,70 188,76 Z" fill="#7A1F2B"/>
+  <!-- crenellated city wall -->
+  <path d="M0,160 L0,72 L22,72 L22,86 L36,86 L36,72 L58,72 L58,86 L72,86 L72,72 L94,72 L94,86 L108,86 L108,72 L130,72 L130,86 L144,86 L144,72 L166,72 L166,86 L180,86 L180,72 L202,72 L202,86 L216,86 L216,72 L238,72 L238,86 L252,86 L252,72 L260,72 L260,160 Z" fill="#2B2118"/>
+  <!-- breached gate, glowing with fire within -->
+  <path d="M98,160 L98,118 Q98,92 130,92 Q162,92 162,118 L162,160 Z" fill="#7A1F2B"/>
+  <!-- door panel torn loose, fallen askew -->
+  <polygon points="104,104 126,98 132,160 108,160" fill="#2B2118"/>
+  <circle cx="115" cy="112" r="3" fill="#C9A227"/>
+  <circle cx="117" cy="130" r="3" fill="#C9A227"/>
+  <circle cx="119" cy="148" r="3" fill="#C9A227"/>
+  <!-- plundered gold spilling out and scattering away -->
+  <circle cx="140" cy="150" r="6" fill="#C9A227"/>
+  <circle cx="151" cy="156" r="5" fill="#C9A227"/>
+  <circle cx="134" cy="157" r="4" fill="#C9A227"/>
+  <circle cx="163" cy="151" r="5" fill="#C9A227"/>
+  <circle cx="176" cy="156" r="4" fill="#C9A227"/>
+  <circle cx="190" cy="152" r="4" fill="#C9A227"/>
+  <circle cx="204" cy="157" r="3" fill="#C9A227"/>
+  <circle cx="217" cy="153" r="3" fill="#C9A227"/>
+  <circle cx="95" cy="156" r="4" fill="#C9A227"/>
+</svg>
