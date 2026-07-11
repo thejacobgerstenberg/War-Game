@@ -11,6 +11,7 @@ export const SOCKET_EVENTS = {
   // Client -> Server
   CREATE_GAME: "create_game",
   JOIN_GAME: "join_game",
+  REJOIN_GAME: "rejoin_game",
   PICK_FACTION: "pick_faction",
   START_GAME: "start_game",
   LEAVE_GAME: "leave_game",
@@ -39,6 +40,16 @@ export interface JoinGamePayload {
   playerName: string;
 }
 
+/**
+ * Reattach a returning socket to its existing seat. `sessionToken` is the
+ * per-player secret issued in the `game_created` acknowledgment; unlike
+ * `join_game`, a rejoin never creates a new seat and works after game start.
+ */
+export interface RejoinGamePayload {
+  roomCode: string;
+  sessionToken: string;
+}
+
 export interface PickFactionPayload {
   faction: Faction;
 }
@@ -54,6 +65,12 @@ export type LeaveGamePayload = void;
 export interface GameCreatedPayload {
   roomCode: string;
   playerId: string;
+  /**
+   * Per-player crypto-random secret. The client stores it (with roomCode and
+   * playerId) and presents it in `rejoin_game` to reclaim this seat after a
+   * disconnect or page reload.
+   */
+  sessionToken: string;
 }
 
 /** A single row in the lobby roster. */
@@ -62,6 +79,8 @@ export interface LobbyPlayer {
   name: string;
   faction: Faction | null;
   isHost: boolean;
+  /** False while the seat's socket is dropped (seat held for rejoin). */
+  connected: boolean;
 }
 
 export interface LobbyUpdatePayload {
@@ -99,6 +118,7 @@ export interface ServerShutdownPayload {
 export interface ClientToServerEvents {
   [SOCKET_EVENTS.CREATE_GAME]: (payload: CreateGamePayload) => void;
   [SOCKET_EVENTS.JOIN_GAME]: (payload: JoinGamePayload) => void;
+  [SOCKET_EVENTS.REJOIN_GAME]: (payload: RejoinGamePayload) => void;
   [SOCKET_EVENTS.PICK_FACTION]: (payload: PickFactionPayload) => void;
   [SOCKET_EVENTS.START_GAME]: () => void;
   [SOCKET_EVENTS.LEAVE_GAME]: () => void;

@@ -40,7 +40,7 @@ function assert(cond, message) {
 }
 
 async function main() {
-  const { httpServer } = createApp();
+  const { httpServer, stopReaper } = createApp();
   await new Promise((res) => httpServer.listen(PORT, res));
   console.log(`smoke: server listening on :${PORT}`);
 
@@ -87,8 +87,43 @@ async function main() {
   const nonHostErr = await nonHostErrP;
   assert(/only the host/i.test(nonHostErr.message), "non-host start rejected");
 
-  host.close();
+  // 6. Rejoin: guest drops, then reclaims its seat with the session token.
+  assert(
+    typeof guestCreated.sessionToken === "string" && guestCreated.sessionToken.length > 0,
+    "guest was issued a sessionToken on join",
+  );
+  const hostSawDrop = once(host, SOCKET_EVENTS.LOBBY_UPDATE);
   guest.close();
+  const dropUpdate = await hostSawDrop;
+  assert(dropUpdate.players.length === 2, "seat count unchanged after disconnect (seat held)");
+  const droppedRow = dropUpdate.players.find((p) => p.name === "Murad");
+  assert(droppedRow && droppedRow.connected === false, "host saw Murad flagged disconnected");
+
+  const returning = connect();
+  const hostSawRejoin = once(host, SOCKET_EVENTS.LOBBY_UPDATE);
+  const rejoinStarted = once(returning, SOCKET_EVENTS.GAME_STARTED);
+  const rejoinState = once(returning, SOCKET_EVENTS.STATE_UPDATE);
+  returning.emit(SOCKET_EVENTS.REJOIN_GAME, {
+    roomCode,
+    sessionToken: guestCreated.sessionToken,
+  });
+  const [rejoinLobby, startedAgain, stateAgain] = await Promise.all([
+    hostSawRejoin,
+    rejoinStarted,
+    rejoinState,
+  ]);
+  assert(rejoinLobby.players.length === 2, "rejoin kept the seat count at 2 (no ghost seat)");
+  const rejoinedRow = rejoinLobby.players.find((p) => p.name === "Murad");
+  assert(rejoinedRow && rejoinedRow.connected === true, "Murad's seat reattached as connected");
+  assert(rejoinedRow.id === guestCreated.playerId, "rejoin reclaimed the SAME seat (player id unchanged)");
+  assert(
+    startedAgain.state.roomCode === roomCode && stateAgain.state.roomCode === roomCode,
+    "rejoiner received game_started + state_update with the current state",
+  );
+
+  host.close();
+  returning.close();
+  stopReaper();
   await new Promise((res) => httpServer.close(res));
   console.log("\nSMOKE TEST PASSED");
 }

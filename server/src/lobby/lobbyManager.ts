@@ -3,7 +3,7 @@
  * agnostic: it knows nothing about Socket.IO. The socket layer in index.ts
  * translates its results and thrown {@link LobbyError}s into wire events.
  */
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import {
   Faction,
   type GameState,
@@ -21,6 +21,12 @@ export interface LobbyPlayerState {
   faction: Faction | null;
   isHost: boolean;
   connected: boolean;
+  /**
+   * Per-player crypto-random secret issued on create/join and returned to the
+   * client in its `game_created` ack. Presenting it in `rejoin_game` reclaims
+   * this seat; it is NEVER included in broadcast payloads.
+   */
+  sessionToken: string;
 }
 
 /** A single game room. */
@@ -40,6 +46,13 @@ export interface Room {
 const ROOM_CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const ROOM_CODE_LENGTH = 6;
 const MIN_PLAYERS_TO_START = 2;
+/** Max seats per room (docs/ARCHITECTURE.md §6). */
+export const MAX_PLAYERS = 5;
+
+/** Crypto-random, URL-safe session token (192 bits). */
+function generateSessionToken(): string {
+  return randomBytes(24).toString("base64url");
+}
 
 /** Constructor options; the clock is injectable for deterministic tests. */
 export interface LobbyManagerOptions {
@@ -143,6 +156,7 @@ export class LobbyManager {
       faction: null,
       isHost: true,
       connected: true,
+      sessionToken: generateSessionToken(),
     };
     const room: Room = {
       code,
@@ -168,6 +182,16 @@ export class LobbyManager {
     if (room.startedByHost) {
       throw new LobbyError("That game has already started.");
     }
+    // A same-name join is a clean rejection, never a silent duplicate seat.
+    // Reclaiming an existing seat goes through rejoinGame (sessionToken).
+    if (room.players.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+      throw new LobbyError(
+        `That name is already taken in this game. If you were disconnected, rejoin from your original browser tab.`,
+      );
+    }
+    if (room.players.length >= MAX_PLAYERS) {
+      throw new LobbyError(`That game is full (max ${MAX_PLAYERS} players).`);
+    }
 
     const player: LobbyPlayerState = {
       id: randomUUID(),
@@ -175,8 +199,31 @@ export class LobbyManager {
       faction: null,
       isHost: false,
       connected: true,
+      sessionToken: generateSessionToken(),
     };
     room.players.push(player);
+    this.refreshEmptySince(room);
+    return { room, player };
+  }
+
+  /**
+   * Reattach a returning player to their existing seat by session token.
+   * Unlike joinGame this never creates a seat and is allowed after game
+   * start. Throws LobbyError on unknown room or token mismatch.
+   */
+  rejoinGame(
+    roomCode: string,
+    sessionToken: string,
+  ): { room: Room; player: LobbyPlayerState } {
+    const room = this.rooms.get(roomCode.toUpperCase());
+    if (!room) throw new LobbyError(`No game found with code ${roomCode}.`);
+
+    const player = room.players.find((p) => p.sessionToken === sessionToken);
+    if (!player) {
+      throw new LobbyError("Invalid session token for this game.");
+    }
+
+    player.connected = true;
     this.refreshEmptySince(room);
     return { room, player };
   }
@@ -277,7 +324,7 @@ export class LobbyManager {
     return room;
   }
 
-  /** Project a room into the `lobby_update` wire payload. */
+  /** Project a room into the `lobby_update` wire payload (no sessionToken). */
   static toLobbyUpdate(room: Room): LobbyUpdatePayload {
     return {
       roomCode: room.code,
@@ -286,6 +333,7 @@ export class LobbyManager {
         name: p.name,
         faction: p.faction,
         isHost: p.isHost,
+        connected: p.connected,
       })),
       startedByHost: room.startedByHost,
     };

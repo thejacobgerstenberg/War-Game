@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Faction } from "@imperium/shared";
-import { LobbyManager, LobbyError } from "../lobbyManager.js";
+import { LobbyManager, LobbyError, MAX_PLAYERS } from "../lobbyManager.js";
 
 describe("LobbyManager", () => {
   let lobby: LobbyManager;
@@ -37,6 +37,39 @@ describe("LobbyManager", () => {
 
   it("throws when joining a non-existent room", () => {
     expect(() => lobby.joinGame("ZZZZZZ", "Nobody")).toThrow(LobbyError);
+  });
+
+  it("issues a distinct crypto-random sessionToken per player", () => {
+    const { room, player: host } = lobby.createGame("Basil");
+    const { player: guest } = lobby.joinGame(room.code, "Murad");
+    expect(host.sessionToken).toMatch(/^[A-Za-z0-9_-]{16,}$/);
+    expect(guest.sessionToken).toMatch(/^[A-Za-z0-9_-]{16,}$/);
+    expect(host.sessionToken).not.toBe(guest.sessionToken);
+  });
+
+  it("rejects a join whose name is already taken (no ghost duplicate seat)", () => {
+    const { room } = lobby.createGame("Basil");
+    lobby.joinGame(room.code, "Murad");
+
+    // Same name (any casing) is a clean name-taken rejection...
+    expect(() => lobby.joinGame(room.code, "Murad")).toThrow(
+      /name is already taken/i,
+    );
+    expect(() => lobby.joinGame(room.code, "murad")).toThrow(
+      /name is already taken/i,
+    );
+    // ...and no duplicate seat was created.
+    expect(lobby.getRoom(room.code)!.players).toHaveLength(2);
+  });
+
+  it(`rejects the ${MAX_PLAYERS + 1}th join once the room is full`, () => {
+    const { room } = lobby.createGame("P1");
+    for (let i = 2; i <= MAX_PLAYERS; i++) {
+      lobby.joinGame(room.code, `P${i}`);
+    }
+    expect(lobby.getRoom(room.code)!.players).toHaveLength(MAX_PLAYERS);
+    expect(() => lobby.joinGame(room.code, "P6")).toThrow(/full/i);
+    expect(lobby.getRoom(room.code)!.players).toHaveLength(MAX_PLAYERS);
   });
 
   it("lets a player pick an open faction", () => {
@@ -123,6 +156,48 @@ describe("LobbyManager", () => {
     expect(rec!.player.connected).toBe(true);
   });
 
+  it("rejoinGame reattaches the same seat by session token", () => {
+    const { room } = lobby.createGame("Basil");
+    const { player: guest } = lobby.joinGame(room.code, "Murad");
+    lobby.pickFaction(room.code, guest.id, Faction.OTTOMAN);
+    lobby.markDisconnected(guest.id);
+
+    const rec = lobby.rejoinGame(room.code, guest.sessionToken);
+    expect(rec.player.id).toBe(guest.id); // same seat, not a new one
+    expect(rec.player.connected).toBe(true);
+    expect(rec.player.faction).toBe(Faction.OTTOMAN); // faction retained
+    expect(lobby.getRoom(room.code)!.players).toHaveLength(2); // no ghost
+  });
+
+  it("rejoinGame works after the game has started (join_game does not)", () => {
+    const { room, player: host } = lobby.createGame("Basil");
+    const { player: guest } = lobby.joinGame(room.code, "Murad");
+    lobby.pickFaction(room.code, host.id, Faction.BYZANTIUM);
+    lobby.pickFaction(room.code, guest.id, Faction.OTTOMAN);
+    lobby.startGame(room.code, host.id);
+    lobby.markDisconnected(guest.id);
+
+    // New players are still locked out post-start...
+    expect(() => lobby.joinGame(room.code, "Latecomer")).toThrow(
+      /already started/i,
+    );
+    // ...but a valid token reclaims the existing seat.
+    const rec = lobby.rejoinGame(room.code, guest.sessionToken);
+    expect(rec.player.id).toBe(guest.id);
+    expect(rec.player.connected).toBe(true);
+    expect(rec.room.state).not.toBeNull();
+  });
+
+  it("rejoinGame rejects a wrong or stale token", () => {
+    const { room } = lobby.createGame("Basil");
+    expect(() => lobby.rejoinGame(room.code, "not-a-real-token")).toThrow(
+      /invalid session token/i,
+    );
+    expect(() => lobby.rejoinGame("ZZZZZZ", "whatever")).toThrow(
+      /no game found/i,
+    );
+  });
+
   it("projects a room into a lobby_update payload", () => {
     const { room, player } = lobby.createGame("Basil");
     lobby.pickFaction(room.code, player.id, Faction.VENICE);
@@ -133,6 +208,7 @@ describe("LobbyManager", () => {
       name: "Basil",
       faction: Faction.VENICE,
       isHost: true,
+      connected: true,
     });
     expect(payload.startedByHost).toBe(false);
   });

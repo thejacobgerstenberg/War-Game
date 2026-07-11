@@ -6,6 +6,8 @@
  * graceful shutdown.
  */
 import { createServer } from "node:http";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import cors from "cors";
 import express from "express";
 import { Server } from "socket.io";
@@ -15,9 +17,10 @@ import {
   type CreateGamePayload,
   type JoinGamePayload,
   type PickFactionPayload,
+  type RejoinGamePayload,
   type ServerToClientEvents,
 } from "@imperium/shared";
-import { LobbyManager, LobbyError } from "./lobby/lobbyManager.js";
+import { LobbyManager, LobbyError, MAX_PLAYERS } from "./lobby/lobbyManager.js";
 import { log } from "./log.js";
 
 type ImperiumServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -25,8 +28,6 @@ type ImperiumServer = Server<ClientToServerEvents, ServerToClientEvents>;
 /** Env defaults live in code so a bare `node dist/index.js` boots (§2). */
 const DEFAULT_PORT = 8080;
 const DEFAULT_ROOM_TTL_SECONDS = 3600;
-/** Max seats per room (docs/ARCHITECTURE.md §6). */
-const MAX_PLAYERS = 5;
 /** Graceful-shutdown drain window (§3): force close after this long. */
 const DRAIN_TIMEOUT_MS = 20_000;
 const DRAIN_POLL_MS = 250;
@@ -59,9 +60,47 @@ export function parseCorsOrigins(
   return env.NODE_ENV === "production" ? false : ["http://localhost:5173"];
 }
 
-export function createApp() {
+/** Options for {@link createApp}; overridable for tests. */
+export interface CreateAppOptions {
+  /** Empty-room TTL; defaults to the ROOM_TTL_SECONDS env var (§2). */
+  roomTtlSeconds?: number;
+  /** Reaper sweep cadence; defaults to min(roomTtlSeconds, 60) seconds. */
+  reapIntervalMs?: number;
+}
+
+export function createApp(options: CreateAppOptions = {}) {
   const corsOrigins = parseCorsOrigins();
   const lobby = new LobbyManager();
+
+  // Periodic empty-room reap (§2 ROOM_TTL_SECONDS). LobbyManager owns the
+  // eligibility logic; this sweep just ticks it and logs the results. It is
+  // owned by createApp so every boot path (entrypoint, tests, smoke) reaps.
+  const roomTtlSeconds =
+    options.roomTtlSeconds ?? envInt("ROOM_TTL_SECONDS", DEFAULT_ROOM_TTL_SECONDS);
+  const reapIntervalMs =
+    options.reapIntervalMs ?? Math.min(roomTtlSeconds, 60) * 1000;
+  let reaper: NodeJS.Timeout | null = null;
+  const startReaper = () => {
+    if (reaper) return;
+    reaper = setInterval(() => {
+      for (const code of lobby.reapEmptyRooms(roomTtlSeconds)) {
+        log(
+          "info",
+          "room_reaped",
+          `empty room reaped after ROOM_TTL_SECONDS=${roomTtlSeconds}`,
+          { roomCode: code },
+        );
+      }
+    }, reapIntervalMs);
+    reaper.unref();
+  };
+  const stopReaper = () => {
+    if (reaper) {
+      clearInterval(reaper);
+      reaper = null;
+    }
+  };
+  startReaper();
 
   const app = express();
   app.use(cors({ origin: corsOrigins }));
@@ -114,6 +153,7 @@ export function createApp() {
           socket.emit(SOCKET_EVENTS.GAME_CREATED, {
             roomCode: room.code,
             playerId: player.id,
+            sessionToken: player.sessionToken,
           });
           broadcastLobby(room.code);
           log(
@@ -139,12 +179,42 @@ export function createApp() {
           socket.emit(SOCKET_EVENTS.GAME_CREATED, {
             roomCode: room.code,
             playerId: player.id,
+            sessionToken: player.sessionToken,
           });
           broadcastLobby(room.code);
           log(
             "info",
             "player_joined",
             `${player.name} joined (${room.players.length}/${MAX_PLAYERS} seats filled)`,
+            { roomCode: room.code },
+          );
+        } catch (err) {
+          emitError(errMessage(err));
+        }
+      },
+    );
+
+    socket.on(
+      SOCKET_EVENTS.REJOIN_GAME,
+      ({ roomCode: code, sessionToken }: RejoinGamePayload) => {
+        try {
+          const { room, player } = lobby.rejoinGame(code, sessionToken);
+          playerId = player.id;
+          roomCode = room.code;
+          socket.join(room.code);
+          // Everyone (including the rejoiner) sees the seat flip connected.
+          broadcastLobby(room.code);
+          if (room.startedByHost && room.state) {
+            // Mid-game resume: replay game_started for screen routing, then
+            // the authoritative snapshot. Per-action state_update broadcasts
+            // arrive with the action engine (engine/actions.ts reducer).
+            socket.emit(SOCKET_EVENTS.GAME_STARTED, { state: room.state });
+            socket.emit(SOCKET_EVENTS.STATE_UPDATE, { state: room.state });
+          }
+          log(
+            "info",
+            "player_rejoined",
+            `${player.name} reattached to their seat`,
             { roomCode: room.code },
           );
         } catch (err) {
@@ -214,7 +284,7 @@ export function createApp() {
     });
   });
 
-  return { app, httpServer, io, lobby };
+  return { app, httpServer, io, lobby, startReaper, stopReaper };
 }
 
 function errMessage(err: unknown): string {
@@ -247,30 +317,17 @@ function waitForSocketDrain(
 }
 
 // Only start listening when run directly (not when imported by tests/smoke).
+// Compare resolved filesystem paths on both sides: argv[1] may be relative
+// (`node dist/index.js`), so a naive `file://${argv[1]}` URL never matched.
 const isMain =
-  process.argv[1] &&
-  import.meta.url === new URL(`file://${process.argv[1]}`).href;
+  process.argv[1] !== undefined &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (isMain) {
   const PORT = envInt("PORT", DEFAULT_PORT);
-  const ROOM_TTL_SECONDS = envInt("ROOM_TTL_SECONDS", DEFAULT_ROOM_TTL_SECONDS);
 
-  const { httpServer, io, lobby } = createApp();
-
-  // Periodic empty-room reap (§2 ROOM_TTL_SECONDS). LobbyManager owns the
-  // eligibility logic; this sweep just ticks it and logs the results.
-  const sweepMs = Math.min(ROOM_TTL_SECONDS, 60) * 1000;
-  const reaper = setInterval(() => {
-    for (const code of lobby.reapEmptyRooms(ROOM_TTL_SECONDS)) {
-      log(
-        "info",
-        "room_reaped",
-        `empty room reaped after ROOM_TTL_SECONDS=${ROOM_TTL_SECONDS}`,
-        { roomCode: code },
-      );
-    }
-  }, sweepMs);
-  reaper.unref();
+  // createApp owns the ROOM_TTL_SECONDS reaper lifecycle (started by default).
+  const { httpServer, io, lobby, stopReaper } = createApp();
 
   // Bind 0.0.0.0 (§2): loopback binds are invisible to container networking.
   httpServer.listen(PORT, "0.0.0.0", () => {
@@ -282,7 +339,7 @@ if (isMain) {
   const shutdown = async (signal: NodeJS.Signals) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    clearInterval(reaper);
+    stopReaper();
 
     // 1. Stop accepting new rooms: create_game now answers with error_msg.
     lobby.beginShutdown();
