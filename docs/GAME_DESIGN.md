@@ -78,16 +78,16 @@ is the province's default; named/key cities and buildings modify it (see
 | Terrain | Base yield | Move cost | Combat note |
 |---|---|---|---|
 | `PLAINS` | grain 2, gold 1 | 1 | open; cavalry bonus applies |
-| `HILLS` | stone 1, gold 1 | 1 | defender **+1** |
-| `MOUNTAINS` | stone 2 | 2 | defender **+1**, no cavalry bonus |
+| `HILLS` | marble 1, gold 1 | 1 | defender **+1** |
+| `MOUNTAINS` | marble 2 | 2 | defender **+1**, no cavalry bonus |
 | `FOREST` | timber 2, grain 1 | 1 | defender **+1**, negates attacker cavalry bonus |
 | `COAST` | grain 1, gold 1 | 1 | amphibious assault: attacker **−1**; enables ports/trade |
 | `CITY` | gold 3, faith 1 | 1 | may hold walls & great works; garrison bonus |
 
-> **Note on resource names.** The secondary resource "stone/marble" is stored in
-> the single `stone` field of `ResourceBundle`; the flavor term *marble* is used
-> for great-work costs but is mechanically the same resource. "Faith" is a
-> non-tradeable prestige/religion resource (see §4).
+> **Note on resource names.** The secondary building resource is **Marble**,
+> stored in the `stone` field of `ResourceBundle` — a legacy code-level field
+> name. Rules text, tables, and UI say *Marble* throughout; older drafts called
+> it "stone". "Faith" is a non-tradeable prestige/religion resource (see §4).
 
 ### 3.2 Key cities
 
@@ -109,7 +109,7 @@ Five resources drive everything, modelled as `ResourceBundle`:
 | **Gold** | Core | Recruit units, build, bribe, buy in markets, pay tribute |
 | **Grain** | Core | Sustain armies (upkeep); starvation if short |
 | **Timber** | Secondary | Ships, shipyards, granaries, siege engines |
-| **Stone / marble** | Secondary | Walls, universities, great works |
+| **Marble** | Secondary | Walls, universities, great works |
 | **Faith** | Secondary | Churches, great works, some cards; feeds prestige |
 
 ### 4.1 Income
@@ -242,12 +242,16 @@ often. Upkeep is grain per round.
 | `INFANTRY` | Professional men-at-arms | gold 4, grain 1 | 1 | 2 | 3 | 1 | Backbone; best defender-to-cost |
 | `ARCHER` | Missile troops | gold 3, grain 1 | 1 | 2 | 1 | 1 | **Ranged**: fires in pre-round (§7.2) |
 | `CAVALRY` | Knights / sipahi | gold 6, grain 2 | 2 | 3 | 2 | 2 | **Charge** +1 atk on `PLAINS`; pursuit on rout |
-| `SIEGE` | Bombards / trebuchets | gold 8, stone 2, timber 2 | 1 | 0* | 1 | 1 | Weak in field; **+3 vs walls**; bombards in sieges |
+| `SIEGE` | Bombards / trebuchets | gold 8, marble 2, timber 2 | 1 | 0* | 1 | 1 | Weak in field; **+3 vs walls**; bombards in sieges |
 | `GALLEY` | War / merchant galley | gold 5, timber 2 | 1 | 2 | 2 | 2 | Naval; can **transport** 1 army; acts as merchantman |
 | `WARSHIP` | Great galley / carrack | gold 8, timber 3 | 1 | 3 | 3 | 2 | Naval; blockade/escort superiority |
 
 `*` `SIEGE` contributes no offensive dice in a **field** battle but adds its **+3
 vs walls** in sieges.
+
+One **unique siege engine — the Great Bombard —** exists outside this roster. It
+cannot be recruited; it enters play only through the Era III omen
+`great-bombard-forged` and is governed by §8.4.
 
 ### 6.2 Recruitment
 
@@ -347,7 +351,7 @@ first** by default (configurable in the assault action).
 | Forest / mountains vs cavalry | cavalry bonus **negated** |
 | City walls (defender) | defender **+1 … +4** by wall tier (§8.1), while Wall HP > 0 |
 | Escalade (assaulting un-breached walls) | attacker **−1** |
-| Tactic card | as printed (typ. **+1** to all rolls, or reroll misses) |
+| Tactic card | as printed — see §7.7 (typ. **+1 die**, a reroll, or a wall-bonus change) |
 | Outnumbering 2:1 in a round | larger side **+1** |
 
 ### 7.4 Worked example (field battle)
@@ -396,6 +400,87 @@ are no walls. The winner controls the zone (enabling blockade §5.3) and may pur
 into an adjacent zone. `GALLEY` transports carrying an army are destroyed with
 their cargo if the fleet is wiped out.
 
+### 7.7 Tactic cards
+
+Tactic cards are the card layer of combat — held surprises that bend a battle
+without replacing the dice. The shared **tactic deck** holds **47 cards over 23
+designs** (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded RNG
+(§14).
+
+**Drawing & holding.**
+
+* Each player draws **1 tactic card** during the **Income & upkeep** phase,
+  after the Omen resolves. A **University** adds **+1** draw/round; the **Great
+  University** adds **+2** (§9.1–§9.2). Omen **Grant** cards (§12) add specific
+  cards on top of these draws.
+* **Hand limit: 4 tactic cards.** Discard down to 4 at Cleanup. Hands are hidden.
+* When the draw pile empties, **reshuffle the discard pile**. Cards that read
+  *remove from game* never return.
+
+**Playing.**
+
+* A card scoped to a **battle, assault, or siege** is played **during that
+  engagement** in the Battle phase at **no action cost**; any printed resource
+  cost is still paid (§10.6). Each side may play **at most one tactic card per
+  battle round**; *The Intercepted Letter* is a **reaction** and exempt from
+  this limit.
+* A card with **no battle scope** is played with the **Play-card action**
+  (§10.6). Exception: *Forced March* is played as a free rider on one of your
+  Move actions.
+* **"+N dice"** — extra dice granted by a card are rolled in your **melee
+  step**, at the hit threshold of **one participating unit of your choice**
+  (chosen when the card is played). They obey the normal 2–6 clamp (§7.1).
+* **Rerolls** — no die may be rerolled more than once. The Great University's
+  *tactic reroll aura* (§9.2): once per battle, its owner may reroll **one** of
+  their dice as if by a tactic card (the once-per-die rule still applies).
+
+**The 23 ratified cards.**
+
+| Slug | Card | Tier (copies) | Final effect |
+|---|---|---|---|
+| `forced-march` | Forced March | Common ×3 | Rider on one of your Move actions: that army moves **+1 province**; it may not *Besiege* or *Assault* this round. |
+| `veterans-of-the-border` | Veterans of the Border | Common ×3 | One land battle: your side rolls **+1 die** in each melee step. |
+| `pilot-of-the-narrows` | The Pilot of the Narrows | Common ×3 | One fleet battle: your side rolls **+1 die** in each melee step. |
+| `ladders-and-fascines` | Ladders and Fascines | Common ×3 | In one round of a siege assault, **reroll one** of your dice. |
+| `the-counting-house` | A Good Season at the Counting-House | Common ×3 | Gain **2 gold**. |
+| `grain-barges-of-the-danube` | Grain Barges of the Danube | Common ×3 | Gain **2 grain**. |
+| `ears-in-the-bazaar` | Ears in the Bazaar | Common ×3 | Look at all tactic cards held by **one rival**. |
+| `locked-shields` | Locked Shields | Common ×3 | One land battle in which you **defend**: reroll your **lowest die** in each melee step. |
+| `feigned-retreat` | Feigned Retreat | Uncommon ×2 | At the start of any battle round, before dice: withdraw your whole stack to an adjacent friendly or empty province. The battle ends; **no pursuit** (§7.5). |
+| `night-sortie` | Night Sortie | Uncommon ×2 | One round of a siege against your city: the garrison suffers **no store depletion or hunger loss**; instead the **besieger loses 1 unit** (weakest first). |
+| `bribed-gatekeeper` | The Bribed Gatekeeper | Uncommon ×2 | One assault you launch this round: the defender's **wall bonus is 0** (Wall HP unchanged; escalade −1 still applies). |
+| `chain-across-the-horn` | The Chain Across the Horn | Uncommon ×2 | One coastal province you hold cannot be the target of an **amphibious assault** until the start of your next turn. |
+| `condottieri-contract` | Condottieri Contract | Uncommon ×2 | Pay **2 gold**: one land battle — your side rolls **+2 dice** in each melee step. |
+| `papal-indulgence` | Papal Indulgence | Uncommon ×2 | Pay **2 gold**: gain **3 faith** (the sole sanctioned gold→faith conversion — markets never trade faith, §4). |
+| `the-intercepted-letter` | The Intercepted Letter | Uncommon ×2 | **Reaction** — play as a rival plays a tactic card: **cancel it**. Both cards are discarded. |
+| `the-hexamilion-manned` | The Hexamilion Manned | Uncommon ×2 | One land battle you defend in an **unwalled** province: gain **defender +2** (a temporary T2-grade wall bonus; creates no Wall HP; does not stack with real walls). |
+| `greek-fire` | Greek Fire | Rare ×1 | Before dice in a fleet battle you are fighting: **win it outright** — all enemy naval units in the zone are destroyed (transports and cargo with them, §7.6). Then **discard one other tactic card** from your hand and **remove this card from the game**. |
+| `treason-at-the-gate` | Treason at the Gate | Rare ×1 | Pay **4 gold**. Play on a walled city you have besieged for **2+ consecutive rounds**: the city **falls without an assault** — its garrison surrenders (removed) and you occupy it, walls at their current HP. **Remove this card from the game.** |
+| `the-pay-chest-taken` | The Pay Chest Taken | Rare ×1 | Take **up to 3 gold** from one rival's treasury (never more than they hold). |
+| `holy-war-proclaimed` | Holy War Proclaimed | Rare ×1 | Pay **2 faith**: until the start of your next turn, your side rolls **+1 die** in each melee step of **every** battle you fight. |
+| `sails-from-the-west` | Sails from the West | Rare ×1 | Play while a coastal city you hold is besieged: this round its stores do **not** deplete and it takes no hunger loss — **even under full naval blockade** (§8.2) — and **restore 2 depleted grain stores** (up to its maximum). |
+| `a-death-in-the-palace` | A Death in the Palace | Rare ×1 | Name one rival: a **truce** binds you both until the start of your next turn — neither may declare a new battle, assault, or siege against the other (engagements already joined continue). |
+| `the-white-knights-stroke` | The White Knight's Stroke | Rare ×1 | In one round of a land battle, **reroll any of your dice** once (keep the second results). |
+
+**Deck distribution.**
+
+| Tier | Designs | Copies each | Cards |
+|---|---|---|---|
+| Common | 8 | 3 | 24 |
+| Uncommon | 8 | 2 | 16 |
+| Rare | 7 | 1 | 7 |
+| **Tactic deck** | **23** | — | **47** |
+
+> One proposed rare, `the-guns-of-orban`, was **rejected**: it would put the
+> same historical gun in the game twice — once as the unique, capturable
+> **Great Bombard** (§8.4, granted by the `great-bombard-forged` omen) and once
+> as a replayable one-shot card. A re-flavored rare may refill the slot in a
+> future pass, returning the deck to 48.
+
+Rares appear once each, and *Greek Fire* and *Treason at the Gate* additionally
+remove themselves from the game — their moments happen at most once per
+campaign.
+
 ---
 
 ## 8. Sieges
@@ -418,7 +503,7 @@ registry. Each tier maps to a Wall-HP pool and a defender bonus:
 
 Card/event effects phrased as **"wall tier ±1"** move the city one row on this
 table (its Wall HP is set to the new tier's maximum). A tier lost this way is
-rebuilt with the Build action's wall upgrade (gold + stone, §9.1); HP damage
+rebuilt with the Build action's wall upgrade (gold + marble, §9.1); HP damage
 *within* a tier heals at +1 HP/round out of siege (§8.2.5).
 
 ### 8.2 Siege lifecycle
@@ -433,6 +518,17 @@ rebuilt with the Build action's wall upgrade (gold + stone, §9.1); HP damage
 3. **Starvation of the garrison** — a besieged city holds `grainStores` rounds
    (default 3, +2 with a **Granary**). Each round of siege depletes 1 store; once
    stores hit 0, the garrison loses **1 unit per round** to hunger, weakest first.
+   **Sea resupply** — a besieged **coastal** city depletes stores **only while
+   under naval blockade**. In any round where at least one sea zone adjacent to
+   the city is *not* controlled by an enemy war fleet (an enemy
+   `GALLEY`/`WARSHIP` present and uncontested by a friendly war fleet — §5.3,
+   §7.6), supply ships slip in: **no store is depleted and hunger losses never
+   begin** (bombardment and assault proceed normally). Only when **every**
+   adjacent sea zone is enemy-controlled does a port starve like an inland city.
+   *Design intent:* a land army alone can never starve out a port — command of
+   the sea is the key to Constantinople, whose two adjacent zones (`bosphorus`
+   and `sea-of-marmara`, per `MAP.md`) must **both** be closed before the City
+   hungers.
 4. **Assault** — the attacker may **assault** at any time (a Move/Attack action):
    * If Wall HP > 0 → defender keeps the full wall bonus **and** attacker suffers
      **escalade −1**.
@@ -451,8 +547,44 @@ wall-damage and assault rolls; *"−25% to its sieges"* = **−1** to its rolls.
 ### 8.3 Constantinople
 
 Constantinople begins with **Theodosian Walls (tier T5: 16 HP, +4)**. Its capture
-triggers the **sudden-death** victory check (§11.3). Byzantium may spend a great
+triggers the **sudden-death** victory check (§13.3). Byzantium may spend a great
 work to keep them in repair; a lapsed empire lets them crumble to T3.
+
+**T5 masonry** — against an intact tier-T5 wall an ordinary siege train is
+nearly futile: the attacker's combined `SIEGE` bombardment inflicts a **maximum
+of 1 Wall HP per round** (in total, regardless of how many siege units roll or
+what they roll). At that rate the Theodosian circuit (16 HP) absorbs sixteen
+rounds of battery — the entire game. Intact Theodosian Walls are therefore
+**effectively unbreachable until the Great Bombard is forged** (§8.4) — which is
+the design intent.
+
+### 8.4 The Great Bombard
+
+The **Great Bombard** — Orban's monster gun — is a **unique siege engine**: one
+exists per game, and only if the Era III omen **`great-bombard-forged`**
+([`EVENT_CARDS.md`](./EVENT_CARDS.md) #34) is drawn. When that card resolves,
+the Bombard enters play **at no cost** in the recipient's capital (or any owned
+`CITY`): the **Ottoman** player receives it if in play; otherwise the card
+auctions it (gold + marble bids) to the highest bidder, per the card text. It
+cannot be recruited, rebuilt, or duplicated.
+
+| Attribute | Rule |
+|---|---|
+| **Entry** | Free, via `great-bombard-forged` only (Era III); **one per game** |
+| **Upkeep** | **3 grain**/round. If unpaid it never deserts — it falls **silent** instead (no bombardment next round) |
+| **Movement** | **1 province per round**, consuming a full Move action, regardless of terrain move cost; it may **not** enter `MOUNTAINS`; it cannot benefit from extra-movement effects (e.g. *Forced March*) |
+| **Naval transport** | Never by ordinary transport. A fleet containing at least one `GALLEY` may spend its **entire Move action** carrying the Bombard **alone** (no army cargo) exactly **one sea zone**; if that fleet is destroyed at sea the Bombard **sinks** (removed from game) |
+| **Field battle** | Rolls **no dice** (as `SIEGE`) |
+| **Assault** | Adds the standard `SIEGE` **+3 vs walls** |
+| **Bombardment** | Rolls **two wall-damage dice** per siege round (§8.2 step 2) — up to **6 Wall HP/round**. It **ignores the T5 masonry cap** (§8.3), and while it is emplaced against a wall the cap is **lifted for the entire besieging train** |
+| **Capture** | If the stack escorting it is destroyed, routs, or surrenders — or the city it garrisons falls — the Bombard is **never destroyed by battle**: it transfers **intact to the victor as loot**. The captor may instead **spike it** (remove it from the game) at the moment of capture |
+
+**Balance intent.** Before the Bombard exists, an intact T5 wall loses at most
+1 HP/round — unbreachable in practice. With it, the Bombard averages ~4 HP/round
+(two wall-damage dice) and un-caps the rest of the train, so the Bombard plus
+one ordinary `SIEGE` unit averages ~6 HP/round: a fresh **16-HP Theodosian
+circuit opens in ~3 rounds** of sustained bombardment. Whoever owns the gun
+holds the key to the City; whoever destroys its escort **takes the key**.
 
 ---
 
@@ -468,22 +600,22 @@ action per round for the listed duration; abandoning forfeits the investment).
 | Building | Cost | Effect |
 |---|---|---|
 | **Barracks** | gold 4, timber 2 | Enables land recruitment in this province |
-| **Market** | gold 4, stone 2 | Trade ratio 2:1; **+1 gold/round** here |
+| **Market** | gold 4, marble 2 | Trade ratio 2:1; **+1 gold/round** here |
 | **Granary** | gold 4, timber 3 | +2 grain storage; **+2 siege hold-out rounds**; softens starvation |
 | **Shipyard** | gold 6, timber 4 | Build `GALLEY`/`WARSHIP` here; +1 fleet cap |
-| **Church / Mosque** | gold 5, stone 3, faith 1 | **+1 faith/round**; defenders in this province get **+1 morale** (§7.5) |
-| **Walls Lv1** | gold 5, stone 4 | Wall tier T2: Wall HP 6, defender +2 |
-| **Walls Lv2** (upgrade) | gold 8, stone 6 | Wall tier T3: Wall HP 10, defender +3 |
-| **University** | gold 10, stone 4, faith 2 | **+1 tactic/omen card draw per round**; minor prestige |
+| **Church / Mosque** | gold 5, marble 3, faith 1 | **+1 faith/round**; defenders in this province get **+1 morale** (§7.5) |
+| **Walls Lv1** | gold 5, marble 4 | Wall tier T2: Wall HP 6, defender +2 |
+| **Walls Lv2** (upgrade) | gold 8, marble 6 | Wall tier T3: Wall HP 10, defender +3 |
+| **University** | gold 10, marble 4, faith 2 | **+1 tactic-card draw per round** (§7.7); minor prestige |
 
 ### 9.2 Great Works (prestige)
 
 | Great Work | Cost | Rounds | Effect | Prestige |
 |---|---|---|---|---|
-| **Hagia Sophia Repair** | gold 20, stone 10, faith 8 | 3 | +2 faith/round; unlocks unique Byzantine cards | **+10** |
-| **Theodosian Walls** (Grand Walls) | gold 15, stone 12 | 2 | Wall tier T5: Wall HP 16, defender +4 | **+6** |
-| **Great University** | gold 18, stone 8, faith 4 | 3 | +2 card draw/round; tactic reroll aura | **+6** |
-| **Grand Bazaar** | gold 16, timber 6, stone 6 | 2 | Best trade ratio; **+3 gold/route** from this port | **+5** |
+| **Hagia Sophia Repair** | gold 20, marble 10, faith 8 | 3 | +2 faith/round; unlocks unique Byzantine cards | **+10** |
+| **Theodosian Walls** (Grand Walls) | gold 15, marble 12 | 2 | Wall tier T5: Wall HP 16, defender +4 | **+6** |
+| **Great University** | gold 18, marble 8, faith 4 | 3 | +2 tactic-card draws/round; tactic reroll aura (§7.7) | **+6** |
+| **Grand Bazaar** | gold 16, timber 6, marble 6 | 2 | Best trade ratio; **+3 gold/route** from this port | **+5** |
 
 Great Works are the primary **engine of prestige** for a builder-focused player
 and the flavour spine of the setting (Byzantium repairing the Great Church,
@@ -537,7 +669,9 @@ the responder answers for free.
 ### 10.6 Play card
 Play a held political or tactic [`Card`](../shared/src/types/gameState.ts) from
 your `hand`; pay its `cost` (a `Partial<ResourceBundle>`). Tactic cards are held
-for battles; political cards resolve immediately.
+for battles; political cards resolve immediately. Drawing, holding, and playing
+tactic cards — including which plays cost this action and which are free during
+battle — is governed by §7.7.
 
 ### 10.7 Spy (light espionage)
 
@@ -638,8 +772,8 @@ Cards come in three durations:
   outbreak, a mercenary company for hire).
 * **Persistent** — stays in play for a number of rounds (a schism halving faith, a
   trade boom, a hard winter doubling upkeep).
-* **Grant** — adds a **tactic** or **political** card to the drawer's `hand` for
-  later use (a papal indulgence, a clever stratagem).
+* **Grant** — adds a **tactic** (§7.7) or **political** card to the drawer's
+  `hand` for later use (a papal indulgence, a clever stratagem).
 
 The era split does the weighting: the early decks skew opportunity and the late
 deck (1440s+) skews crisis, dramatising the gathering storm around
@@ -666,6 +800,8 @@ and a **seeded RNG** to draw deterministically (see
 | Complete a **Great Work** | **+5 … +10** once (per §9.2) |
 | Win a **decisive battle** (attacker or defender wipes/routs the enemy) | **+1** |
 | Win a **war** (force peace, tribute, or vassalage) | **+3** |
+| Take a **walled city** (T1+) by storm or siege | **+2** (**+3** if T4–T5) |
+| Win a field battle **outnumbered** (enemy's starting stack larger than yours) | **+1** (stacks with the decisive-battle award) |
 | Complete a **secret objective** | **+4** each (3 per faction, see `FACTIONS.md`) |
 | Royal-marriage bond, per round it holds | **+2** |
 | **Betray** a treaty | **−2 … −4** (§11) |
@@ -674,7 +810,10 @@ and a **seeded RNG** to draw deterministically (see
 ### 13.2 Victory threshold
 
 The game ends the instant a player reaches the **prestige threshold**, scaled to
-player count (checked at cleanup):
+player count (checked at cleanup). The values below are **pre-tuning
+placeholders** *(tuning: threshold supplied by balance TUNING_REPORT)* — the
+conquest rows added to §13.1 raise total prestige inflow, and the ratified
+thresholds will come from the balance pass:
 
 | Players | Threshold |
 |---|---|
