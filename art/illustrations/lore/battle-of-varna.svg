@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>battle of varna</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <g transform="rotate(-24 52 122)">
+    <rect x="48" y="92" width="8" height="56" fill="#2B2118"/>
+    <rect x="36" y="104" width="32" height="8" fill="#2B2118"/>
+  </g>
+  <path d="M0,137 L16,131 L32,137 L48,131 L64,137 L80,131 L96,137 L112,131 L128,137 L144,131 L160,137 L176,131 L192,137 L208,131 L224,137 L240,131 L256,137 L260,134 L260,160 L0,160 Z" fill="#2C5F7C"/>
+  <rect x="127" y="80" width="7" height="80" fill="#2B2118"/>
+  <rect x="124" y="64" width="13" height="18" fill="#2B2118"/>
+  <circle cx="131" cy="55" r="17" fill="#2B2118"/>
+  <polygon points="116,52 106,61 117,66" fill="#2B2118"/>
+  <rect x="118" y="53" width="7" height="3" fill="#F0E6D2"/>
+  <polygon points="115,44 115,33 122,39 130,27 138,39 145,33 145,44" fill="#C9A227"/>
+  <circle cx="130" cy="25" r="3" fill="#C9A227"/>
+  <circle cx="114" cy="31" r="2.5" fill="#C9A227"/>
+  <circle cx="146" cy="31" r="2.5" fill="#C9A227"/>
+  <rect x="123" y="78" width="15" height="6" fill="#7A1F2B"/>
+  <polygon points="125,84 131,84 128,102" fill="#7A1F2B"/>
+  <polygon points="132,84 137,84 134,96" fill="#7A1F2B"/>
+  <circle cx="128" cy="112" r="2.5" fill="#7A1F2B"/>
+  <circle cx="224" cy="28" r="13" fill="#C9A227"/>
+  <circle cx="229" cy="24" r="11.5" fill="#F0E6D2"/>
+</svg>

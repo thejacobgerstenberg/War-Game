@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>despotate of morea</title>
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- low crenellated skyline of Mistra -->
+  <path fill="#2B2118" d="M0,160 L0,146 L14,146 L14,138 L22,138 L22,146 L48,146 L48,150 L86,150 L86,144 L94,144 L94,150 L140,150 L140,146 L166,146 L166,150 L204,150 L204,142 L212,142 L212,150 L238,150 L238,146 L260,146 L260,160 Z"/>
+
+  <!-- left imperial arm and grasping hand -->
+  <path fill="#4B1F3F" d="M0,72 L50,80 Q70,83 82,88 L98,94 Q104,97 103,103 L102,108 Q100,113 93,112 L80,110 Q66,108 50,106 L0,104 Z"/>
+  <polygon fill="#C9A227" points="44,79 54,81 53,107 43,105"/>
+
+  <!-- right imperial arm and grasping hand -->
+  <path fill="#4B1F3F" d="M260,72 L210,80 Q190,83 178,88 L162,94 Q156,97 157,103 L158,108 Q160,113 167,112 L180,110 Q194,108 210,106 L260,104 Z"/>
+  <polygon fill="#C9A227" points="216,79 206,81 207,107 217,105"/>
+
+  <!-- the lamp of Byzantium -->
+  <path fill="#C9A227" d="M98,92 L162,92 L154,112 Q130,122 106,112 Z"/>
+  <path fill="#2B2118" d="M98,92 L162,92 L160,97 L100,97 Z"/>
+  <rect x="126" y="114" width="8" height="16" fill="#C9A227"/>
+  <path fill="#C9A227" d="M112,130 L148,130 L156,146 L104,146 Z"/>
+
+  <!-- flickering flame -->
+  <path fill="#7A1F2B" d="M130,92 C116,82 116,68 124,58 C128,52 133,48 131,40 C142,50 146,62 143,74 C141,84 137,89 130,92 Z"/>
+  <path fill="#C9A227" d="M130,90 C123,84 122,74 127,67 C129,63 132,61 131,56 C137,63 139,71 137,79 C136,85 134,88 130,90 Z"/>
+
+  <!-- spilled oil -->
+  <path fill="#C9A227" d="M96,118 C92,124 92,129 96,133 C100,129 100,124 96,118 Z"/>
+  <path fill="#C9A227" d="M164,118 C160,124 160,129 164,133 C168,129 168,124 164,118 Z"/>
+</svg>

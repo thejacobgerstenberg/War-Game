@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>mercenary revolt</title>
+
+  <!-- parchment field -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- vellum ground band -->
+  <rect x="0" y="118" width="260" height="42" fill="#E2D3B3"/>
+
+  <!-- left raised sword, fanning outward -->
+  <g transform="rotate(-16 62 100)">
+    <rect x="56" y="96" width="12" height="36" fill="#2B2118"/>
+    <circle cx="62" cy="88" r="10" fill="#2B2118"/>
+    <circle cx="62" cy="72" r="6" fill="#2B2118"/>
+    <rect x="59" y="52" width="6" height="20" fill="#2B2118"/>
+    <rect x="48" y="46" width="28" height="7" fill="#2B2118"/>
+    <polygon points="58,46 58,22 62,10 66,22 66,46" fill="#2B2118"/>
+  </g>
+
+  <!-- right raised sword, fanning outward -->
+  <g transform="rotate(16 200 100)">
+    <rect x="194" y="96" width="12" height="36" fill="#2B2118"/>
+    <circle cx="200" cy="88" r="10" fill="#2B2118"/>
+    <circle cx="200" cy="72" r="6" fill="#2B2118"/>
+    <rect x="197" y="52" width="6" height="20" fill="#2B2118"/>
+    <rect x="186" y="46" width="28" height="7" fill="#2B2118"/>
+    <polygon points="196,46 196,22 200,10 204,22 204,46" fill="#2B2118"/>
+  </g>
+
+  <!-- center sword rising from behind the coffer -->
+  <polygon points="126,60 126,20 131,8 136,20 136,60" fill="#2B2118"/>
+  <rect x="116" y="44" width="30" height="6" fill="#2B2118"/>
+  <!-- crimson pennon of the hired company -->
+  <polygon points="135,24 178,30 160,35 178,40 135,46" fill="#7A1F2B"/>
+
+  <!-- lid thrown back: dark inner face -->
+  <path d="M 96,92 Q 94,56 131,52 Q 168,56 166,92 Z" fill="#2B2118"/>
+  <!-- gaping empty mouth of the coffer -->
+  <polygon points="92,102 170,102 162,90 100,90" fill="#2B2118"/>
+
+  <!-- coffer body -->
+  <rect x="90" y="100" width="82" height="42" fill="#7A1F2B"/>
+  <rect x="102" y="100" width="9" height="42" fill="#C9A227"/>
+  <rect x="151" y="100" width="9" height="42" fill="#C9A227"/>
+  <rect x="124" y="106" width="14" height="15" fill="#C9A227"/>
+  <circle cx="131" cy="112" r="3" fill="#2B2118"/>
+
+  <!-- the last coins, spilled and few -->
+  <circle cx="76" cy="147" r="6" fill="#C9A227"/>
+  <circle cx="185" cy="149" r="5" fill="#C9A227"/>
+  <circle cx="196" cy="141" r="4" fill="#C9A227"/>
+</svg>

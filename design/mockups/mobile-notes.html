@@ -1,0 +1,293 @@
+<!-- =========================================================================
+  IMPERIUM: Twilight of Empires — Phase 3 UI mockups
+  mobile-notes.html — THE CODICIL: how the campaign board (game.html)
+  yields gracefully at tablet widths. Annotated spec page; this page MAY
+  scroll (it is apparatus, not shell).
+
+  THIS FILE IS A PHASE 3 IMPLEMENTATION CONTRACT.
+  What is annotated here is deliberate. Where this page and README.md
+  disagree, README.md wins; where this page and game.html disagree on
+  tablet matters, this page wins.
+
+  - Static HTML/CSS only. Renders fully offline: no CDNs, no external
+    fonts, no external anything. No JS on this page.
+  - Tokens and components come from mockups.css (linked below); only the
+    small screen-specific CSS in the <style> block belongs to this page.
+  - The two plates below are REAL captures from screenshots/ — they carry
+    game.html's own crimson callouts (one to fourteen) baked in. This
+    page's seals are LAPIS, numbered one to twelve, so the two sets of
+    apparatus cannot be confused. Both are spec apparatus; neither ships.
+  - Width tiers are cut by CSS media queries; touch adaptations (glyph-only
+    orders, the folding advisor) are cut by pointer, via
+    @media (pointer: coarse) — a broad desktop with a mouse never sees them.
+========================================================================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IMPERIUM — Twilight of Empires · The Board on the Lesser Page</title>
+  <link rel="stylesheet" href="mockups.css">
+  <style>
+    /* ---- mobile-notes.html screen-specific styles (kept small) ---------- */
+    .spec-page { max-width: 1200px; margin: 0 auto; padding: var(--space-4) var(--space-4) var(--space-2); }
+    .spec-page hr { margin: var(--space-3) auto; }
+
+    .masthead { text-align: center; border-bottom: 4px double var(--gold); padding-bottom: var(--space-2); margin-bottom: var(--space-3); }
+    .masthead h1 { color: var(--porphyry); margin-bottom: var(--space-2); }
+
+    /* Two captures, side by side; they stack only when this spec page
+       itself is read on a strait window. */
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); align-items: start; }
+
+    .capture { display: grid; gap: var(--space-2); margin: 0; }
+    .capture .asset { border: 2px solid var(--gold); box-shadow: var(--shadow-2); }
+    .capture figcaption { font-size: var(--text-sm); font-style: italic; text-align: center; padding: 0 var(--space-3); }
+
+    /* THIS page's seals are lapis, so they cannot be confused with the
+       crimson seals baked into the captures (game.html's own legend). */
+    .callout--note { background: var(--lapis); }
+
+    /* Foot: the upright-page stance beside the breakpoint contract. */
+    .foot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); align-items: start; }
+    @media (max-width: 900px) { .compare-grid, .foot-grid { grid-template-columns: 1fr; } }
+
+    /* The rotate prompt, mocked — the one plate the upright page is shown. */
+    .rotate-plate {
+      margin: var(--space-3) auto 0;
+      padding: var(--space-4) var(--space-5);
+      background: var(--porphyry); color: var(--parchment);
+      border: 2px solid var(--gold); border-radius: var(--radius-2);
+      box-shadow: var(--shadow-3);
+      text-align: center;
+    }
+    .rotate-plate .glyph { display: block; font-size: var(--text-2xl); color: var(--gold); line-height: 1; margin-bottom: var(--space-2); }
+    .rotate-plate p { margin: 0; font-family: var(--font-display); font-variant: small-caps; letter-spacing: 0.06em; font-size: var(--text-lg); }
+    .rotate-plate .sub { display: block; margin-top: var(--space-2); font-family: var(--font-body); font-variant: normal; font-style: italic; font-size: var(--text-sm); color: var(--gold-soft); }
+
+    .keep-rule {
+      margin: var(--space-4) 0 0;
+      padding: var(--space-2) var(--space-5);
+      background: var(--vellum);
+      border-left: 5px solid var(--gold);
+      border-radius: var(--radius-1);
+    }
+
+    .spec-page .legend { padding: var(--space-3); }
+    .spec-page .legend li { margin-bottom: var(--space-1); }
+
+    .table-scroll { overflow-x: auto; }
+    .table td:first-child { font-family: var(--font-display); font-variant: small-caps; font-size: var(--text-xs); letter-spacing: 0.05em; }
+  </style>
+</head>
+<body>
+
+  <main class="spec-page">
+
+    <header class="masthead">
+      <h1>The Board on the Lesser Page</h1>
+      <p class="rubric">A codicil to game.html — how the campaign board yields, gracefully and without loss,
+      when the page narrows to a tablet's breadth.</p>
+    </header>
+
+    <p>The campaign board is drawn broad, as befits an empire. At <code>1440 × 900</code> it is the full
+    spread: rails wide, phases named, orders written out. Narrowed toward <code>1024</code> the shell does
+    not break — it <em>condenses</em>, shedding letters before it sheds meaning, and folding before it hides.
+    This codicil fixes what condenses, what folds, and the three things that never leave the page.</p>
+
+    <p><strong>Mind the seals.</strong> The plates below are true captures, and carry game.html's own crimson
+    apparatus baked in. This codicil's seals are
+    <span class="callout callout--note" style="position: static; display: inline-grid; vertical-align: -0.3em">•</span>
+    lapis, one to twelve, reckoned beneath. Neither set ships.</p>
+
+    <hr>
+
+    <h2>Two Pages, One Board</h2>
+
+    <div class="compare-grid">
+
+      <figure class="capture">
+        <div class="asset zone">
+          <img src="./screenshots/game-1440.png"
+               alt="The campaign board at 1440 by 900 — the full spread, both rails broad">
+          <b class="callout callout--note" style="left: 5%;  top: 4%">1</b>
+          <b class="callout callout--note" style="left: 52%; top: 4%">2</b>
+          <b class="callout callout--note" style="right: 9%; top: 4%">3</b>
+          <b class="callout callout--note" style="left: 9%;  top: 14%">4</b>
+          <b class="callout callout--note" style="left: 9%;  top: 47%">5</b>
+          <b class="callout callout--note" style="left: 24%; top: 32%">6</b>
+          <b class="callout callout--note" style="left: 54%; top: 31%">7</b>
+          <b class="callout callout--note" style="right: 9%; top: 14%">8</b>
+          <b class="callout callout--note" style="left: 7%;  bottom: 3.5%">9</b>
+          <b class="callout callout--note" style="left: 30%; top: 73%">10</b>
+          <b class="callout callout--note" style="right: 9%; bottom: 4.5%">11</b>
+        </div>
+        <figcaption>The full spread — <code>1440 × 900</code>, the shell served broad.
+        Lapis seals one to eleven mark the zones reckoned below.</figcaption>
+      </figure>
+
+      <figure class="capture">
+        <div class="asset zone">
+          <img src="./screenshots/game-1024.png"
+               alt="The campaign board at 1024 by 768 — the condensed spread, the same shell tightened">
+          <b class="callout callout--note" style="left: 6%;  top: 5%">1</b>
+          <b class="callout callout--note" style="left: 47%; top: 5%">2</b>
+          <b class="callout callout--note" style="right: 9%; top: 5%">3</b>
+          <b class="callout callout--note" style="left: 9%;  top: 17%">4</b>
+          <b class="callout callout--note" style="left: 9%;  top: 58%">5</b>
+          <b class="callout callout--note" style="left: 25%; top: 54%">6</b>
+          <b class="callout callout--note" style="left: 46%; top: 32%">7</b>
+          <b class="callout callout--note" style="right: 9%; top: 17%">8</b>
+          <b class="callout callout--note" style="left: 7%;  bottom: 6%">9</b>
+          <b class="callout callout--note" style="left: 37%; top: 67%">10</b>
+          <b class="callout callout--note" style="right: 10%; bottom: 3%">11</b>
+        </div>
+        <figcaption>The condensed spread — <code>1024 × 768</code>, the same shell tightened.
+        The same seals, the same zones, the lesser page.</figcaption>
+      </figure>
+
+    </div>
+
+    <hr>
+
+    <h2>The Reckoning</h2>
+    <p class="rubric">Each seal, and what the lesser page asks of its zone.</p>
+
+    <ol class="legend">
+      <li><b class="callout callout--note">1</b> <strong>Round counter &amp; era banner</strong> — the reign
+        stacks: round above, era beneath; the gilded divider yields. Read-only chrome at every breadth.</li>
+
+      <li><b class="callout callout--note">2</b> <strong>Phase track</strong> — never hidden. At the condensed
+        tier the five phases go glyph-only: each <code>.phase-name</code> is visually hidden yet still
+        announced in full to assistive tech. Tap a phase and its one-line tooltip rises on a plate
+        (<em>"Campaign — hosts march and sieges are set."</em>); the next tap lays it down.</li>
+
+      <li><b class="callout callout--note">3</b> <strong>Breath-timer</strong> — never hidden. The caption
+        stacks beneath the sand-gauge; Roman numerals as ever, crimson under ten breaths, and at nought the
+        turn yields itself. No clock digits at any breadth.</li>
+
+      <li><b class="callout callout--note">4</b> <strong>The Treasury</strong> — never hidden. The left rail
+        narrows from <code>268px</code> to <code>220px</code>; every chip keeps all three of icon, word and
+        count (README §3). Tap a chip for its income breakdown by province — what hover once gave, the finger
+        now takes. The crimson <code>.is-short</code> rim reads the same on every page.</li>
+
+      <li><b class="callout callout--note">5</b> <strong>Renown</strong> — tightens in place, never folds:
+        notches close from <code>1.55rem</code> to <code>1.3rem</code>, yet each remains a touch target grown
+        to the thumb's law (seal 11). Tap a held notch to read the holder; tap a gilded milestone to read its
+        reward.</li>
+
+      <li><b class="callout callout--note">6</b> <strong>The map, under the finger</strong> — one-finger drag
+        pans; pinch zooms about the pinch; a double-tap steps in, a two-finger tap steps out. A tap selects a
+        province; a tap on open water clears. Press-and-hold raises whatever hover would have — the province
+        name-plate, a host's composition — for nothing on this board lives on hover alone (README §1). No
+        gesture ever gives an order: hosts march only at "Set the Seal", with <code>quill_scratch</code>.
+        The chronicle opens by its drawn tab, never an edge-swipe — the map's edges belong to the map.</li>
+
+      <li><b class="callout callout--note">7</b> <strong>Chronicle drawer</strong> — a drawer at every
+        breadth. Condensed, it narrows from <code>21rem</code> to <code>16rem</code> and rises clear of the
+        advisor's seat; an overlay always — the shell never reflows for it. Tap or drag the gilded tab;
+        <code>page_turn</code> on open.</li>
+
+      <li><b class="callout callout--note">8</b> <strong>Province card</strong> — the right rail holds at
+        <code>300px</code>, down from <code>336px</code>; the yield chips wrap to a second line, all five
+        stores shown even at nought — Gold, Grain, Timber, Marble, Faith, always the full ledger. The two
+        contextual orders keep their written names: the largest seals on the page, and they stay so.</li>
+
+      <li><b class="callout callout--note">9</b> <strong>Action bar</strong> — under a coarse pointer at the
+        condensed tier, the eight orders shed their letters and stand as glyphs alone. Press one and its name
+        rises on a gilded plate above the thumb; lift there to arm it, slide away to stay the hand.
+        <em>Yield the Floor</em> alone keeps its letters at every breadth — and confirms, always. The deed
+        pips take their own line rather than clip. (The capture shows the fine-pointer form, names standing;
+        the glyph-only bar is cut by <code>@media (pointer: coarse)</code>, not by width alone.)</li>
+
+      <li><b class="callout callout--note">10</b> <strong>Advisor</strong> — the one panel that folds:
+        dismissed counsel folds to the counsellor's crest disc in its bottom-left seat; tap the crest and the
+        counsellor speaks again. New counsel arrives unfolded, says its piece, folds at a tap. The tutorial
+        speaks through this same seat and obeys the same law.</li>
+
+      <li><b class="callout callout--note">11</b> <strong>The thumb's law</strong> — every pressable thing
+        presents at least <code>48 × 48 px</code> to the finger: orders, chips, notches, tabs, host tokens,
+        drawer handles. Where the drawn form is smaller, an invisible margin grows the target — the art stays
+        delicate, the touch does not. Grown margins never overlap; where they would, they part. A seal too
+        small for a thumb is no seal at all.</li>
+
+      <li><b class="callout callout--note">12</b> <strong>The upright page</strong> — portrait is not served;
+        the tablet is shown one plate and nothing else, mocked below.</li>
+    </ol>
+
+    <p class="keep-rule"><strong>What never leaves the page:</strong> whatever else tightens or folds, three
+    things stay in sight at every supported breadth — <strong>the Treasury</strong> (all five stores),
+    <strong>the phase track</strong>, and <strong>the breath-timer</strong>. A sovereign may misplace a
+    province; they may not lose sight of the sand.</p>
+
+    <hr>
+
+    <div class="foot-grid">
+
+      <section>
+        <h2>The Upright Page</h2>
+        <p>The board is an open spread, not a scroll, and will not be folded into one. A tablet held upright
+        — whatever its breadth — is shown this one plate on porphyry and nothing of the board beneath. The
+        same plate serves a landscape page narrower than <code>1024px</code>: below that, the three constants
+        cannot be kept honest, so the board declines to pretend.</p>
+
+        <div class="rotate-plate zone">
+          <b class="callout callout--note" style="top: 12px; right: 12px">12</b>
+          <span class="glyph" aria-hidden="true">⟳</span>
+          <p>Turn the tablet as you would turn a page.</p>
+          <span class="sub">The plate clears the instant the page turns; the shell resumes where it stood,
+          nothing lost. The sand, mind, keeps falling — the council does not wait on any sovereign's
+          grip.</span>
+        </div>
+      </section>
+
+      <section>
+        <h2>The Breakpoint Contract</h2>
+        <p class="rubric">Three tiers, cut by width; touch manners, cut by pointer.</p>
+
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>The page</th>
+                <th>The shell served</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>1280px</code> and broader</td>
+                <td><strong>The full spread.</strong> Rails at <code>268px</code> and <code>336px</code>;
+                phases named; orders written out. Reference plate <code>1440 × 900</code>, no page
+                scroll.</td>
+              </tr>
+              <tr>
+                <td><code>1024px</code> to <code>1279px</code></td>
+                <td><strong>The condensed spread.</strong> Rails tighten to <code>220px</code> and
+                <code>300px</code>; the reign stacks; phases go glyph-only; the chronicle narrows. Coarse
+                pointers get glyph-only orders (names on press) and the folding advisor. The stores, the
+                phases and the sand remain, whole.</td>
+              </tr>
+              <tr>
+                <td>Narrower than <code>1024px</code>, or any upright page</td>
+                <td><strong>Not served.</strong> One plate on porphyry: <em>"Turn the tablet as you would
+                turn a page."</em> It clears the moment the page suffices; the board never renders beneath
+                it.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+    <hr>
+
+    <p style="font-style: italic; font-size: var(--text-sm); text-align: center; margin: 0">
+      Lapis seals, this legend, and the mocked plate are spec apparatus — they do not ship.
+      This page may scroll; the shell it describes never does.
+    </p>
+
+  </main>
+
+</body>
+</html>
