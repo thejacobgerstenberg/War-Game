@@ -97,7 +97,7 @@ export const CONFIG = {
 
   buildings: {
     market: { goldCost: 8, timberCost: 2, extraGoldPerRound: 2 }, // one per province
-    wallUpgrade: { goldCost: 10, timberCost: 2, marbleCost: 2 }, // +1 wall tier, max tier 3
+    wallUpgrade: { goldCost: 10, timberCost: 2, marbleCost: 1 }, // +1 wall tier, max tier 3
     greatWork: { goldCost: 25, marbleCost: 4, faithCost: 2, prestige: 5 }, // one-off prestige monument
   },
 
@@ -128,7 +128,7 @@ export const CONFIG = {
     tradeRoutePerRound: 0.6, // per open trade route at round end
     greatWork: 5, // one-off on completion
     provinceCapture: 2, // one-off conquest-track prestige per province captured (any owner)
-    keyCityCapture: 4, // one-off sack/triumph bonus when a key city is taken from any owner (incl. neutrals)
+    keyCityCapture: 5, // one-off sack/triumph bonus when a key city is taken from any owner (incl. neutrals)
     warWon: 6, // one-off when an enemy sues for peace / is eliminated from a war
     secretObjective: 6, // one-off on completing the secret objective
     victoryThreshold: 70, // reach this prestige => immediate win (idle engines alone must not suffice)

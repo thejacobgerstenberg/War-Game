@@ -10,8 +10,8 @@
     },
     "composition": "professional vs professional (levyVsProfessional grid: pure levy attacker, open field)",
     "gridIndexing": "winProb[attackerSize-1][defenderSize-1]",
-    "elapsedSec": 71.724,
-    "generatedAt": "2026-07-11T06:30:38.004Z"
+    "elapsedSec": 72.057,
+    "generatedAt": "2026-07-11T06:52:43.814Z"
   },
   "sets": {
     "openField": {

@@ -35,7 +35,10 @@ interface ProvinceSpec {
 
 const P: Record<string, ProvinceSpec> = {
   // ---- Italy ----
-  venice: { name: 'Venice', owner: 'venice', terrain: 'plains', wall: 2, key: true, y: [5, 1, 0, 1, 1], coasts: ['adriatic_north'] },
+  // Venice's marble lives in Venetian Dalmatia (Istrian stone via Zara), not
+  // on the safe lagoon: the great-work engine works from round 1 but its
+  // source is a mainland border province rivals can actually contest.
+  venice: { name: 'Venice', owner: 'venice', terrain: 'plains', wall: 2, key: true, y: [5, 1, 0, 0, 1], coasts: ['adriatic_north'] },
   friuli: { name: 'Friuli', owner: null, terrain: 'plains', wall: 0, y: [1, 2, 2, 0, 0], coasts: ['adriatic_north'] },
   milan: { name: 'Milan', owner: null, terrain: 'plains', wall: 2, y: [4, 3, 0, 0, 0] },
   genoa: { name: 'Genoa', owner: 'genoa', terrain: 'hills', wall: 2, key: true, y: [5, 1, 1, 0, 1], coasts: ['ligurian'] },
@@ -47,7 +50,7 @@ const P: Record<string, ProvinceSpec> = {
   corsica: { name: 'Corsica', owner: 'genoa', terrain: 'mountains', wall: 0, y: [1, 1, 2, 1, 0], coasts: ['ligurian', 'tyrrhenian'] },
   // ---- Western Balkans ----
   ragusa: { name: 'Ragusa', owner: null, terrain: 'hills', wall: 2, key: true, y: [4, 1, 0, 0, 0], coasts: ['adriatic_south'] },
-  zara: { name: 'Zara', owner: 'venice', terrain: 'hills', wall: 1, y: [2, 1, 1, 0, 0], coasts: ['adriatic_north'] },
+  zara: { name: 'Zara', owner: 'venice', terrain: 'hills', wall: 1, y: [2, 1, 1, 1, 0], coasts: ['adriatic_north'] },
   croatia: { name: 'Croatia', owner: 'hungary', terrain: 'hills', wall: 0, y: [1, 2, 1, 0, 0], coasts: ['adriatic_north'] },
   slavonia: { name: 'Slavonia', owner: 'hungary', terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0] },
   bosnia: { name: 'Bosnia', owner: null, terrain: 'mountains', wall: 0, y: [2, 1, 2, 0, 0] },
@@ -255,7 +258,7 @@ export const TRADE_ROUTES: TradeRoute[] = [
   { id: 'buda_ragusa', a: 'buda', b: 'ragusa', seaZones: [], income: 3, overland: true },
   { id: 'buda_venice', a: 'buda', b: 'venice', seaZones: [], income: 3, overland: true },
   // Silk Road terminus at Bursa (Ottoman caravan trade).
-  { id: 'bursa_ankara', a: 'bursa', b: 'ankara', seaZones: [], income: 3, overland: true },
+  { id: 'bursa_ankara', a: 'bursa', b: 'ankara', seaZones: [], income: 4, overland: true },
 ];
 
 // -------------------------------------------------------------- starts

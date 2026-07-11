@@ -3,7 +3,7 @@
     "seed": 20260711,
     "iterationsPerCell": 20000,
     "smoke": false,
-    "elapsedMs": 7481,
+    "elapsedMs": 6964,
     "attacker": "12 professionals + <engines> siege engines",
     "garrisonComposition": "professionals",
     "terrain": "plains",
