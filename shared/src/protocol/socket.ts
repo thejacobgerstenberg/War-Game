@@ -1,0 +1,102 @@
+/**
+ * Socket.IO wire protocol shared by server and client.
+ *
+ * Both sides import {@link SOCKET_EVENTS} and the payload interfaces below so
+ * event names and shapes can never drift apart.
+ */
+import type { Faction, GameState } from "../types/gameState.js";
+
+/** Canonical event-name registry. */
+export const SOCKET_EVENTS = {
+  // Client -> Server
+  CREATE_GAME: "create_game",
+  JOIN_GAME: "join_game",
+  PICK_FACTION: "pick_faction",
+  START_GAME: "start_game",
+  LEAVE_GAME: "leave_game",
+
+  // Server -> Client
+  GAME_CREATED: "game_created",
+  LOBBY_UPDATE: "lobby_update",
+  GAME_STARTED: "game_started",
+  ERROR_MSG: "error_msg",
+  STATE_UPDATE: "state_update",
+} as const;
+
+export type SocketEvent = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];
+
+// ---------------------------------------------------------------------------
+// Client -> Server payloads
+// ---------------------------------------------------------------------------
+
+export interface CreateGamePayload {
+  playerName: string;
+}
+
+export interface JoinGamePayload {
+  roomCode: string;
+  playerName: string;
+}
+
+export interface PickFactionPayload {
+  faction: Faction;
+}
+
+/** `start_game` and `leave_game` carry no payload. */
+export type StartGamePayload = void;
+export type LeaveGamePayload = void;
+
+// ---------------------------------------------------------------------------
+// Server -> Client payloads
+// ---------------------------------------------------------------------------
+
+export interface GameCreatedPayload {
+  roomCode: string;
+  playerId: string;
+}
+
+/** A single row in the lobby roster. */
+export interface LobbyPlayer {
+  id: string;
+  name: string;
+  faction: Faction | null;
+  isHost: boolean;
+}
+
+export interface LobbyUpdatePayload {
+  roomCode: string;
+  players: LobbyPlayer[];
+  startedByHost: boolean;
+}
+
+export interface GameStartedPayload {
+  state: GameState;
+}
+
+export interface ErrorMsgPayload {
+  message: string;
+}
+
+export interface StateUpdatePayload {
+  state: GameState;
+}
+
+/**
+ * Strongly-typed maps of event name -> payload, usable to parameterise a
+ * Socket.IO server/client (`Server<ClientToServerEvents, ServerToClientEvents>`).
+ */
+export interface ClientToServerEvents {
+  [SOCKET_EVENTS.CREATE_GAME]: (payload: CreateGamePayload) => void;
+  [SOCKET_EVENTS.JOIN_GAME]: (payload: JoinGamePayload) => void;
+  [SOCKET_EVENTS.PICK_FACTION]: (payload: PickFactionPayload) => void;
+  [SOCKET_EVENTS.START_GAME]: () => void;
+  [SOCKET_EVENTS.LEAVE_GAME]: () => void;
+}
+
+export interface ServerToClientEvents {
+  [SOCKET_EVENTS.GAME_CREATED]: (payload: GameCreatedPayload) => void;
+  [SOCKET_EVENTS.LOBBY_UPDATE]: (payload: LobbyUpdatePayload) => void;
+  [SOCKET_EVENTS.GAME_STARTED]: (payload: GameStartedPayload) => void;
+  [SOCKET_EVENTS.ERROR_MSG]: (payload: ErrorMsgPayload) => void;
+  [SOCKET_EVENTS.STATE_UPDATE]: (payload: StateUpdatePayload) => void;
+}
