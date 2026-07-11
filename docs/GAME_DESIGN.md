@@ -579,6 +579,12 @@ the Bombard enters play **at no cost** in the recipient's capital (or any owned
 auctions it (gold + marble bids) to the highest bidder, per the card text. It
 cannot be recruited, rebuilt, or duplicated.
 
+If the recipient's capital is already at the stacking cap (§6.4) when the
+Bombard is forged, it instead enters play in the recipient's **adjacent owned
+province with the most remaining stacking room** — falling back to **any owned
+province with room**, and if none exists, placement is **deferred** until one
+does (engine parity ruling).
+
 | Attribute | Rule |
 |---|---|
 | **Entry** | Free, via `great-bombard-forged` only (Era III); **one per game** |
