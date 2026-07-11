@@ -10,7 +10,13 @@ team can diff it against the real rules. All numbers live in
 This revision is the **final canon re-derivation** (coordinator rulings
 R1-R11, 2026-07-11): per-unit d6 kernel with per-faction unique-unit CVs,
 walls T1-T5, the 23 ratified tactic cards, sea resupply, the Great Bombard
-omen, and the canon §13.1 prestige table.
+omen, and the canon §13.1 prestige table — **plus the RATIFIED ERRATA E1-E5
+(coordinator, 2026-07-11)**: E1 Treason-at-the-Gate gates (garrison ≤ 4,
+siege clock counts only from game round 6), E2 diminishing monopoly prestige
+(+2 first / +1 additional), E3 the Great Bombard canon draw model (per-game
+seeded omen draw uniform over rounds 11-16) + 1-round emplacement, E4 three
+independent secret objectives (+4 each), E5 betrayal/aggression costs
+(unjustified-war −1 prestige; mercenary-revolt pillage on unpaid desertion).
 
 ## Round structure (16 rounds, 1400–1453; §10)
 
@@ -18,13 +24,15 @@ omen, and the canon §13.1 prestige table.
    abstract card with a kind (`gold | grain | units | prestige`), a target
    (`all | random | leader`), and a uniform-random magnitude within
    `CONFIG.events` bounds (the three era decks and persistent cards are not
-   itemized). **Era III**: when round `siege.greatBombard.availableFromRound`
-   (15 — canon Era III opens at round 11, §12; the sim reveals this one card
-   four rounds late as a BALANCE divergence: a free Ottoman Bombard at r11
-   drove sudden-death wins to 23.7% of games vs the 1-15% target, see
-   TUNING_LOG canon retune round 1) begins, the omen
-   **`great-bombard-forged`** (EVENT_CARDS #34) resolves — see "Great
-   Bombard" below. *AI-knowledge simplification*: the 4–5-player face-up
+   itemized). **Era III / RATIFIED ERRATA E3 (2026-07-11)**: the omen
+   **`great-bombard-forged`** (EVENT_CARDS #34) sits in the Era III deck at
+   a uniformly random position — modeled as a per-game seeded draw round
+   uniform over `[greatBombard.drawRoundMin, drawRoundMax]` = rounds 11-16
+   (canon §12 Era III). This REPLACES the previous fixed r15 reveal (which
+   was itself a tuning divergence from canon's r11 Era III opening); the
+   sudden-death band is re-held instead by E3's 1-round emplacement, the E1
+   treason gates, and the re-derived threshold (see TUNING_LOG errata
+   round). See "Great Bombard" below. *AI-knowledge simplification*: the 4–5-player face-up
    "gathering omen" preview (§12) is unmodeled — scripted agents gain no
    information from omens either way. **Unit-loss guardrail**: a negative
    units omen never empties a garrison (leaves ≥ 1 combatant), and leaves
@@ -42,7 +50,19 @@ omen, and the canon §13.1 prestige table.
    negative (`goldFloor`). **Skeleton-garrison rule (rules-visible)**:
    peacetime desertion (and negative unit events) never removes the LAST
    combatant of a walled province's garrison — an insolvent power cannot
-   lose a fortress to a walk-in occupation. **Besieged walled garrisons
+   lose a fortress to a walk-in occupation. **RATIFIED ERRATA E5b
+   (2026-07-11; canon EVENT_CARDS #22 "Mercenary Revolt" pillage
+   semantics)**: whenever unpaid/unfed MERCENARIES desert, they revolt and
+   **pillage their host province** — the owner loses
+   `economy.mercRevolt.pillageGold` (2) stored gold per pillaged province
+   and the province **yields nothing next round**
+   (`ProvinceState.pillagedUntilRound`). Deserting SIEGE-CAMP mercenaries
+   have no host province of their owner to raze: only the gold is lost
+   (documented gap — canon does not place camps in the pillage text).
+   Gold-paid elites (Janissary/Black Army) deserting unpaid do NOT pillage
+   (the errata scopes the revolt to mercenaries; canon card #22 also names
+   elite pay — flagged as a residual gap for the engine).
+   **Besieged walled garrisons
    are exempt from insolvency desertion entirely** (adversarial fix
    round): canon §8.2.3 makes the siege's stores/hunger clock the sole
    source of garrison hunger — a sea-resupplied city is fed by the supply
@@ -190,8 +210,15 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   bonus 0 for one assault; escalade −1 still applies), The Hexamilion
   Manned (defender +2 in an unwalled province), Night Sortie (siege round:
   no store depletion, besieger −1 unit), Sails from the West (no depletion
-  even under full blockade, +2 stores restored), Treason at the Gate (4g
-  after 2+ siege rounds: the city falls, card removed from game).
+  even under full blockade, +2 stores restored), Treason at the Gate (4g:
+  the city falls, card removed from game — **RATIFIED ERRATA E1
+  (2026-07-11)**: playable only against a garrison of **≤ 4 units**, and
+  its 2-consecutive-siege-round requirement counts **only siege rounds
+  occurring in game round 6 or later** (`maxGarrison` /
+  `siegeRoundsCountFromGameRound` on the card def; the engine tracks
+  `Siege.treasonRounds`). This is the register-item-1 errata, ratified and
+  re-measured — beeline SD 22.6% → 16.2%, ≤r8 15.0% → 8.3%, guard arm
+  23.8% → 7.3%).
 - **Unmodeled (dead draws, still occupy deck/hand slots)**: Forced March
   (movement rider), The Pilot of the Narrows (fleet battles — the sim has
   no pure fleet battles; note: this is a Common ×3), Ears in the Bazaar
@@ -253,31 +280,42 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
      defender while HP > 0 plus **escalade −1** to the attacker (§8.2.4);
      at 0 HP (breach) the fight is at field odds. Siege engines add their
      §6.1 "+3 vs walls" dice during an escalade.
-- **The Great Bombard (GD §8.4, EVENT_CARDS #34)**: unique, one per game,
-  never recruited. Enters when the Era III omen `great-bombard-forged`
-  resolves (round `availableFromRound`, 15 — tuned, canon 11; see Omen
-  note above): the **Ottoman player receives
-  it FREE if alive** (canon); otherwise it is auctioned — sim rule: the
-  richest faction able to pay `goldCost` (40) takes it (retried each round
-  while unclaimed; `actBuyBombard` is the explicit fallback). It rolls
-  **2 wall-damage dice** per siege round (~4 HP avg, max 6) and **lifts the
-  T5 masonry cap for the whole besieging train**. In the full game its
-  owner deploys it at their most valuable siege (Constantinople first).
-  Unmodeled: 3-grain upkeep/silence, 1-province movement, no-mountains,
-  sink-on-transport-loss, capture-as-loot (it stays with its owner).
+- **The Great Bombard (GD §8.4, EVENT_CARDS #34; RATIFIED ERRATA E3,
+  2026-07-11)**: unique, one per game, never recruited. Enters when the
+  Era III omen `great-bombard-forged` resolves — **canon draw model**: the
+  card occupies a uniformly random position in the Era III deck, modeled
+  as a per-game seeded draw round uniform over rounds 11-16
+  (`Game.bombardDrawRound`, its own RNG fork). The **Ottoman player
+  receives it FREE if alive** (canon); otherwise it is auctioned — sim
+  rule: the richest faction able to pay `goldCost` (40) takes it (retried
+  each round while unclaimed; `actBuyBombard` is the explicit fallback).
+  It rolls **2 wall-damage dice** per siege round (~4 HP avg, max 6) and
+  **lifts the T5 masonry cap for the whole besieging train** — but only
+  once EMPLACED (**E3**): after acquisition (or after moving to a
+  different siege) it is placed for **1 full siege round before it first
+  fires** — no wall damage from it, and no masonry-cap lift, during the
+  emplacement round (`greatBombard.emplacementRounds`, tracked in
+  `Game.bombardEmplacement`; the siege module applies the same rule). In
+  the full game its owner deploys it at their most valuable siege
+  (Constantinople first). Unmodeled: 3-grain upkeep/silence, 1-province
+  movement, no-mountains, sink-on-transport-loss, capture-as-loot (it
+  stays with its owner).
 - **Byzantine unique power NOT modeled**: FACTIONS gives Constantinople an
   auto-repel of the first two siege rounds (no bombardment damage). This
   would push the T5d capture window from ~2-4 to ~4-6 siege rounds —
   flagged as a sensitivity note for the engine team; the T5 targets were
   calibrated without it per the coordinator's target spec.
-- Calibrated consequence (full-scale results/siege.json, 20k iters/cell):
-  (a) direct assault on the intact T5 walls: ≤ ~0.1% win for any stack
-  1-12 vs garrisons 6-10; (b) no Bombard + no blockade: 0% capture within
-  12 siege rounds (sea resupply + masonry cap); (c) no Bombard + full
-  blockade: starve-out works (≥ 99%), median capture at siege round 7/9/11
-  for garrisons 6/8/10; (d) with the Bombard: breach on siege round 2 and
-  capture within 2-4 rounds with ≥ 95% probability — a round-15-to-16 fall
-  of the City when the omen lands at round 15, matching the 1453 anchor.
+- Calibrated consequence (full-scale results/siege.json, 20k iters/cell,
+  errata E3 curve): (a) direct assault on the intact T5 walls: ≤ ~0.3% win
+  for any stack 1-12 vs garrisons 6-10; (b) no Bombard + no blockade: 0%
+  capture within 12 siege rounds (sea resupply + masonry cap); (c) no
+  Bombard + full blockade: starve-out works (≥ 99.9%), median capture at
+  siege round 7/9/11 for garrisons 6/8/10; (d) with the Bombard:
+  emplacement in siege round 1, breach in rounds 2-3, capture at median
+  siege round 3 — **capture within 4 rounds of its FIRST SHOT (siege
+  rounds ≤ 5) with 91.7-100% probability** (the re-derived T5d target,
+  >50%). With the omen drawn uniformly r11-16, the City falls ~r13-16 —
+  the 1453 anchor holds in expectation (fullgame SD completions all r12+).
 
 ## Economy & map
 
@@ -331,30 +369,54 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
 ## Prestige & victory (canon §13.1 at 2b42386)
 
 - Per round-end **income**: own capital +1; each enemy capital +3; each
-  key city +1; trade monopoly (open route with BOTH endpoints owned) +2.
-  Per-route prestige is 0 (canon has none; `tradeRoutePerRound` kept as a
-  lever).
+  key city +1; trade monopoly (open route with BOTH endpoints owned) —
+  **RATIFIED ERRATA E2 (2026-07-11): diminishing returns** — +2/round for
+  the FIRST monopoly, **+1/round for each additional** simultaneous
+  monopoly (`tradeMonopolyPerRound` / `tradeMonopolyAdditionalPerRound`);
+  no escort requirement. Per-route prestige is 0 (canon has none;
+  `tradeRoutePerRound` kept as a lever).
 - One-off **conquest/wars track**: decisive battle (loser wiped/routed) +1;
   win a field battle outnumbered +1 (stacks); take a walled city BY FORCE
   (storm, starvation, or treachery — walk-ins score nothing) +2, or +3 for
   T4-T5; win a war +3 (war goes quiet with a net-capture lead, or a player
   is eliminated); lose your own capital −3; great work +5.
-- **Secret objectives: +4 each, scored at GAME END only** (canon §13.1) —
+- **Secret objectives (RATIFIED ERRATA E4, 2026-07-11): THREE per faction
+  (canon), +4 EACH scored INDEPENDENTLY at GAME END only** (canon §13.1) —
   they count for the round-16 highest-prestige comparison and can never
-  trigger an early threshold win. Sim objective = hold 3 seeded nearby
-  provinces at game end. The pacing model applies the same end-scoring.
+  trigger an early threshold win. Sim objective i = "hold seeded nearby
+  province i at game end" (3 seeded provinces within 2 steps of the
+  start); completion is tracked per objective
+  (`GameResult.objectivesCompleted`, 0-3 per faction) in every game, even
+  when an earlier threshold/SD win means the +4s are never scored. The
+  pacing model applies the same 3-independent-objective end-scoring.
 - **Turn-order-by-prestige catch-up (§13.4) IS modeled** (adversarial fix
   round): turn order re-sorts at every Cleanup, lowest prestige first
   (tiebreak: fewer provinces, then previous order).
+- **RATIFIED ERRATA E5a (2026-07-11; canon §11 aggression-cost family)**:
+  an attack that STARTS a war charges the aggressor **−1 prestige**
+  (`prestige.unjustifiedWar`) unless justified. Canon §11's casus belli is
+  richer (broken-marriage claims, seized key cities); the sim-level
+  justification mapping is: (a) the target holds one of the aggressor's
+  secret-objective provinces, (b) the target is the current prestige
+  leader (no living faction has strictly more — canon §14 explicitly
+  rewards ganging up on the leader), or (c) the target attacked the
+  aggressor first at some point this game (tracked in
+  `Game.attackedEver`). Attacks inside a live war are war-fighting, not
+  declarations (no charge); an ongoing siege keeps its war alive, so a
+  poke campaign is charged at most once per war. Alliance/NAP/marriage
+  BREAK penalties (−2…−4) stay unmodeled — the sim has no treaties to
+  break.
 - NOT modeled: royal marriage (+2/round to both — worth up to ~+24-32 over
-  a game; re-sweep the threshold when diplomacy lands), betrayal penalties,
-  spy prestige losses, ±1 morale effects.
+  a game; re-sweep the threshold when diplomacy lands), treaty-break
+  betrayal penalties (no treaties in-sim), spy prestige losses, ±1 morale
+  effects.
 - Win at `victoryThreshold` prestige **checked at Cleanup only**, else
   highest prestige after round 16 with the **canon §13.3 tiebreak: most
   key cities, then most gold** (modeled since the adversarial fix round).
   **The threshold number is owned by the TUNING_REPORT** (canon §13.2's 35
-  is a pre-tuning placeholder; current value 84 — see TUNING_LOG
-  adversarial fix round). Victory-check ordering: sudden death is tested
+  is a pre-tuning placeholder; current value 80 — 84 → 80 in the ratified
+  errata round: the E2 monopoly nerf lowered winner accrual, see
+  TUNING_LOG). Victory-check ordering: sudden death is tested
   BEFORE threshold at the same Cleanup (canon §13.3 "wins immediately,
   regardless of prestige" — flagged for design confirmation, see
   NEEDS-RULES-CHANGE).
@@ -375,7 +437,8 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   blockade = any at-war enemy port/camp galley on a route zone, halving
   income (§5.2). There are no pure fleet battles (hence Pilot of the
   Narrows / Greek Fire are dead cards).
-- Secret objectives modeled as "hold 3 specific provinces at game end".
+- Secret objectives modeled as 3 independent "hold this seeded province at
+  game end" goals (+4 each, E4).
 - Scripted agents refuse to besiege an intact T5 fortress until they own
   the Great Bombard, matching the siege-module capture curves; rushers
   garrison threatened core provinces before attacking and open trade
@@ -414,50 +477,62 @@ than the game.
 
 ## NEEDS-RULES-CHANGE register (design decisions, not tunable numbers)
 
-Findings the adversarial suite proved un-fixable with owned CONFIG/map
-numbers; each needs a canon/design change and a re-verify:
+### RATIFIED + IMPLEMENTED (errata round, coordinator 2026-07-11)
 
-1. **Treason at the Gate vs garrisoned capitals** (cple-beeline, HIGH
-   residual): with every other capture path closed (noTreason arms 0.0%
-   SD), the ratified rare alone still buys Constantinople in a round-1
-   siege: SD 18.7-23.8% (one beeliner) and ≤r8 completions 11-17% vs the
-   ≤20%/≤10% bars — 100% of remaining SD wins hold the card
-   (results/adversarial_cple_beeline.json). Fix must touch card TEXT
-   (ratified): gate on garrison ≤4 (or price 4g + 2g/garrison unit),
-   and/or count its 2 siege rounds only from game round 6.
-2. **Flat passive monopoly prestige** (turtle-dominance + faction-floor
-   ceiling, HIGH): +2/round per owned-both-ends route (canon §13.1) with
-   zero risk gives monopolyMax Venice 66.2% / Genoa 61.7%, shipping-trader
-   Genoa 60-64% in-seat; every owned scalar cut breaks T1/T3 (hunter
-   fix-check). Needs diminishing returns (+2 first, +1 further) and/or an
-   escort requirement, plus a competing gold→prestige sink; then re-tune
-   victoryThreshold.
-3. **All-turtle near-tie endings** (faction-floor/turtle): a 5-turtler
-   table ends 45-56% of games with winner margin <2 at the cap. The canon
-   §13.3 exact-tie tiebreak (key cities → gold, now modeled) cannot
-   separate margin-1 finishes; follows from the same flat passive accrual
-   as (2).
-4. **Runaway-leader brakes** (MEDIUM residual): canon §13.4 turn order is
-   now modeled and agent leader-pressure now changes feasibility, yet the
-   r8 unique-leader still wins 72.8% (line 70%; STRONG 0.75× probe 72.1%)
-   because leads are passive-prestige-driven — same design root as (2).
-   Canon's remaining catch-up levers (diplomacy gang-ups, betrayal costs,
-   late-era crisis weighting) are unmodeled.
-5. **Free perpetual war pokes** (economy-exploit, residual wart): a 2-unit
-   self-lifting siege keeps a war (and route halving) alive indefinitely
-   at ~0 cost because canon §11's aggression/betrayal prestige penalties
-   and tribute peace are unmodeled; the §5.2 halving fix caps the damage
-   (blockade attribution now ~0.5pp) but pokes remain free harassment.
-6. **Victory-check ordering**: sudden death currently outranks a
-   same-Cleanup threshold win (canon §13.3 "immediately" — confirm intent).
-7. **Unpaid-merc desertion is free** (merc-rush, LOW wart): hire-for-one-
-   battle-then-stiff beats honest upkeep by +0.6pp inside a 4.9%-win line
-   (z=1.81 at final config — not significant, but the gradient exists).
-   Canon §13.1 reserves betrayal penalties; a -1 prestige on unfed-merc
-   desertion (or deserters-turn-brigand) would close it. Documented wart;
-   pure-CONFIG mitigations punish honest merc use.
-8. **Secret objectives are dead weight** (runaway-leader, LOW): 0.3%
-   completion, 0 end-reveal flips with ONE 3-province objective modeled;
-   canon grants THREE per faction (+12 hidden swing) — re-run the
-   kingmaker/flip measurement when 3-objective play is wired before
-   quoting the no-flip result at canon scale.
+Former register items resolved by the ratified errata E1-E5 and re-measured
+at the final config (before → after; see TUNING_LOG errata round and
+TUNING_REPORT §5 for the full evidence):
+
+- **(was #1) Treason at the Gate** → **E1**: garrison ≤ 4 gate + the
+  2-siege-round clock counts only from game round 6. Beeline grid:
+  solo_ottoman SD 22.6% → **16.2%**, ≤r8 15.0% → **8.3%**; guard_ottoman
+  23.8% → **7.3%**; all hunt-brief bars now PASS.
+- **(was #2) Flat passive monopoly prestige** → **E2**: +2 first / +1 each
+  additional monopoly, no escort requirement. monopolyMax Venice 66.2% →
+  **57.5%**, Genoa 61.7% → **60.0%**; ceiling reduced but the trade-seat
+  monoculture ceiling remains >50% (see open item 2 below).
+- **(was #5a) Free perpetual war pokes** → **E5a**: unjustified war
+  declaration −1 prestige. Pokes are now *priced* but the price binds once
+  per war (an ongoing siege keeps the war alive), so a dedicated poke
+  campaign still costs ≤1 prestige total — harassment damage stays bounded
+  by the §5.2 halving (mechanism attribution 0.0pp at the errata config).
+- **(was #7) Unpaid-merc desertion free** → **E5b**: mercenary revolt
+  pillages the host province (−2 gold, yield 0 next round, canon
+  EVENT_CARDS #22 semantics).
+- **(was #8) Secret objectives dead weight** → **E4**: three independent
+  +4 objectives. Per-objective completion 0.3% (all-3 combo) → **6.0%**
+  per objective (≥1 completed in 15.5% of surviving faction-games);
+  end-reveal flips 0.0% → **9.6%** of unique-leader cap games (live but
+  far under the 30% kingmaker line).
+- **E3 (this round's own divergence repair, was TUNING_REPORT §5 item 3)**:
+  Great Bombard fixed-r15 reveal → canon draw model (uniform r11-16 seeded
+  per game) + 1-round emplacement. Fullgame SD 8.0-8.2% → **11.9-13.7%**
+  (<15% target), all completions r12+; threshold re-derived 84 → **80**.
+
+### Still open (design decisions)
+
+1. **All-turtle near-tie endings** (faction-floor/turtle): a 5-turtler
+   table still ends 48.3% of games with winner margin <2 (73.7% of its
+   cap-decided games) at the errata config. The canon §13.3 exact-tie
+   tiebreak (key cities → gold, modeled) cannot separate margin-1
+   finishes; passive accrual remains flat *within* a mirror table even
+   with E2's diminishing monopolies.
+2. **Trade-seat monoculture ceiling** (turtle-dominance residual): E2 cut
+   monopolyMax Venice to 57.5% but Genoa's trader/monopolyMax seat still
+   wins ~56-60% under monoculture protocols — the residual driver is
+   trade INCOME (great-works funding) rather than monopoly prestige.
+   Needs a competing gold→prestige sink or escort/at-risk trade rules.
+3. **Runaway-leader brakes** (MEDIUM, improved): r8 unique-leader
+   predictivity 72.8% → **69.4%** at the errata config (line 70%) — the
+   E4 hidden +12 swing and E5a leader-target discount pulled it under the
+   bar. Canon's remaining catch-up levers (diplomacy gang-ups, tribute
+   peace, late-era crisis weighting) stay unmodeled.
+4. **Victory-check ordering**: sudden death still outranks a same-Cleanup
+   threshold win (canon §13.3 "immediately" — confirm intent).
+5. **War pokes, residual** (LOW): E5a prices a war once; a poke every 2
+   rounds keeps the same war warm indefinitely, so sustained harassment
+   still costs ~1 prestige total. Full closure needs canon §11 tribute
+   peace / reputation, not a one-off charge.
+6. **Merc-revolt scope gap** (LOW): canon EVENT_CARDS #22 also pillages on
+   unpaid Janissary/Black Army *gold* pay; E5b as ratified scopes the sim
+   revolt to mercenaries. Engine should follow the card text.

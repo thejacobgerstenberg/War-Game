@@ -2,7 +2,9 @@
  * ADVERSARIAL: Constantinople sudden-death beeline ("cple-beeline" hunter),
  * rebuilt for the FINAL canon-kernel config (2b42386 rules: T5 = 16 HP / +4
  * binary bonus, t5 masonry cap 1 HP/round, grain-stores starvation, R3 sea
- * resupply with per-zone galley-superiority blockade, Great Bombard r15).
+ * resupply with per-zone galley-superiority blockade; errata round: Great
+ * Bombard omen drawn at a per-game seeded round uniform over 11-16 with a
+ * 1-siege-round emplacement, Treason gated to garrison <= 4 + r6 clock).
  *
  * Uses ONLY the public legal-action API of game.ts — no engine edits.
  *

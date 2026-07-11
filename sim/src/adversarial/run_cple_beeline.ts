@@ -320,17 +320,18 @@ const results = {
     exploit: breaches.length > 0,
     breaches,
     decomposition:
-      'POST-FIX decomposition (adversarial fix round; see TUNING_LOG): the four non-card capture paths are CLOSED — ' +
-      'noTreason arms are 0.0% SD (were 74.9%/28.9%). Fixes: (1) canon §8.2.3 RAW blockade contest (an enemy fleet must be ' +
-      'PRESENT and UNCONTESTED per zone; a single defending harbor galley keeps the lane open — the old strict-superiority ' +
-      'gap-fill let 2 siege-camp galleys blockade Constantinople from the camp itself); (2) harbor reinforcement (recruit + ' +
-      'sea ferry into a sea-resupplied besieged city, game.harborOpen); (3) besieged walled garrisons are exempt from ' +
-      'treasury-insolvency desertion (the siege stores clock is the sole hunger source per §8.2.3); (4) unit-loss omens floor ' +
-      'walled capitals/besieged walled cities at 3 combatants. EVERY remaining SD win is treason-at-the-gate ' +
-      '(sdWithTreasonHeld == SD count in the ottoman/duo/guard arms): the RATIFIED rare (4g, 2+ siege rounds, 1 copy) legally ' +
-      'buys any garrisoned city once a round-1 siege has stood 2+ rounds, P(besieger draws it) ~ deckPosition/5 => ~15-24% SD, ' +
-      '~11-17% <= r8. Card magnitudes are ratified inputs — NOT fixable by owned numbers; errata needed (garrison cap <= 4, ' +
-      'per-garrison-unit pricing, or a game-round >= 6 gate).',
+      'POST-ERRATA decomposition (ratified errata round, 2026-07-11; see TUNING_LOG). TREASON-AT-THE-GATE now carries BOTH ' +
+      'ratified E1 gates: playable only vs a garrison of <= 4 units, AND its 2-consecutive-siege-round clock counts only ' +
+      'siege rounds in game round >= 6. The GREAT BOMBARD (E3) is now a per-game seeded omen draw uniform over rounds 11-16 ' +
+      'with a 1-siege-round emplacement before it fires. Consequences vs the pre-errata grid (was SD 18.8-23.8% one beeliner, ' +
+      '<=r8 11-17%): all brief bars now PASS — solo_ottoman 16.2%/8.3%, solo_genoa 13.2%/5.9%, solo_venice 6.2%/0.6%, ' +
+      'duo 17.7%/8.2% vs the <=20%/<=10% bars. Treason still supplies most SD wins in undefended-Byzantium arms (the 4-unit ' +
+      'start garrison satisfies the <=4 gate when Byzantium never reinforces), but the r6 clock gate pushes captures to r7+ ' +
+      'and the guard counterfactual collapses to 7.3%/0.0% (was 23.8%/16.6%) — a garrison kept above 4 units turns the card ' +
+      'off entirely (guard_genoa 0.0%). The noTreason counterfactual arms are no longer 0.0% (2.8-7.0%): that residue is the ' +
+      'E3 Bombard draw landing r11-13 and opening the walls legitimately — the same late-game Bombard SD the fullgame T4 band ' +
+      '(measured 11.9-13.7%, all completions r12+) prices in. The four pre-errata engine fixes (RAW blockade contest, harbor ' +
+      'reinforcement, besieged-garrison insolvency exemption, omen unit-loss floor 3) remain in force.',
   },
   scenarios: all,
 };

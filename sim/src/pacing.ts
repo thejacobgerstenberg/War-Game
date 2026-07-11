@@ -237,7 +237,9 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
   let keyCities = p.startKeyCities;
   let hasCple = false;
   let hasEnemyCapital = false;
-  let objectiveDone = false;
+  // E4: THREE independent objectives per faction, each completing via the
+  // per-round hazard inside the window and each paying +4 at game end.
+  const objectiveDone = [false, false, false];
   let cum = 0;
   const out: number[] = new Array(rounds);
 
@@ -293,15 +295,12 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
     //     §13.1) — added in the final round so they can never trigger an
     //     early threshold win ---
     for (const gwRound of greatWorkRounds) if (gwRound === r) cum += pr.greatWork;
-    if (
-      !objectiveDone &&
-      r >= p.objectiveWindow[0] &&
-      r <= p.objectiveWindow[1] &&
-      rng.chance(p.objectiveHazard)
-    ) {
-      objectiveDone = true;
+    if (r >= p.objectiveWindow[0] && r <= p.objectiveWindow[1]) {
+      for (let i = 0; i < objectiveDone.length; i++) {
+        if (!objectiveDone[i] && rng.chance(p.objectiveHazard)) objectiveDone[i] = true;
+      }
     }
-    if (r === rounds && objectiveDone) cum += pr.secretObjective;
+    if (r === rounds) cum += objectiveDone.filter(Boolean).length * pr.secretObjective;
 
     // --- per-round prestige income ---
     cum += pr.ownCapitalPerRound; // own capital assumed held (canon §13.1)
@@ -309,7 +308,10 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
     cum += keyCities * pr.keyCityPerRound;
     if (hasCple) cum += pr.keyCityPerRound + pr.constantinopleExtraPerRound;
     cum += routesActive * pr.tradeRoutePerRound;
-    cum += monopoliesActive * pr.tradeMonopolyPerRound;
+    // E2 diminishing returns: first monopoly +2, each additional +1
+    if (monopoliesActive > 0) {
+      cum += pr.tradeMonopolyPerRound + (monopoliesActive - 1) * pr.tradeMonopolyAdditionalPerRound;
+    }
 
     // --- prestige event card ---
     if (rng.chance(p.prestigeEventProb)) cum += rng.range(evMin, evMax);

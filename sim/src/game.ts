@@ -27,9 +27,13 @@
  *   (Night Sortie, Sails from the West, Treason at the Gate) fire in the
  *   siege phase. 'unmodeled' cards are dead draws. See RULES_MODEL.md.
  * - One global event per round, uniform magnitude within CONFIG.events.
- * - Secret objective: hold 3 nearby provinces (seeded pick); revealed and
- *   scored (+4) at GAME END only (canon §13.1) — it never speeds up a
+ * - Secret objectives (canon + E4): THREE per faction — hold each of 3
+ *   seeded nearby provinces at game end; revealed and scored (+4 EACH,
+ *   independently) at GAME END only (canon §13.1) — they never speed up a
  *   threshold win.
+ * - E5a: an attack that STARTS a war costs the aggressor 1 prestige unless
+ *   justified (target holds an objective province / is the prestige leader /
+ *   attacked first). E5b: deserting unpaid mercs pillage their province.
  * - A province under siege yields nothing, cannot recruit, and its garrison
  *   cannot move; relief armies fight the besieger in the field.
  */
@@ -92,6 +96,8 @@ export interface ProvinceState {
   wallTier: number; // authored tier + upgrades (max 3)
   wallDamage: number; // persists between sieges (no repair modeled)
   market: boolean;
+  /** Errata E5b: mercenary-revolt pillage — the province yields nothing while round <= this. */
+  pillagedUntilRound: number;
 }
 
 export interface FactionState {
@@ -107,8 +113,14 @@ export interface FactionState {
   hasGreatBombard: boolean;
   hand: string[]; // tactic-card slugs held (canon §7.7; cap CONFIG.cards.handLimit)
   ledger: PrestigeLedger;
-  /** Secret objective (revealed & scored at GAME END only, canon §13.1). */
-  objective: { provinces: string[]; deadline: number; done: boolean };
+  /**
+   * Secret objectives (revealed & scored at GAME END only, canon §13.1).
+   * ERRATA E4: THREE objectives per faction (canon), each = "hold this one
+   * seeded province at game end", each scoring +4 INDEPENDENTLY. `provinces`
+   * lists the 3 objective provinces; `completed[i]` is filled at game end;
+   * `done` = all completed (agent-compat flag).
+   */
+  objective: { provinces: string[]; deadline: number; done: boolean; completed: boolean[] };
   cpleHold: number; // consecutive round-ends holding Constantinople
 }
 
@@ -118,6 +130,8 @@ interface Siege {
   army: Army;
   origin: string; // retreat destination if the siege is lifted
   rounds: number;
+  /** Errata E1: siege rounds occurring in game round >= 6 (the only rounds Treason's clock counts). */
+  treasonRounds: number;
   /** Grain stores left in the besieged city (canon §8.2.3); refilled while sea-resupplied (R3). */
   stores: number;
 }
@@ -155,6 +169,15 @@ export interface GameResult {
   eliminated: Partial<Record<FactionId, number>>; // faction -> round
   battles: number;
   assaults: number;
+  /**
+   * Errata E4 telemetry: objective provinces held at game-end state (0-3 per
+   * faction). Computed for EVERY game (even threshold/SD-decided ones, where
+   * the +4s are never scored) so completion rates are measurable; prestige is
+   * only awarded in cap-decided games (canon: reveal at game end).
+   */
+  objectivesCompleted: Record<FactionId, number>;
+  /** Errata E5a telemetry: unjustified war declarations charged per faction. */
+  unjustifiedWars: Record<FactionId, number>;
 }
 
 // -------------------------------------------------------- static map tables
@@ -301,6 +324,18 @@ export class Game {
   victoryType: VictoryType | null = null;
   /** The Era III Omen card `great-bombard-forged` has been revealed (R2). */
   bombardForged = false;
+  /**
+   * Errata E3: the per-game seeded round at which `great-bombard-forged` is
+   * drawn — uniform over [drawRoundMin, drawRoundMax] (canon: the card sits
+   * at a uniformly random position in the Era III omen deck, rounds 11-16).
+   */
+  readonly bombardDrawRound: number;
+  /**
+   * Errata E3: emplacement tracker — where the Bombard is currently placed
+   * and how many full siege rounds it has been emplaced there. It fires only
+   * after `emplacementRounds` full siege rounds at the same siege.
+   */
+  private bombardEmplacement: { provinceId: string; rounds: number } | null = null;
 
   /** Agents may draw exploration randomness from this stream. */
   readonly agentRng: RNG;
@@ -313,6 +348,10 @@ export class Game {
   private pendingAttacks: PendingAttack[] = [];
   private pendingRecruits: PendingRecruit[] = [];
   private readonly wars = new Map<string, WarState>();
+  /** Errata E5a: directed aggression history — key `a>b` = a has attacked b at some point this game. */
+  private readonly attackedEver = new Set<string>();
+  /** Errata E5a telemetry: unjustified-war prestige charges per faction. */
+  private readonly unjustifiedWarCount: Record<FactionId, number>;
   private readonly prestigeByRound: Record<FactionId, number[]>;
   /** Tactic deck (canon §7.7): 47 slugs, seeded shuffle, reshuffled discard. */
   private deck: string[] = [];
@@ -330,6 +369,10 @@ export class Game {
     this.agentRng = root.fork(3);
     const rngSetup = root.fork(4);
     this.rngCards = root.fork(5);
+    // Errata E3: per-game seeded Bombard omen-draw round, uniform over the
+    // Era III window (dedicated fork so existing streams stay undisturbed).
+    const gb = CONFIG.siege.greatBombard;
+    this.bombardDrawRound = root.fork(6).range(gb.drawRoundMin, gb.drawRoundMax);
 
     for (const c of CONFIG.tacticCards) {
       this.cardBySlug.set(c.slug, c);
@@ -346,11 +389,13 @@ export class Game {
         wallTier: p.wallTier,
         wallDamage: 0,
         market: false,
+        pillagedUntilRound: 0,
       });
     }
 
     this.factions = {} as Record<FactionId, FactionState>;
     this.prestigeByRound = {} as Record<FactionId, number[]>;
+    this.unjustifiedWarCount = { byzantium: 0, ottomans: 0, venice: 0, genoa: 0, hungary: 0 };
     for (const f of FACTION_IDS) {
       const t = FACTION_STARTS[f].treasury;
       this.factions[f] = {
@@ -366,15 +411,19 @@ export class Game {
         hasGreatBombard: false,
         hand: [],
         ledger: emptyLedger(),
-        // canon: objectives are hidden goals verified at GAME END (round 16)
-        objective: { provinces: this.pickObjective(f, rngSetup), deadline: CONFIG.game.maxRounds, done: false },
+        // canon + E4: THREE hidden objectives verified at GAME END (round 16)
+        objective: { provinces: this.pickObjective(f, rngSetup), deadline: CONFIG.game.maxRounds, done: false, completed: [false, false, false] },
         cpleHold: 0,
       };
       this.prestigeByRound[f] = [];
     }
   }
 
-  /** Secret objective: 3 provinces within 2 steps of the start, not owned. */
+  /**
+   * Secret objectives (E4, canon: 3 per faction): 3 provinces within 2 steps
+   * of the start, not owned — each is ONE objective ("hold it at game end")
+   * scoring +4 independently.
+   */
   private pickObjective(f: FactionId, rng: RNG): string[] {
     const owned = new Set(PROVINCES.filter((p) => p.initialOwner === f).map((p) => p.id));
     const candidates: string[] = [];
@@ -423,16 +472,26 @@ export class Game {
       this.cleanup();
       if (this.checkVictory()) break;
     }
+    // E4 telemetry: per-objective completion is computed for EVERY game at
+    // its final state (so completion rates are measurable), but the +4s are
+    // only SCORED when the game reaches the round-16 reveal (no winner yet).
+    for (const f of FACTION_IDS) {
+      const fs = this.factions[f];
+      if (!fs.alive) continue;
+      fs.objective.completed = fs.objective.provinces.map((pid) => this.provinces.get(pid)!.owner === f);
+      fs.objective.done = fs.objective.completed.length > 0 && fs.objective.completed.every(Boolean);
+    }
     if (!this.winner) {
-      // canon §13.1: secret objectives are revealed & scored at GAME END
-      // only (they count for the round-16 highest-prestige comparison; a
-      // threshold/sudden-death win earlier ends the game before reveal).
+      // canon §13.1 + ERRATA E4: secret objectives are revealed & scored at
+      // GAME END only, +4 PER completed objective INDEPENDENTLY (they count
+      // for the round-16 highest-prestige comparison; a threshold/sudden-
+      // death win earlier ends the game before reveal).
       for (const f of FACTION_IDS) {
         const fs = this.factions[f];
-        if (!fs.alive || fs.objective.provinces.length === 0) continue;
-        if (fs.objective.provinces.every((pid) => this.provinces.get(pid)!.owner === f)) {
-          fs.objective.done = true;
-          fs.ledger.objectives += CONFIG.prestige.secretObjective;
+        if (!fs.alive) continue;
+        const n = fs.objective.completed.filter(Boolean).length;
+        if (n > 0) {
+          fs.ledger.objectives += n * CONFIG.prestige.secretObjective;
           this.recomputeTotal(fs);
         }
       }
@@ -462,8 +521,10 @@ export class Game {
     }
     const finalPrestige = {} as Record<FactionId, number>;
     const eliminated: Partial<Record<FactionId, number>> = {};
+    const objectivesCompleted = {} as Record<FactionId, number>;
     for (const f of FACTION_IDS) {
       finalPrestige[f] = this.factions[f].ledger.total;
+      objectivesCompleted[f] = this.factions[f].objective.completed.filter(Boolean).length;
       if (this.factions[f].eliminatedRound !== null) eliminated[f] = this.factions[f].eliminatedRound!;
     }
     return {
@@ -476,20 +537,23 @@ export class Game {
       eliminated,
       battles: this.battles,
       assaults: this.assaults,
+      objectivesCompleted,
+      unjustifiedWars: { ...this.unjustifiedWarCount },
     };
   }
 
   // --------------------------------------------------------------- events
 
   private drawEvent(): void {
-    // Era III card: `great-bombard-forged` (EVENT_CARDS #34) is revealed
-    // when Era III opens (round availableFromRound). Canon GD §8.4: the
-    // OTTOMAN player receives the unique Bombard FREE if in play; otherwise
-    // it is auctioned — sim rule: the richest faction that can pay
+    // Era III card: `great-bombard-forged` (EVENT_CARDS #34) is revealed at
+    // the per-game seeded draw round (E3: uniform over rounds 11-16 — the
+    // card sits at a random position in the Era III omen deck). Canon GD
+    // §8.4: the OTTOMAN player receives the unique Bombard FREE if in play;
+    // otherwise it is auctioned — sim rule: the richest faction that can pay
     // goldCost takes it (retried each round while unclaimed; actBuyBombard
     // remains as an explicit-action fallback).
     const gb = CONFIG.siege.greatBombard;
-    if (this.round >= gb.availableFromRound) {
+    if (this.round >= this.bombardDrawRound) {
       this.bombardForged = true;
       let claimed = false;
       for (const f of FACTION_IDS) if (this.factions[f].hasGreatBombard) claimed = true;
@@ -750,6 +814,7 @@ export class Game {
     const fs = this.factions[f];
     for (const p of this.provinces.values()) {
       if (p.owner !== f || this.sieges.has(p.id)) continue; // besieged: no yield
+      if (p.pillagedUntilRound >= this.round) continue; // E5b: pillaged by a mercenary revolt — no yield
       const y = PROVINCE_BY_ID.get(p.id)!.yields;
       fs.gold += y.gold;
       fs.grain += y.grain;
@@ -787,18 +852,23 @@ export class Game {
    * walls — a back-door starvation the blockade rules say cannot happen
    * (cple-beeline fix round). Siege starvation (resolveSieges) unaffected.
    */
-  private armiesWithDesertionFloor(f: FactionId): Array<{ army: Army; floor: number }> {
-    const out: Array<{ army: Army; floor: number }> = [];
+  private armiesWithDesertionFloor(f: FactionId): Array<{ army: Army; floor: number; pid: string | null }> {
+    const out: Array<{ army: Army; floor: number; pid: string | null }> = [];
     for (const p of this.provinces.values()) {
       if (p.owner !== f) continue;
       const besiegedWalled = p.wallTier > 0 && this.sieges.has(p.id);
-      out.push({ army: p.garrison, floor: besiegedWalled ? combatants(p.garrison) : p.wallTier > 0 ? 1 : 0 });
+      out.push({ army: p.garrison, floor: besiegedWalled ? combatants(p.garrison) : p.wallTier > 0 ? 1 : 0, pid: p.id });
     }
-    for (const s of this.sieges.values()) if (s.attacker === f) out.push({ army: s.army, floor: 0 });
+    for (const s of this.sieges.values()) if (s.attacker === f) out.push({ army: s.army, floor: 0, pid: null }); // camp: no host province of the owner
     return out;
   }
 
-  private removeUnitAcross(armies: Array<{ army: Army; floor: number }>, t: UnitType, n: number): void {
+  private removeUnitAcross(
+    armies: Array<{ army: Army; floor: number; pid: string | null }>,
+    t: UnitType,
+    n: number,
+    onDesert?: (e: { army: Army; floor: number; pid: string | null }, k: number) => void,
+  ): void {
     let r = n;
     for (const e of armies) {
       if (r <= 0) break;
@@ -806,6 +876,23 @@ export class Game {
       const k = Math.min(e.army[t], r, spare);
       e.army[t] -= k;
       r -= k;
+      if (k > 0 && onDesert) onDesert(e, k);
+    }
+  }
+
+  /**
+   * Errata E5b (canon EVENT_CARDS #22 pillage semantics): deserting unpaid
+   * mercenaries revolt and pillage their host province — the owner loses
+   * `pillageGold` stored gold and the province yields nothing next round.
+   * Camp deserters (pid null) have no owner province to raze: gold only.
+   */
+  private mercRevoltPillage(f: FactionId, pid: string | null): void {
+    const mv = CONFIG.economy.mercRevolt;
+    const fs = this.factions[f];
+    fs.gold = Math.max(CONFIG.economy.goldFloor, fs.gold - mv.pillageGold);
+    if (pid) {
+      const p = this.provinces.get(pid)!;
+      p.pillagedUntilRound = Math.max(p.pillagedUntilRound, this.round + mv.pillageYieldRounds);
     }
   }
 
@@ -837,7 +924,11 @@ export class Game {
         for (const a of armies) mercs += a.mercenary;
         const paidMercs = Math.min(mercs, Math.floor(g / perMerc));
         g -= paidMercs * perMerc;
-        this.removeUnitAcross(floored, 'mercenary', Math.ceil((mercs - paidMercs) * CONFIG.economy.unpaidMercDesertionFraction));
+        this.removeUnitAcross(
+          floored, 'mercenary',
+          Math.ceil((mercs - paidMercs) * CONFIG.economy.unpaidMercDesertionFraction),
+          (e) => this.mercRevoltPillage(f, e.pid), // E5b: stiffed mercs pillage on the way out
+        );
       }
       fs.gold = Math.max(CONFIG.economy.goldFloor, g);
     }
@@ -863,6 +954,7 @@ export class Game {
           const k = Math.min(e.army.mercenary, lost, spare);
           e.army.mercenary -= k;
           lost -= k;
+          if (k > 0) this.mercRevoltPillage(f, e.pid); // E5b: unfed mercs revolt & pillage
         }
         // ...then lowest-value first
         for (const e of floored) {
@@ -893,6 +985,46 @@ export class Game {
 
   atWar(a: FactionId, b: FactionId): boolean {
     return this.wars.has(this.warKey(a, b));
+  }
+
+  /**
+   * Errata E5a (canon §11 aggression-cost family): an ATTACK that STARTS a
+   * war charges the aggressor CONFIG.prestige.unjustifiedWar (-1) unless the
+   * war is justified. Sim-level justification mapping (documented in
+   * RULES_MODEL.md; canon's casus belli is richer):
+   *   (a) the target holds one of the aggressor's secret-objective provinces;
+   *   (b) the target is the current prestige leader (no living faction has
+   *       strictly more prestige);
+   *   (c) the target attacked the aggressor first at some point this game.
+   * Attacks while a war is already live are war-fighting, not declarations —
+   * no charge. Sieges touching a live war each round are continuations.
+   */
+  private declareWar(aggressor: FactionId, defender: FactionId): void {
+    const isNew = !this.wars.has(this.warKey(aggressor, defender));
+    this.touchWar(aggressor, defender);
+    if (isNew && CONFIG.prestige.unjustifiedWar !== 0) {
+      const justified =
+        this.factions[aggressor].objective.provinces.some((pid) => this.provinces.get(pid)!.owner === defender) ||
+        this.isPrestigeLeader(defender) ||
+        this.attackedEver.has(`${defender}>${aggressor}`);
+      if (!justified) {
+        const fs = this.factions[aggressor];
+        fs.ledger.events += CONFIG.prestige.unjustifiedWar;
+        this.recomputeTotal(fs);
+        this.unjustifiedWarCount[aggressor]++;
+      }
+    }
+    this.attackedEver.add(`${aggressor}>${defender}`);
+  }
+
+  /** True if no LIVING faction has strictly more prestige than f. */
+  private isPrestigeLeader(f: FactionId): boolean {
+    const mine = this.factions[f].ledger.total;
+    for (const o of FACTION_IDS) {
+      if (o === f || !this.factions[o].alive) continue;
+      if (this.factions[o].ledger.total > mine) return false;
+    }
+    return true;
   }
 
   warsOf(f: FactionId): FactionId[] {
@@ -1047,7 +1179,7 @@ export class Game {
       this.consume();
       return true;
     }
-    if (pt.owner && pt.owner !== f) this.touchWar(f, pt.owner);
+    if (pt.owner && pt.owner !== f) this.declareWar(f, pt.owner); // E5a: unjustified declarations cost prestige
     this.pendingAttacks.push({
       faction: f,
       from,
@@ -1149,9 +1281,11 @@ export class Game {
         continue;
       }
       if (siege) {
-        // relief: fight the besieging army in the field
+        // relief: fight the besieging army in the field. If the reliever is
+        // the city's owner, the war already exists (the siege touches it
+        // every round); third-party relief is a fresh declaration (E5a).
         this.battles++;
-        this.touchWar(pa.faction, siege.attacker);
+        this.declareWar(pa.faction, siege.attacker);
         const att0 = combatants(pa.army);
         const def0 = combatants(siege.army);
         const { attCard, defCard } = this.playBattleCards(
@@ -1200,6 +1334,7 @@ export class Game {
           army: pa.army,
           origin: pa.from,
           rounds: 0,
+          treasonRounds: 0,
           stores: CONFIG.siege.grainStoresRounds,
         });
         continue;
@@ -1352,6 +1487,20 @@ export class Game {
       if (cur === undefined || pid === 'constantinople') bombardAt.set(s.attacker, pid);
     }
     const sc = CONFIG.siege;
+    // E3 emplacement: the Bombard fires only after `emplacementRounds` full
+    // siege rounds emplaced at the SAME siege. Moving it (or acquiring it)
+    // restarts the clock; with no siege to point it at, it is unplaced.
+    let bombardFiresAt: string | null = null;
+    {
+      const target = bombardAt.size > 0 ? [...bombardAt.values()][0] : null; // Bombard is unique: at most one owner
+      if (target === null) {
+        this.bombardEmplacement = null;
+      } else {
+        if (this.bombardEmplacement?.provinceId !== target) this.bombardEmplacement = { provinceId: target, rounds: 0 };
+        if (this.bombardEmplacement.rounds >= sc.greatBombard.emplacementRounds) bombardFiresAt = target;
+        this.bombardEmplacement.rounds++; // this siege round counts toward emplacement
+      }
+    }
     for (const [pid, s] of [...this.sieges]) {
       if (!this.sieges.has(pid)) continue; // removed earlier this phase
       const fs = this.factions[s.attacker];
@@ -1362,12 +1511,20 @@ export class Game {
       const p = this.provinces.get(pid)!;
       const prov = PROVINCE_BY_ID.get(pid)!;
       s.rounds++;
-      // 0. Treason at the Gate (canon §7.7): after 2+ consecutive siege
-      //    rounds the besieger may buy the city outright.
+      // 0. Treason at the Gate (canon §7.7 + ERRATA E1): after 2+ counted
+      //    consecutive siege rounds the besieger may buy the city outright.
+      //    E1 gates: only siege rounds in game round >= 6 count toward the
+      //    clock, and the card is playable only vs a garrison of <= 4 units.
+      const treasonDef = this.cardBySlug.get('treason-at-the-gate');
+      if (this.round >= (treasonDef?.siegeRoundsCountFromGameRound ?? 1)) s.treasonRounds++;
       const treasonIdx = this.handIndexOf(s.attacker, 'treason-at-the-gate');
       if (treasonIdx >= 0) {
-        const treason = this.cardBySlug.get('treason-at-the-gate')!;
-        if (s.rounds >= (treason.minSiegeRounds ?? 2) && fs.gold >= (treason.costGold ?? 0)) {
+        const treason = treasonDef!;
+        if (
+          s.treasonRounds >= (treason.minSiegeRounds ?? 2) &&
+          combatants(p.garrison) <= (treason.maxGarrison ?? Infinity) &&
+          fs.gold >= (treason.costGold ?? 0)
+        ) {
           fs.hand.splice(treasonIdx, 1);
           fs.gold -= treason.costGold ?? 0;
           this.discardCard(treason); // removeFromGame: never returns
@@ -1377,11 +1534,12 @@ export class Game {
         }
       }
       // 1. bombardment (canon §8.2.2 dice; §8.3 T5 masonry cap — only the
-      //    Great Bombard, canon §8.4, lifts it and adds its two dice)
+      //    Great Bombard, canon §8.4, lifts it and adds its two dice; E3:
+      //    the Bombard fires only once emplaced for a full siege round)
       const hp = wallHitpoints(p.wallTier, prov.theodosianWalls);
       p.wallDamage = Math.min(
         hp,
-        p.wallDamage + rollBombardment(s.army, bombardAt.get(s.attacker) === pid, p.wallTier >= 5, this.rngCombat),
+        p.wallDamage + rollBombardment(s.army, bombardFiresAt === pid, p.wallTier >= 5, this.rngCombat),
       );
       // 2. starvation (canon §8.2.3 stores model) + besieger disease.
       //    Sea resupply: an unblockaded coastal city refills its stores.
@@ -1542,13 +1700,18 @@ export class Game {
         if (other !== f && this.provinces.get(CAPITALS[other])!.owner === f) capPts += pr.enemyCapitalPerRound;
       }
       fs.ledger.capitals += capPts;
-      // trade prestige: per open route, + canon monopoly when BOTH ends are owned
+      // trade prestige: per open route, + canon monopoly when BOTH ends are
+      // owned. ERRATA E2: diminishing returns — the FIRST monopoly scores
+      // tradeMonopolyPerRound (+2), each ADDITIONAL one
+      // tradeMonopolyAdditionalPerRound (+1). No escort requirement.
       const open = this.openRoutesOf(f);
       let monopolies = 0;
       for (const r of open) {
         if (this.provinces.get(r.a)!.owner === f && this.provinces.get(r.b)!.owner === f) monopolies++;
       }
-      fs.ledger.tradeRoutes += open.length * pr.tradeRoutePerRound + monopolies * pr.tradeMonopolyPerRound;
+      const monopolyPts =
+        monopolies > 0 ? pr.tradeMonopolyPerRound + (monopolies - 1) * pr.tradeMonopolyAdditionalPerRound : 0;
+      fs.ledger.tradeRoutes += open.length * pr.tradeRoutePerRound + monopolyPts;
       // secret objectives are NOT scored here — canon §13.1: revealed and
       // scored at GAME END only (see run()).
       this.recomputeTotal(fs);

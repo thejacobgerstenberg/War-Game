@@ -25,7 +25,9 @@
  *   a) direct assault on intact Theodosian walls: < 2% for any stack 1-12
  *   b) no Bombard + NO blockade: capture within 12 siege rounds < 10%
  *   c) no Bombard + FULL blockade: starve-out works, median capture >= 6
- *   d) with Bombard: capture within 4 siege rounds (2-4 window) > 50%
+ *   d) with Bombard: capture within 2-4 siege rounds AFTER IT FIRST FIRES
+ *      > 50% (E3 re-derivation: the Bombard is emplaced for 1 siege round
+ *      before firing, so the window is siege rounds <= 1+4 = 5)
  *
  * Writes sim/results/siege.json. SMOKE=1 cuts iterations 20000 -> 500.
  */
@@ -250,8 +252,11 @@ const t5bMet = worstNoBombNoBlock12 < 0.10;
 const minBlockCapture = Math.min(...noBombBlock.map((c) => c.captureProb));
 const minBlockMedian = Math.min(...noBombBlock.map((c) => c.medianRoundsToCapture ?? Infinity));
 const t5cMet = minBlockCapture > 0.5 && minBlockMedian >= 6;
-// T5d: with Bombard (unblockaded): capture within 4 siege rounds > 50%.
-const worstWithBomb4 = Math.min(...withBombNoBlock.map((c) => c.pCaptureWithinK[3]));
+// T5d (E3 re-derived): with Bombard (unblockaded): capture within 4 siege
+// rounds AFTER the Bombard first fires > 50%. The Bombard fires from siege
+// round emplacementRounds+1, so the window closes at k = emplacementRounds+4.
+const t5dWindowK = CONFIG.siege.greatBombard.emplacementRounds + 4;
+const worstWithBomb4 = Math.min(...withBombNoBlock.map((c) => c.pCaptureWithinK[t5dWindowK - 1]));
 const t5dMet = worstWithBomb4 > 0.50;
 
 // ----------------------------------------------------------------- report
@@ -319,7 +324,7 @@ console.log('TARGETS (T5)');
 console.log(`  a) direct assault intact Theodosian < 2%:            worst=${pct(worstDirectAssault, 2)}  ${t5aMet ? 'MET' : 'MISSED'}`);
 console.log(`  b) no Bombard + no blockade, capture <=12r < 10%:    worst=${pct(worstNoBombNoBlock12)}  ${t5bMet ? 'MET' : 'MISSED'}`);
 console.log(`  c) no Bombard + blockade: starve works, median >= 6: minCap=${pct(minBlockCapture)} minMedian=${minBlockMedian}  ${t5cMet ? 'MET' : 'MISSED'}`);
-console.log(`  d) with Bombard, capture <=4 rounds > 50%:           worst=${pct(worstWithBomb4)}  ${t5dMet ? 'MET' : 'MISSED'}`);
+console.log(`  d) with Bombard, capture <=${t5dWindowK} rounds (4 after 1st fire) > 50%: worst=${pct(worstWithBomb4)}  ${t5dMet ? 'MET' : 'MISSED'}`);
 console.log();
 
 const path = writeResults('siege', {
@@ -334,7 +339,7 @@ const path = writeResults('siege', {
     terrain: 'plains',
     policy: DEFAULT_SIEGE_POLICY,
     config: { walls: CONFIG.walls, siege: CONFIG.siege, combat: CONFIG.combat },
-    note: 'FINAL canon (2b42386): walls T1-T5, binary wall bonus, escalade -1, stores-then-starve, sea resupply (blockade = every adjacent zone enemy-held), T5 masonry cap 1 HP/round lifted by the Great Bombard (2 wall-damage dice). Bombard scenarios assume game round >= siege.greatBombard.availableFromRound.',
+    note: 'FINAL canon (2b42386) + ratified errata E3 (2026-07-11): walls T1-T5, binary wall bonus, escalade -1, stores-then-starve, sea resupply (blockade = every adjacent zone enemy-held), T5 masonry cap 1 HP/round lifted by the Great Bombard (2 wall-damage dice) AFTER a 1-siege-round emplacement (no Bombard wall damage in siege round 1). Bombard scenarios assume the great-bombard-forged omen has been drawn (per-game seeded draw round, uniform over rounds 11-16 in the full game).',
   },
   grid,
   directAssaultIntactTheodosian: {
@@ -348,7 +353,7 @@ const path = writeResults('siege', {
     t5a_directAssaultUnder2pct: { worst: worstDirectAssault, met: t5aMet },
     t5b_noBombardNoBlockadeWithin12Under10pct: { worst: worstNoBombNoBlock12, met: t5bMet },
     t5c_blockadeStarveWorksMedianAtLeast6: { minCaptureProb: minBlockCapture, minMedianRounds: minBlockMedian, met: t5cMet },
-    t5d_withBombardWithin4Over50pct: { worst: worstWithBomb4, met: t5dMet },
+    t5d_withBombardWithin4OfFirstFireOver50pct: { windowSiegeRounds: t5dWindowK, worst: worstWithBomb4, met: t5dMet },
   },
 });
 console.log(`wrote ${path}  (${fmt(elapsedMs / 1000, 1)}s)`);

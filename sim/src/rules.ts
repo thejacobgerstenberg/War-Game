@@ -166,6 +166,10 @@ export interface TacticCardDef {
   restoreStores?: number; // Sails from the West: restore up to N depleted stores
   captureCity?: boolean; // Treason at the Gate
   minSiegeRounds?: number; // ...requires this many consecutive siege rounds
+  /** Errata E1 (ratified 2026-07-11): playable only vs a garrison of <= this many units. */
+  maxGarrison?: number;
+  /** Errata E1: the consecutive-siege-round requirement counts only siege rounds in game round >= this. */
+  siegeRoundsCountFromGameRound?: number;
 }
 
 /**
@@ -193,7 +197,10 @@ const TACTIC_CARDS: TacticCardDef[] = [
   { slug: 'the-hexamilion-manned', tier: 'uncommon', copies: 2, scope: 'unwalledDefense', priority: 6, flatDefenderBonus: 2 },
   // ---- Rare (7 designs x 1) ----
   { slug: 'greek-fire', tier: 'rare', copies: 1, scope: 'unmodeled', priority: 0, removeFromGame: true }, // fleet-battle auto-win (no pure fleet battles in sim)
-  { slug: 'treason-at-the-gate', tier: 'rare', copies: 1, scope: 'siegeAttack', priority: 10, costGold: 4, captureCity: true, minSiegeRounds: 2, removeFromGame: true },
+  // Treason at the Gate, RATIFIED ERRATA E1 (coordinator, 2026-07-11): playable
+  // only vs a garrison of <= 4 units, and its 2-consecutive-siege-round clock
+  // counts only siege rounds occurring in game round 6 or later.
+  { slug: 'treason-at-the-gate', tier: 'rare', copies: 1, scope: 'siegeAttack', priority: 10, costGold: 4, captureCity: true, minSiegeRounds: 2, maxGarrison: 4, siegeRoundsCountFromGameRound: 6, removeFromGame: true },
   { slug: 'the-pay-chest-taken', tier: 'rare', copies: 1, scope: 'instant', priority: 1, stealGold: 3 },
   { slug: 'holy-war-proclaimed', tier: 'rare', copies: 1, scope: 'landBattle', priority: 6, costFaith: 2, extraDice: 1 }, // canon: every battle until next turn; sim: one battle (approximation)
   { slug: 'sails-from-the-west', tier: 'rare', copies: 1, scope: 'siegeDefense', priority: 8, siegeNoDepletion: true, restoreStores: 2 },
@@ -295,18 +302,27 @@ export const CONFIG = {
     seaResupplyEnabled: true,
     /**
      * The Great Bombard (canon GD §8.4 / EVENT_CARDS #34): unique siege
-     * engine entering via the Era III omen `great-bombard-forged`
-     * (Era III = rounds 11-16; the sim reveals the card when Era III
-     * opens). On reveal the OTTOMAN player receives it free if alive
-     * (canon); otherwise it is auctioned — sim rule: the richest faction
-     * that can pay goldCost takes it (retried each round while unclaimed).
-     * It rolls `damageDice` wall-damage dice per siege round and LIFTS the
-     * T5 masonry cap for the whole besieging train.
+     * engine entering via the Era III omen `great-bombard-forged`.
+     * RATIFIED ERRATA E3 (coordinator, 2026-07-11): the canon DRAW model
+     * replaces the fixed reveal round — the card sits at a uniformly random
+     * position in the Era III omen deck, i.e. it is drawn in a per-game
+     * seeded round uniform over [drawRoundMin, drawRoundMax] = rounds 11-16
+     * (canon §12 Era III). On reveal the OTTOMAN player receives it free if
+     * alive (canon); otherwise it is auctioned — sim rule: the richest
+     * faction that can pay goldCost takes it (retried each round while
+     * unclaimed). It rolls `damageDice` wall-damage dice per siege round and
+     * LIFTS the T5 masonry cap for the whole besieging train.
+     * E3 also adds a 1-round EMPLACEMENT: after acquisition (or after moving
+     * to a new siege) the Bombard is placed for `emplacementRounds` full
+     * siege round(s) before it first fires — no wall damage from it (and no
+     * masonry-cap lift) during emplacement.
      */
     greatBombard: {
-      availableFromRound: 15, // the round the great-bombard-forged Omen is revealed (canon §12 Era III opens r11; +4 rounds of tuning delay — the free Ottoman Bombard at r11 made sudden death 23.7% of games vs the 1-15% target, see TUNING_LOG; the 1453 anchor still holds: the City falls r15-16)
+      drawRoundMin: 11, // earliest omen-draw round (canon §12: Era III opens r11)
+      drawRoundMax: 16, // latest omen-draw round (uniform per-game seeded draw; ERRATA E3 — replaces the tuned fixed r15 reveal)
       goldCost: 40, // auction price when no Ottoman is in play (canon: Ottoman gets it free)
       damageDice: 2, // wall-damage dice per siege round (canon §8.4: up to 6 HP/round, ~4 avg)
+      emplacementRounds: 1, // ERRATA E3: siege rounds of emplacement before the Bombard first fires
     },
   },
 
@@ -357,6 +373,19 @@ export const CONFIG = {
     grainShortfallDesertionFraction: 0.25, // fraction of unfed units that desert each round
     unpaidMercDesertionFraction: 1.0, // unpaid mercenaries all desert immediately (canon §4.4: desert first)
     goldFloor: 0, // treasury can't go negative; unpayable upkeep triggers desertion instead
+    /**
+     * ERRATA E5b (coordinator, 2026-07-11; canon EVENT_CARDS #22 "Mercenary
+     * Revolt" pillage semantics): whenever unpaid/unfed MERCENARIES desert,
+     * they revolt and PILLAGE their host province — the owner loses
+     * pillageGold stored gold (canon: -2) and the province yields nothing
+     * next round (canon: "yield 0 next round"). Deserting siege-camp mercs
+     * have no host province of the owner to pillage: only the gold is lost
+     * (documented gap, RULES_MODEL.md).
+     */
+    mercRevolt: {
+      pillageGold: 2, // stored gold the owner loses per pillaged province (canon EVENT_CARDS #22: -2)
+      pillageYieldRounds: 1, // rounds the pillaged province yields nothing (canon: next round)
+    },
   },
 
   events: {
@@ -379,7 +408,8 @@ export const CONFIG = {
     keyCityPerRound: 1, // canon §13.1: per named key city held at round end
     constantinopleExtraPerRound: 0, // Constantinople extra on top (0: its reward is sudden death + yields)
     tradeRoutePerRound: 0, // canon §13.1 has NO per-route prestige (kept as a tuning lever, default 0)
-    tradeMonopolyPerRound: 2, // canon §13.1: open route with BOTH endpoints owned
+    tradeMonopolyPerRound: 2, // canon §13.1 + ERRATA E2 (2026-07-11): the FIRST open route with BOTH endpoints owned scores this...
+    tradeMonopolyAdditionalPerRound: 1, // ...and each ADDITIONAL simultaneous monopoly scores this (diminishing returns; no escort requirement)
     greatWork: 5, // one-off on completion (canon §9.2: +5..+10; sim's generic great work = +5)
     decisiveBattle: 1, // canon §13.1: win a decisive battle (enemy wiped or routed)
     outnumberedWin: 1, // canon §13.1: win a field battle outnumbered (stacks with decisive)
@@ -388,8 +418,17 @@ export const CONFIG = {
     provinceCapture: 0, // one-off per ANY captured province (canon: none — kept as a tuning lever, default 0)
     warWon: 3, // canon §13.1: win a war (force peace / eliminate)
     loseCapital: -3, // canon §13.1: lose your own capital
-    secretObjective: 4, // canon §13.1: +4 each, hidden, scored at GAME END only
-    victoryThreshold: 84, // reach this prestige at Cleanup => immediate win (owned by the TUNING_REPORT; recalibrated to canon §13.1 sources; 82 -> 84 in the adversarial fix round — trims the genoa/venice trader threshold ceiling after the canon §5.2 blockade-halving fix made trade income more robust, see TUNING_LOG)
+    secretObjective: 4, // canon §13.1 + ERRATA E4 (2026-07-11): +4 PER OBJECTIVE INDEPENDENTLY (3 objectives per faction), hidden, scored at GAME END only
+    /**
+     * ERRATA E5a (coordinator, 2026-07-11; canon §11 aggression-cost family):
+     * declaring war WITHOUT justification costs this much prestige (applied
+     * once, when the war starts). Sim-level justification (documented
+     * mapping, RULES_MODEL.md): the target holds one of your secret-objective
+     * provinces, OR the target is the current prestige leader, OR the target
+     * attacked you first this game.
+     */
+    unjustifiedWar: -1,
+    victoryThreshold: 80, // reach this prestige at Cleanup => immediate win (owned by the TUNING_REPORT; recalibrated to canon §13.1 sources; 82 -> 84 in the adversarial fix round — trims the genoa/venice trader threshold ceiling after the canon §5.2 blockade-halving fix made trade income more robust, see TUNING_LOG)
   },
 
   neutrals: {

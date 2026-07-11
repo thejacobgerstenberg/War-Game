@@ -10,7 +10,8 @@
  *      against an intact tier-5 wall an ordinary train inflicts at most
  *      t5MasonryCapPerRound (1) HP per round IN TOTAL. The Great Bombard
  *      (canon §8.4) rolls greatBombard.damageDice (2) wall-damage dice AND
- *      lifts the T5 cap for the whole train.
+ *      lifts the T5 cap for the whole train — but only after a 1-siege-round
+ *      EMPLACEMENT (errata E3): it deals no wall damage in siege round 1.
  *   2. Starvation — the city holds grainStoresRounds (3) stores; each fully
  *      invested round depletes one; at 0 the garrison loses
  *      starvationUnitsPerRound (1) unit per round, weakest first (canon
@@ -53,7 +54,14 @@ export interface SiegeSetup {
   wallTier: number; // 0..5 (canon §8.1; 5 = Theodosian Walls)
   theodosian: boolean; // Constantinople flag (legacy extra-HP lever; T5 masonry comes from wallTier >= 5)
   terrain: Terrain; // defender terrain bonus applies on assault
-  hasGreatBombard: boolean; // assumes game round >= greatBombard.availableFromRound
+  /**
+   * The attacker owns the Great Bombard and brings it to this siege (E3: the
+   * omen has been drawn — rounds 11-16 in the full game). Emplacement is
+   * modeled: it fires only after greatBombard.emplacementRounds (1) full
+   * siege rounds — no wall damage (and no masonry-cap lift) from it in siege
+   * round 1.
+   */
+  hasGreatBombard: boolean;
   /**
    * Every adjacent sea zone is enemy-controlled (hostile fleet superiority).
    * Only meaningful for coastal cities; the full game computes this from
@@ -199,8 +207,10 @@ export function runSiege(
   });
 
   for (let round = 1; round <= policy.maxSiegeRounds; round++) {
-    // 1. bombardment
-    wallDamage = Math.min(hp, wallDamage + rollBombardment(att, setup.hasGreatBombard, t5Masonry, rng));
+    // 1. bombardment. E3 emplacement: the Great Bombard is placed for
+    //    emplacementRounds (1) full siege round(s) before it first fires.
+    const bombardFires = setup.hasGreatBombard && round > s.greatBombard.emplacementRounds;
+    wallDamage = Math.min(hp, wallDamage + rollBombardment(att, bombardFires, t5Masonry, rng));
 
     // 2. starvation & disease
     if (canStarve) {

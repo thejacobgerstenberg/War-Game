@@ -86,9 +86,13 @@ interface ObjectiveStats {
   capUniqueLeader: number; // ...with a unique pre-reveal prestige leader
   capPreRevealTies: number; // pre-reveal tie for the lead among survivors
   flips: number; // unique pre-reveal leader did NOT win after reveal
-  flipWinnerGainedObjective: number; // in flips, the actual winner scored +4
-  gamesAnyObjectiveScored: number; // any faction completed its objective (cap games)
-  objectivesScoredTotal: number; // completed objectives across cap games
+  flipWinnerGainedObjective: number; // in flips, the actual winner scored objective prestige
+  gamesAnyObjectiveScored: number; // any faction completed >=1 objective (cap games)
+  objectivesScoredTotal: number; // completed objectives SCORED across cap games (E4: up to 3/faction)
+  // ---- E4 per-objective completion telemetry (ALL games, surviving factions) ----
+  objectiveSlotsAllGames: number; // 3 per surviving faction per game
+  objectivesCompletedAllGames: number; // objective provinces held at game end
+  completedCountHist: Record<number, number>; // surviving faction-games by completed count 0..3
 }
 
 interface ArmResult {
@@ -130,6 +134,8 @@ function runArm(arm: string, pressure: PressureMode): ArmResult {
   const objective: ObjectiveStats = {
     capGames: 0, capUniqueLeader: 0, capPreRevealTies: 0, flips: 0,
     flipWinnerGainedObjective: 0, gamesAnyObjectiveScored: 0, objectivesScoredTotal: 0,
+    objectiveSlotsAllGames: 0, objectivesCompletedAllGames: 0,
+    completedCountHist: { 0: 0, 1: 0, 2: 0, 3: 0 },
   };
   const lengths: number[] = [];
   const perGame: PerGame[] = [];
@@ -230,10 +236,21 @@ function runArm(arm: string, pressure: PressureMode): ArmResult {
       }
     }
 
+    // ---- E4 per-objective completion (ALL games; surviving factions):
+    // GameResult.objectivesCompleted = objective provinces held at game end
+    // (0..3), computed even when the game ends by threshold/SD.
+    for (const f of FACTION_IDS) {
+      if (res.eliminated[f] !== undefined) continue;
+      const n = res.objectivesCompleted[f];
+      objective.objectiveSlotsAllGames += 3;
+      objective.objectivesCompletedAllGames += n;
+      objective.completedCountHist[n] = (objective.completedCountHist[n] ?? 0) + 1;
+    }
+
     // ---- secret-objective reveal flips (cap-decided games only).
     // prestigeByRound holds PRE-reveal totals (cleanup pushes before run()
     // reveals objectives); finalPrestige is POST-reveal. The delta per
-    // faction is exactly the objective bonus (0 or +4).
+    // faction is the objective bonus (E4: 0 to +12, +4 per objective).
     if (res.victoryType === 'cap') {
       objective.capGames++;
       const alive = FACTION_IDS.filter((f) => res.eliminated[f] === undefined);
@@ -332,8 +349,14 @@ function reportArm(a: ArmResult): void {
     `objective reveal (cap games ${o.capGames}): uniqueLeader ${o.capUniqueLeader}, preTies ${o.capPreRevealTies}, ` +
     `FLIPS ${o.flips} (${o.capUniqueLeader > 0 ? pct(o.flips / o.capUniqueLeader) : '-'} of unique-leader cap games; ` +
     `${o.capGames > 0 ? pct(o.flips / o.capGames) : '-'} of all cap games); ` +
-    `flips where winner scored +4: ${o.flipWinnerGainedObjective}; ` +
-    `objectives completed: ${o.objectivesScoredTotal} in ${o.gamesAnyObjectiveScored} games`,
+    `flips where winner scored objective prestige: ${o.flipWinnerGainedObjective}; ` +
+    `objectives SCORED (cap games): ${o.objectivesScoredTotal} in ${o.gamesAnyObjectiveScored} games`,
+  );
+  console.log(
+    `objective completion (E4, all games, surviving factions): ` +
+    `${o.objectivesCompletedAllGames}/${o.objectiveSlotsAllGames} slots = ` +
+    `${pct(o.objectivesCompletedAllGames / Math.max(1, o.objectiveSlotsAllGames))} per-objective; ` +
+    `count hist 0/1/2/3: ${o.completedCountHist[0]}/${o.completedCountHist[1]}/${o.completedCountHist[2]}/${o.completedCountHist[3]}`,
   );
   console.log(table(
     ['faction', 'winRate', '|', 'policy', 'winRate'],
@@ -437,6 +460,9 @@ writeResults('adversarial_runaway_leader', {
     p_win_given_3keys_r6_on: rate(on.keys3AtR6),
     objectiveFlipShare_on: flipShare(on),
     objectiveFlipShare_off: flipShare(off),
+    perObjectiveCompletionRate_on:
+      on.objective.objectivesCompletedAllGames / Math.max(1, on.objective.objectiveSlotsAllGames),
+    objectiveCompletedCountHist_on: on.objective.completedCountHist,
     leaderPressure: {
       scoringHits: { on: on.scoringHits, off: off.scoringHits, strong: strong.scoringHits },
       decisionsChanged: { on: on.decisionsChanged, off: off.decisionsChanged, strong: strong.decisionsChanged },
