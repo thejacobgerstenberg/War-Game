@@ -3,9 +3,11 @@
  *
  * Covers the seeded market refresh (composition determinism + reset bids),
  * turn-order raise-or-pass bidding validation, the gold sink + instant fielding
- * of the winning company into a legal city with the mercenary upkeep tag, the
- * Genoa no-premium discount, gold-sufficiency validation, and the unsold →
- * random NPC-minor hire roll (§6.3 / §11.5 / §4.4).
+ * of the winning company into a legal city with the mercenary upkeep tag,
+ * face-value auction pricing (CANON #6 / §6.2: the Genoa ×1.0 benefit is
+ * ordinary-hire-only, so bid-market bids are NOT discounted for Genoa —
+ * everyone pays the winning bid at par), gold-sufficiency validation, and the
+ * unsold → random NPC-minor hire roll (§6.3 / §11.5 / §4.4).
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -129,6 +131,42 @@ describe("applyMercBid — §6.3 raise-or-pass bidding", () => {
   it("rejects a bid on an unknown company", () => {
     expect(() => applyMercBid(auction(), bid("p1", "NOPE", 20))).toThrow(EngineError);
   });
+
+  it("keeps the auction open while a rival can still out-raise (round-robin, §6.3 step 2)", () => {
+    // Both players are wealthy: after each raise the offer stays live because the
+    // other bidder can legally raise again.
+    const s1 = applyMercBid(auction(), bid("p1", "CATALAN", 12));
+    expect(s1.mercMarket[0].sold).toBe(false);
+    const s2 = applyMercBid(s1, bid("p2", "CATALAN", 20));
+    expect(s2.mercMarket[0].sold).toBe(false);
+    expect(s2.mercMarket[0].currentBid).toBe(20);
+    expect(s2.mercMarket[0].highBidderId).toBe("p2");
+  });
+
+  it("closes the auction and fields when no rival can afford a legal raise (all-but-high-bidder passed)", () => {
+    // p1 rich, p2 can cover 12 but not 12 + minBidRaise, so p1's opening bid
+    // leaves no rival able to raise → the auction closes at once (§6.3 step 3).
+    const s = game(byzOtt);
+    s.players[0].treasury.gold = 100;
+    s.players[1].treasury.gold = 12;
+    s.mercMarket = [offer("CATALAN")];
+    const out = applyMercBid(s, bid("p1", "CATALAN", 12));
+    expect(out.mercMarket[0].sold).toBe(true);
+    expect(out.players[0].treasury.gold).toBe(100 - 12); // face value gold sink
+  });
+
+  it("is deterministic and pure: bidding consumes no RNG and does not mutate the input", () => {
+    const base = auction();
+    const snapshot = structuredClone(base);
+    const a = applyMercBid(base, bid("p1", "CATALAN", 15));
+    const b = applyMercBid(structuredClone(base), bid("p1", "CATALAN", 15));
+    // Identical results for identical inputs; the bid path draws no dice.
+    expect(a.mercMarket).toEqual(b.mercMarket);
+    expect(a.players[0].treasury.gold).toBe(b.players[0].treasury.gold);
+    expect(a.rngCursor).toBe(base.rngCursor); // no cursor advance on a bid
+    // Input left untouched (returns a new state).
+    expect(base).toEqual(snapshot);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -145,12 +183,13 @@ describe("applyMercBid — §6.3 fielding the winner", () => {
     return s;
   }
 
-  it("pays the winning bid × premium as a gold sink and fields the roster in the capital", () => {
+  it("pays the winning bid at face value as a gold sink and fields the roster in the capital", () => {
     const s = closingAuction(byzOtt);
     const out = applyMercBid(s, bid("p1", "CATALAN", 12));
 
-    // §6.3 non-Genoa pays the ×1.5 premium on the bid: floor(12 × 1.5) = 18.
-    expect(out.players[0].treasury.gold).toBe(100 - 18);
+    // GD §6.3 step 3: the winner pays the winning bid in gold at FACE VALUE —
+    // no ×1.5 premium in the auction (that is the §6.2 ordinary-hire path).
+    expect(out.players[0].treasury.gold).toBe(100 - 12);
 
     // §6.3 the offer is resolved (sold) and cannot be re-bid.
     const o = out.mercMarket.find((x) => x.companyId === "CATALAN")!;
@@ -171,10 +210,11 @@ describe("applyMercBid — §6.3 fielding the winner", () => {
     expect(army!.units[UnitType.ARCHER]).toBeGreaterThanOrEqual(3);
   });
 
-  it("applies the Genoa no-premium discount (×1.0) to the winning bid (§6.3)", () => {
+  it("does NOT discount bid-market bids for Genoa — Genoa pays the same face value as everyone (CANON #6 / §6.2)", () => {
     const s = closingAuction(genoaOtt);
     const out = applyMercBid(s, bid("p1", "CATALAN", 12));
-    // §6.3 Genoa pays ×1.0: floor(12 × 1.0) = 12, vs 18 for a premium faction.
+    // CANON #6 / §6.2: the Genoa ×1.0 benefit is ordinary-hire-only; in the
+    // auction Genoa bids/pays at par like everyone else — floor(12) = 12.
     expect(out.players[0].treasury.gold).toBe(100 - 12);
     const capital = out.provinces.find(
       (p) => p.isCapitalOf === Faction.GENOA && p.ownerId === "p1",
@@ -183,6 +223,18 @@ describe("applyMercBid — §6.3 fielding the winner", () => {
       (a) => a.ownerId === "p1" && a.locationId === capital.id,
     ) as (Army & MercTagged) | undefined;
     expect(army?.mercenaries?.[UnitType.INFANTRY]).toBe(5);
+  });
+
+  it("charges Genoa and a premium faction the identical face-value bid (no faction multiplier in the auction)", () => {
+    // The core CANON #6 / §6.2 fix: the same winning bid costs the same gold
+    // regardless of faction. Genoa gets no discount and Byzantium no premium.
+    const byz = applyMercBid(closingAuction(byzOtt), bid("p1", "CATALAN", 12));
+    const gen = applyMercBid(closingAuction(genoaOtt), bid("p1", "CATALAN", 12));
+    const byzPaid = 100 - byz.players[0].treasury.gold;
+    const genPaid = 100 - gen.players[0].treasury.gold;
+    expect(byzPaid).toBe(12);
+    expect(genPaid).toBe(12);
+    expect(genPaid).toBe(byzPaid);
   });
 
   it("rejects a bid the player cannot cover in gold (§6.3)", () => {

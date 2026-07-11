@@ -81,9 +81,20 @@ export function removeModifier(state: GameState, id: string): GameState {
 }
 
 /**
- * Drop modifiers that have lapsed at round cleanup: every `scope: 'round'`
- * modifier, plus any modifier whose `expiresRound` is at or before the current
- * round. `persistent`/`game` modifiers without a timer survive. Returns new state.
+ * Drop modifiers that have lapsed at round cleanup (§10 phase 5): every
+ * `scope: 'round'` modifier, plus any modifier whose `expiresRound` is at or
+ * before the current round. `persistent`/`game` modifiers without a timer survive
+ * — in particular trade-route modifiers (posted `scope: 'persistent'` by economy)
+ * are NOT dropped here; only round-scoped effects lapse each round.
+ *
+ * Called by roundLoop AFTER `scorePrestige` has consumed the round's
+ * `prestige_pending` (scope:'round') awards, so those pending awards are scored
+ * exactly once and then cleared (CONTRACT2 §12.8 — avoids double-count). Returns
+ * a new state (unchanged reference when nothing lapses).
+ *
+ * `expiresRound` semantics: the modifier is active THROUGH round `expiresRound`
+ * and lapses at that round's cleanup (state.round has not yet incremented at END),
+ * so `expiresRound <= state.round` correctly retires it entering the next round.
  */
 export function expireRoundModifiers(state: GameState): GameState {
   const survivors = state.activeModifiers.filter((m) => {

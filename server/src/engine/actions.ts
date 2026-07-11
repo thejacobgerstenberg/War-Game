@@ -36,11 +36,13 @@ import {
   type ResourceBundle,
 } from "@imperium/shared";
 import {
+  GREAT_BOMBARD,
   MERC_MARKET,
   STACKING,
   TERRAIN_MOVE_COST,
   UNIQUE_UNIT_OVERRIDES,
   UNIT_STATS,
+  VASSAL,
 } from "./balance.js";
 import { areAdjacent } from "./adjacency.js";
 import { appendLog } from "./logEntry.js";
@@ -49,6 +51,8 @@ import { applyDiplomacy, applyVassalize } from "./diplomacy.js";
 import { applySpy } from "./spy.js";
 import { applyMercBid } from "./mercenaries.js";
 import { resolveCard } from "./events/index.js";
+import { getModifiers } from "./modifiers.js";
+import { queueTactic, type BattleSide } from "./tactics.js";
 import { advancePhase } from "./roundLoop.js";
 
 /** A typed, rejectable engine error (see the module-level error convention). */
@@ -61,7 +65,16 @@ export class EngineError extends Error {
   }
 }
 
-/** Phases during which players may spend budgeted actions (§10.0). */
+/**
+ * The ACTION WINDOW (CANON #9, GD §10.0, ARCHITECTURE §10): the engine's
+ * RECRUITMENT → MOVEMENT → DIPLOMACY phases together form the acting player's
+ * single action window and do **not** gate which action TYPE may be played when.
+ * During any of these phases a player may perform ANY action type (recruit, move,
+ * build, trade, diplomacy, spy, merc-bid, …) in any mix and any order, limited
+ * only by the shared 4-action budget (+1 with a University or a card). This set
+ * is therefore a phase-window gate, never a per-type gate; INCOME / COMBAT / END
+ * remain outside the window (a budgeted action there throws WRONG_PHASE).
+ */
 const ACTION_PHASES: ReadonlySet<GamePhase> = new Set([
   GamePhase.RECRUITMENT,
   GamePhase.MOVEMENT,
@@ -172,6 +185,57 @@ function ownUnitsAt(
     .reduce((acc, s) => acc + realCount(s), 0);
 }
 
+/**
+ * §8.4 / CONTRACT2 §12.6 Great Bombard unlock check. The canonical boolean is
+ * `Player.greatBombardUnlocked`; equivalently the Omen #34 side-channel posts a
+ * `kind:"unlock"` modifier carrying `data.unlock === "GREAT_BOMBARD"` targeting
+ * the faction. This reads EITHER (mirrors combat.ts's reader), so recruit-gating
+ * works whether or not the flag has been synced from the modifier yet.
+ */
+function isGreatBombardUnlocked(state: GameState, player: Player): boolean {
+  if (player.greatBombardUnlocked) return true;
+  const unlocks = getModifiers(
+    state,
+    "unlock",
+    player.faction ? { faction: player.faction } : undefined,
+  );
+  return unlocks.some((m) => m.data?.unlock === GREAT_BOMBARD.variant);
+}
+
+/** §8.4 one-per-game: true when a Great Bombard variant already exists on the board. */
+function greatBombardExists(state: GameState): boolean {
+  return state.armies.some((a) =>
+    (a.variants ?? []).some((v) => v.variant === GREAT_BOMBARD.variant && v.count > 0),
+  );
+}
+
+/**
+ * §8.4 / CONTRACT2 §12.6: mirror any active `kind:"unlock"` /
+ * `data.unlock === "GREAT_BOMBARD"` modifier onto the readable
+ * `Player.greatBombardUnlocked` boolean for the targeted faction. Idempotent and
+ * pure; combat and recruit-gating also read the modifier directly, so this is a
+ * convenience sync the actions layer performs opportunistically (e.g. after a
+ * PLAY_CARD that resolves Omen #34 from hand).
+ */
+function syncGreatBombardUnlock(state: GameState): GameState {
+  const unlocks = state.activeModifiers.filter(
+    (m) => m.kind === "unlock" && m.data?.unlock === GREAT_BOMBARD.variant,
+  );
+  if (unlocks.length === 0) return state;
+  const factions = new Set(
+    unlocks.map((m) => m.target?.faction).filter((f): f is Faction => f !== undefined),
+  );
+  let changed = false;
+  const players = state.players.map((p) => {
+    if (p.faction && factions.has(p.faction) && !p.greatBombardUnlocked) {
+      changed = true;
+      return { ...p, greatBombardUnlocked: true };
+    }
+    return p;
+  });
+  return changed ? { ...state, players } : state;
+}
+
 // ---------------------------------------------------------------------------
 // RECRUIT (§6.2)
 // ---------------------------------------------------------------------------
@@ -207,6 +271,23 @@ function applyRecruit(state: GameState, action: GameAction): GameState {
   }
   for (const v of variants) {
     if (v.count <= 0) continue;
+    // §8.4 The Great Bombard is a standalone, unlock-gated siege engine (base
+    // SIEGE), NOT a faction unique — it lives in balance.GREAT_BOMBARD, not
+    // UNIQUE_UNIT_OVERRIDES. Recruiting one is legal ONLY when the player has
+    // unlocked it (Omen #34); otherwise reject with NOT_UNLOCKED. One per game.
+    if (v.variant === GREAT_BOMBARD.variant) {
+      if (!isGreatBombardUnlocked(state, player)) {
+        throw new EngineError(
+          "NOT_UNLOCKED",
+          "The Great Bombard is not unlocked (Omen #34 'The Great Bombard Forged').",
+        );
+      }
+      if (greatBombardExists(state)) {
+        throw new EngineError("BAD_RECRUIT", "Only one Great Bombard may exist per game.");
+      }
+      landCount += v.count; // base SIEGE — a land engine
+      continue;
+    }
     const def = UNIQUE_UNIT_OVERRIDES[v.variant];
     if (!def) throw new EngineError("BAD_RECRUIT", `Unknown variant ${v.variant}.`);
     if (player.faction !== def.faction) {
@@ -257,7 +338,11 @@ function applyRecruit(state: GameState, action: GameAction): GameState {
   for (const [type, n] of Object.entries(action.units) as [UnitType, number][]) {
     if (n && n > 0) addUnitCost(type, n);
   }
-  for (const v of variants) if (v.count > 0) addUnitCost(v.base, v.count);
+  for (const v of variants) {
+    if (v.count <= 0) continue;
+    if (v.variant === GREAT_BOMBARD.variant) continue; // §8.4 free entry, no cost
+    addUnitCost(v.base, v.count);
+  }
 
   for (const k of RESOURCE_KEYS) {
     if (player.treasury[k] < cost[k]) {
@@ -378,7 +463,17 @@ function applyMove(state: GameState, action: GameAction): GameState {
     throw new EngineError("BAD_MOVE", `Unknown destination: ${action.toId}.`);
   }
 
-  // §3.1 movement allowance: slowest unit must afford the terrain move cost.
+  // §3.1/§6.4 movement allowance (READING — resolves the flagged ambiguity):
+  // GD §6.4 says a unit "moves up to its Move value in province move-cost". A
+  // single MOVE action is ONE adjacency step (the payload carries one `toId`), so
+  // the stack's slowest-unit Move budget must cover the destination's
+  // TERRAIN_MOVE_COST[terrain] (§3.1: plains/hills/forest/coast/city 1, mountains
+  // 2, desert 2). Thus a CAVALRY stack (mv2) may chain into a cost-2 tile in one
+  // step; a SIEGE/INFANTRY stack (mv1) may NOT enter mountains/desert (cost 2) —
+  // it must route around. The doc gives NO guaranteed-minimum-1 clause (unlike
+  // some wargames), so a strict budget is the literal reading; entering high-cost
+  // terrain with an over-slow stack is rejected with INSUFFICIENT_MOVEMENT. Sea
+  // zones cost 1 (a naval step). See the ambiguity note for the PR list.
   const mp = stackMovePoints(stack);
   if (mp <= 0) throw new EngineError("BAD_MOVE", "An empty stack cannot move.");
   const moveCost = destProv ? TERRAIN_MOVE_COST[destProv.terrain] : 1;
@@ -540,6 +635,122 @@ function queueBattle(
 }
 
 // ---------------------------------------------------------------------------
+// DECLARE_WAR (§11 casus belli)
+// ---------------------------------------------------------------------------
+
+/**
+ * Open a state of war against a rival faction (§11). Records a {@link WarState}
+ * on `state.wars` (de-duplicated on the unordered player pair) so combat/prestige
+ * can read it for the "win a war +3" award and casus-belli-adjacent checks. This
+ * is the minimal bookkeeping the reducer owns; the richer casus-belli claim (a
+ * broken royal marriage → free attacks + war-win bonus) is posted by
+ * diplomacy.ts's RENOUNCE path, which also calls addWar. Assumes the reducer has
+ * spent the action.
+ */
+function applyDeclareWar(state: GameState, action: GameAction): GameState {
+  if (action.type !== "DECLARE_WAR") {
+    throw new EngineError("UNKNOWN_ACTION", "applyDeclareWar requires DECLARE_WAR.");
+  }
+  const actor = requirePlayer(state, action.player);
+  if (actor.faction === action.target) {
+    throw new EngineError("BAD_TARGET", "Cannot declare war on your own faction.");
+  }
+  const defender = state.players.find((p) => p.faction === action.target);
+  if (!defender) {
+    throw new EngineError("NO_TARGET", `No seated player is playing ${action.target}.`);
+  }
+  const already = state.wars.some(
+    (w) =>
+      (w.a === actor.id && w.b === defender.id) ||
+      (w.a === defender.id && w.b === actor.id),
+  );
+  const next: GameState = {
+    ...state,
+    wars: already
+      ? state.wars
+      : [...state.wars, { a: actor.id, b: defender.id, startedRound: state.round }],
+  };
+  return appendLog(next, {
+    round: next.round,
+    phase: next.phase,
+    type: "diplomacy",
+    actors: [actor.id],
+    targets: [defender.id],
+    message: `${actor.name} declares war on ${defender.name} (${action.target}).`,
+    data: { target: action.target, alreadyAtWar: already, startedRound: next.round },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// LEVY_CALL (§11.5 vassal levy)
+// ---------------------------------------------------------------------------
+
+/**
+ * Call up a vassal minor's levy (§11.5): "Once per 2 rounds you may call its
+ * levies: gain a free stack of 2 LEVY (+1 per garrison tier) raised in the
+ * vassal's capital." Validates ownership and the once-per-`VASSAL.levyEveryRounds`
+ * cadence (via the minor's `roundsUntilLevy`/`levyCooldown`), raises the levies in
+ * the minor's first province, and re-arms the cooldown. Re-arming the SAME
+ * cooldown fields diplomacy.runRevolts reads guarantees the automatic and manual
+ * levy paths never double-fire in one cadence. Assumes the reducer has spent the
+ * action.
+ */
+function applyLevyCall(state: GameState, action: GameAction): GameState {
+  if (action.type !== "LEVY_CALL") {
+    throw new EngineError("UNKNOWN_ACTION", "applyLevyCall requires LEVY_CALL.");
+  }
+  const actor = requirePlayer(state, action.player);
+  const minor = state.minors.find((m) => m.id === action.minorId);
+  if (!minor) throw new EngineError("NO_MINOR", `No such minor: ${action.minorId}.`);
+  if (minor.vassalOf !== actor.id) {
+    throw new EngineError("NOT_OWNER", `${minor.name} is not ${actor.name}'s vassal.`);
+  }
+  const cooldown = minor.roundsUntilLevy ?? minor.levyCooldown ?? 0;
+  if (cooldown > 0) {
+    throw new EngineError(
+      "LEVY_COOLDOWN",
+      `${minor.name} cannot answer a levy for ${cooldown} more round(s).`,
+    );
+  }
+  const capital = minor.provinceIds[0];
+  if (!capital) {
+    throw new EngineError("BAD_LEVY", `${minor.name} holds no province to raise levies in.`);
+  }
+  // §11.5 levy size = 2 base + 1 per garrison tier.
+  const levied = VASSAL.levyBase + VASSAL.levyPerTier * minor.tier;
+
+  const next = structuredClone(state) as GameState;
+  const m = next.minors.find((x) => x.id === action.minorId)!;
+  let army = next.armies.find(
+    (a) => a.ownerId === actor.id && a.locationId === capital,
+  );
+  if (!army) {
+    army = {
+      id: `army-levy-${m.id}-${next.round}`,
+      ownerId: actor.id,
+      locationId: capital,
+      units: zeroUnits(),
+      variants: [],
+    };
+    next.armies = [...next.armies, army];
+  }
+  army.units[UnitType.LEVY] = (army.units[UnitType.LEVY] ?? 0) + levied;
+  // §11.5 re-arm the cadence (same fields runRevolts reads → no double-levy).
+  m.roundsUntilLevy = VASSAL.levyEveryRounds;
+  m.levyCooldown = VASSAL.levyEveryRounds;
+
+  return appendLog(next, {
+    round: next.round,
+    phase: next.phase,
+    type: "diplomacy",
+    actors: [action.player],
+    targets: [m.id],
+    message: `${actor.name} calls up ${levied} levies from ${m.name} at ${capital}.`,
+    data: { minorId: m.id, levies: levied, location: capital },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // applyAction — the dispatch table
 // ---------------------------------------------------------------------------
 
@@ -633,21 +844,72 @@ export function applyAction(state: GameState, action: GameAction): GameState {
     }
 
     case "PLAY_CARD": {
-      requirePlayer(state, action.player);
-      // TODO(events/reducer): verify the card is in hand; playing may be free.
-      return resolveCard(state, action.cardId);
+      // §10.6 Play a held political/event card. Not budget-gated by phase (§8);
+      // verify the card is actually in hand, resolve its effect via the events
+      // subsystem, then discard the played copy from hand.
+      const player = requirePlayer(state, action.player);
+      const idx = player.hand.findIndex((c) => c.id === action.cardId);
+      if (idx < 0) {
+        throw new EngineError(
+          "NOT_IN_HAND",
+          `${player.name} does not hold card ${action.cardId}.`,
+        );
+      }
+      let next = resolveCard(state, action.cardId);
+      // Discard exactly one copy of the played card (hand order preserved by
+      // resolveCard, which touches treasury/prestige/modifiers, not the hand).
+      next = {
+        ...next,
+        players: next.players.map((p) => {
+          if (p.id !== player.id) return p;
+          const i = p.hand.findIndex((c) => c.id === action.cardId);
+          if (i < 0) return p;
+          return { ...p, hand: [...p.hand.slice(0, i), ...p.hand.slice(i + 1)] };
+        }),
+      };
+      // §8.4/§12.6: if the resolved card posted a Great Bombard unlock, mirror it
+      // onto the readable flag for the targeted faction.
+      return syncGreatBombardUnlock(next);
     }
 
-    // PREP2 stubs — new GameAction variants wired for typecheck exhaustiveness.
-    // The tactic / diplomacy / vassal agents replace these bodies (see CONTRACT2).
-    case "PLAY_TACTIC":
-    case "DECLARE_WAR":
+    case "PLAY_TACTIC": {
+      // §7.7 Play a tactic card into a pending battle. Free (not budget-gated by
+      // phase, per CONTRACT2 §12.4); the ≤1/side/battle-round cap and the actual
+      // effect are enforced in the tactic subsystem / combat.
+      const player = requirePlayer(state, action.player);
+      const battle = state.pendingBattles.find((b) => b.id === action.battleId);
+      if (!battle) {
+        throw new EngineError("NO_SUCH_BATTLE", `No pending battle ${action.battleId}.`);
+      }
+      let side: BattleSide;
+      if (battle.attackerId === player.id) side = "attacker";
+      else if (battle.defenderId === player.id) side = "defender";
+      else {
+        throw new EngineError(
+          "NOT_BELLIGERENT",
+          `${player.name} is not a party to battle ${battle.id}.`,
+        );
+      }
+      if (!(player.tacticHand ?? []).includes(action.cardId)) {
+        throw new EngineError(
+          "NOT_IN_HAND",
+          `${player.name} does not hold that tactic card.`,
+        );
+      }
+      // Queue it onto PendingBattle.{attacker,defender}Tactics + remove from hand.
+      return queueTactic(state, action.battleId, side, action.cardId);
+    }
+
+    case "DECLARE_WAR": {
+      // §11 A deliberate political act taken in the action window (costs 1 action).
+      const next = spendAction(state, action.player);
+      return applyDeclareWar(next, action);
+    }
+
     case "LEVY_CALL": {
-      requirePlayer(state, action.player);
-      throw new EngineError(
-        "NOT_IMPLEMENTED",
-        `Action ${action.type} is not yet implemented.`,
-      );
+      // §11.5 Calling up a vassal's levy is a Diplomacy-window action (costs 1).
+      const next = spendAction(state, action.player);
+      return applyLevyCall(next, action);
     }
 
     default: {

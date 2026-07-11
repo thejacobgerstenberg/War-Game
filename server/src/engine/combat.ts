@@ -12,17 +12,21 @@ import {
   Faction,
   TerrainType,
   UnitType,
+  type ActiveModifier,
   type Army,
   type Fleet,
   type GameState,
   type PendingBattle,
   type Province,
   type SiegeState,
+  type TacticCardId,
   type UnitVariantStack,
 } from "@imperium/shared";
 import type { Rng } from "./rng.js";
 import {
   COMBAT_MODS,
+  CONQUEST_PRESTIGE,
+  GREAT_BOMBARD,
   SIEGE,
   UNIQUE_UNIT_OVERRIDES,
   UNIT_STATS,
@@ -30,7 +34,8 @@ import {
 } from "./balance.js";
 import { appendLog } from "./logEntry.js";
 import { neighborsOf } from "./adjacency.js";
-import { sumModifierValues } from "./modifiers.js";
+import { addModifier, getModifiers, sumModifierValues } from "./modifiers.js";
+import { playTactic } from "./tactics/index.js";
 
 /** Per-side casualty tally, keyed by stack id. */
 export interface CasualtyReport {
@@ -98,6 +103,13 @@ interface BattleCtx {
   seaZoneId?: string;
   attackerFaction: Faction | null;
   defenderFaction: Faction | null;
+  /**
+   * The declared battle, when this engagement carries queued tactic cards
+   * (§7.7). Absent for siege assaults (which are not `PendingBattle`s). Its
+   * `attackerTactics`/`defenderTactics` arrays are LOCAL COPIES so consuming a
+   * card per round never mutates the caller's input battle.
+   */
+  battle?: PendingBattle;
 }
 
 interface EngineOutcome {
@@ -242,6 +254,101 @@ function defenderFlat(
   return m;
 }
 
+/**
+ * §7.5 morale shift from event/tactic `morale` modifiers: a positive value makes
+ * the side steadier (LOWERS its rout threshold, so `d6 <= threshold` fires less
+ * often); negative makes it flightier. Read per faction + location.
+ */
+function moraleShift(state: GameState, faction: Faction | null, ctx: BattleCtx): number {
+  if (!faction) return 0;
+  return sumModifierValues(state, "morale", {
+    faction,
+    provinceId: ctx.provinceId,
+    seaZoneId: ctx.seaZoneId,
+  });
+}
+
+/**
+ * §8.4 Great Bombard unlock check. Per CONTRACT2 §12.6 the flag
+ * `Player.greatBombardUnlocked` is canonical; the equivalent Omen #34 side-channel
+ * is a `kind:"unlock"` modifier carrying `data.unlock === "GREAT_BOMBARD"`.
+ */
+function greatBombardUnlocked(state: GameState, playerId: string): boolean {
+  const p = state.players.find((pl) => pl.id === playerId);
+  if (p?.greatBombardUnlocked) return true;
+  const fac = factionOf(state, playerId);
+  const unlocks = getModifiers(state, "unlock", fac ? { faction: fac } : undefined);
+  return unlocks.some((m) => m.data?.unlock === GREAT_BOMBARD.variant);
+}
+
+/**
+ * CANON sea-resupply rule (GD §8.2): a besieged COASTAL city cannot be starved
+ * while at least one of its adjacent sea zones remains friendly/neutral — an open
+ * lane keeps the garrison fed. Starvation resumes only once EVERY adjacent sea
+ * zone is enemy-controlled (blockaded by someone other than the defender).
+ */
+function seaResupplyActive(state: GameState, prov: Province, defenderOwnerId: string | null): boolean {
+  if (!prov.coastal) return false;
+  const seaIds = new Set(state.seaZones.map((z) => z.id));
+  const adjacentSeas = neighborsOf(prov.id).filter((n) => seaIds.has(n));
+  if (adjacentSeas.length === 0) return false; // no sea lane → treat as landlocked
+  for (const id of adjacentSeas) {
+    const z = state.seaZones.find((zz) => zz.id === id);
+    if (!z) continue;
+    const enemyControlled = z.blockadedBy != null && z.blockadedBy !== defenderOwnerId;
+    if (!enemyControlled) return true; // one open lane resupplies the city
+  }
+  return false; // all lanes blockaded by the enemy → the garrison can starve
+}
+
+/**
+ * §13 conquest track — post a one-time prestige award as a round-scoped
+ * `prestige_pending` modifier (CONTRACT2 §12.8). The prestige subsystem CONSUMES
+ * these at Cleanup; combat NEVER mutates `Player.prestige` directly (avoids the
+ * double-count). Returns a new state.
+ */
+function postPrestigePending(
+  state: GameState,
+  faction: Faction | null,
+  value: number,
+  reason: string,
+  provinceId?: string,
+): GameState {
+  if (!faction || value === 0) return state;
+  const mod: ActiveModifier = {
+    id: `prestige-pending-${state.round}-${reason}-${state.activeModifiers.length}`,
+    scope: "round",
+    kind: "prestige_pending",
+    target: provinceId ? { faction, provinceId } : { faction },
+    value,
+    data: { reason, source: "combat" },
+  };
+  return addModifier(state, mod);
+}
+
+/**
+ * §7.7 tactic step: consume at most ONE queued tactic for `side` from the (local)
+ * battle queue and resolve it via the tactic subsystem's frozen `playTactic`.
+ * Called attacker-first, then defender, at the top of every battle round, so a
+ * side may play ≤1 card per battle round. Returns the (possibly new) state; if no
+ * card is queued it returns the same reference untouched.
+ */
+function playSideTactic(
+  state: GameState,
+  ctx: BattleCtx,
+  side: Role,
+  rng: Rng,
+): GameState {
+  const battle = ctx.battle;
+  if (!battle) return state;
+  const queue: TacticCardId[] | undefined =
+    side === "attacker" ? battle.attackerTactics : battle.defenderTactics;
+  if (!queue || queue.length === 0) return state;
+  const cardId = queue.shift(); // consume from the LOCAL copy (input never mutated)
+  if (!cardId) return state;
+  return playTactic(state, battle, side, cardId, rng);
+}
+
 /** Roll one homogeneous dice group and count hits under the §7.1 hit rule. */
 function rollGroup(
   count: number,
@@ -339,10 +446,18 @@ function findRetreat(
 
 /**
  * Core §7.2 round loop shared by field battles, naval battles and siege
- * assaults. Mutates `ctx.attackers`/`ctx.defenders` in place; reads `state`
- * only for tactic modifiers and retreat adjacency.
+ * assaults. Mutates `ctx.attackers`/`ctx.defenders` in place; reads `state` for
+ * combat/morale modifiers and retreat adjacency. Because a tactic played this
+ * round (§7.7) posts fresh modifiers, `state` is THREADED: the tactic hook may
+ * return a new state, which is used for the rest of the round and returned to the
+ * caller alongside the {@link EngineOutcome} (so posted modifiers survive).
  */
-function runEngine(state: GameState, ctx: BattleCtx, rng: Rng): EngineOutcome {
+function runEngine(
+  state: GameState,
+  ctx: BattleCtx,
+  rng: Rng,
+): { outcome: EngineOutcome; state: GameState } {
+  let s = state;
   const attackerInitial = sideTotal(ctx.attackers);
   const defenderInitial = sideTotal(ctx.defenders);
   let rounds = 0;
@@ -353,20 +468,27 @@ function runEngine(state: GameState, ctx: BattleCtx, rng: Rng): EngineOutcome {
   const cap = 50; // guard against pathological non-terminating stalemates
 
   if (attackerInitial === 0 || defenderInitial === 0) {
-    return { rounds: 0, attackerRouted, defenderRouted };
+    return { outcome: { rounds: 0, attackerRouted, defenderRouted }, state: s };
   }
 
   while (rounds < cap) {
     rounds += 1;
 
+    // 0. Tactic step (§7.7): attacker declares first, then defender; ≤1 card per
+    // side per battle round. Posted modifiers apply from this round onward.
+    if (ctx.battle) {
+      s = playSideTactic(s, ctx, "attacker", rng);
+      s = playSideTactic(s, ctx, "defender", rng);
+    }
+
     // 1. Ranged step (§7.2): compute both sides' hits pre-removal (simultaneous).
     if (ctx.rangedTypes.length > 0) {
       const at = sideTotal(ctx.attackers);
       const dt = sideTotal(ctx.defenders);
-      const af = attackerFlat(state, ctx, at, dt);
-      const df = defenderFlat(state, ctx, at, dt);
-      const ah = generateHits(state, ctx.attackers, "attacker", "ranged", af, ctx, rng);
-      const dh = generateHits(state, ctx.defenders, "defender", "ranged", df, ctx, rng);
+      const af = attackerFlat(s, ctx, at, dt);
+      const df = defenderFlat(s, ctx, at, dt);
+      const ah = generateHits(s, ctx.attackers, "attacker", "ranged", af, ctx, rng);
+      const dh = generateHits(s, ctx.defenders, "defender", "ranged", df, ctx, rng);
       removeCasualties(ctx.defenders, ah);
       removeCasualties(ctx.attackers, dh);
       if (sideTotal(ctx.attackers) === 0 || sideTotal(ctx.defenders) === 0) break;
@@ -376,10 +498,10 @@ function runEngine(state: GameState, ctx: BattleCtx, rng: Rng): EngineOutcome {
     {
       const at = sideTotal(ctx.attackers);
       const dt = sideTotal(ctx.defenders);
-      const af = attackerFlat(state, ctx, at, dt);
-      const df = defenderFlat(state, ctx, at, dt);
-      const ah = generateHits(state, ctx.attackers, "attacker", "melee", af, ctx, rng);
-      const dh = generateHits(state, ctx.defenders, "defender", "melee", df, ctx, rng);
+      const af = attackerFlat(s, ctx, at, dt);
+      const df = defenderFlat(s, ctx, at, dt);
+      const ah = generateHits(s, ctx.attackers, "attacker", "melee", af, ctx, rng);
+      const dh = generateHits(s, ctx.defenders, "defender", "melee", df, ctx, rng);
       // 3. Apply casualties (§7.2).
       removeCasualties(ctx.defenders, ah);
       removeCasualties(ctx.attackers, dh);
@@ -389,18 +511,29 @@ function runEngine(state: GameState, ctx: BattleCtx, rng: Rng): EngineOutcome {
     const dt = sideTotal(ctx.defenders);
     if (at === 0 || dt === 0) break;
 
-    // 4. Morale / rout check (§7.5). Naval combat has no rout.
+    // 4. Morale / rout check (§7.5). Naval combat has no rout. A `morale`
+    // modifier shifts the rout threshold per side (steadier = harder to rout).
     if (!ctx.isNaval) {
       let routed = false;
-      // §7.5 rout if a side lost ≥50% of its starting stack, on d6 ≤ 3.
+      const atkRoutThreshold = clamp(
+        COMBAT_MODS.routThreshold - moraleShift(s, ctx.attackerFaction, ctx),
+        0,
+        6,
+      );
+      const defRoutThreshold = clamp(
+        COMBAT_MODS.routThreshold - moraleShift(s, ctx.defenderFaction, ctx),
+        0,
+        6,
+      );
+      // §7.5 rout if a side lost ≥50% of its starting stack, on d6 ≤ threshold.
       if (1 - at / attackerInitial >= COMBAT_MODS.routLossFraction) {
-        if (rng.rollD6() <= COMBAT_MODS.routThreshold) {
+        if (rng.rollD6() <= atkRoutThreshold) {
           attackerRouted = true;
           routed = true;
         }
       }
       if (1 - dt / defenderInitial >= COMBAT_MODS.routLossFraction) {
-        if (rng.rollD6() <= COMBAT_MODS.routThreshold) {
+        if (rng.rollD6() <= defRoutThreshold) {
           defenderRouted = true;
           routed = true;
         }
@@ -408,17 +541,20 @@ function runEngine(state: GameState, ctx: BattleCtx, rng: Rng): EngineOutcome {
       if (attackerRouted) {
         // §7.5 pursuit: each enemy CAVALRY inflicts 1 automatic hit.
         removeCasualties(ctx.attackers, cavalryCount(ctx.defenders));
-        attackerRetreatTo = findRetreat(state, ctx.attackerOwnerId, ctx.provinceId);
+        attackerRetreatTo = findRetreat(s, ctx.attackerOwnerId, ctx.provinceId);
       }
       if (defenderRouted) {
         removeCasualties(ctx.defenders, cavalryCount(ctx.attackers));
-        defenderRetreatTo = findRetreat(state, ctx.defenderOwnerId, ctx.provinceId);
+        defenderRetreatTo = findRetreat(s, ctx.defenderOwnerId, ctx.provinceId);
       }
       if (routed) break;
     }
   }
 
-  return { rounds, attackerRouted, defenderRouted, attackerRetreatTo, defenderRetreatTo };
+  return {
+    outcome: { rounds, attackerRouted, defenderRouted, attackerRetreatTo, defenderRetreatTo },
+    state: s,
+  };
 }
 
 /** Build a casualty report from before/after totals. */
@@ -569,9 +705,23 @@ export function resolveBattle(
     provinceId: battle.provinceId,
     attackerFaction: factionOf(next, battle.attackerId),
     defenderFaction: factionOf(next, battle.defenderId),
+    // §7.7 LOCAL copies of the queued tactics: consuming one/round here never
+    // mutates the caller's input battle (purity).
+    battle: {
+      ...battle,
+      attackerTactics: [...(battle.attackerTactics ?? [])],
+      defenderTactics: [...(battle.defenderTactics ?? [])],
+    },
   };
 
-  const outcome = runEngine(next, ctx, rng);
+  const engine = runEngine(next, ctx, rng);
+  const outcome = engine.outcome;
+  // A tactic (§7.7) may have posted modifiers → thread the resulting state and
+  // re-locate the province on it before ownership/capture writes.
+  let post = engine.state;
+  const provPost = battle.provinceId
+    ? post.provinces.find((p) => p.id === battle.provinceId)
+    : undefined;
 
   const atkAlive = sideTotal(attackers);
   const defAlive = sideTotal(defenders);
@@ -585,25 +735,68 @@ export function resolveBattle(
     else if (defAlive > 0 && atkAlive === 0) winnerId = battle.defenderId;
   }
 
-  writeBack(next, attackers, "army", outcome.attackerRouted, outcome.attackerRetreatTo);
-  writeBack(next, defenders, "army", outcome.defenderRouted, outcome.defenderRetreatTo);
+  writeBack(post, attackers, "army", outcome.attackerRouted, outcome.attackerRetreatTo);
+  writeBack(post, defenders, "army", outcome.defenderRouted, outcome.defenderRetreatTo);
 
   // §7: winner takes the province if the attacker prevails in a field battle.
-  if (winnerId === battle.attackerId && !outcome.attackerRouted && prov) {
-    captureProvince(next, prov, battle.attackerId);
+  let captured = false;
+  const capturedTier = provPost?.walls.tier ?? 0;
+  if (winnerId === battle.attackerId && !outcome.attackerRouted && provPost) {
+    captureProvince(post, provPost, battle.attackerId);
+    captured = true;
+  }
+
+  // §13 conquest-prestige signals — POST as prestige_pending (CONTRACT2 §12.8);
+  // the prestige subsystem consumes these at Cleanup. Never mutate prestige here.
+  const pending: Record<string, number> = {};
+  if (winnerId) {
+    const winnerFaction = factionOf(post, winnerId);
+    // §13.1 decisive battle (a wipe/rout) → +1.
+    post = postPrestigePending(
+      post,
+      winnerFaction,
+      CONQUEST_PRESTIGE.decisiveBattle,
+      "decisive_battle",
+      provPost?.id,
+    );
+    pending.decisiveBattle = CONQUEST_PRESTIGE.decisiveBattle;
+    // §13.1 win a field battle outnumbered (loser's starting stack larger) → +1.
+    const sumMap = (m: Map<string, number>): number =>
+      [...m.values()].reduce((a, b) => a + b, 0);
+    const winnerStart = winnerId === battle.attackerId ? sumMap(atkInitial) : sumMap(defInitial);
+    const loserStart = winnerId === battle.attackerId ? sumMap(defInitial) : sumMap(atkInitial);
+    if (loserStart > winnerStart) {
+      post = postPrestigePending(
+        post,
+        winnerFaction,
+        CONQUEST_PRESTIGE.outnumberedWin,
+        "outnumbered_win",
+        provPost?.id,
+      );
+      pending.outnumberedWin = CONQUEST_PRESTIGE.outnumberedWin;
+    }
+    // §13.1 take a walled city (T1+) by storm → +2, or +3 at HP-tier ≥ 2 (MAP T4–T5).
+    if (captured && capturedTier > 0) {
+      const award =
+        capturedTier >= 2
+          ? CONQUEST_PRESTIGE.takeWalledCityHighTier
+          : CONQUEST_PRESTIGE.takeWalledCity;
+      post = postPrestigePending(post, winnerFaction, award, "take_walled_city", provPost?.id);
+      pending.takeWalledCity = award;
+    }
   }
 
   const attackerReport = report(attackers, atkInitial, outcome.attackerRouted);
   const defenderReport = report(defenders, defInitial, outcome.defenderRouted);
 
-  let logged = appendLog(next, {
-    round: next.round,
-    phase: next.phase,
+  let logged = appendLog(post, {
+    round: post.round,
+    phase: post.phase,
     type: "battle",
     actors: [battle.attackerId, ...(battle.defenderId ? [battle.defenderId] : [])],
-    targets: prov ? [prov.id] : [],
-    message: prov
-      ? `Battle at ${prov.name}: ${winnerId ?? "no one"} prevails after ${outcome.rounds} round(s).`
+    targets: provPost ? [provPost.id] : [],
+    message: provPost
+      ? `Battle at ${provPost.name}: ${winnerId ?? "no one"} prevails after ${outcome.rounds} round(s).`
       : `Battle resolved after ${outcome.rounds} round(s).`,
     data: {
       rounds: outcome.rounds,
@@ -612,6 +805,7 @@ export function resolveBattle(
       defenderLosses: defenderReport.losses,
       attackerRouted: outcome.attackerRouted,
       defenderRouted: outcome.defenderRouted,
+      prestigePending: pending,
     },
   });
   logged = { ...logged, rngCursor: rng.cursor };
@@ -640,14 +834,41 @@ export function resolveNaval(
     ? next.seaZones.find((z) => z.id === battle.seaZoneId)
     : undefined;
 
+  const emptyReport: CasualtyReport = { losses: {}, routed: [] };
+
+  // §7.6 / CONTRACT2 §12.10 `freeze_sea`: a frozen sea zone cannot be fought in
+  // (movement enforces the freeze; combat at minimum refuses to resolve here).
+  if (
+    battle.seaZoneId &&
+    getModifiers(next, "freeze_sea", { seaZoneId: battle.seaZoneId }).length > 0
+  ) {
+    let out = next;
+    if (zone) {
+      out = appendLog(out, {
+        round: out.round,
+        phase: out.phase,
+        type: "battle",
+        actors: [battle.attackerId],
+        targets: [zone.id],
+        message: `Ice locks ${zone.name}; no naval battle is fought.`,
+        data: { rounds: 0, naval: true, frozen: true },
+      });
+    }
+    return {
+      state: { ...out, rngCursor: rng.cursor },
+      winnerId: null,
+      rounds: 0,
+      attacker: emptyReport,
+      defender: emptyReport,
+    };
+  }
+
   const attackers = next.fleets
     .filter((f) => battle.attackerStackIds.includes(f.id))
     .map(toWorking);
   const defenders = next.fleets
     .filter((f) => battle.defenderStackIds.includes(f.id))
     .map(toWorking);
-
-  const emptyReport: CasualtyReport = { losses: {}, routed: [] };
 
   if (defenders.length === 0 || sideTotal(defenders) === 0) {
     // Uncontested sea zone → attacker controls it.
@@ -689,9 +910,20 @@ export function resolveNaval(
     seaZoneId: battle.seaZoneId,
     attackerFaction: factionOf(next, battle.attackerId),
     defenderFaction: factionOf(next, battle.defenderId),
+    // §7.7 LOCAL copies of the queued tactics (never mutate the input battle).
+    battle: {
+      ...battle,
+      attackerTactics: [...(battle.attackerTactics ?? [])],
+      defenderTactics: [...(battle.defenderTactics ?? [])],
+    },
   };
 
-  const outcome = runEngine(next, ctx, rng);
+  const engine = runEngine(next, ctx, rng);
+  const outcome = engine.outcome;
+  let post = engine.state;
+  const zonePost = battle.seaZoneId
+    ? post.seaZones.find((z) => z.id === battle.seaZoneId)
+    : undefined;
 
   const atkAlive = sideTotal(attackers);
   const defAlive = sideTotal(defenders);
@@ -699,23 +931,35 @@ export function resolveNaval(
   if (atkAlive > 0 && defAlive === 0) winnerId = battle.attackerId;
   else if (defAlive > 0 && atkAlive === 0) winnerId = battle.defenderId;
 
-  writeBack(next, attackers, "fleet", false, undefined);
-  writeBack(next, defenders, "fleet", false, undefined);
+  writeBack(post, attackers, "fleet", false, undefined);
+  writeBack(post, defenders, "fleet", false, undefined);
 
   // §7.6 the winner controls the zone (enabling blockade).
-  if (zone && winnerId) zone.blockadedBy = winnerId;
+  if (zonePost && winnerId) zonePost.blockadedBy = winnerId;
+
+  // §13.1 decisive naval battle (one side wiped) → +1 prestige_pending.
+  const pending: Record<string, number> = {};
+  if (winnerId) {
+    post = postPrestigePending(
+      post,
+      factionOf(post, winnerId),
+      CONQUEST_PRESTIGE.decisiveBattle,
+      "decisive_battle",
+    );
+    pending.decisiveBattle = CONQUEST_PRESTIGE.decisiveBattle;
+  }
 
   const attackerReport = report(attackers, atkInitial, false);
   const defenderReport = report(defenders, defInitial, false);
 
-  let logged = appendLog(next, {
-    round: next.round,
-    phase: next.phase,
+  let logged = appendLog(post, {
+    round: post.round,
+    phase: post.phase,
     type: "battle",
     actors: [battle.attackerId, ...(battle.defenderId ? [battle.defenderId] : [])],
-    targets: zone ? [zone.id] : [],
-    message: zone
-      ? `Naval battle in ${zone.name}: ${winnerId ?? "no one"} controls the zone after ${outcome.rounds} round(s).`
+    targets: zonePost ? [zonePost.id] : [],
+    message: zonePost
+      ? `Naval battle in ${zonePost.name}: ${winnerId ?? "no one"} controls the zone after ${outcome.rounds} round(s).`
       : `Naval battle resolved after ${outcome.rounds} round(s).`,
     data: {
       rounds: outcome.rounds,
@@ -723,6 +967,7 @@ export function resolveNaval(
       naval: true,
       attackerLosses: attackerReport.losses,
       defenderLosses: defenderReport.losses,
+      prestigePending: pending,
     },
   });
   logged = { ...logged, rngCursor: rng.cursor };
@@ -783,28 +1028,59 @@ export function resolveSiege(
   live.circumvallated = true;
   live.roundsElapsed += 1;
 
-  // 2. Bombardment (§8.2.2) — every SIEGE unit rolls 1d6 of wall damage.
+  // 2. Bombardment (§8.2.2 / §8.4) — generic SIEGE units roll 1 die each; a Great
+  // Bombard (§8.4) rolls GREAT_BOMBARD.bombardDice dice when its owner has it
+  // unlocked, ignoring the Theodosian masonry cap / auto-repel.
   const defenderFaction = factionOf(next, prov.ownerId);
-  // §8.3 Byzantine Theodosian Walls auto-repel the first rounds of bombardment.
+  const besiegerFaction = factionOf(next, siege.besiegerId);
+  // §8.3 Byzantine Theodosian Walls auto-repel the first rounds of ORDINARY bombardment.
   const autoRepel =
     defenderFaction === Faction.BYZANTIUM &&
     prov.walls.tier === 3 &&
     live.roundsElapsed <= SIEGE.byzantineAutoRepelRounds;
-  let siegeGuns = 0;
+  // §8.4 CONTRACT2 §12.6: enhanced fire only if the besieger has the Bombard unlocked.
+  const bombardUnlocked = greatBombardUnlocked(next, siege.besiegerId);
+  let genericGuns = 0;
+  let greatBombards = 0;
   for (const w of besiegers) {
-    siegeGuns += w.units[UnitType.SIEGE] ?? 0;
-    for (const v of w.variants) if (v.base === UnitType.SIEGE) siegeGuns += v.count;
-  }
-  let wallDamage = 0;
-  if (siegeGuns > 0) {
-    for (const roll of rng.rollDice(siegeGuns)) {
-      wallDamage += SIEGE.bombardDamage[roll] ?? 0;
+    genericGuns += w.units[UnitType.SIEGE] ?? 0;
+    for (const v of w.variants) {
+      if (v.base !== UnitType.SIEGE) continue;
+      // §8.4 an UNLOCKED Great Bombard fires enhanced; a locked one is a plain gun.
+      if (v.variant === GREAT_BOMBARD.variant && bombardUnlocked) greatBombards += v.count;
+      else genericGuns += v.count;
     }
   }
-  if (autoRepel) wallDamage = 0;
+  // Generic guns roll first (keeps the deterministic bombardment RNG order); the
+  // Theodosian auto-repel nullifies their damage but still consumes their dice.
+  let genericDamage = 0;
+  if (genericGuns > 0) {
+    for (const roll of rng.rollDice(genericGuns)) genericDamage += SIEGE.bombardDamage[roll] ?? 0;
+  }
+  if (autoRepel) genericDamage = 0;
+  // §8.4 Great Bombard: bombardDice per piece, capped per round, ignores the cap.
+  let greatBombardDamage = 0;
+  for (let i = 0; i < greatBombards; i += 1) {
+    let piece = 0;
+    for (const roll of rng.rollDice(GREAT_BOMBARD.bombardDice)) {
+      piece += SIEGE.bombardDamage[roll] ?? 0;
+    }
+    greatBombardDamage += Math.min(piece, GREAT_BOMBARD.maxWallDamagePerRound);
+  }
+  // §8 / CONTRACT2 §12.10 `siege_mod` — event/tactic bombardment tweak (signed).
+  const siegeMod = besiegerFaction
+    ? sumModifierValues(next, "siege_mod", { faction: besiegerFaction, provinceId: prov.id })
+    : 0;
+  let wallDamage = genericDamage + greatBombardDamage;
+  if ((genericGuns > 0 || greatBombards > 0) && siegeMod !== 0) {
+    wallDamage = Math.max(0, wallDamage + siegeMod);
+  }
   prov.walls.hp = Math.max(0, prov.walls.hp - wallDamage);
   if (prov.walls.hp === 0) live.breached = true;
   live.wallHp = prov.walls.hp;
+  // §8 multi-round progression tags: circumvallate → bombard → assault.
+  live.phase = live.breached ? "assault" : "bombard";
+  live.roundsBesieged = live.roundsElapsed;
 
   // 3. Garrison starvation (§8.2.3) — hold `base (+2 Granary)` rounds, then starve.
   const hasGranary = prov.buildings.includes(BuildingType.GRANARY);
@@ -828,8 +1104,11 @@ export function resolveSiege(
     });
   }
 
+  // CANON sea-resupply (GD §8.2): a COASTAL city with an open (friendly/neutral)
+  // adjacent sea lane cannot be starved — only a fully enemy-controlled sea allows it.
+  const resupplied = seaResupplyActive(next, prov, prov.ownerId);
   let starved = 0;
-  if (live.roundsElapsed > holdout) {
+  if (live.roundsElapsed > holdout && !resupplied) {
     starved = SIEGE.starvationLossPerRound;
     removeCasualties(defenders, starved); // §8.2.3 weakest first
     live.starvationCounter = (live.starvationCounter ?? 0) + 1;
@@ -869,7 +1148,9 @@ export function resolveSiege(
       attackerFaction: factionOf(next, siege.besiegerId),
       defenderFaction,
     };
-    const outcome = runEngine(next, ctx, rng);
+    // No PendingBattle drives a siege assault (ctx.battle undefined), so no tactic
+    // is played and runEngine returns the same state reference.
+    const outcome = runEngine(next, ctx, rng).outcome;
     assaultRounds = outcome.rounds;
     defRouted = outcome.defenderRouted;
     defRetreat = outcome.defenderRetreatTo;
@@ -885,6 +1166,7 @@ export function resolveSiege(
   writeBack(next, defenders, "army", defRouted, defRetreat);
   writeBack(next, besiegers, "army", false, undefined);
 
+  const capturedTier = prov.walls.tier;
   if (captured) {
     captureProvince(next, prov, siege.besiegerId);
   } else {
@@ -895,9 +1177,29 @@ export function resolveSiege(
     else next.siegeStates.push({ ...live });
   }
 
-  const out = appendLog(next, {
-    round: next.round,
-    phase: next.phase,
+  // §13 conquest-prestige on a storm — POST prestige_pending (CONTRACT2 §12.8),
+  // consumed by the prestige subsystem at Cleanup. Never mutate prestige here.
+  let scored = next;
+  const pending: Record<string, number> = {};
+  if (captured) {
+    const bf = factionOf(scored, siege.besiegerId);
+    // §13.1 storming a defended city is a decisive result → +1.
+    scored = postPrestigePending(scored, bf, CONQUEST_PRESTIGE.decisiveBattle, "decisive_battle", prov.id);
+    pending.decisiveBattle = CONQUEST_PRESTIGE.decisiveBattle;
+    // §13.1 take a walled city (T1+) by siege → +2, or +3 at HP-tier ≥ 2 (MAP T4–T5).
+    if (capturedTier > 0) {
+      const award =
+        capturedTier >= 2
+          ? CONQUEST_PRESTIGE.takeWalledCityHighTier
+          : CONQUEST_PRESTIGE.takeWalledCity;
+      scored = postPrestigePending(scored, bf, award, "take_walled_city", prov.id);
+      pending.takeWalledCity = award;
+    }
+  }
+
+  const out = appendLog(scored, {
+    round: scored.round,
+    phase: scored.phase,
     type: "siege",
     actors: [siege.besiegerId],
     targets: [prov.id],
@@ -907,10 +1209,14 @@ export function resolveSiege(
     data: {
       wallHp: prov.walls.hp,
       wallDamage,
+      genericDamage,
+      greatBombardDamage,
       starved,
+      resupplied,
       captured,
       breached: live.breached,
       assaultRounds,
+      prestigePending: pending,
     },
   });
 

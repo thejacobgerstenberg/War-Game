@@ -12,9 +12,13 @@ import { describe, it, expect } from "vitest";
 import {
   Faction,
   GamePhase,
+  TerrainType,
   UnitType,
+  asTacticCardId,
+  type Army,
   type GameState,
   type MoveAction,
+  type PendingBattle,
   type RecruitAction,
 } from "@imperium/shared";
 import { createInitialState, type SeatInput } from "../gameState.js";
@@ -221,5 +225,324 @@ describe("determinism", () => {
       expect(err).toBeInstanceOf(EngineError);
       expect((err as EngineError).code).toBe("NOT_ADJACENT");
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ACTION WINDOW (CANON #9, §10.0, ARCH §10): any action type in any window phase
+// ---------------------------------------------------------------------------
+
+/** A bare land army for a player at a location (only the given generic units). */
+function makeArmy(id: string, owner: string, at: string, units: Partial<Record<UnitType, number>>): Army {
+  const u = {} as Record<UnitType, number>;
+  for (const t of Object.values(UnitType)) u[t] = units[t] ?? 0;
+  return { id, ownerId: owner, locationId: at, units: u, variants: [] };
+}
+
+describe("action window (§10.0 / CANON #9)", () => {
+  it("§10.0 accepts a RECRUIT during the MOVEMENT phase (no per-type gate)", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT; // not RECRUITMENT — but still inside the window
+    const next = applyAction(s, recruit({ units: { [UnitType.INFANTRY]: 1 } }));
+    const army = next.armies.find((a) => a.id === BYZ_ARMY)!;
+    expect(army.units[UnitType.INFANTRY]).toBe(3); // recruit accepted mid-MOVEMENT
+    expect(next.players.find((p) => p.id === "p1")!.actionsRemaining).toBe(3);
+  });
+
+  it("§10.0 accepts a MOVE during the DIPLOMACY phase", () => {
+    const s = fresh();
+    s.phase = GamePhase.DIPLOMACY;
+    const next = applyAction(s, move({ toId: "selymbria" }));
+    expect(next.armies.find((a) => a.id === BYZ_ARMY)!.locationId).toBe("selymbria");
+  });
+
+  it("§10.0 rejects any budgeted action during INCOME (outside the window, WRONG_PHASE)", () => {
+    const s = fresh(); // INCOME
+    expect(() =>
+      applyAction(s, recruit({ units: { [UnitType.INFANTRY]: 1 } })),
+    ).toThrowError(expect.objectContaining({ code: "WRONG_PHASE" }));
+  });
+
+  it("§10.0 rejects a budgeted action during COMBAT (outside the window)", () => {
+    const s = fresh();
+    s.phase = GamePhase.COMBAT;
+    expect(() =>
+      applyAction(s, recruit({ units: { [UnitType.INFANTRY]: 1 } })),
+    ).toThrowError(expect.objectContaining({ code: "WRONG_PHASE" }));
+  });
+
+  it("§10.0 the shared 4-action budget is exhausted regardless of action mix (NO_ACTIONS)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    s.players.find((p) => p.id === "p1")!.actionsRemaining = 0;
+    expect(() =>
+      applyAction(s, recruit({ units: { [UnitType.INFANTRY]: 1 } })),
+    ).toThrowError(expect.objectContaining({ code: "NO_ACTIONS" }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MOVEMENT POINTS (§3.1 / §6.4): slowest-unit budget vs terrain move cost
+// ---------------------------------------------------------------------------
+
+describe("movement points (§3.1 / §6.4)", () => {
+  it("§3.1 a CAVALRY stack (mv2) may enter a cost-2 MOUNTAINS province", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    // selymbria is p1-owned, empty and adjacent to constantinople; force it to
+    // MOUNTAINS so entering costs 2 move points.
+    s.provinces.find((p) => p.id === "selymbria")!.terrain = TerrainType.MOUNTAINS;
+    s.armies.push(makeArmy("cav1", "p1", "constantinople", { [UnitType.CAVALRY]: 1 }));
+    const next = applyAction(s, {
+      type: "MOVE",
+      player: "p1",
+      stackId: "cav1",
+      toId: "selymbria",
+    });
+    expect(next.armies.find((a) => a.id === "cav1")!.locationId).toBe("selymbria");
+  });
+
+  it("§3.1 a SIEGE stack (mv1) may NOT enter a cost-2 MOUNTAINS province (INSUFFICIENT_MOVEMENT)", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    s.provinces.find((p) => p.id === "selymbria")!.terrain = TerrainType.MOUNTAINS;
+    s.armies.push(makeArmy("siege1", "p1", "constantinople", { [UnitType.SIEGE]: 1 }));
+    expect(() =>
+      applyAction(s, { type: "MOVE", player: "p1", stackId: "siege1", toId: "selymbria" }),
+    ).toThrowError(expect.objectContaining({ code: "INSUFFICIENT_MOVEMENT" }));
+  });
+
+  it("§3.1 a SIEGE stack (mv1) enters a cost-1 COAST province normally", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    // selymbria stays COAST (cost 1) — a mv1 siege can afford it.
+    s.armies.push(makeArmy("siege2", "p1", "constantinople", { [UnitType.SIEGE]: 1 }));
+    const next = applyAction(s, {
+      type: "MOVE",
+      player: "p1",
+      stackId: "siege2",
+      toId: "selymbria",
+    });
+    expect(next.armies.find((a) => a.id === "siege2")!.locationId).toBe("selymbria");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GREAT BOMBARD recruit gating (§8.4)
+// ---------------------------------------------------------------------------
+
+const GREAT_BOMBARD_VARIANT = { base: UnitType.SIEGE, variant: "GREAT_BOMBARD", count: 1 };
+
+describe("Great Bombard recruit gating (§8.4)", () => {
+  it("§8.4 rejects recruiting the Great Bombard when it is NOT unlocked (NOT_UNLOCKED)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    expect(() =>
+      applyAction(s, recruit({ units: {}, variants: [GREAT_BOMBARD_VARIANT] })),
+    ).toThrowError(expect.objectContaining({ code: "NOT_UNLOCKED" }));
+  });
+
+  it("§8.4 allows recruiting the Great Bombard once unlocked (free, one per game)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    const p1 = s.players.find((p) => p.id === "p1")!;
+    p1.greatBombardUnlocked = true; // canonical unlock flag (CONTRACT2 §12.6)
+    const goldBefore = p1.treasury.gold;
+    const next = applyAction(s, recruit({ units: {}, variants: [GREAT_BOMBARD_VARIANT] }));
+    const army = next.armies.find((a) => a.id === BYZ_ARMY)!;
+    expect(army.variants?.some((v) => v.variant === "GREAT_BOMBARD" && v.count === 1)).toBe(true);
+    // §8.4 free entry — treasury untouched.
+    expect(next.players.find((p) => p.id === "p1")!.treasury.gold).toBe(goldBefore);
+  });
+
+  it("§8.4 also accepts the unlock via the Omen #34 kind:'unlock' modifier", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    s.activeModifiers.push({
+      id: "omen-34:unlock",
+      scope: "game",
+      kind: "unlock",
+      target: { faction: Faction.BYZANTIUM },
+      data: { unlock: "GREAT_BOMBARD" },
+    });
+    const next = applyAction(s, recruit({ units: {}, variants: [GREAT_BOMBARD_VARIANT] }));
+    expect(
+      next.armies.find((a) => a.id === BYZ_ARMY)!.variants?.some((v) => v.variant === "GREAT_BOMBARD"),
+    ).toBe(true);
+  });
+
+  it("§8.4 enforces one-per-game (a second Great Bombard is rejected)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    s.players.find((p) => p.id === "p1")!.greatBombardUnlocked = true;
+    const army = s.armies.find((a) => a.id === BYZ_ARMY)!;
+    army.variants = [{ base: UnitType.SIEGE, variant: "GREAT_BOMBARD", count: 1 }];
+    expect(() =>
+      applyAction(s, recruit({ units: {}, variants: [GREAT_BOMBARD_VARIANT] })),
+    ).toThrowError(expect.objectContaining({ code: "BAD_RECRUIT" }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PLAY_TACTIC (§7.7): queue onto a battle + remove from hand
+// ---------------------------------------------------------------------------
+
+const VETERANS = asTacticCardId("veterans-of-the-border");
+
+/** Push a p1-attacker / p2-defender pending battle and return its id. */
+function seedBattle(s: GameState): string {
+  const battle: PendingBattle = {
+    id: "pb-test-1",
+    provinceId: "bithynia",
+    attackerId: "p1",
+    defenderId: "p2",
+    attackerStackIds: [BYZ_ARMY],
+    defenderStackIds: [],
+  };
+  s.pendingBattles.push(battle);
+  return battle.id;
+}
+
+describe("PLAY_TACTIC (§7.7)", () => {
+  it("§7.7 queues a held tactic onto the correct battle side and removes it from hand", () => {
+    const s = fresh();
+    const battleId = seedBattle(s);
+    s.players.find((p) => p.id === "p1")!.tacticHand = [VETERANS];
+    const next = applyAction(s, { type: "PLAY_TACTIC", player: "p1", battleId, cardId: VETERANS });
+    const battle = next.pendingBattles.find((b) => b.id === battleId)!;
+    expect(battle.attackerTactics).toContain(VETERANS); // p1 is the attacker
+    expect(next.players.find((p) => p.id === "p1")!.tacticHand).toHaveLength(0);
+  });
+
+  it("§7.7 rejects a tactic card the player does not hold (NOT_IN_HAND)", () => {
+    const s = fresh();
+    const battleId = seedBattle(s);
+    s.players.find((p) => p.id === "p1")!.tacticHand = []; // empty hand
+    expect(() =>
+      applyAction(s, { type: "PLAY_TACTIC", player: "p1", battleId, cardId: VETERANS }),
+    ).toThrowError(expect.objectContaining({ code: "NOT_IN_HAND" }));
+  });
+
+  it("§7.7 rejects a play referencing a non-existent battle (NO_SUCH_BATTLE)", () => {
+    const s = fresh();
+    s.players.find((p) => p.id === "p1")!.tacticHand = [VETERANS];
+    expect(() =>
+      applyAction(s, { type: "PLAY_TACTIC", player: "p1", battleId: "nope", cardId: VETERANS }),
+    ).toThrowError(expect.objectContaining({ code: "NO_SUCH_BATTLE" }));
+  });
+
+  it("§7.7 PLAY_TACTIC is free — it spends no action budget", () => {
+    const s = fresh();
+    const battleId = seedBattle(s);
+    const p1 = s.players.find((p) => p.id === "p1")!;
+    p1.tacticHand = [VETERANS];
+    const before = p1.actionsRemaining;
+    const next = applyAction(s, { type: "PLAY_TACTIC", player: "p1", battleId, cardId: VETERANS });
+    expect(next.players.find((p) => p.id === "p1")!.actionsRemaining).toBe(before);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PLAY_CARD (§10.6): hand verification + discard
+// ---------------------------------------------------------------------------
+
+describe("PLAY_CARD (§10.6)", () => {
+  it("§10.6 rejects playing a card not in hand (NOT_IN_HAND)", () => {
+    const s = fresh();
+    s.players.find((p) => p.id === "p1")!.hand = [];
+    expect(() =>
+      applyAction(s, { type: "PLAY_CARD", player: "p1", cardId: "omen-1" }),
+    ).toThrowError(expect.objectContaining({ code: "NOT_IN_HAND" }));
+  });
+
+  it("§10.6 discards the played card from hand after resolving", () => {
+    const s = fresh();
+    // A non-event id makes resolveCard a no-op; we assert only the hand-discard.
+    s.players.find((p) => p.id === "p1")!.hand = [
+      { id: "held-card-x", name: "Held Card", description: "", cost: {} },
+    ];
+    const next = applyAction(s, { type: "PLAY_CARD", player: "p1", cardId: "held-card-x" });
+    expect(next.players.find((p) => p.id === "p1")!.hand).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DECLARE_WAR (§11) & LEVY_CALL (§11.5)
+// ---------------------------------------------------------------------------
+
+describe("DECLARE_WAR (§11)", () => {
+  it("§11 opens a WarState against the target faction's player (deduped)", () => {
+    const s = fresh();
+    s.phase = GamePhase.DIPLOMACY;
+    const next = applyAction(s, { type: "DECLARE_WAR", player: "p1", target: Faction.OTTOMAN });
+    expect(next.wars.some((w) => w.a === "p1" && w.b === "p2")).toBe(true);
+    // A second declaration does not add a duplicate war.
+    const again = applyAction(
+      { ...next, players: next.players.map((p) => ({ ...p, actionsRemaining: 4 })) },
+      { type: "DECLARE_WAR", player: "p1", target: Faction.OTTOMAN },
+    );
+    expect(again.wars.filter((w) => w.a === "p1" && w.b === "p2")).toHaveLength(1);
+  });
+
+  it("§11 rejects declaring war on your own faction (BAD_TARGET)", () => {
+    const s = fresh();
+    s.phase = GamePhase.DIPLOMACY;
+    expect(() =>
+      applyAction(s, { type: "DECLARE_WAR", player: "p1", target: Faction.BYZANTIUM }),
+    ).toThrowError(expect.objectContaining({ code: "BAD_TARGET" }));
+  });
+
+  it("§11 rejects declaring war on an unseated faction (NO_TARGET)", () => {
+    const s = fresh();
+    s.phase = GamePhase.DIPLOMACY;
+    expect(() =>
+      applyAction(s, { type: "DECLARE_WAR", player: "p1", target: Faction.VENICE }),
+    ).toThrowError(expect.objectContaining({ code: "NO_TARGET" }));
+  });
+});
+
+describe("LEVY_CALL (§11.5)", () => {
+  function withVassal(s: GameState): GameState {
+    s.minors.push({
+      id: "m-serbia",
+      name: "Serbia",
+      provinceIds: ["selymbria"],
+      garrison: 2,
+      tier: 1,
+      vassalOf: "p1",
+      roundsUntilLevy: 0,
+    });
+    return s;
+  }
+
+  it("§11.5 raises 2 LEVY + 1 per garrison tier in the vassal's capital", () => {
+    const s = withVassal(fresh());
+    s.phase = GamePhase.DIPLOMACY;
+    const next = applyAction(s, { type: "LEVY_CALL", player: "p1", minorId: "m-serbia" });
+    const army = next.armies.find((a) => a.ownerId === "p1" && a.locationId === "selymbria")!;
+    // Byzantium's canonical starting garrison at selymbria is 1 LEVY (FACTIONS.md
+    // / CONTRACT §11); the levy call raises 3 more (2 base + 1 per tier-1) into
+    // that same stack → 4 total. (CANON: canonical starting forces are live.)
+    expect(army.units[UnitType.LEVY]).toBe(4); // 1 starting + (2 base + 1 tier-1)
+    // Cooldown re-armed so runRevolts won't double-levy this cadence.
+    expect(next.minors.find((m) => m.id === "m-serbia")!.roundsUntilLevy).toBe(2);
+  });
+
+  it("§11.5 rejects a levy call still on cooldown (LEVY_COOLDOWN)", () => {
+    const s = withVassal(fresh());
+    s.phase = GamePhase.DIPLOMACY;
+    s.minors.find((m) => m.id === "m-serbia")!.roundsUntilLevy = 2;
+    expect(() =>
+      applyAction(s, { type: "LEVY_CALL", player: "p1", minorId: "m-serbia" }),
+    ).toThrowError(expect.objectContaining({ code: "LEVY_COOLDOWN" }));
+  });
+
+  it("§11.5 rejects calling a levy from a minor that is not your vassal (NOT_OWNER)", () => {
+    const s = withVassal(fresh());
+    s.phase = GamePhase.DIPLOMACY;
+    s.minors.find((m) => m.id === "m-serbia")!.vassalOf = "p2";
+    expect(() =>
+      applyAction(s, { type: "LEVY_CALL", player: "p1", minorId: "m-serbia" }),
+    ).toThrowError(expect.objectContaining({ code: "NOT_OWNER" }));
   });
 });

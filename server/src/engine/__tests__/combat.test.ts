@@ -8,7 +8,7 @@
  * whole battle. Field modifiers/rout/pursuit are exercised through overwhelming
  * or forced setups plus a determinism re-run.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   BuildingType,
   Faction,
@@ -16,6 +16,8 @@ import {
   TaxPosture,
   TerrainType,
   UnitType,
+  asTacticCardId,
+  type ActiveModifier,
   type Army,
   type Fleet,
   type GameState,
@@ -27,8 +29,17 @@ import {
 } from "@imperium/shared";
 import { emptyUnits } from "../gameState.js";
 import { makeRng } from "../rng.js";
-import { SIEGE } from "../balance.js";
+import { CONQUEST_PRESTIGE, GREAT_BOMBARD, SIEGE } from "../balance.js";
 import { resolveBattle, resolveNaval, resolveSiege } from "../combat.js";
+
+// The tactic subsystem is a sibling module; mock its combat entry-point so the
+// §7.7 tactic HOOK inside combat can be unit-tested in isolation (order, ≤1/side,
+// consumption, state threading) without depending on the real card resolver.
+vi.mock("../tactics/index.js", () => ({
+  playTactic: vi.fn((state: GameState) => state),
+}));
+// eslint-disable-next-line import/first
+import { playTactic } from "../tactics/index.js";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -473,5 +484,426 @@ describe("resolveNaval (§7.6)", () => {
     // determinism re-run
     const [s2, b2] = build();
     expect(resolveNaval(s2, b2, makeRng(SEED, 0))).toEqual(res);
+  });
+
+  it("refuses to resolve naval combat in a frozen sea zone (freeze_sea, §7.6)", () => {
+    const freeze: ActiveModifier = {
+      id: "ice",
+      scope: "round",
+      kind: "freeze_sea",
+      target: { seaZoneId: "aegean" },
+    };
+    const state = makeState({
+      seaZones: [seaZone("aegean")],
+      fleets: [
+        fleet("f1", "p1", "aegean", { [UnitType.WARSHIP]: 6 }),
+        fleet("f2", "p2", "aegean", { [UnitType.GALLEY]: 3 }),
+      ],
+      activeModifiers: [freeze],
+    });
+    const battle: PendingBattle = {
+      id: "n1",
+      seaZoneId: "aegean",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["f1"],
+      defenderStackIds: ["f2"],
+      isNaval: true,
+    };
+    const res = resolveNaval(state, battle, makeRng(SEED, 0));
+    expect(res.winnerId).toBeNull();
+    expect(res.rounds).toBe(0);
+    // no dice rolled, no blockade flip, both fleets intact
+    expect(res.state.rngCursor).toBe(0);
+    expect(res.state.seaZones[0].blockadedBy).toBeNull();
+    expect(res.state.fleets).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §8.4 Great Bombard
+// ---------------------------------------------------------------------------
+
+/** An Army carrying a Great Bombard variant piece (base SIEGE). */
+function bombardArmy(id: string, ownerId: string, locationId: string, count = 1): Army {
+  return {
+    id,
+    ownerId,
+    locationId,
+    units: { ...emptyUnits() },
+    variants: [{ base: UnitType.SIEGE, variant: GREAT_BOMBARD.variant, count }],
+  };
+}
+
+describe("Great Bombard (§8.4)", () => {
+  it("an UNLOCKED Great Bombard rolls bombardDice dice/round vs the walls", () => {
+    const p1 = { ...player("p1", Faction.OTTOMAN), greatBombardUnlocked: true };
+    const state = makeState({
+      players: [p1, player("p2", Faction.BYZANTIUM)],
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 2, hp: 10 },
+          garrison: 1,
+        }),
+      ],
+      armies: [bombardArmy("gb", "p1", "keep")],
+      siegeStates: [siegeState({ besiegingArmyIds: ["gb"] })],
+    });
+    // No generic guns roll first → the Bombard's `bombardDice` dice are the first
+    // RNG draws; each maps through SIEGE.bombardDamage, capped per round.
+    const predict = makeRng(SEED, 0);
+    let expected = 0;
+    for (const r of predict.rollDice(GREAT_BOMBARD.bombardDice)) expected += SIEGE.bombardDamage[r];
+    expected = Math.min(expected, GREAT_BOMBARD.maxWallDamagePerRound);
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.wallHpRemaining).toBe(10 - expected);
+    // enhanced fire: a single Bombard removes more than a single ordinary die could
+    // when both dice are non-trivial (sanity: at least the smaller single die).
+    expect(10 - res.wallHpRemaining).toBe(expected);
+  });
+
+  it("a LOCKED Great Bombard fires as an ordinary single-die siege gun", () => {
+    // p1 has NOT unlocked it → the piece is treated as one generic SIEGE gun.
+    const state = makeState({
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 2, hp: 10 },
+          garrison: 1,
+        }),
+      ],
+      armies: [bombardArmy("gb", "p1", "keep")],
+      siegeStates: [siegeState({ besiegingArmyIds: ["gb"] })],
+    });
+    const singleDie = SIEGE.bombardDamage[makeRng(SEED, 0).rollD6()];
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.wallHpRemaining).toBe(10 - singleDie);
+  });
+
+  it("an UNLOCKED Great Bombard cracks Theodosian walls despite Byzantine auto-repel (§8.3/§8.4)", () => {
+    const p1 = { ...player("p1", Faction.OTTOMAN), greatBombardUnlocked: true };
+    const state = makeState({
+      players: [p1, player("p2", Faction.BYZANTIUM)],
+      provinces: [
+        province("constantinople", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 3, hp: 16 },
+          garrison: 1,
+        }),
+      ],
+      armies: [bombardArmy("gb", "p1", "constantinople")],
+      siegeStates: [siegeState({ provinceId: "constantinople", besiegingArmyIds: ["gb"] })],
+    });
+    // Round 1 is inside the auto-repel window (a plain siege would deal 0), but the
+    // Bombard ignores the masonry cap → the walls still take damage.
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.wallHpRemaining).toBeLessThan(16);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CANON sea-resupply (GD §8.2)
+// ---------------------------------------------------------------------------
+
+describe("sea-resupply siege rule (GD §8.2, CANON)", () => {
+  // constantinople is coastal and adjacent to "sea-of-marmara" in the canonical map.
+  const runSiege = (seaOwner: string | null, rounds: number): number => {
+    let state = makeState({
+      provinces: [
+        province("constantinople", {
+          ownerId: "p2",
+          coastal: true,
+          walls: { tier: 0, hp: 0 },
+          garrison: 5,
+        }),
+      ],
+      // SIEGE-only besieger: no assault troops, so the garrison can only starve.
+      armies: [army("s1", "p1", "constantinople", { [UnitType.SIEGE]: 30 })],
+      seaZones: [{ id: "sea-of-marmara", name: "sea-of-marmara", position: { x: 0, y: 0 }, blockadedBy: seaOwner }],
+      siegeStates: [siegeState({ provinceId: "constantinople", grainStores: 99 })],
+    });
+    for (let i = 0; i < rounds; i += 1) {
+      const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
+      state = res.state;
+    }
+    return state.provinces[0].garrison ?? 0;
+  };
+
+  it("a friendly/neutral adjacent sea keeps a coastal city fed (no starvation)", () => {
+    // sea-of-marmara uncontrolled → open lane → garrison never starves.
+    expect(runSiege(null, SIEGE.baseHoldoutRounds + 3)).toBe(5);
+  });
+
+  it("an ENEMY-controlled adjacent sea allows the coastal city to starve", () => {
+    // sea-of-marmara blockaded by the besieger (p1) → lane cut → starvation resumes.
+    expect(runSiege("p1", SIEGE.baseHoldoutRounds + 1)).toBeLessThan(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §8 multi-round siege progression
+// ---------------------------------------------------------------------------
+
+describe("multi-round siege progression (§8)", () => {
+  it("bombardment reduces wall HP across successive COMBAT phases and persists the SiegeState", () => {
+    let state = makeState({
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 2, hp: 10 },
+          garrison: 3,
+        }),
+      ],
+      // 1 SIEGE (1–3 dmg/round, no assault troops): HP strictly falls but the
+      // 10-HP wall cannot breach within 3 rounds (max 9 dmg), so the strict-<
+      // assertion never hits the HP=0 floor.
+      armies: [army("s1", "p1", "keep", { [UnitType.SIEGE]: 1 })],
+      siegeStates: [siegeState({ besiegingArmyIds: ["s1"] })],
+    });
+    let prevHp = state.provinces[0].walls.hp;
+    let prevRounds = 0;
+    for (let i = 0; i < 3; i += 1) {
+      const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
+      state = res.state;
+      // §8.2.2 bombardment removes ≥1 HP/round while walls stand.
+      expect(res.wallHpRemaining).toBeLessThan(prevHp);
+      prevHp = res.wallHpRemaining;
+      // the SiegeState persists and its round counter advances.
+      const live = state.siegeStates.find((s) => s.provinceId === "keep");
+      expect(live).toBeDefined();
+      expect(live?.roundsElapsed).toBe(prevRounds + 1);
+      prevRounds = live?.roundsElapsed ?? 0;
+    }
+  });
+
+  it("tracks the starvation timer once the hold-out elapses (§8.2.3)", () => {
+    let state = makeState({
+      provinces: [
+        province("keep", { ownerId: "p2", walls: { tier: 0, hp: 0 }, garrison: 6 }),
+      ],
+      armies: [army("s1", "p1", "keep", { [UnitType.SIEGE]: 30 })],
+      siegeStates: [siegeState({ besiegingArmyIds: ["s1"], grainStores: 99 })],
+    });
+    for (let i = 0; i < SIEGE.baseHoldoutRounds + 2; i += 1) {
+      const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
+      state = res.state;
+    }
+    const live = state.siegeStates.find((s) => s.provinceId === "keep");
+    // two starvation ticks past a 3-round hold-out.
+    expect(live?.starvationCounter).toBe(2);
+    expect(state.provinces[0].garrison).toBe(6 - 2 * SIEGE.starvationLossPerRound);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §7.3/§7.5 modifier readers (combat_mod, morale, siege_mod)
+// ---------------------------------------------------------------------------
+
+describe("combat modifier readers (§7.3/§7.5, CONTRACT2 §12.10)", () => {
+  const contested = (mods: ActiveModifier[]): GameState =>
+    makeState({
+      provinces: [province("field", { ownerId: "p2", terrain: TerrainType.PLAINS })],
+      armies: [
+        army("a1", "p1", "field", { [UnitType.INFANTRY]: 5 }),
+        army("d1", "p2", "field", { [UnitType.INFANTRY]: 5 }),
+      ],
+      activeModifiers: mods,
+    });
+  const battle: PendingBattle = {
+    id: "b1",
+    provinceId: "field",
+    attackerId: "p1",
+    defenderId: "p2",
+    attackerStackIds: ["a1"],
+    defenderStackIds: ["d1"],
+  };
+
+  it("a combat_mod on the defender changes the deterministic outcome", () => {
+    const baseline = resolveBattle(contested([]), battle, makeRng(SEED, 0));
+    const buff: ActiveModifier = {
+      id: "cm",
+      scope: "round",
+      kind: "combat_mod",
+      target: { faction: Faction.BYZANTIUM }, // p2's faction
+      value: 4,
+    };
+    const withMod = resolveBattle(contested([buff]), battle, makeRng(SEED, 0));
+    // The modifier was READ: the same seed produces a materially different result.
+    expect(withMod).not.toEqual(baseline);
+    // deterministic under the modifier
+    const withMod2 = resolveBattle(contested([buff]), battle, makeRng(SEED, 0));
+    expect(withMod2).toEqual(withMod);
+  });
+
+  it("a morale modifier shifts the rout threshold and changes the outcome", () => {
+    // A grind where the defender degrades below 50% while still alive, so a rout
+    // check fires. Comparing morale +6 (threshold→0, NEVER routs) against −6
+    // (threshold→6, ALWAYS routs) guarantees divergence independent of the d6.
+    const grind = (mods: ActiveModifier[]): GameState =>
+      makeState({
+        provinces: [province("field", { ownerId: "p2", terrain: TerrainType.PLAINS })],
+        armies: [
+          army("a1", "p1", "field", { [UnitType.INFANTRY]: 10 }),
+          army("d1", "p2", "field", { [UnitType.INFANTRY]: 6 }),
+        ],
+        activeModifiers: mods,
+      });
+    const morale = (value: number): ActiveModifier => ({
+      id: `mor${value}`,
+      scope: "round",
+      kind: "morale",
+      target: { faction: Faction.BYZANTIUM }, // the defender
+      value,
+    });
+    const neverRout = resolveBattle(grind([morale(6)]), battle, makeRng(SEED, 0));
+    const alwaysRout = resolveBattle(grind([morale(-6)]), battle, makeRng(SEED, 0));
+    expect(alwaysRout).not.toEqual(neverRout);
+  });
+
+  it("a siege_mod adds to bombardment wall damage", () => {
+    const base = bombardOnlyState();
+    const boosted = makeState({
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 2, hp: 10 },
+          garrison: 2,
+        }),
+      ],
+      armies: [army("s1", "p1", "keep", { [UnitType.SIEGE]: 1 })],
+      siegeStates: [siegeState()],
+      activeModifiers: [
+        {
+          id: "sm",
+          scope: "round",
+          kind: "siege_mod",
+          target: { faction: Faction.OTTOMAN }, // p1's faction
+          value: 2,
+        },
+      ],
+    });
+    const baseRes = resolveSiege(base, base.siegeStates[0], makeRng(SEED, 0));
+    const boostRes = resolveSiege(boosted, boosted.siegeStates[0], makeRng(SEED, 0));
+    expect(10 - boostRes.wallHpRemaining).toBe(10 - baseRes.wallHpRemaining + 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §7.7 tactic hook (attacker-then-defender, ≤1 per side per round)
+// ---------------------------------------------------------------------------
+
+describe("tactic hook in the battle round loop (§7.7)", () => {
+  it("plays attacker-then-defender, at most one card per side per round, without mutating the input", () => {
+    const calls: { side: string; cardId: string }[] = [];
+    vi.mocked(playTactic).mockImplementation(
+      (state: GameState, _battle, side: string, cardId) => {
+        calls.push({ side, cardId: String(cardId) });
+        return state; // no-op resolver: we assert only the hook wiring
+      },
+    );
+    const state = makeState({
+      provinces: [province("field", { ownerId: "p2", terrain: TerrainType.PLAINS })],
+      armies: [
+        army("a1", "p1", "field", { [UnitType.INFANTRY]: 12 }),
+        army("d1", "p2", "field", { [UnitType.LEVY]: 1 }),
+      ],
+    });
+    const battle: PendingBattle = {
+      id: "b1",
+      provinceId: "field",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+      // two attacker cards queued but a single round should consume only the first.
+      attackerTactics: [asTacticCardId("atk-a"), asTacticCardId("atk-b")],
+      defenderTactics: [asTacticCardId("def-a")],
+    };
+    const res = resolveBattle(state, battle, makeRng(SEED, 0));
+
+    // Attacker declares first each round; ≤1 per side per round.
+    const attackerCalls = calls.filter((c) => c.side === "attacker");
+    const defenderCalls = calls.filter((c) => c.side === "defender");
+    expect(attackerCalls.length).toBe(Math.min(2, res.rounds));
+    expect(defenderCalls.length).toBe(Math.min(1, res.rounds));
+    expect(calls[0]).toEqual({ side: "attacker", cardId: "atk-a" });
+    if (res.rounds >= 1) {
+      // within a round, the attacker's card resolves before the defender's.
+      const firstDefIdx = calls.findIndex((c) => c.side === "defender");
+      expect(firstDefIdx).toBe(1);
+      expect(calls[1]).toEqual({ side: "defender", cardId: "def-a" });
+    }
+    // FIFO consumption: the 2nd attacker card only plays if the fight ran ≥2 rounds.
+    if (res.rounds < 2) {
+      expect(calls.some((c) => c.cardId === "atk-b")).toBe(false);
+    }
+    // PURITY: the caller's input battle queues are untouched.
+    expect(battle.attackerTactics).toEqual([asTacticCardId("atk-a"), asTacticCardId("atk-b")]);
+    expect(battle.defenderTactics).toEqual([asTacticCardId("def-a")]);
+
+    vi.mocked(playTactic).mockReset();
+    vi.mocked(playTactic).mockImplementation((s: GameState) => s);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §13 prestige signals (prestige_pending)
+// ---------------------------------------------------------------------------
+
+describe("prestige signals (§13, CONTRACT2 §12.8)", () => {
+  it("posts a prestige_pending award to the winner on a decisive battle (never mutates prestige)", () => {
+    const state = makeState({
+      provinces: [province("field", { ownerId: "p2", terrain: TerrainType.PLAINS })],
+      armies: [
+        army("a1", "p1", "field", { [UnitType.CAVALRY]: 12, [UnitType.INFANTRY]: 6 }),
+        army("d1", "p2", "field", { [UnitType.LEVY]: 3 }),
+      ],
+    });
+    const battle: PendingBattle = {
+      id: "b1",
+      provinceId: "field",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+    };
+    const res = resolveBattle(state, battle, makeRng(SEED, 0));
+    expect(res.winnerId).toBe("p1");
+    const pend = res.state.activeModifiers.filter((m) => m.kind === "prestige_pending");
+    // at least the decisive-battle +1 targeting the winner's faction (OTTOMAN).
+    const decisive = pend.find((m) => m.data?.reason === "decisive_battle");
+    expect(decisive).toBeDefined();
+    expect(decisive?.value).toBe(CONQUEST_PRESTIGE.decisiveBattle);
+    expect(decisive?.scope).toBe("round");
+    expect(decisive?.target?.faction).toBe(Faction.OTTOMAN);
+    // combat must NOT mutate Player.prestige directly (prestige is scored later).
+    expect(res.state.players.find((p) => p.id === "p1")?.prestige).toBe(0);
+  });
+
+  it("posts a walled-city award (+3 at high tier) when a storm captures a T4–T5 city", () => {
+    const state = makeState({
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.PLAINS,
+          walls: { tier: 3, hp: 0 }, // already breached → field-odds assault
+          garrison: 1,
+        }),
+      ],
+      armies: [army("s1", "p1", "keep", { [UnitType.INFANTRY]: 20 })],
+      siegeStates: [siegeState()],
+    });
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.captured).toBe(true);
+    const pend = res.state.activeModifiers.filter((m) => m.kind === "prestige_pending");
+    const city = pend.find((m) => m.data?.reason === "take_walled_city");
+    expect(city?.value).toBe(CONQUEST_PRESTIGE.takeWalledCityHighTier);
+    expect(city?.target?.faction).toBe(Faction.OTTOMAN);
   });
 });

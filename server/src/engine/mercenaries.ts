@@ -6,6 +6,13 @@
  * as mercenary-tagged units in the winner's capital or an owned CITY (a gold
  * sink), and handing unsold companies to a random NPC minor on a 1d6 ≤ 2 roll.
  *
+ * CANON #6 / GD §6.2: the Genoa ×1.0-gold / waived-surcharge benefit is scoped to
+ * ORDINARY mercenary hiring (the RECRUIT `mercenary` path, §6.2) — it does NOT
+ * apply to bid-market bids. In this auction (§6.3) EVERY faction, Genoa included,
+ * bids and pays at FACE VALUE: the winner pays exactly the winning bid in gold
+ * (GD §6.3 step 3, "paying the winning bid in gold"). There is no ×1.5 premium
+ * and no Genoa ×1.0 discount here — those live in the §6.2 ordinary-hire path.
+ *
  * Every number is read from balance.MERC_COMPANIES / MERC_MARKET. Functions are
  * pure: they treat the input state as immutable and return a new GameState. The
  * only randomness (market composition, the NPC-hire roll) flows through the
@@ -19,7 +26,6 @@
  * cast, mirroring how economy.ts reads it. See NEEDS-FROM-INTEGRATOR.
  */
 import {
-  Faction,
   TerrainType,
   UnitType,
   type GameAction,
@@ -51,16 +57,6 @@ function rosterSize(def: MercCompanyDef): number {
 }
 
 /**
- * The gold multiplier the winner pays on their bid (§6.3): Genoa hires at par
- * (no premium); everyone else pays the standard mercenary premium.
- */
-function hireMultiplier(player: Player): number {
-  return player.faction === Faction.GENOA
-    ? MERC_MARKET.genoaGoldMultiplier // §6.3 Genoa pays ×1.0 (no premium)
-    : MERC_MARKET.hireGoldMultiplier; // §6.3 mercenary ×1.5 premium
-}
-
-/**
  * The legal province a player may field a company in (§6.3): their capital, else
  * any owned CITY-terrain province. Undefined when the player controls neither.
  */
@@ -82,11 +78,14 @@ function fieldLocation(state: GameState, player: Player): Province | undefined {
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve an offer with a standing high bid: the winner pays `bid × premium`
- * (§6.3 gold sink) and instantly fields the company's roster as mercenary-tagged
- * units in a legal city (capital or owned CITY). Marks the offer sold. If the
- * winner controls no legal city or can no longer afford the premium, the company
- * disperses (still marked resolved). Deterministic — consumes no RNG. Pure.
+ * Resolve an offer with a standing high bid: the winner pays the winning bid in
+ * gold at FACE VALUE (GD §6.3 step 3 gold sink) and instantly fields the
+ * company's roster as mercenary-tagged units in a legal city (capital or owned
+ * CITY). Marks the offer sold. Per CANON #6 / GD §6.2 the Genoa ×1.0 benefit is
+ * ordinary-hire-only, so NO faction multiplier is applied here — Genoa pays the
+ * same face-value bid as everyone else. If the winner controls no legal city or
+ * can no longer afford the bid, the company disperses (still marked resolved).
+ * Deterministic — consumes no RNG. Pure.
  */
 function fieldCompany(state: GameState, companyId: string): GameState {
   const next = structuredClone(state) as GameState;
@@ -96,11 +95,15 @@ function fieldCompany(state: GameState, companyId: string): GameState {
   const winner = next.players.find((p) => p.id === offer.highBidderId);
   if (!def || !winner) return state;
 
-  const price = Math.floor(offer.currentBid * hireMultiplier(winner));
+  // GD §6.3 step 3: the winner pays the winning bid in gold, face value. No ×1.5
+  // premium and no Genoa ×1.0 discount in the auction (CANON #6 / §6.2 — those
+  // multipliers belong to the §6.2 ordinary-hire RECRUIT path, not the market).
+  const price = offer.currentBid;
   const loc = fieldLocation(next, winner);
 
   if (!loc || winner.treasury.gold < price) {
-    // §6.3 no legal city to field in (or the purse is now short): disperse.
+    // §6.3 no legal city to field in (or the purse can no longer cover the
+    // winning bid): the company disperses and the bid lapses.
     offer.sold = true;
     return appendLog(next, {
       round: next.round,
@@ -328,9 +331,16 @@ export function applyMercBid(state: GameState, action: GameAction): GameState {
     data: { companyId: action.companyId, bid },
   });
 
-  // §6.3 bidding continues round-robin until one bidder remains: with no other
-  // player able to afford a legal raise, the auction closes and the winner is
-  // fielded at once.
+  // §6.3 step 2: bidding proceeds round-robin in turn order; each rival either
+  // raises by ≥ minBidRaise or passes, and the auction closes when all but the
+  // high bidder have passed, whereupon the winner is fielded at once (step 3).
+  //
+  // Proper pass tracking needs per-offer state (which rivals have passed / whose
+  // turn it is) that the frozen `MercCompanyOffer` does not carry — see
+  // NEEDS-FROM-INTEGRATOR. Deterministic fallback until those fields land: a rival
+  // who cannot afford a legal raise (currentBid + minBidRaise) is treated as
+  // having passed, so once no rival can out-raise the standing bid the auction
+  // closes and the winner is fielded. This is pure and seed-independent.
   const someoneCanRaise = next.players.some(
     (p) => p.id !== player.id && p.treasury.gold >= bid + MERC_MARKET.minBidRaise,
   );

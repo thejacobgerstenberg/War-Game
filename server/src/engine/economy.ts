@@ -101,6 +101,111 @@ function isIncomeSuppressed(state: GameState, provinceId: string): boolean {
   return getModifiers(state, "no_income", { provinceId }).length > 0;
 }
 
+/**
+ * Resolve a faction's faith-income modifiers into an additive delta and a list
+ * of multiplicative factors (§4.1 / §13, CONTRACT2 §12.10). Two readers coexist:
+ *
+ *  - `faith_income` with a numeric `value` and NO `data.multiplier` is ADDITIVE
+ *    (a faith yield delta — e.g. a shrine/relic bonus).
+ *  - a MULTIPLICATIVE effect (e.g. #28 Papal Interdict's faith ×0, which an
+ *    additive sum can never zero) is read either from a dedicated `faith_mult`
+ *    kind, or from a `faith_income` modifier carrying `data.multiplier` (the form
+ *    the events subsystem currently posts for the Interdict — see events/index.ts
+ *    case 28: `kind:'faith_income', value:0, data:{multiplier:0}`).
+ */
+function faithModifiers(
+  state: GameState,
+  faction: Faction,
+): { add: number; mults: number[] } {
+  let add = 0;
+  const mults: number[] = [];
+  for (const m of getModifiers(state, "faith_income", { faction })) {
+    const mult = m.data?.multiplier;
+    if (mult !== undefined && mult !== null) {
+      mults.push(Number(mult)); // multiplicative faith_income (Interdict ×0 path)
+    } else {
+      add += m.value ?? 0; // additive faith yield delta
+    }
+  }
+  // Dedicated multiplicative kind (coordination target for events; CONTRACT2 §12.10).
+  for (const m of getModifiers(state, "faith_mult", { faction })) {
+    mults.push(m.value ?? 1);
+  }
+  return { add, mults };
+}
+
+// ---------------------------------------------------------------------------
+// Specialty 1:1 trade lane (§4.3 / §5)
+// ---------------------------------------------------------------------------
+
+/** Tradeable non-gold, non-faith resources (faith is never tradeable, §4.3). */
+type SpecialtyKey = "grain" | "timber" | "marble";
+/** Tie-break priority when a port's dominant secondary yield is ambiguous. */
+const SPECIALTY_KEYS: SpecialtyKey[] = ["timber", "marble", "grain"];
+
+/**
+ * The "port's specialty" good (§4.3 trade-ratio table). The docs name the lane
+ * ("1:1 for gold↔the port's specialty") but never enumerate a per-faction good,
+ * so it is derived self-containedly as the port's dominant secondary yield (the
+ * resource, other than gold/faith, that the province produces most of). See the
+ * PR ambiguity note.
+ */
+function portSpecialty(prov: Province): SpecialtyKey {
+  let best: SpecialtyKey = SPECIALTY_KEYS[0];
+  let bestVal = -1;
+  for (const k of SPECIALTY_KEYS) {
+    const v = prov.yields[k] ?? 0;
+    if (v > bestVal) {
+      bestVal = v;
+      best = k;
+    }
+  }
+  return best;
+}
+
+/** Owned ports that grant a specialty 1:1 lane (§4.3), with their specialty good. */
+function specialtyPorts(
+  state: GameState,
+  player: Player,
+): { prov: Province; specialty: SpecialtyKey }[] {
+  const out: { prov: Province; specialty: SpecialtyKey }[] = [];
+  for (const prov of ownedProvinces(state, player.id)) {
+    // §4.3 trade-ratio port: Venice/Genoa at a coastal port, or a Grand Bazaar.
+    const qualifies =
+      (isMaritimeFaction(player.faction) && prov.coastal) ||
+      hasCompletedGreatWork(prov, GreatWorkType.GRAND_BAZAAR);
+    if (qualifies) out.push({ prov, specialty: portSpecialty(prov) });
+  }
+  return out;
+}
+
+/**
+ * §4.3/§5 specialty lane: Venice/Genoa (at their own port) and Grand-Bazaar
+ * holders trade **gold↔the port's specialty good at 1:1**. Returns
+ * `MARKET_RATIOS.specialty` when `give`/`get` is exactly a pure gold↔specialty
+ * swap on a qualifying port, else `null` (the ordinary ratio stands).
+ */
+function specialtyLaneRatio(
+  state: GameState,
+  player: Player,
+  give: Partial<ResourceBundle>,
+  get: Partial<ResourceBundle>,
+): number | null {
+  const ports = specialtyPorts(state, player);
+  if (ports.length === 0) return null;
+  const giveKeys = RESOURCE_KEYS.filter((k) => (give[k] ?? 0) > 0);
+  const getKeys = RESOURCE_KEYS.filter((k) => (get[k] ?? 0) > 0);
+  const all = new Set<string>([...giveKeys, ...getKeys]);
+  // Must be a pure two-resource swap where exactly one side is gold.
+  if (all.size !== 2 || !all.has("gold")) return null;
+  const goldGive = giveKeys.length === 1 && giveKeys[0] === "gold";
+  const goldGet = getKeys.length === 1 && getKeys[0] === "gold";
+  if (!goldGive && !goldGet) return null;
+  const other = [...all].find((k) => k !== "gold") as SpecialtyKey | undefined;
+  if (!other) return null;
+  return ports.some((p) => p.specialty === other) ? MARKET_RATIOS.specialty : null;
+}
+
 // ---------------------------------------------------------------------------
 // Trade routes (stored on the ActiveModifier side-channel; see NEEDS-FROM-INTEGRATOR)
 // ---------------------------------------------------------------------------
@@ -233,7 +338,13 @@ function grainDue(state: GameState, playerId: string): number {
       due += v.count * UNIT_STATS[v.base].grainUpkeep;
     }
   }
-  return due;
+  // §4.4 event/tactic upkeep delta: an 'upkeep_mod' modifier (CONTRACT2 §12.10)
+  // adds to (or, if negative, relieves) the grain a faction owes this phase.
+  const player = playerById(state, playerId);
+  if (player?.faction) {
+    due += sumModifierValues(state, "upkeep_mod", { faction: player.faction });
+  }
+  return Math.max(0, due);
 }
 
 // ---------------------------------------------------------------------------
@@ -268,15 +379,26 @@ export function computeIncome(state: GameState): IncomeResult {
     }
 
     // §5.2 trade-route gold (before piracy).
+    let routeGold = 0;
     for (const route of tradeRoutesFor(state, player.id)) {
-      income.gold += routeIncome(state, route);
+      routeGold += routeIncome(state, route);
     }
-
-    // Card-posted faith income side-channel (kind='faith_income').
+    // §5.2 event/tactic 'trade_mod' delta on route gold (CONTRACT2 §12.10) —
+    // e.g. #18 Venetian–Genoese War (−2 trade). Floored at 0 (never negative gold).
     if (player.faction) {
-      income.faith += sumModifierValues(state, "faith_income", {
+      routeGold += sumModifierValues(state, "trade_mod", {
         faction: player.faction,
       });
+    }
+    income.gold += Math.max(0, routeGold);
+
+    // §4.1/§13 faith income modifiers (kind='faith_income'/'faith_mult'): additive
+    // yield deltas plus multiplicative effects (#28 Papal Interdict faith ×0).
+    if (player.faction) {
+      const { add, mults } = faithModifiers(state, player.faction);
+      income.faith += add;
+      for (const mult of mults) income.faith = Math.floor(income.faith * mult);
+      income.faith = Math.max(0, income.faith);
     }
 
     // §4.2 taxation multiplier applies to gold only (floor fractional gold).
@@ -360,6 +482,8 @@ export function applyIncomePhase(state: GameState): GameState {
       if (prov.ownerId !== player.id) continue;
       if (rng.rollD6() > TAX_REVOLT.heavyRevoltRoll) continue; // revolt on d6 <= 1
       prov.ownerId = null; // §4.2 revolting province flips to neutral
+      // No dedicated 'revolt'/'unrest' GameLogType exists (see NEEDS-FROM-INTEGRATOR);
+      // 'phase' is the closest generic member for this Income-phase upheaval.
       next = appendLog(next, {
         round: next.round,
         phase: next.phase,
@@ -412,10 +536,14 @@ export function upkeep(state: GameState): GameState {
       deserted[u] = (deserted[u] ?? 0) + n;
     };
 
-    // Phase A: mercenaries desert FIRST and at DOUBLE rate (§4.4) — for each
-    // mercenary that covers its upkeep, a second of the same type also flees.
+    // Phase A: mercenaries desert FIRST and at DOUBLE rate (§4.4). A mercenary's
+    // upkeep is MERC_UPKEEP_MULTIPLIER × the base (that ×2 is already counted in
+    // grainDue), so each mercenary that deserts relieves its own doubled upkeep
+    // from the outstanding deficit. This keeps the ledger balanced (the merc
+    // train that created the doubled shortfall is exactly what unwinds it) rather
+    // than culling a phantom second unit per grain owed.
     for (const u of DESERTION_ORDER) {
-      const per = UNIT_STATS[u].grainUpkeep;
+      const per = UNIT_STATS[u].grainUpkeep * MERC_UPKEEP_MULTIPLIER;
       for (const stack of stacks) {
         const m = stack.mercenaries;
         while (deficit > 0 && mercCount(stack, u) > 0) {
@@ -423,12 +551,6 @@ export function upkeep(state: GameState): GameState {
           if (m) m[u] = (m[u] ?? 0) - 1;
           record(u, 1);
           deficit -= per;
-          // Double-rate penalty: a second mercenary of this type also deserts.
-          if (mercCount(stack, u) > 0) {
-            stack.units[u] -= 1;
-            if (m) m[u] = (m[u] ?? 0) - 1;
-            record(u, 1);
-          }
         }
         if (deficit <= 0) break;
       }
@@ -456,10 +578,12 @@ export function upkeep(state: GameState): GameState {
       0,
     );
     if (totalDeserted > 0) {
+      // No dedicated 'desertion' GameLogType exists; 'mercenary' is the closest
+      // military-economy member (mercenaries desert first at double rate, §4.4).
       next = appendLog(next, {
         round: next.round,
         phase: next.phase,
-        type: "phase",
+        type: "mercenary",
         actors: [player.id],
         message: `${player.name} cannot feed the host: ${totalDeserted} unit(s) desert to starvation.`,
         data: { deserted },
@@ -525,7 +649,19 @@ export function applyTrade(state: GameState, action: GameAction): GameState {
     if (getTotal <= 0 || giveTotal <= 0) {
       throw new EngineError("BAD_TRADE", "Trade must give and get resources.");
     }
-    const ratio = bestMarketRatio(state, player);
+    let ratio = bestMarketRatio(state, player);
+    // §4.3 event/tactic 'trade_mod' ratio delta (CONTRACT2 §12.10): positive
+    // improves the ratio, negative worsens it; never better than the 1:1 floor.
+    if (player.faction) {
+      const tradeMod = sumModifierValues(state, "trade_mod", {
+        faction: player.faction,
+      });
+      ratio = Math.max(MARKET_RATIOS.bazaar, ratio - tradeMod);
+    }
+    // §4.3/§5 specialty 1:1 lane: Venice/Genoa (own port) & Grand Bazaar trade
+    // gold↔the port's specialty good at 1:1.
+    const specialty = specialtyLaneRatio(state, player, trade.give, trade.get);
+    if (specialty !== null) ratio = Math.min(ratio, specialty);
     if (giveTotal < getTotal * ratio) {
       throw new EngineError(
         "BAD_TRADE",
