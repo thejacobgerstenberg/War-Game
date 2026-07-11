@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
   pull_request:
+    # edited is needed because base-branch retargets fire only that event (types overrides defaults, so list them all).
+    types: [opened, synchronize, reopened, edited]
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
