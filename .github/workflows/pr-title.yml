@@ -1,0 +1,40 @@
+name: PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title is not an obvious placeholder
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          # Trim leading/trailing whitespace.
+          title="$(printf '%s' "$PR_TITLE" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          lower="$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]')"
+
+          if [ -z "$title" ]; then
+            echo "PR title is empty. Please add a short, descriptive title."
+            exit 1
+          fi
+
+          case "$lower" in
+            update|wip|test|fix|changes|stuff|misc)
+              echo "PR title \"$title\" is a placeholder. Please describe what the change does."
+              exit 1
+              ;;
+          esac
+
+          if [ "${#title}" -lt 8 ]; then
+            echo "PR title is too short (${#title} chars). Please use at least 8 characters."
+            exit 1
+          fi
+
+          echo "PR title looks good: \"$title\""

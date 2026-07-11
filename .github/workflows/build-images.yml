@@ -1,0 +1,118 @@
+# Build & push GHCR images (adopted from deploy/workflows-proposed/ in PR #4,
+# owned by the deploy workstream; reviewed + adapted by the CI workstream).
+#
+# Scope: BUILD-ONLY. On pushes to main, builds server + client images from
+# deploy/Dockerfile.* and pushes ghcr.io/<owner>/<repo>/{server,client}
+# tagged :latest and :<sha>. Nothing auto-deploys — Fly deploy stays manual
+# per deploy/README.md.
+#
+# Notes:
+# - GHCR repo paths must be lowercase; War-Game is not, hence the
+#   lowercase step before tagging. buildx rejects uppercase tags.
+# - No lockfile exists yet, so the Dockerfiles use npm install; move them
+#   (and ci.yml) to npm ci once package-lock.json is committed.
+# - Keep paths-ignore in sync with any path filters ci.yml adopts.
+
+name: Build Images
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "audio/**"
+      - "art/**"
+      - "docs/**"
+      - "lore/**"
+  workflow_dispatch:
+
+concurrency:
+  group: build-images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # TODO(scaffold): remove this guard job once the scaffold (root package.json
+  # + server/ + client/ + shared/) has merged to main — it exists only so a
+  # pre-scaffold main stays green instead of failing inside `docker build`
+  # when the Dockerfiles COPY paths that don't exist yet.
+  scaffold-present:
+    runs-on: ubuntu-latest
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        name: Check that the workspace scaffold exists
+        run: |
+          if [ -f package.json ] && [ -d server ] && [ -d client ] && [ -d shared ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "Scaffold not on this ref yet (need package.json, server/, client/, shared/) — skipping image builds." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  build-server:
+    runs-on: ubuntu-latest
+    needs: scaffold-present
+    if: needs.scaffold-present.outputs.present == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ghcr.io/${{ github.repository }} lowercased — OCI repository names
+      # must be lowercase and buildx rejects uppercase tags outright.
+      - id: image
+        name: Compute lowercase image base
+        run: echo "base=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile.server
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ steps.image.outputs.base }}/server:latest
+            ${{ steps.image.outputs.base }}/server:${{ github.sha }}
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+
+  build-client:
+    runs-on: ubuntu-latest
+    needs: scaffold-present
+    if: needs.scaffold-present.outputs.present == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: image
+        name: Compute lowercase image base
+        run: echo "base=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile.client
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ steps.image.outputs.base }}/client:latest
+            ${{ steps.image.outputs.base }}/client:${{ github.sha }}
+          cache-from: type=gha,scope=client
+          cache-to: type=gha,mode=max,scope=client

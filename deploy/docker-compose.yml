@@ -1,0 +1,76 @@
+# =============================================================================
+# IMPERIUM: Twilight of Empires — one-command prod-like stack
+#
+# Run FROM THE REPO ROOT:
+#   docker compose -f deploy/docker-compose.yml up --build
+#
+# Relative paths in this file resolve against THIS FILE's directory (compose
+# spec), so `context: ..` is the repo root no matter where you invoke it from;
+# `dockerfile:` is then relative to that context.
+#
+# Play at http://localhost:3000 — nginx serves the SPA and proxies /socket.io/
+# and /healthz to the server, so the browser talks to a single origin.
+# One room lives on exactly one server instance (in-memory state): keep the
+# server at scale = 1 until a room-affinity layer exists.
+# =============================================================================
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      # Allowed origins for socket.io/http (comma-separated). Points at the
+      # client origin published below; only relevant for direct cross-origin
+      # access — in-browser traffic is same-origin through the nginx proxy.
+      CORS_ORIGIN: http://localhost:3000
+      # Empty rooms reaped after this many seconds (canonical default 3600).
+      ROOM_TTL_SECONDS: "3600"
+      LOG_LEVEL: info
+    # Not published on the host: the client's nginx proxies to it on the
+    # compose network as "server:8080". Uncomment to hit it directly:
+    # ports:
+    #   - "8080:8080"
+    expose:
+      - "8080"
+    healthcheck:
+      # Canonical GET /healthz -> 200 {"status":"ok","rooms":<int>,"uptime":<seconds>}
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:'+(process.env.PORT||8080)+'/healthz').then(function(r){process.exit(r.ok?0:1)}).catch(function(){process.exit(1)})",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # Graceful shutdown drains in-flight turns for up to 20s on SIGTERM;
+    # give it a little headroom before compose escalates to SIGKILL.
+    stop_grace_period: 25s
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.client
+      args:
+        # Explicitly empty = same-origin: the bundle lets socket.io connect to
+        # window.location.origin and nginx proxies /socket.io/ to the server.
+        # Set to a full URL only for split deployments where the SPA and the
+        # game server live on different origins (see deploy/Dockerfile.client).
+        VITE_SERVER_URL: ""
+    ports:
+      # Host 3000 -> nginx :8080 (the unprivileged nginx image's internal
+      # port; non-root nginx can't bind 80). The container-side 8080 is
+      # unrelated to the server's 8080 — different containers. If you change
+      # the host port, change CORS_ORIGIN above.
+      - "3000:8080"
+    depends_on:
+      # Startup ordering only. nginx tolerates the upstream briefly resolving
+      # before the server accepts connections.
+      # TODO(scaffold): tighten to `server: {condition: service_healthy}` once the server implements /healthz — today that condition would never be met and `up` would hang.
+      - server
+    restart: unless-stopped

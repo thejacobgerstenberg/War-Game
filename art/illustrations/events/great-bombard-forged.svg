@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Great Bombard Forged</title>
+  <rect x="0" y="0" width="260" height="160" fill="#E2D3B3"/>
+  <rect x="0" y="146" width="260" height="14" fill="#2B2118"/>
+  <rect x="226" y="54" width="34" height="92" fill="#4B1F3F"/>
+  <rect x="226" y="42" width="8" height="14" fill="#4B1F3F"/>
+  <rect x="239" y="42" width="8" height="14" fill="#4B1F3F"/>
+  <rect x="252" y="42" width="8" height="14" fill="#4B1F3F"/>
+  <polygon points="236,54 242,68 234,86 243,104 237,124 242,124 248,104 239,86 247,68 241,54" fill="#E2D3B3"/>
+  <polygon points="214,64 224,60 226,70 216,73" fill="#4B1F3F"/>
+  <polygon points="206,84 214,82 216,90 208,92" fill="#4B1F3F"/>
+  <circle cx="212" cy="42" r="8" fill="#2B2118"/>
+  <polygon points="46,116 98,104 102,146 50,146" fill="#2B2118"/>
+  <polygon points="20,79 146,53 154,87 30,121" fill="#2B2118"/>
+  <circle cx="14" cy="101" r="10" fill="#2B2118"/>
+  <circle cx="72" cy="128" r="22" fill="#2B2118"/>
+  <circle cx="72" cy="128" r="6" fill="#C9A227"/>
+  <polygon points="54,71 61,70 71,111 64,112" fill="#C9A227"/>
+  <polygon points="98,63 105,61 114,98 107,100" fill="#C9A227"/>
+  <polygon points="200,64 180,60 194,45 176,53 178,34 168,51 158,34 160,53 142,45 156,60 136,64 156,68 142,83 160,75 158,94 168,77 178,94 176,75 194,83 180,68" fill="#7A1F2B"/>
+  <polygon points="184,64 175,62 181,55 172,58 173,49 168,57 163,49 164,58 155,55 161,62 152,64 161,66 155,73 164,70 163,79 168,71 173,79 172,70 181,73 175,66" fill="#C9A227"/>
+</svg>
