@@ -200,9 +200,11 @@ function ownUnitsAt(
 /**
  * Raise units (and/or unique variants) in one owned province (§6.2). Validates
  * the recruitment location (capital / CITY / Barracks for land, Shipyard for
- * naval; mercenaries may raise anywhere), pays the UNIT_STATS cost from the
- * treasury (mercenaries: ×1.5 gold — Genoa ×1.0 — and 0 grain), and enforces the
- * per-player stacking limit (§6.4). Assumes the reducer has spent the action.
+ * naval; mercenaries may raise anywhere), pays the raise cost from the treasury —
+ * the UNIT_STATS base cost, or, for a unique variant with a §2.3 `cost` override in
+ * UNIQUE_UNIT_OVERRIDES, that per-unique override (§6.1; mercenaries: ×1.5 gold —
+ * Genoa ×1.0 — and 0 grain) — and enforces the per-player stacking limit (§6.4).
+ * Assumes the reducer has spent the action.
  */
 function applyRecruit(state: GameState, action: GameAction): GameState {
   if (action.type !== "RECRUIT") {
@@ -278,11 +280,24 @@ function applyRecruit(state: GameState, action: GameAction): GameState {
       ? MERC_MARKET.genoaGoldMultiplier
       : MERC_MARKET.hireGoldMultiplier;
   const cost = emptyBundle();
-  const addUnitCost = (base: UnitType, n: number): void => {
+  // §6.1 / §2.3 PER-UNIQUE RAISE COST: a unique variant whose
+  // UNIQUE_UNIT_OVERRIDES entry carries a `cost` override is priced at that
+  // override, NOT the base UnitType cost. The override is a COMPONENT-LEVEL merge
+  // (§2.3): a resource PRESENT in the override overrides that component of
+  // UNIT_STATS[base].cost; resources ABSENT from the override (and an absent
+  // override entirely) fall through to the base cost. So the Varangian Guard pays
+  // gold 6 / grain 1 (base INFANTRY grain), the Great Galley pays gold 8 / timber 1
+  // (base WARSHIP gold), and the Genoese Crossbowmen — with NO override — pay the
+  // plain base ARCHER cost (gold 3). The `variant` param threads the variant key so
+  // the merc gold-premium / 0-grain rules still layer on top of the override cost.
+  const addUnitCost = (base: UnitType, n: number, variant?: string): void => {
     const stat = UNIT_STATS[base];
+    const override = variant ? UNIQUE_UNIT_OVERRIDES[variant]?.cost : undefined;
     const merc = mercenary && !stat.naval;
     for (const k of RESOURCE_KEYS) {
-      const per = stat.cost[k] ?? 0;
+      // `?? stat.cost[k]` does the §2.3 component merge; nullish-coalescing keeps
+      // an explicit override of 0 (e.g. a waived component) authoritative.
+      const per = override?.[k] ?? stat.cost[k] ?? 0;
       if (per === 0) continue;
       if (merc && k === "gold") cost.gold += Math.ceil(per * n * mercGoldMult);
       else if (merc && k === "grain") continue; // §6.2 mercenaries eat 0 grain to raise
@@ -296,7 +311,8 @@ function applyRecruit(state: GameState, action: GameAction): GameState {
     if (v.count <= 0) continue;
     // §8.4 (delta 3): a Great Bombard variant never reaches here — a RECRUIT for
     // it is rejected above (NOT_RECRUITABLE), so no free-entry cost skip is needed.
-    addUnitCost(v.base, v.count);
+    // §6.1 / §2.3: pass the variant key so a per-unique `cost` override is charged.
+    addUnitCost(v.base, v.count, v.variant);
   }
 
   for (const k of RESOURCE_KEYS) {

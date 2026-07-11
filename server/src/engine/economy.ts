@@ -413,6 +413,49 @@ function isMercVariant(variant: string): boolean {
   );
 }
 
+/**
+ * §2.3 PER-UNIQUE ECONOMY OVERRIDE — effective GRAIN upkeep of a variant head.
+ * A unique whose UNIQUE_UNIT_OVERRIDES entry carries `grainUpkeep` is charged
+ * that value (e.g. Janissary / Black Army = 0 grain — they draw a gold donative
+ * instead, see {@link variantGoldUpkeep}); absent = the base UnitType grain
+ * upkeep. `??` keeps an explicit override of 0 (never falls through to base).
+ */
+function variantGrainUpkeep(variant: string, base: UnitType): number {
+  return UNIQUE_UNIT_OVERRIDES[variant]?.grainUpkeep ?? UNIT_STATS[base].grainUpkeep;
+}
+
+/**
+ * §2.3 PER-UNIQUE ECONOMY OVERRIDE — per-unit GOLD upkeep (donative pay) of a
+ * variant head. Only uniques with a `goldUpkeep` override draw gold each upkeep
+ * (Janissary / Black Army = 1 gold, "gold-paid" §2.3 units); base units and all
+ * other uniques owe none. Charged in the {@link upkeep} gold-upkeep path (§4.4).
+ */
+function variantGoldUpkeep(variant: string): number {
+  return UNIQUE_UNIT_OVERRIDES[variant]?.goldUpkeep ?? 0;
+}
+
+/**
+ * Gold a player owes this upkeep from §2.3 gold-paid uniques (donative pay).
+ * Mercenary variant heads pay the ×2 rate here too (kept intact, §4.4), though
+ * no current merc unique carries `goldUpkeep`. Base units never owe gold upkeep.
+ */
+function goldUpkeepDue(state: GameState, playerId: string): number {
+  let due = 0;
+  const stacks: (Army | Fleet)[] = [
+    ...state.armies.filter((a) => a.ownerId === playerId),
+    ...state.fleets.filter((f) => f.ownerId === playerId),
+  ];
+  for (const stack of stacks) {
+    for (const v of stack.variants ?? []) {
+      const per = variantGoldUpkeep(v.variant);
+      if (per <= 0) continue;
+      const mult = isMercVariant(v.variant) ? MERC_UPKEEP_MULTIPLIER : 1;
+      due += v.count * per * mult;
+    }
+  }
+  return Math.max(0, due);
+}
+
 /** Grain a player owes this Income phase: Σ unit upkeep (mercenaries ×2, §4.4). */
 function grainDue(state: GameState, playerId: string): number {
   let due = 0;
@@ -430,10 +473,14 @@ function grainDue(state: GameState, playerId: string): number {
       due += regular * per + mercs * per * MERC_UPKEEP_MULTIPLIER; // §4.4 merc double
     }
     for (const v of stack.variants ?? []) {
+      // §2.3 per-unique override: a variant whose UNIQUE_UNIT_OVERRIDES entry
+      // carries `grainUpkeep` is charged THAT amount, not the base UnitType
+      // upkeep (e.g. Janissary / Black Army = 0 grain — they draw a gold
+      // donative instead; see the gold-upkeep path in `upkeep`). Absent = base.
       // §4.4/§6.3 FL-10: elite-mercenary variant heads (e.g. the Varangian
       // Remnant) owe DOUBLE grain upkeep like any mercenary; the 10 ordinary
-      // faction uniques pay the regular rate.
-      const per = UNIT_STATS[v.base].grainUpkeep;
+      // faction uniques pay the (per-unique or base) regular rate.
+      const per = variantGrainUpkeep(v.variant, v.base);
       const mult = isMercVariant(v.variant) ? MERC_UPKEEP_MULTIPLIER : 1;
       due += v.count * per * mult;
     }
@@ -763,6 +810,80 @@ export function upkeep(state: GameState): GameState {
         targets: [prov.id],
         message: `Deserting mercenaries pillage ${prov.name}, stripping ${stripped} gold from ${victim.name}.`,
         data: { pillageGold: stripped, province: prov.id, victim: victim.id },
+      });
+    }
+  }
+
+  // --- Gold upkeep (§2.3 donative pay / §4.4) --------------------------------
+  // A unique VARIANT head carrying a `goldUpkeep` override (Janissary, Black
+  // Army — the "gold-paid" §2.3 units) draws GOLD each upkeep instead of grain.
+  // Deduct it from the treasury; on shortfall the unpaid gold-paid troops mutiny
+  // and desert until the deficit clears — the §4.4 desertion consequence applied
+  // to the gold ledger (grain has its own path above). Mercenary variant heads
+  // pay the ×2 rate here too (kept intact). Runs as a SEPARATE player loop after
+  // the grain settlement so a fed-on-grain army still answers its donative.
+  // (appendLog uses a shallow spread, so `next.players` identity — and thus the
+  // in-place treasury/variant mutations — survives each grain-loop appendLog.)
+  for (const player of next.players) {
+    const due = goldUpkeepDue(next, player.id);
+    if (due <= 0) continue;
+
+    if (player.treasury.gold >= due) {
+      player.treasury.gold -= due; // §2.3 pay the donative from the treasury
+      continue;
+    }
+
+    // Short by `deficit` gold: spend all gold, then mutiny to cover the rest.
+    let deficit = due - player.treasury.gold;
+    player.treasury.gold = 0;
+
+    const stacks: (Army | Fleet)[] = [
+      ...next.armies.filter((a) => a.ownerId === player.id),
+      ...next.fleets.filter((f) => f.ownerId === player.id),
+    ];
+    const mutinied: Partial<Record<UnitType, number>> = {};
+
+    // §4.4 desert lowest-value first among the GOLD-PAYING variant heads. Only
+    // variant heads with a `goldUpkeep` override are gold-paid, so ordinary
+    // units and non-gold uniques are never touched by a donative shortfall.
+    for (const u of DESERTION_ORDER) {
+      for (const stack of stacks) {
+        for (const v of stack.variants ?? []) {
+          if (v.base !== u) continue;
+          const per = variantGoldUpkeep(v.variant);
+          if (per <= 0) continue;
+          const mult = isMercVariant(v.variant) ? MERC_UPKEEP_MULTIPLIER : 1;
+          while (deficit > 0 && v.count > 0) {
+            v.count -= 1;
+            mutinied[u] = (mutinied[u] ?? 0) + 1;
+            deficit -= per * mult; // each mutineer relieves its own donative
+          }
+          if (deficit <= 0) break;
+        }
+        if (deficit <= 0) break;
+      }
+      if (deficit <= 0) break;
+    }
+
+    // Drop any variant stack fully emptied by the mutiny.
+    for (const stack of stacks) {
+      if (stack.variants) stack.variants = stack.variants.filter((v) => v.count > 0);
+    }
+
+    const totalMutinied = Object.values(mutinied).reduce(
+      (acc, n) => acc + (n ?? 0),
+      0,
+    );
+    if (totalMutinied > 0) {
+      // No dedicated 'desertion' GameLogType exists; 'mercenary' is the closest
+      // military-economy member (gold-paid troops mutiny when the donative fails).
+      next = appendLog(next, {
+        round: next.round,
+        phase: next.phase,
+        type: "mercenary",
+        actors: [player.id],
+        message: `${player.name} cannot pay the donative: ${totalMutinied} gold-paid unit(s) mutiny and desert.`,
+        data: { mutinied, unpaid: "gold" },
       });
     }
   }

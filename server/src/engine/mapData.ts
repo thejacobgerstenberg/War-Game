@@ -274,7 +274,8 @@ export const PROVINCES: MapProvince[] = [
     name: "Venice",
     terrain: TerrainType.CITY,
     // capital, the Arsenal HV(4): +2 gold, +1 grain, +2 timber
-    yields: { gold: 5, grain: 1, timber: 2, marble: 0, faith: 1 },
+    // balance reconciliation: +1 marble (PR #11 @f760294) — matches tuned economy thresholds
+    yields: { gold: 5, grain: 1, timber: 2, marble: 1, faith: 1 },
     coastal: true,
     position: { x: 12, y: 20 },
     startingFaction: Faction.VENICE,
@@ -299,7 +300,8 @@ export const PROVINCES: MapProvince[] = [
     name: "Genoa",
     terrain: TerrainType.CITY,
     // capital, Bank of St George HV(4): +2 gold, +1 marble
-    yields: { gold: 5, grain: 0, timber: 0, marble: 1, faith: 1 },
+    // balance reconciliation: +1 marble (PR #11 @f760294) — matches tuned economy thresholds
+    yields: { gold: 5, grain: 0, timber: 0, marble: 2, faith: 1 },
     coastal: true,
     position: { x: 8, y: 29 },
     startingFaction: Faction.GENOA,

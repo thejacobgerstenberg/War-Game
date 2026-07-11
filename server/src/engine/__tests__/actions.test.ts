@@ -25,7 +25,11 @@ import { createInitialState, type SeatInput } from "../gameState.js";
 import { applyAction, EngineError } from "../actions.js";
 import { advancePhase } from "../roundLoop.js";
 import { omenCardId } from "../events/index.js";
-import { UNJUSTIFIED_WAR_PRESTIGE } from "../balance.js";
+import {
+  UNJUSTIFIED_WAR_PRESTIGE,
+  UNIQUE_UNIT_OVERRIDES,
+  UNIT_STATS,
+} from "../balance.js";
 
 const seats: SeatInput[] = [
   { id: "p1", name: "Basil", faction: Faction.BYZANTIUM, isHost: true },
@@ -90,6 +94,44 @@ describe("RECRUIT", () => {
     expect(() =>
       applyAction(s, recruit({ units: { [UnitType.CAVALRY]: 10 } })),
     ).toThrowError(expect.objectContaining({ code: "INSUFFICIENT_RESOURCES" }));
+  });
+
+  it("§6.1/§2.3 charges a unique variant's per-unique `cost` override, not the base cost", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    const p1 = s.players.find((p) => p.id === "p1")!;
+    p1.treasury.gold = 10;
+    p1.treasury.grain = 5;
+
+    // Varangian Guard: BYZANTIUM, base INFANTRY, §2.3 cost override { gold: 6 };
+    // recruitable at constantinople. Base INFANTRY costs gold 4, so the override
+    // (6) is strictly higher — an unmistakable signal of which cost was charged.
+    const guard = UNIQUE_UNIT_OVERRIDES.VARANGIAN_GUARD;
+    const overrideGold = guard.cost!.gold!;
+    const baseGold = UNIT_STATS[guard.base].cost.gold!;
+    const baseGrain = UNIT_STATS[guard.base].cost.grain!;
+    expect(overrideGold).toBe(6);
+    expect(baseGold).toBe(4);
+
+    const next = applyAction(
+      s,
+      recruit({ units: {}, variants: [{ base: UnitType.INFANTRY, variant: "VARANGIAN_GUARD", count: 1 }] }),
+    );
+
+    const after = next.players.find((p) => p.id === "p1")!;
+    // Charged the OVERRIDE gold (6), not the base gold (4): 10 − 6 = 4 (a base
+    // charge would have left 6). Grain is ABSENT from the override → it falls
+    // through to the base INFANTRY grain cost (1): 5 − 1 = 4.
+    expect(after.treasury.gold).toBe(10 - overrideGold); // 4, not 10 − baseGold (6)
+    expect(after.treasury.gold).not.toBe(10 - baseGold);
+    expect(after.treasury.grain).toBe(5 - baseGrain); // 4 (override omits grain)
+
+    const army = next.armies.find((a) => a.id === BYZ_ARMY)!;
+    const stack = army.variants!.find((v) => v.variant === "VARANGIAN_GUARD")!;
+    // Byzantium's canonical starting roster seeds 1 Varangian Guard at
+    // constantinople (factions.ts), so recruiting 1 more lands at 2 (balance
+    // reconciliation PR #11 @f760294 — per-unique cost override, count unaffected).
+    expect(stack.count).toBe(2);
   });
 
   it("§6.4 enforces the 12-unit CITY stacking limit", () => {

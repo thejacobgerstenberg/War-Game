@@ -822,3 +822,134 @@ describe("trade routes — §5.2 blockade halves, severed cancels (CLARIFICATION
     expect(computeIncome(state).perPlayer.p1.gold).toBe(13);
   });
 });
+
+// ---------------------------------------------------------------------------
+// §2.3 PER-UNIQUE UPKEEP OVERRIDES — grainUpkeep / goldUpkeep (donative pay)
+// ---------------------------------------------------------------------------
+
+describe("upkeep — §2.3 per-unique grain/gold upkeep overrides (§4.4)", () => {
+  it("charges a unique its `grainUpkeep` OVERRIDE, not the base UnitType upkeep", () => {
+    const state = fresh();
+    // JANISSARY (base INFANTRY, base grain upkeep 1) carries §2.3 grainUpkeep 0.
+    state.armies = [
+      variantArmy("p1", "selymbria", [
+        { base: UnitType.INFANTRY, variant: "JANISSARY", count: 4 },
+      ]),
+    ];
+    state.fleets = [];
+    state.players[0].treasury.grain = 20;
+    state.players[0].treasury.gold = 20; // fund the donative so nobody mutinies
+    const out = upkeep(state);
+    // §2.3 override 0 grain: NOTHING is drawn from grain stores (base rate would
+    // owe 4 INF × 1 = 4, leaving 16). The override wins.
+    expect(out.players[0].treasury.grain).toBe(20);
+    // All four Janissaries survive (grain 0 owed, gold donative paid in full).
+    const inf = out.armies[0].variants!.find((v) => v.variant === "JANISSARY");
+    expect(inf?.count).toBe(4);
+  });
+
+  it("deducts a `goldUpkeep` unique's donative from the treasury gold", () => {
+    const state = fresh();
+    // BLACK_ARMY (base INFANTRY) carries §2.3 goldUpkeep 1, grainUpkeep 0.
+    state.armies = [
+      variantArmy("p1", "selymbria", [
+        { base: UnitType.INFANTRY, variant: "BLACK_ARMY", count: 3 },
+      ]),
+    ];
+    state.fleets = [];
+    state.players[0].treasury.grain = 20;
+    state.players[0].treasury.gold = 10;
+    const out = upkeep(state);
+    // §2.3 donative: 3 gold-paid INF × 1 gold = 3 drawn from gold; 10 − 3 = 7.
+    expect(out.players[0].treasury.gold).toBe(7);
+    // Grain untouched (grainUpkeep override 0).
+    expect(out.players[0].treasury.grain).toBe(20);
+    // Troops stay (donative paid).
+    expect(out.armies[0].variants!.find((v) => v.variant === "BLACK_ARMY")?.count).toBe(3);
+  });
+
+  it("mutinies unpaid gold-paid troops when the donative is unaffordable (§4.4)", () => {
+    const state = fresh();
+    state.armies = [
+      variantArmy("p1", "selymbria", [
+        { base: UnitType.INFANTRY, variant: "JANISSARY", count: 4 },
+      ]),
+    ];
+    state.fleets = [];
+    state.players[0].treasury.grain = 20;
+    // Owe 4 gold (4 × 1); hold only 1 → deficit 3 → 3 Janissaries mutiny, 1 stays.
+    state.players[0].treasury.gold = 1;
+    const out = upkeep(state);
+    expect(out.players[0].treasury.gold).toBe(0);
+    const inf = out.armies[0].variants!.find((v) => v.variant === "JANISSARY");
+    expect(inf?.count).toBe(1);
+    // A mutiny/desertion entry is chronicled (unpaid gold donative).
+    expect(
+      out.log.some((l) => (l.data as { unpaid?: string })?.unpaid === "gold"),
+    ).toBe(true);
+  });
+
+  it("keeps the mercenary-variant ×2 grain rate intact alongside per-unique overrides", () => {
+    const state = fresh();
+    // Mix an elite-mercenary VARIANT (Varangian Remnant, no override → base ×2)
+    // with a gold-paid unique (Janissary, grain 0 / gold 1) in one force.
+    state.armies = [
+      variantArmy("p1", "selymbria", [
+        { base: UnitType.INFANTRY, variant: "VARANGIAN_REMNANT", count: 2 },
+        { base: UnitType.INFANTRY, variant: "JANISSARY", count: 3 },
+      ]),
+    ];
+    state.fleets = [];
+    state.players[0].treasury.grain = 20;
+    state.players[0].treasury.gold = 20;
+    const out = upkeep(state);
+    // Grain: Varangian 2 × 1 × 2 (merc double) = 4; Janissary 3 × 0 = 0 → 20 − 4 = 16.
+    expect(out.players[0].treasury.grain).toBe(16);
+    // Gold: Janissary 3 × 1 donative = 3; Varangian owes none → 20 − 3 = 17.
+    expect(out.players[0].treasury.gold).toBe(17);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §4.3 GOLD → RESOURCE market conversion (buy grain/timber/marble WITH gold)
+// Already supported by applyTrade's direction-agnostic CONVERT ratio; these
+// tests confirm the §4.3 gold→resource direction at 3:1 base / 2:1 with Market.
+// ---------------------------------------------------------------------------
+
+describe("applyTrade CONVERT — §4.3 gold→resource direction (turtle archetype)", () => {
+  it("buys grain WITH gold at the base 3:1 ratio (no infrastructure)", () => {
+    const state = fresh();
+    state.players[0].treasury = { gold: 6, grain: 0, timber: 0, marble: 0, faith: 0 };
+    const out = applyTrade(state, convert("p1", { gold: 3 }, { grain: 1 }));
+    expect(out.players[0].treasury.gold).toBe(3); // 3 gold spent
+    expect(out.players[0].treasury.grain).toBe(1); // 1 grain bought
+  });
+
+  it("rejects buying grain with under-paid gold at the base 3:1 (2 gold < 3)", () => {
+    const state = fresh();
+    state.players[0].treasury = { gold: 6, grain: 0, timber: 0, marble: 0, faith: 0 };
+    expect(() => applyTrade(state, convert("p1", { gold: 2 }, { grain: 1 }))).toThrow(
+      EngineError,
+    );
+  });
+
+  it("buys grain WITH gold at 2:1 with a Market building (§4.3)", () => {
+    const state = fresh();
+    state.players[0].treasury = { gold: 6, grain: 0, timber: 0, marble: 0, faith: 0 };
+    state.provinces.find((p) => p.id === "selymbria")!.buildings.push(BuildingType.MARKET);
+    const out = applyTrade(state, convert("p1", { gold: 2 }, { grain: 1 }));
+    expect(out.players[0].treasury.gold).toBe(4); // 2 gold spent at 2:1
+    expect(out.players[0].treasury.grain).toBe(1);
+  });
+
+  it("buys timber and marble WITH gold too at the base 3:1 (direction generalizes)", () => {
+    const state = fresh();
+    state.players[0].treasury = { gold: 12, grain: 0, timber: 0, marble: 0, faith: 0 };
+    const t = applyTrade(state, convert("p1", { gold: 3 }, { timber: 1 }));
+    expect(t.players[0].treasury.timber).toBe(1);
+    expect(t.players[0].treasury.gold).toBe(9);
+    const m = applyTrade(t, convert("p1", { gold: 3 }, { marble: 1 }));
+    expect(m.players[0].treasury.marble).toBe(1);
+    expect(m.players[0].treasury.gold).toBe(6);
+  });
+});

@@ -189,6 +189,8 @@ export const UNIQUE_UNIT_OVERRIDES: Record<string, UniqueUnitDef> = {
     name: "Varangian Guard",
     faction: Faction.BYZANTIUM,
     defMod: 1,
+    // §2.3 economy: gold 6 (base INFANTRY is gold 4). grain-cost/upkeep unchanged.
+    cost: { gold: 6 },
     abilities: ["elite-wall-defense", "no-rout"],
     recruitProvinces: ["constantinople"],
   },
@@ -207,6 +209,10 @@ export const UNIQUE_UNIT_OVERRIDES: Record<string, UniqueUnitDef> = {
     name: "Janissary",
     faction: Faction.OTTOMAN,
     atkMod: 1,
+    // §2.3 economy: gold 5 (base INFANTRY gold 4); donative pay = 1 gold, 0 grain upkeep.
+    cost: { gold: 5 },
+    goldUpkeep: 1,
+    grainUpkeep: 0,
     abilities: ["assault-bonus", "gold-paid", "mutiny-risk"],
     recruitProvinces: ["edirne", "bursa"],
   },
@@ -231,6 +237,8 @@ export const UNIQUE_UNIT_OVERRIDES: Record<string, UniqueUnitDef> = {
     name: "Great Galley (Galeazza)",
     faction: Faction.VENICE,
     atkMod: 1,
+    // §2.3 economy: Venice Arsenal timber cost 1 (overrides base timber; gold unchanged).
+    cost: { timber: 1 },
     abilities: ["anti-galley", "coastal-siege-support"],
     recruitProvinces: ["venice"],
   },
@@ -257,6 +265,10 @@ export const UNIQUE_UNIT_OVERRIDES: Record<string, UniqueUnitDef> = {
     name: "Black Army (Fekete Sereg)",
     faction: Faction.HUNGARY,
     atkMod: 1,
+    // §2.3 economy: gold 5 (base INFANTRY gold 4); gold-paid = 1 gold, 0 grain upkeep.
+    cost: { gold: 5 },
+    goldUpkeep: 1,
+    grainUpkeep: 0,
     abilities: ["open-battle-bonus", "assault-bonus", "gold-paid"],
     recruitProvinces: ["buda"],
   },
@@ -866,15 +878,18 @@ export const CONQUEST_PRESTIGE = {
  * Prestige victory threshold by player count (§13.2). RATIFIED balance §2.13
  * (VICTORY_THRESHOLD_BY_PLAYER_COUNT): the pre-tuning 25/30/35 placeholders are
  * superseded — final prestige sources (conquest rows + monopoly/capital income)
- * raise total inflow far beyond them. Values derived empirically per count
- * (results/thresholds.json); 5-player is the ratified VICTORY_THRESHOLD = 80
- * (was 84 pre-errata). Checked at Cleanup only.
+ * raise total inflow far beyond them. Values re-derived empirically per count at
+ * the engine-reconciliation config (results/thresholds.json); each sits at
+ * ≈14.9–15.3× that count's mean winner accrual/round. The canon §9.2 per-work
+ * prestige adoption lowered winner accrual, so the 5-player VICTORY_THRESHOLD
+ * fell 80 → 78 (and the pre-reconciliation 72/78/80/80 transcription is
+ * superseded by 71/74/76/78). Checked at Cleanup only.
  */
 export const PRESTIGE_THRESHOLDS: Record<number, number> = {
-  2: 72,
-  3: 78,
-  4: 80,
-  5: 80,
+  2: 71,
+  3: 74,
+  4: 76,
+  5: 78,
 };
 
 // ---------------------------------------------------------------------------

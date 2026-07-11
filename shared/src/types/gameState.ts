@@ -716,6 +716,26 @@ export interface UniqueUnitDef {
   defMod?: number;
   /** Additive movement delta. */
   mvMod?: number;
+  /**
+   * PER-UNIQUE ECONOMY OVERRIDE (balance §2.3). Raise-cost override for this
+   * variant. A resource present here overrides that component of
+   * UNIT_STATS[base].cost; resources absent from the partial fall through to the
+   * base unit cost. Whole field absent = use the base UnitType cost unchanged.
+   * Backward-compatible (optional): the engine currently prices every unique at
+   * its base UnitType, so absence preserves the pre-existing behaviour.
+   */
+  cost?: Partial<ResourceBundle>;
+  /**
+   * PER-UNIQUE ECONOMY OVERRIDE (balance §2.3). Grain consumed per unit per round.
+   * Overrides UNIT_STATS[base].grainUpkeep when present; absent = base grainUpkeep.
+   */
+  grainUpkeep?: number;
+  /**
+   * PER-UNIQUE ECONOMY OVERRIDE (balance §2.3). Gold consumed per unit per round
+   * (donative-pay units, e.g. Janissary/Black Army). Base units have no gold
+   * upkeep; absent = no per-unit gold upkeep for this variant.
+   */
+  goldUpkeep?: number;
   /** Ability tags interpreted by the combat/economy subsystems. */
   abilities: string[];
   /** Province ids where this unit may be raised (undefined = anywhere legal). */
