@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>relief fleet fails</title>
+
+  <!-- parchment sky -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- empty sea, bare horizon -->
+  <rect x="0" y="90" width="260" height="70" fill="#2C5F7C"/>
+
+  <!-- setting sun on the western horizon -->
+  <path d="M46 90 A20 20 0 0 1 86 90 Z" fill="#C9A227"/>
+
+  <!-- dying sun-track on the water, leading to no ship -->
+  <rect x="56" y="98" width="22" height="4" rx="2" fill="#C9A227"/>
+  <rect x="60" y="110" width="16" height="4" rx="2" fill="#C9A227"/>
+  <rect x="63" y="122" width="10" height="4" rx="2" fill="#C9A227"/>
+
+  <!-- pale glints on the empty water -->
+  <rect x="12" y="104" width="24" height="4" rx="2" fill="#F0E6D2"/>
+  <rect x="100" y="118" width="26" height="4" rx="2" fill="#F0E6D2"/>
+  <rect x="28" y="134" width="20" height="4" rx="2" fill="#F0E6D2"/>
+
+  <!-- gulls over the vacant horizon -->
+  <path d="M30 38 Q38 30 46 38" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <path d="M58 28 Q64 22 70 28" fill="none" stroke="#2B2118" stroke-width="3"/>
+
+  <!-- city wall, bleeding off the right edge -->
+  <rect x="174" y="104" width="86" height="56" fill="#2B2118"/>
+  <rect x="168" y="100" width="92" height="10" fill="#2B2118"/>
+  <rect x="168" y="88" width="12" height="12" fill="#2B2118"/>
+  <rect x="246" y="88" width="12" height="12" fill="#2B2118"/>
+
+  <!-- arched slit in the wall -->
+  <path d="M209 142 L209 128 Q215 119 221 128 L221 142 Z" fill="#F0E6D2"/>
+
+  <!-- the watcher: hooded figure on the rampart, facing west -->
+  <polygon points="205,50 197,106 237,106 227,50" fill="#2B2118"/>
+  <circle cx="215" cy="41" r="9" fill="#2B2118"/>
+  <polygon points="215,26 226,45 204,45" fill="#2B2118"/>
+  <path d="M208 58 L194 50 L191 55 L206 65 Z" fill="#2B2118"/>
+
+  <!-- limp banner: no wind, no sails -->
+  <rect x="249" y="52" width="3" height="48" fill="#2B2118"/>
+  <path d="M252 54 Q263 58 261 66 Q259 76 254 80 Q256 68 252 64 Z" fill="#7A1F2B"/>
+</svg>

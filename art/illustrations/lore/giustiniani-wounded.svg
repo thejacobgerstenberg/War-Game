@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Giustiniani Wounded</title>
+
+  <!-- parchment field -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- breached wall, left half -->
+  <path fill="#4B1F3F" d="M0,112 L0,34 L10,34 L10,22 L26,22 L26,34 L42,34 L42,22 L58,22 L58,34 L74,34 L74,22 L90,22 L90,34 L106,34 L106,22 L122,22 L122,34 L136,34 L144,50 L134,66 L146,82 L136,96 L144,112 Z"/>
+
+  <!-- breached wall, right half -->
+  <path fill="#4B1F3F" d="M204,112 L196,96 L208,80 L198,64 L210,48 L202,34 L214,34 L214,22 L230,22 L230,34 L246,34 L246,22 L260,22 L260,112 Z"/>
+
+  <!-- rubble in the breach -->
+  <polygon fill="#4B1F3F" points="146,112 160,94 172,112"/>
+  <polygon fill="#4B1F3F" points="168,112 182,98 196,112"/>
+  <polygon fill="#2B2118" points="158,112 168,102 178,112"/>
+
+  <!-- ground -->
+  <rect x="0" y="134" width="260" height="26" fill="#2B2118"/>
+
+  <!-- front bearer -->
+  <circle cx="42" cy="60" r="8" fill="#2B2118"/>
+  <polygon fill="#2B2118" points="36,66 50,66 54,94 40,98"/>
+  <polygon fill="#2B2118" points="44,70 52,68 60,84 60,92 50,92"/>
+  <polygon fill="#2B2118" points="40,96 48,98 34,134 26,134"/>
+  <polygon fill="#2B2118" points="46,96 54,96 58,134 50,134"/>
+
+  <!-- rear bearer -->
+  <circle cx="186" cy="60" r="8" fill="#2B2118"/>
+  <polygon fill="#2B2118" points="180,66 194,66 190,98 176,94"/>
+  <polygon fill="#2B2118" points="180,70 172,68 164,84 164,92 174,92"/>
+  <polygon fill="#2B2118" points="176,96 184,96 178,134 170,134"/>
+  <polygon fill="#2B2118" points="186,96 194,98 200,134 192,134"/>
+
+  <!-- litter plank -->
+  <rect x="52" y="84" width="120" height="7" rx="3" fill="#2B2118"/>
+
+  <!-- the captain, borne away: gold body, knee raised, head fallen back -->
+  <polygon fill="#C9A227" points="70,70 108,72 120,54 132,56 144,78 156,78 160,84 70,84"/>
+  <circle cx="60" cy="80" r="8" fill="#C9A227"/>
+  <path fill="#2B2118" d="M52,80 A8,8 0 0 1 68,80 Z"/>
+
+  <!-- arm hanging below the litter -->
+  <polygon fill="#C9A227" points="74,82 82,82 80,110 73,110"/>
+  <circle cx="76" cy="112" r="4" fill="#C9A227"/>
+
+  <!-- the wound and falling blood -->
+  <circle cx="98" cy="71" r="6" fill="#7A1F2B"/>
+  <circle cx="78" cy="122" r="3" fill="#7A1F2B"/>
+  <circle cx="75" cy="130" r="2.5" fill="#7A1F2B"/>
+
+  <!-- his sword, left on the ground -->
+  <rect x="94" y="140" width="38" height="4" fill="#C9A227"/>
+  <rect x="132" y="135" width="4" height="14" fill="#C9A227"/>
+  <rect x="136" y="140" width="9" height="4" fill="#C9A227"/>
+  <circle cx="148" cy="142" r="3.5" fill="#C9A227"/>
+</svg>

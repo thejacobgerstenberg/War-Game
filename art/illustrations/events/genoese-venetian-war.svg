@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Genoese Venetian War</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <circle cx="130" cy="24" r="11" fill="#C9A227"/>
+  <path d="M24 61 L92 41" stroke="#2B2118" stroke-width="4" fill="none"/>
+  <polygon points="26,60 90,42 58,98" fill="#7A1F2B"/>
+  <rect x="50" y="46" width="4" height="58" fill="#2B2118"/>
+  <polygon points="50,40 50,52 30,46" fill="#7A1F2B"/>
+  <polygon points="12,102 100,102 112,92 116,106 104,116 24,116 12,110" fill="#2B2118"/>
+  <polygon points="102,100 140,80 146,86 110,108" fill="#2B2118"/>
+  <path d="M236 61 L168 41" stroke="#2B2118" stroke-width="4" fill="none"/>
+  <polygon points="234,60 170,42 202,98" fill="#C9A227"/>
+  <rect x="206" y="46" width="4" height="58" fill="#2B2118"/>
+  <polygon points="210,40 210,52 230,46" fill="#C9A227"/>
+  <polygon points="248,102 160,102 148,92 144,106 156,116 236,116 248,110" fill="#2B2118"/>
+  <polygon points="158,100 120,80 114,86 150,108" fill="#2B2118"/>
+  <path d="M-4 120 Q9 108 22 120 Q35 108 48 120 Q61 108 74 120 Q87 108 100 120 Q113 108 126 120 Q139 108 152 120 Q165 108 178 120 Q191 108 204 120 Q217 108 230 120 Q243 108 256 120 Q269 108 282 120 L282 164 L-4 164 Z" fill="#2C5F7C"/>
+  <path d="M30 140 Q43 132 56 140 Q69 132 82 140" stroke="#F0E6D2" stroke-width="3" fill="none"/>
+  <path d="M178 144 Q191 136 204 144 Q217 136 230 144" stroke="#F0E6D2" stroke-width="3" fill="none"/>
+  <path d="M36 112 L24 136 M58 112 L46 136 M80 112 L68 136 M224 112 L236 136 M202 112 L214 136 M180 112 L192 136" stroke="#2B2118" stroke-width="4" fill="none"/>
+  <polygon points="116,154 128,126 144,152" fill="#2B2118"/>
+  <circle cx="106" cy="146" r="4" fill="#C9A227"/>
+  <circle cx="152" cy="144" r="4" fill="#C9A227"/>
+  <circle cx="131" cy="156" r="3.5" fill="#C9A227"/>
+</svg>

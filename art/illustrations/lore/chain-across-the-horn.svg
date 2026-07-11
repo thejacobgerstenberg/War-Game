@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Chain Across the Horn</title>
+
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- chronicle sun -->
+  <circle cx="58" cy="24" r="11" fill="#C9A227"/>
+
+  <!-- the sea of the Golden Horn -->
+  <rect x="0" y="78" width="260" height="82" fill="#2C5F7C"/>
+
+  <!-- wave marks -->
+  <path d="M40,126 q7,-7 14,0 q7,7 14,0" fill="none" stroke="#F0E6D2" stroke-width="4"/>
+  <path d="M84,142 q7,-7 14,0 q7,7 14,0" fill="none" stroke="#F0E6D2" stroke-width="4"/>
+
+  <!-- the defenders' galley, safe behind the boom -->
+  <polygon points="114,46 152,28 148,68" fill="#C9A227"/>
+  <path d="M114,46 L152,28" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <rect x="128" y="30" width="4" height="44" fill="#2B2118"/>
+  <polygon points="130,26 148,29 130,33" fill="#7A1F2B"/>
+  <path d="M88,68 L96,82 L164,82 L174,66 L166,74 L94,74 Z" fill="#2B2118"/>
+
+  <!-- the great chain: nine iron links sagging across the mouth -->
+  <ellipse cx="44" cy="96" rx="13" ry="8" fill="#2B2118"/>
+  <ellipse cx="44" cy="96" rx="7" ry="3.5" fill="#2C5F7C"/>
+  <ellipse cx="66" cy="101" rx="13" ry="8" fill="#2B2118"/>
+  <ellipse cx="66" cy="101" rx="7" ry="3.5" fill="#2C5F7C"/>
+  <ellipse cx="88" cy="105" rx="13" ry="8" fill="#2B2118"/>
+  <ellipse cx="88" cy="105" rx="7" ry="3.5" fill="#2C5F7C"/>
+  <ellipse cx="110" cy="107" rx="13" ry="8" fill="#2B2118"/>
+  <ellipse cx="110" cy="107" rx="7" ry="3.5" fill="#2C5F7C"/>
+  <ellipse cx="132" cy="108" rx="13" ry="8" fill="#2B2118"/>
+  <ellipse cx="132" cy="108" rx="7" ry="3.5" fill="#2C5F7C"/>
+  <ellipse cx="154" cy="107" rx="13" ry="8" fill="#2B2118"/>
+  <ellipse cx="154" cy="107" rx="7" ry="3.5" fill="#2C5F7C"/>
+  <ellipse cx="176" cy="105" rx="13" ry="8" fill="#2B2118"/>
+  <ellipse cx="176" cy="105" rx="7" ry="3.5" fill="#2C5F7C"/>
+  <ellipse cx="198" cy="101" rx="13" ry="8" fill="#2B2118"/>
+  <ellipse cx="198" cy="101" rx="7" ry="3.5" fill="#2C5F7C"/>
+  <ellipse cx="220" cy="96" rx="13" ry="8" fill="#2B2118"/>
+  <ellipse cx="220" cy="96" rx="7" ry="3.5" fill="#2C5F7C"/>
+
+  <!-- the enemy sail, shut out below the boom -->
+  <rect x="193" y="110" width="3" height="48" fill="#2B2118"/>
+  <polygon points="195,114 179,150 213,146" fill="#7A1F2B"/>
+  <path d="M170,148 L176,160 L218,160 L226,144 L217,150 L178,150 Z" fill="#2B2118"/>
+
+  <!-- anchor towers on either shore -->
+  <polygon points="4,160 4,32 12,32 12,42 18,42 18,32 26,32 26,42 32,42 32,32 40,32 40,160" fill="#2B2118"/>
+  <polygon points="256,160 256,32 248,32 248,42 242,42 242,32 234,32 234,42 228,42 228,32 220,32 220,160" fill="#2B2118"/>
+  <path d="M18,68 v-8 a4,4 0 0 1 8,0 v8 z" fill="#C9A227"/>
+  <path d="M234,68 v-8 a4,4 0 0 1 8,0 v8 z" fill="#C9A227"/>
+</svg>

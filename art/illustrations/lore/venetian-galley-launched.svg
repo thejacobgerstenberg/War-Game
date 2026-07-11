@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Venetian Galley Launched</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <polygon fill="#C9A227" points="58,36 48,42 51,53 40,50 34,60 28,50 17,53 20,42 10,36 20,30 17,19 28,22 34,12 40,22 51,19 48,30"/>
+  <circle cx="34" cy="36" r="14" fill="#C9A227"/>
+  <path fill="#2C5F7C" d="M0 120 Q13 108 26 120 Q39 108 52 120 Q65 108 78 120 Q91 108 104 120 Q117 108 130 120 Q143 108 156 120 Q169 108 182 120 Q195 108 208 120 Q221 108 234 120 Q247 108 260 120 L260 160 L0 160 Z"/>
+  <path fill="#7A1F2B" d="M46 86 L64 104 L194 104 L222 78 L231 86 L207 108 L200 132 L80 132 L60 108 Z"/>
+  <rect x="66" y="109" width="130" height="7" fill="#C9A227"/>
+  <circle cx="226" cy="81" r="6" fill="#C9A227"/>
+  <path fill="#2C5F7C" d="M0 136 Q13 118 26 136 Q39 118 52 136 Q65 118 78 136 Q91 118 104 136 Q117 118 130 136 Q143 118 156 136 Q169 118 182 136 Q195 118 208 136 Q221 118 234 136 Q247 118 260 136 L260 160 L0 160 Z"/>
+  <path stroke="#2B2118" stroke-width="4" fill="none" d="M94 116 L80 150 M120 116 L106 150 M146 116 L132 150 M172 116 L158 150"/>
+  <rect x="126" y="22" width="6" height="88" fill="#2B2118"/>
+  <polygon fill="#C9A227" points="132,24 208,24 194,44 208,64 132,64"/>
+  <polygon fill="#7A1F2B" points="146,42 166,42 154,28"/>
+  <rect x="144" y="42" width="30" height="10" fill="#7A1F2B"/>
+  <circle cx="180" cy="40" r="7" fill="#7A1F2B"/>
+  <rect x="146" y="52" width="4" height="8" fill="#7A1F2B"/>
+  <rect x="154" y="52" width="4" height="8" fill="#7A1F2B"/>
+  <rect x="164" y="52" width="4" height="8" fill="#7A1F2B"/>
+  <rect x="170" y="52" width="4" height="8" fill="#7A1F2B"/>
+  <path stroke="#7A1F2B" stroke-width="3" fill="none" d="M144 46 Q134 44 136 34"/>
+</svg>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Bank of Saint George</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <rect x="0" y="130" width="260" height="30" fill="#E2D3B3"/>
+  <rect x="128" y="10" width="4" height="28" fill="#2B2118"/>
+  <path d="M132 12 L164 16 L152 22 L164 28 L132 32 Z" fill="#7A1F2B"/>
+  <path d="M72 70 L188 70 L188 58 Q188 36 166 36 L94 36 Q72 36 72 58 Z" fill="#2B2118"/>
+  <rect x="72" y="70" width="116" height="8" fill="#C9A227"/>
+  <rect x="72" y="78" width="116" height="58" fill="#2B2118"/>
+  <rect x="80" y="44" width="6" height="26" fill="#C9A227"/>
+  <rect x="174" y="44" width="6" height="26" fill="#C9A227"/>
+  <rect x="80" y="78" width="6" height="58" fill="#C9A227"/>
+  <rect x="174" y="78" width="6" height="58" fill="#C9A227"/>
+  <path d="M112 84 L148 84 L148 108 Q148 122 130 128 Q112 122 112 108 Z" fill="#F0E6D2"/>
+  <rect x="126" y="88" width="8" height="36" fill="#7A1F2B"/>
+  <rect x="115" y="96" width="30" height="8" fill="#7A1F2B"/>
+  <circle cx="62" cy="118" r="6" fill="#C9A227"/>
+  <circle cx="52" cy="142" r="7" fill="#C9A227"/>
+  <circle cx="66" cy="150" r="7" fill="#C9A227"/>
+  <circle cx="42" cy="152" r="7" fill="#C9A227"/>
+  <circle cx="192" cy="126" r="5" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="200" cy="132" r="5" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="207" cy="138" r="5" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <path d="M206 140 L206 128 L212 134 L218 124 L224 134 L230 128 L230 140 Z" fill="#C9A227"/>
+</svg>
