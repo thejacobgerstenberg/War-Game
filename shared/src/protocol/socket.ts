@@ -5,6 +5,7 @@
  * event names and shapes can never drift apart.
  */
 import type { Faction, GameState } from "../types/gameState.js";
+import type { GameAction } from "../types/actions.js";
 
 /** Canonical event-name registry. */
 export const SOCKET_EVENTS = {
@@ -15,6 +16,8 @@ export const SOCKET_EVENTS = {
   PICK_FACTION: "pick_faction",
   START_GAME: "start_game",
   LEAVE_GAME: "leave_game",
+  /** In-game player command, dispatched to the engine reducer. */
+  GAME_ACTION: "game_action",
 
   // Server -> Client
   GAME_CREATED: "game_created",
@@ -22,6 +25,10 @@ export const SOCKET_EVENTS = {
   GAME_STARTED: "game_started",
   ERROR_MSG: "error_msg",
   STATE_UPDATE: "state_update",
+  /** Full authoritative game state (post-action broadcast). */
+  STATE_SNAPSHOT: "state_snapshot",
+  /** A rejected {@link GameAction}, with a human-readable reason. */
+  ACTION_REJECTED: "action_rejected",
   SERVER_SHUTDOWN: "server_shutdown",
 } as const;
 
@@ -57,6 +64,18 @@ export interface PickFactionPayload {
 /** `start_game` and `leave_game` carry no payload. */
 export type StartGamePayload = void;
 export type LeaveGamePayload = void;
+
+/**
+ * An in-game player command. The server validates `sessionToken` against the
+ * seat, then dispatches `action` to the engine reducer. On success it
+ * broadcasts a fresh {@link StateSnapshotPayload}; on rejection it replies with
+ * {@link ActionRejectedPayload} to the issuing socket only.
+ */
+export interface GameActionPayload {
+  roomCode: string;
+  sessionToken: string;
+  action: GameAction;
+}
 
 // ---------------------------------------------------------------------------
 // Server -> Client payloads
@@ -102,6 +121,22 @@ export interface StateUpdatePayload {
 }
 
 /**
+ * Full authoritative snapshot after an action is applied. (A future phase may
+ * add a `state_diff` variant; for now the engine broadcasts whole snapshots.)
+ */
+export interface StateSnapshotPayload {
+  state: GameState;
+}
+
+/** Sent to the issuing socket when a {@link GameAction} is rejected. */
+export interface ActionRejectedPayload {
+  /** Human-readable reason (engine error message). */
+  reason: string;
+  /** Machine-readable engine error code, when available. */
+  code?: string;
+}
+
+/**
  * Broadcast to every connected socket when the server begins a graceful
  * shutdown (SIGTERM/SIGINT). Clients should surface a "server restarting"
  * state and schedule their first reconnect attempt after `reconnectAfterMs`.
@@ -122,6 +157,7 @@ export interface ClientToServerEvents {
   [SOCKET_EVENTS.PICK_FACTION]: (payload: PickFactionPayload) => void;
   [SOCKET_EVENTS.START_GAME]: () => void;
   [SOCKET_EVENTS.LEAVE_GAME]: () => void;
+  [SOCKET_EVENTS.GAME_ACTION]: (payload: GameActionPayload) => void;
 }
 
 export interface ServerToClientEvents {
@@ -130,5 +166,7 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.GAME_STARTED]: (payload: GameStartedPayload) => void;
   [SOCKET_EVENTS.ERROR_MSG]: (payload: ErrorMsgPayload) => void;
   [SOCKET_EVENTS.STATE_UPDATE]: (payload: StateUpdatePayload) => void;
+  [SOCKET_EVENTS.STATE_SNAPSHOT]: (payload: StateSnapshotPayload) => void;
+  [SOCKET_EVENTS.ACTION_REJECTED]: (payload: ActionRejectedPayload) => void;
   [SOCKET_EVENTS.SERVER_SHUTDOWN]: (payload: ServerShutdownPayload) => void;
 }
