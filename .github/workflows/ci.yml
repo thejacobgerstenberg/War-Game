@@ -1,0 +1,276 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      has_node: ${{ steps.detect.outputs.has_node }}
+      has_client: ${{ steps.detect.outputs.has_client }}
+      has_sim: ${{ steps.detect.outputs.has_sim }}
+      has_art: ${{ steps.detect.outputs.has_art }}
+      has_audio: ${{ steps.detect.outputs.has_audio }}
+      has_docs: ${{ steps.detect.outputs.has_docs }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: detect
+        name: Detect present components
+        run: |
+          if [ -f package.json ]; then
+            echo "has_node=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_node=false" >> "$GITHUB_OUTPUT"
+          fi
+          if test -d client; then
+            echo "has_client=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_client=false" >> "$GITHUB_OUTPUT"
+          fi
+          if test -d sim; then
+            echo "has_sim=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_sim=false" >> "$GITHUB_OUTPUT"
+          fi
+          if test -d art; then
+            echo "has_art=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_art=false" >> "$GITHUB_OUTPUT"
+          fi
+          if test -d audio; then
+            echo "has_audio=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_audio=false" >> "$GITHUB_OUTPUT"
+          fi
+          if test -d docs || test -d lore; then
+            echo "has_docs=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_docs=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  code:
+    needs: detect
+    if: needs.detect.outputs.has_node == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+      - name: Typecheck
+        run: npm run typecheck --if-present
+      - name: Lint
+        run: npm run lint --if-present
+      - name: Build
+        run: npm run build --if-present
+      - name: Test
+        run: npm run test --if-present
+
+  sim:
+    needs: detect
+    if: needs.detect.outputs.has_sim == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install sim deps
+        run: |
+          if [ -f sim/package.json ]; then
+            cd sim
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+          else
+            echo "no sim/package.json — skipping"
+          fi
+      - name: Smoke run
+        run: |
+          if [ -f sim/package.json ]; then
+            cd sim && npm run sim:smoke --if-present
+          else
+            echo "no sim package — nothing to smoke"
+          fi
+
+  assets:
+    needs: detect
+    if: needs.detect.outputs.has_art == 'true' || needs.detect.outputs.has_audio == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install validators
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils ffmpeg
+      - name: Validate SVGs
+        run: |
+          if [ -d art ]; then
+            svgs=$(find art -type f -name '*.svg')
+            if [ -z "$svgs" ]; then
+              echo "art/ has no .svg files — nothing to validate"
+            else
+              status=0
+              while IFS= read -r f; do
+                [ -z "$f" ] && continue
+                if ! xmllint --noout "$f"; then
+                  echo "SVG parse failure: $f"
+                  status=1
+                  continue
+                fi
+                dups=$(grep -o 'id="[^"]*"' "$f" | sort | uniq -d || true)
+                if [ -n "$dups" ]; then
+                  echo "Duplicate id(s) in $f:"
+                  echo "$dups"
+                  status=1
+                fi
+              done <<< "$svgs"
+              exit $status
+            fi
+          else
+            echo "no art/ dir — skipping SVG validation"
+          fi
+      - name: Validate audio
+        run: |
+          if [ -d audio ]; then
+            files=$(find audio -type f \( -iname '*.mp3' -o -iname '*.ogg' -o -iname '*.wav' -o -iname '*.flac' -o -iname '*.m4a' \))
+            if [ -z "$files" ]; then
+              echo "audio/ has no audio files — nothing to validate"
+            else
+              status=0
+              if [ ! -f audio/CREDITS.md ]; then
+                echo "Missing audio/CREDITS.md"
+                status=1
+              fi
+              while IFS= read -r f; do
+                [ -z "$f" ] && continue
+                if ! ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" >/dev/null 2>&1; then
+                  echo "Invalid audio file: $f"
+                  status=1
+                  continue
+                fi
+                size=$(stat -c%s "$f")
+                ext_lc=$(echo "${f##*.}" | tr '[:upper:]' '[:lower:]')
+                case "$f" in
+                  *music*) is_music=1 ;;
+                  *)
+                    case "$ext_lc" in
+                      mp3|ogg|flac) is_music=1 ;;
+                      *) is_music=0 ;;
+                    esac
+                    ;;
+                esac
+                if [ "$is_music" -eq 1 ]; then
+                  if [ "$size" -gt 5242880 ]; then
+                    echo "Music file exceeds 5MB budget: $f ($size bytes)"
+                    status=1
+                  fi
+                else
+                  if [ "$size" -gt 204800 ]; then
+                    echo "SFX file exceeds 200KB budget: $f ($size bytes)"
+                    status=1
+                  fi
+                fi
+                if [ -f audio/CREDITS.md ]; then
+                  base=$(basename "$f")
+                  if ! grep -qF "$base" audio/CREDITS.md; then
+                    echo "Missing from audio/CREDITS.md: $base"
+                    status=1
+                  fi
+                fi
+              done <<< "$files"
+              exit $status
+            fi
+          else
+            echo "no audio/ dir — skipping audio validation"
+          fi
+
+  docs:
+    needs: detect
+    if: needs.detect.outputs.has_docs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check internal markdown links
+        run: |
+          cat > "$RUNNER_TEMP/check-links.js" <<'CHECKLINKS'
+          const fs = require('fs');
+          const path = require('path');
+
+          const roots = ['docs', 'lore'].filter(function (d) {
+            try {
+              return fs.existsSync(d) && fs.statSync(d).isDirectory();
+            } catch (e) {
+              return false;
+            }
+          });
+
+          const mdFiles = [];
+          function walk(dir) {
+            let entries;
+            try {
+              entries = fs.readdirSync(dir, { withFileTypes: true });
+            } catch (e) {
+              return;
+            }
+            for (const entry of entries) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                walk(full);
+              } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
+                mdFiles.push(full);
+              }
+            }
+          }
+          for (const r of roots) walk(r);
+
+          const linkRe = /\[[^\]]*\]\(([^)]+)\)/g;
+          const broken = [];
+          for (const file of mdFiles) {
+            const content = fs.readFileSync(file, 'utf8');
+            let m;
+            while ((m = linkRe.exec(content)) !== null) {
+              let target = m[1].trim();
+              if (target.startsWith('<') && target.indexOf('>') !== -1) {
+                target = target.slice(1, target.indexOf('>'));
+              }
+              const sp = target.indexOf(' ');
+              if (sp !== -1) target = target.slice(0, sp);
+              target = target.trim();
+              if (!target) continue;
+              if (/^(https?:)?\/\//i.test(target)) continue;
+              if (/^mailto:/i.test(target)) continue;
+              if (target.startsWith('#')) continue;
+              target = target.split('#')[0].split('?')[0];
+              if (!target) continue;
+              const resolved = path.resolve(path.dirname(file), target);
+              if (!fs.existsSync(resolved)) {
+                broken.push('BROKEN: ' + file + ' -> ' + target);
+              }
+            }
+          }
+
+          if (broken.length) {
+            for (const b of broken) console.log(b);
+            process.exit(1);
+          }
+          console.log('Checked ' + mdFiles.length + ' markdown file(s); no broken internal links.');
+          CHECKLINKS
+          node "$RUNNER_TEMP/check-links.js"
