@@ -56,6 +56,39 @@ The great houses of the monks hold granaries, vineyards, and the ear of Heaven. 
 ### condottiere-contract
 A captain of fortune offers his company to the highest bidder, and his loyalty expires with his pay. His lances are sharp, his conscience negotiable, and his terms are read twice before signing. Buy the sword, but never trust the scabbard.
 
+### papal-indulgence
+Rome has set a tariff on heaven, and the pardoners go forth with seals, ledgers, and a fine gift for arithmetic. The faithful buy remission of sins and count it coin well spent. Grace was never free; now at least it has a price.
+
+### imperial-coronation
+In one land a crown descends; in another a sword is girded on; in both, the trumpets tell a story every man present agrees to believe. Largesse rains on the crowd, and the levies stand a little straighter for a lord newly anointed. Legitimacy burns brightest on the day it is lit.
+
+### comet-omen
+A blazing star drags its tail across the heavens, and every camp from the Danube to the Maeander reads it by the light of its own fears. Soldiers pray, or desert, or sharpen their blades, according to what their captains say it means. The star itself says nothing; it has never needed to.
+
+### ottoman-interregnum
+Bayezid rode to Ankara and did not ride home, and his sons divide the inheritance in the only fashion brothers know: with knives. Provinces slip quietly away while the princes hunt one another across two continents. The house that devoured kingdoms pauses, for a season, to devour itself.
+
+### discovery-of-alum
+In the hills behind Phocaea the miners strike alum, the humble stone without which no dye in Europe will hold. Now every clothier from Bruges to Florence must bargain with whoever keeps Chios. Scarlet is a fine color; the coin it fetches is finer.
+
+### marriage-alliance
+A bride crosses the frontier with a dowry in her train and a treaty in her person. Two courts that traded insults in Lent trade toasts by Michaelmas, and the border lords grumble at the peace. A daughter well married holds more ground than a fortress, and costs less to garrison.
+
+### corsair-raid
+Galliots slip out of Tunis on the evening tide, and by morning some harbor town is counting what the sea has taken back. The corsairs burn what they cannot carry and are gone before the watch-fires are answered. The sea keeps no law but the swiftest hull.
+
+### serbian-despotate-submits
+The Despot has spent a long life learning the geometry of a small realm set between two great appetites. He kneels to the heavier neighbor, pays his tribute to the day, and keeps his fortresses in excellent repair. Small realms do not choose their masters; they choose the hour of their kneeling.
+
+### ragusan-tribute
+Ragusa keeps no great host and wants none; her walls are ledgers and her weapons are receipts. When a strong fleet stands off her harbor, the Republic sends out wine, silver, and congratulations, all handsomely worded. She has outlasted a dozen conquerors this way and expects to outlast a dozen more.
+
+### plague-of-locusts
+The cloud comes out of the south with a sound like distant rain, and where it settles the fields go from green to stubble between one noon and the next. Priest and imam curse it, each in his own tongue, and the swarm acknowledges neither. What it leaves behind would not feed the men who prayed against it.
+
+### fall-of-a-beylik
+Another of Anatolia's little emirates tears itself apart over a dead emir's chair, and its garrison drifts off to feud, farm, or fortune elsewhere. The gates stand open behind a finished dynasty. The great powers circle such carcasses politely, each waiting to see who dares feed first.
+
 ## Era II — rounds 6–10 (crises)
 
 ### varna-crusade
@@ -109,6 +142,33 @@ A holy relic is borne through the streets in solemn procession, and the faithful
 ### spies-in-the-camp
 A cipher is intercepted, a servant talks too freely, and it grows plain that the enemy dines upon one's own counsels. Trust curdles; every friend is weighed and found wanting. War is fought first in the dark, long before the banners meet.
 
+### janissary-discontent
+In the barrack yards of Adrianople the kettles lie overturned, and the Sultan's own slaves name their price. They were taken as boys and forged into the finest infantry under heaven; now the blade turns in the hand that holds it. An army paid in promises soon collects in another coin.
+
+### wallachian-revolt
+Beyond the Danube the Voivode burns the tribute rolls and calls the country to horse. The marches were never truly held, only rented, and the rent has come due in iron. A yoke sits lightly on Wallachia until the day it does not sit at all.
+
+### grain-fleet-lost
+The convoy was sighted off Tenedos, riding low in the water and heavy with the harvest; it was never sighted again. Whether the sea took it or the corsairs did, the bakers cannot say, and the empty ovens do not care. Bread on the seabed feeds only the fishes.
+
+### fire-of-the-arsenal
+It began among the pitch barrels after the evening bell, and by midnight the shipyards were a second sunset. Half-built galleys burned upon their slipways like offerings, and the seasoned timber of twenty years was gone before the dawn. An empire of the sea is built in an arsenal, and there it can also die.
+
+### papal-interdict
+The bull arrives sealed in lead, and behind it the churches close their doors one by one. No mass, no marriage, no burial in consecrated ground, until the prince who shed Christian blood repents of it. Rome has no hosts to send, and needs none; the silence of the bells is army enough.
+
+### schism
+Two men now wear the fisherman's ring, and each hurls anathema at the other across the Alps. Princes shop for absolution as merchants shop for grain, and the price of heaven falls by the day. In the East the crescent watches, and marvels that the cross should quarrel with itself.
+
+### mamluk-embargo
+In Cairo the Sultan of Egypt closes his fist, and the spice road closes with it. Pepper sits under seal in the warehouses of Alexandria while the factors of Venice and Genoa bid against one another for the leavings, and Mamluk sails stand off Cyprus to see the lesson taught. He who holds the source of a river may name his own price for the water.
+
+### anatolian-alliance
+From Konya the emir of Karaman sends riders to every beylik that still remembers being free, and the old banners gather in the uplands. The ancient houses of Anatolia knew the sons of Osman when they were the least among them, and they mean to offer the reminder in steel. Empires learn late that the ground behind them was never conquered, only quiet.
+
+### knights-of-rhodes-sortie
+Out of Rhodes come the galleys of Saint John, black-hulled and white-crossed, crewed by monks who swore their vows with swords upon the altar. The corsairs scatter before them as gulls before a hawk. The old crusade has shrunk to one island and a handful of ships, yet the sea still keeps its manners where they pass.
+
 ## Era III — rounds 11–16 (existential)
 
 ### rumeli-hisari
@@ -159,6 +219,24 @@ On the twenty-ninth of May the crescent rises over the Queen of Cities, and the 
 ### the-empty-treasury
 The emperor melts the plate of the churches to pay his soldiers, and still the coffers ring hollow. A crown without coin commands only as far as loyalty reaches, and loyalty, unpaid, wears thin. The last defense of a city is often the first thing it can no longer afford.
 
+### gunpowder-revolution
+The bombards speak, and stone that stood a thousand years answers in dust. Every prince now buys saltpetre before marble, and the founders of great guns dine better than bishops. The age of the high wall is over; the walls simply have not heard yet.
+
+### final-crusade
+The last summons goes out from Rome: take the cross, or watch the City die from a safe distance. For once the appeal is more than rhetoric — hosts are gathering, galleys are fitting out, and the road east fills with men who mean it. The chronicle keeps two lists, those who marched and those who found reasons, and no prince should doubt which page his name goes on.
+
+### drought
+The rains do not come, and the Nile, which fed Pharaoh, runs thin and shameful between its banks. Plains that fed empires crack like old parchment, and the grain barges of Alexandria ride high and empty. The sky withholds, and no siege engine ever built can be turned against it.
+
+### financial-crisis
+A rumor runs through the counting-houses of Genoa, and by evening the doors of the great banks are barred from within. Credit, that invisible empire, collapses in an afternoon, and debts written in fine Italian hands all come due at once. Gold buried in cellars proves no safer; in a fearful season, even a full strongbox pays its tithe.
+
+### byzantine-civil-war
+A Palaiologos of the second rank raises his standard and calls himself Basileus, and what is left of empire turns to fighting over the shroud. The Ottomans need not lift a scimitar; Byzantium has always been generous with its own blood. The claimant may yet be bought — a purse has settled worse quarrels, and cheaper thrones.
+
+### peace-of-turin
+At Turin the exhausted republics set down their swords, having discovered that neither can afford the other's ruin. The war galleys go home, the sea lanes open, and the counting-houses of the Rialto and the Ripa fill again. It was never the fleets that ended the war; it was the ledgers, which never lie and never tire.
+
 ## Invented slugs (beyond obvious canon)
 
 These slugs are not established historical event-names and were composed to round out the economic, military, and religious coverage. The design team should reconcile them against `docs/EVENT_CARDS.md`.
@@ -170,3 +248,11 @@ These slugs are not established historical event-names and were composed to roun
 - `relics-of-the-saints` (Era II — religious/morale)
 - `spies-in-the-camp` (Era II — military/intrigue)
 - `the-empty-treasury` (Era III — economic/existential)
+
+## Design-adopted slugs (from docs/EVENT_CARDS.md)
+
+These slugs were defined by the design team in `docs/EVENT_CARDS.md` and are flavored here to match.
+
+- Era I: `papal-indulgence` · `imperial-coronation` · `comet-omen` · `ottoman-interregnum` · `discovery-of-alum` · `marriage-alliance` · `corsair-raid` · `serbian-despotate-submits` · `ragusan-tribute` · `plague-of-locusts` · `fall-of-a-beylik`
+- Era II: `janissary-discontent` · `wallachian-revolt` · `grain-fleet-lost` · `fire-of-the-arsenal` · `papal-interdict` · `schism` · `mamluk-embargo` · `anatolian-alliance` · `knights-of-rhodes-sortie`
+- Era III: `gunpowder-revolution` · `final-crusade` · `drought` · `financial-crisis` · `byzantine-civil-war` · `peace-of-turin`
