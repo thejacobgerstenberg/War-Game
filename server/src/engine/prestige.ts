@@ -32,13 +32,12 @@
  */
 import {
   GamePhase,
-  GreatWorkType,
   type Faction,
   type GameState,
   type Player,
   type SecretObjective,
 } from "@imperium/shared";
-import { GREAT_WORK_COSTS, PRESTIGE_THRESHOLDS, PRESTIGE_VALUES, ROUNDS } from "./balance.js";
+import { PRESTIGE_THRESHOLDS, PRESTIGE_VALUES, ROUNDS } from "./balance.js";
 import { appendLog } from "./logEntry.js";
 import { neighborsOf } from "./adjacency.js";
 
@@ -105,20 +104,19 @@ function hasTradeMonopoly(state: GameState, playerId: string): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * FL-08 (FACTIONS Byz #3 / §13.1): "Hagia Sophia intact" — Byzantium holds
- * CONSTANTINOPLE and that City holds a COMPLETED (progress ≥ required rounds)
- * HAGIA_SOPHIA great work (per the PR reading: Byzantium must actually have built
- * the Hagia Sophia Repair — it is NOT pre-seeded). Destruction is not separately
- * modelled, so a completed work is "intact". The Great Work must be in
- * Constantinople specifically, not merely in any owned province.
+ * FL-08 (FACTIONS Byz #3 / §13.1) + CANON CLARIFICATION (coordinator ruling 1):
+ * "Hagia Sophia intact" NO LONGER means a completed HAGIA_SOPHIA great work. The
+ * Hagia Sophia is a STANDING building now, not a build target for this objective;
+ * the great-work gate is removed entirely. Instead "intact" = the player still
+ * holds CONSTANTINOPLE at game end AND that City was never SACKED (captured by
+ * assault/storm). A starvation-surrender does not sack (RATIFY-PREP: Province.sacked
+ * is set only on assault-capture), so a City that changed hands by storm — even if
+ * retaken — is no longer intact. Read-only.
  */
-function hasIntactHagiaSophia(state: GameState, player: Player): boolean {
-  const need = GREAT_WORK_COSTS[GreatWorkType.HAGIA_SOPHIA].rounds;
+function constantinopleIntact(state: GameState, player: Player): boolean {
   const cple = state.provinces.find((p) => p.id === CONSTANTINOPLE_ID);
   if (!cple || cple.ownerId !== player.id) return false;
-  return cple.greatWorks.some(
-    (gw) => gw.type === GreatWorkType.HAGIA_SOPHIA && gw.progress >= need,
-  );
+  return cple.sacked !== true;
 }
 
 /**
@@ -167,8 +165,11 @@ function objectiveSatisfied(state: GameState, player: Player, obj: SecretObjecti
     return false;
   }
 
-  // Hagia Sophia intact in a held province (FL-08).
-  if (obj.requiresHagiaSophia && !hasIntactHagiaSophia(state, player)) return false;
+  // "Hagia Sophia intact" (FL-08 + coordinator ruling 1): hold Constantinople and
+  // it was never sacked (assault-captured). The requiresHagiaSophia flag is retained
+  // as the switch for this gate; its meaning is now "Constantinople not sacked", NOT
+  // completion of the HAGIA_SOPHIA great work (great-work gate removed).
+  if (obj.requiresHagiaSophia && !constantinopleIntact(state, player)) return false;
 
   // Refused Church Union (FL-08): never resolved Council of Florence for the Union
   // (reads Prep4's Player.acceptedChurchUnion; undefined/false = refused).

@@ -471,8 +471,14 @@ export function computeIncome(state: GameState): IncomeResult {
         const bonus = BUILDING_EFFECTS[b].yieldBonus;
         if (bonus) addInto(income, bonus);
       }
-      // §9.2 Hagia Sophia: +2 faith/round once completed.
-      if (hasCompletedGreatWork(prov, GreatWorkType.HAGIA_SOPHIA)) {
+      // §9.2 Hagia Sophia (RULING 1): the great church stands INTACT at
+      // Constantinople from round 1 — a STANDING +2 faith/round source, on top of
+      // the province's listed yield, INDEPENDENT of the HAGIA_SOPHIA great work
+      // (which is a prestige-only restoration/endowment, NOT the source of this
+      // faith). "Intact" = Constantinople has not been SACKED (captured by
+      // assault); a starvation-surrender does NOT sack, so a peaceful new owner
+      // keeps the yield. See scratchpad/CONTRACT.md RATIFY-PREP.
+      if (prov.id === "constantinople" && !prov.sacked) {
         income.faith += 2;
       }
     }

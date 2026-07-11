@@ -155,6 +155,15 @@ export interface Province {
   garrison?: number;
   /** Set when this province is a faction capital. */
   isCapitalOf?: Faction;
+  /**
+   * True once this city has been SACKED — captured by ASSAULT (storm), as opposed
+   * to a starvation-surrender (which does NOT sack). Set by the combat subsystem on
+   * assault-capture; read by prestige.ts for the Byzantine "Faith of the Fathers"
+   * never-sacked ("Hagia Sophia intact") objective and by economy.ts to stop the
+   * standing Hagia Sophia faith yield once Constantinople is no longer intact
+   * (RULING 1 — see scratchpad/CONTRACT.md RATIFY-PREP). Initialised to false.
+   */
+  sacked?: boolean;
   /** Prestige-node weight (high-value city); 0/undefined for ordinary land. */
   highValue?: number;
   /** Id of the owning NPC minor state, if this is a minor's province. */

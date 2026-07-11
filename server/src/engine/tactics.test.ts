@@ -187,14 +187,31 @@ describe("playTactic / resolveTacticEffect — modifiers (§7.7 / CONTRACT2 §12
     expect(s1.tacticDiscard).toContain(tid("veterans-of-the-border"));
   });
 
-  it("master-founders-hired posts a siege_mod bombard bonus", () => {
+  it("master-founders-hired cancels the wall bonus AND adds a +1 assault die (RULING 4)", () => {
+    // lore/tactics/cards.md (PR #8 ## Rare): "In one siege, cancel the wall bonus
+    // for one full round and add 1 die to your assault." Mechanic = the ratified
+    // bribed-gatekeeper wall-bonus cancel PLUS a +1 assault die; NOT the previously
+    // invented "+2 wall-HP damage dice" siege_mod.
     let s0 = withHand(fresh(), "p2", ["master-founders-hired"]);
     s0 = { ...s0, pendingBattles: [{ ...landBattle("constantinople"), isSiege: true }] };
     const s1 = playTactic(s0, s0.pendingBattles[0], "attacker", tid("master-founders-hired"), rng);
-    const mods = getModifiers(s1, "siege_mod", { faction: Faction.OTTOMAN, provinceId: "constantinople" });
-    expect(mods).toHaveLength(1);
-    expect(mods[0].value).toBe(2);
-    expect(mods[0].data?.bombardDice).toBe(2);
+    // 1) Wall bonus nulled for this assault (same posting as bribed-gatekeeper).
+    const wallMods = getModifiers(s1, "wall_mod", { provinceId: "constantinople" });
+    expect(wallMods.some((m) => m.data?.wallBonusZero === true)).toBe(true);
+    // 2) +1 assault die → attacker combat_mod at the besieged province.
+    const combatMods = getModifiers(s1, "combat_mod", {
+      faction: Faction.OTTOMAN,
+      provinceId: "constantinople",
+    });
+    expect(combatMods).toHaveLength(1);
+    expect(combatMods[0].value).toBe(1);
+    expect(combatMods[0].data?.dice).toBe(true);
+    // The old invented "+2 wall-HP damage dice" siege_mod is gone.
+    const siegeMods = getModifiers(s1, "siege_mod", {
+      faction: Faction.OTTOMAN,
+      provinceId: "constantinople",
+    });
+    expect(siegeMods).toHaveLength(0);
   });
 
   it("bribed-gatekeeper posts a wall_mod nulling the defender's wall bonus", () => {

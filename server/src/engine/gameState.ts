@@ -103,6 +103,10 @@ export function createInitialState(
         : { tier: 0, hp: 0 },
     buildings: [],
     greatWorks: [],
+    // A city becomes `sacked` only when captured by ASSAULT (combat sets it);
+    // starvation-surrender does NOT sack. Prestige reads it for the never-sacked
+    // "Faith of the Fathers" objective (RULING 1). Starts intact.
+    sacked: false,
     ...(p.siege ? { siege: p.siege } : {}),
     ...(p.garrison !== undefined ? { garrison: p.garrison } : {}),
     ...(p.isCapitalOf ? { isCapitalOf: p.isCapitalOf } : {}),

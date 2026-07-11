@@ -66,6 +66,14 @@ export interface TacticEffectData {
   costFaith?: number;
   /** Whether the effect touches every battle the player fights (`holy_war`). */
   allBattles?: boolean;
+  /**
+   * Extra assault dice granted to the attacker alongside the primary effect
+   * (`master-founders-hired`: cancel wall bonus AND +1 assault die). Carried in
+   * the card data so the ratified mechanic is fully described here; the
+   * `wall_bonus_zero` resolver branch must be extended to post this as an
+   * attacker `combat_mod` (see PR body — resolver follow-up).
+   */
+  assaultDice?: number;
 }
 
 /** Build one {@link TacticCard} record from its slug, name, tier and effect data. */
@@ -278,15 +286,20 @@ export const TACTIC_CARDS: TacticCard[] = [
     { timing: "battle" },
   ),
   // 8th rare — CANON clarification 2: `the-guns-of-orban` re-flavored IN PLACE as
-  // `master-founders-hired` (mechanics identical). GD §8.4 note: the guns were
-  // rejected as a duplicate of the capturable Great Bombard; re-flavored to the
-  // gun-founders' craft rather than the gun itself, it refills the rare slot.
+  // `master-founders-hired` (mechanics identical). RULING 4: design ratified this
+  // card byte-identical from `the-guns-of-orban`; its effect text is authoritative
+  // per `lore/tactics/cards.md` (PR #8, `## Rare` → `master-founders-hired`) and
+  // reads verbatim below. The mechanic is the ratified `bribed-gatekeeper`
+  // (`wall_bonus_zero` — cancel the wall bonus for one full round) PLUS a +1
+  // assault die (`assaultDice`), NOT the previously-invented "+2 wall-HP damage
+  // dice". (Resolver follow-up: the `wall_bonus_zero` branch must also post the
+  // +1 attacker `combat_mod` — flagged in the PR body.)
   card(
     "master-founders-hired",
     "Master Founders Hired",
-    "Play in one round of a siege you conduct: your gun-founders cast and fire a great cannon — roll +2 additional Wall-HP damage dice this round.",
-    { tier: "rare", effect: "siege_bombard", domain: "siege", side: "attacker", value: 2 },
-    { timing: "siege" },
+    "In one siege, cancel the wall bonus for one full round and add 1 die to your assault.",
+    { tier: "rare", effect: "wall_bonus_zero", domain: "siege", side: "attacker", assaultDice: 1 },
+    { timing: "assault" },
   ),
 ];
 
