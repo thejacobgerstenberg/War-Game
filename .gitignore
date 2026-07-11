@@ -42,8 +42,9 @@ Thumbs.db
 .cache/
 
 # --- Sim / generated asset output ---
+# sim/out/ is regression-gate scratch space; sim/results/*.json is intentionally
+# committed evidence (see sim/.gitignore) and must NOT be ignored here.
 sim/out/
-sim/results/
 *.tmp
 
 # --- TypeScript build info ---
