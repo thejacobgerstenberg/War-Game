@@ -465,7 +465,7 @@ designs** (8 Common ×3, 8 Uncommon ×2, 8 Rare ×1), shuffled with the seeded R
 | `the-hexamilion-manned` | The Hexamilion Manned | Uncommon ×2 | One land battle you defend in an **unwalled** province: gain **defender +2** (a temporary T2-grade wall bonus; creates no Wall HP; does not stack with real walls). |
 | `greek-fire` | Greek Fire | Rare ×1 | Before dice in a fleet battle you are fighting: **win it outright** — all enemy naval units in the zone are destroyed (transports and cargo with them, §7.6). Then **discard one other tactic card** from your hand and **remove this card from the game**. |
 | `master-founders-hired` | Master Founders Hired | Rare ×1 | One siege you are pressing, for **one full round**: the defender's **wall bonus is 0** (Wall HP unchanged; escalade −1 still applies) and your side rolls **+1 die** in each melee step of the assault. Hires the founders, not the gun: creates **no siege engine** and never interacts with the **Great Bombard**, which stays unique per §8.4. |
-| `treason-at-the-gate` | Treason at the Gate | Rare ×1 | Pay **4 gold**. Playable only from **round 6** onward, on a walled city you have besieged for **2+ consecutive rounds** whose garrison holds **4 or fewer units**: the city **falls without an assault** — its garrison surrenders (removed) and you occupy it, walls at their current HP. **Remove this card from the game.** |
+| `treason-at-the-gate` | Treason at the Gate | Rare ×1 | Pay **4 gold**. Playable on a walled city you have besieged for **2+ consecutive rounds**, counting **only siege rounds from game round 6 onward** toward that requirement (so the earliest legal play is **round 7**), whose garrison holds **4 or fewer units**: the city **falls without an assault** — its garrison surrenders (removed) and you occupy it, walls at their current HP. **Remove this card from the game.** |
 | `the-pay-chest-taken` | The Pay Chest Taken | Rare ×1 | Take **up to 3 gold** from one rival's treasury (never more than they hold). |
 | `holy-war-proclaimed` | Holy War Proclaimed | Rare ×1 | Pay **2 faith**: until the start of your next turn, your side rolls **+1 die** in each melee step of **every** battle you fight. |
 | `sails-from-the-west` | Sails from the West | Rare ×1 | Play while a coastal city you hold is besieged: this round its stores do **not** deplete and it takes no hunger loss — **even under full naval blockade** (§8.2) — and **restore 2 depleted grain stores** (up to its maximum). |
@@ -851,9 +851,10 @@ and a **seeded RNG** to draw deterministically (see
 The game ends at the **Cleanup** (§10, phase 5) in which a player reaches the
 **prestige threshold**, scaled to player count — all prestige is scored at
 Cleanup (§13), so Cleanup is the only point where victory is checked. Victory
-thresholds are **balance-owned constants** (see `sim/TUNING_REPORT` §2 and
-`server/src/engine/balance.ts`); current values: **72 / 75 / 80 / 78** for
-2 / 3 / 4 / 5 players, per the balance tuning report (PR #11 @ `ac39705`):
+thresholds are **balance-owned constants**, ratified in `sim/TUNING_REPORT.md`
+§2 (balance retune, PR #11 TUNING_REPORT); `server/src/engine/balance.ts` will
+hold these constants once the engine lands. Current values: **72 / 75 / 80 / 78**
+for 2 / 3 / 4 / 5 players:
 
 | Players | Threshold |
 |---|---|
