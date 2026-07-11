@@ -761,7 +761,9 @@ kbd {
   body {
     background: #fff;
     color: #000;
-    font-size: 7.8pt;
+    /* 7.6pt (was 7.8pt) keeps the booklet within its 14-page budget now that
+       the doc-contradiction flags (Unresolved Rule asides) add copy */
+    font-size: 7.6pt;
     line-height: 1.22;
   }
 
@@ -1017,6 +1019,19 @@ kbd {
     color: var(--porphyry);
     border-color: var(--porphyry);
     box-shadow: none;
+  }
+
+  /* The tear-out reference sheet must always start on its own page.
+     .content is a multicol in print, where a forced page break is ignored;
+     spanning all columns re-exposes the section to page fragmentation so
+     break-before: page is honoured, and its own 2-column flow keeps the
+     sheet as dense as before. */
+  #quick-reference {
+    break-before: page;
+    page-break-before: always;
+    column-span: all;
+    columns: 2;
+    column-gap: 6mm;
   }
 
   /* Keep the reference sheet terse and dense */

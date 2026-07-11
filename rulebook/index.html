@@ -163,6 +163,10 @@
     </table>
   </div>
 
+  <aside class="ambiguity" role="note" aria-label="Unresolved Rule — When Secret Objectives Score" data-title="Unresolved Rule — When Secret Objectives Score">
+    <p>The game-design document lists the &ldquo;+4 each&rdquo; in the table above, scored at Cleanup like all prestige; the faction sheets score secret objectives <em>at game end (round 16)</em>. Which governs is unstated; both readings appear in this book. Flagged for the design team.</p>
+  </aside>
+
   <p>Every faction also holds a private deck of three <span class="term" tabindex="0" data-tip="Hidden victory goals, three per faction, worth +4 prestige each. Scored at game end (round 16) unless the sudden-death rule ends the game first.">secret objectives</span> &mdash; hidden victory goals scored at game end (round 16) unless the sudden-death rule below ends the game first. You need not complete all three; each one you do complete contributes its prestige.</p>
 
   <h3 id="how-to-win-paths">Three Roads to Victory</h3>
@@ -353,7 +357,7 @@
 
   <h3 id="actions-move">Move / Attack</h3>
   <p><strong>Cost:</strong> 1 action &mdash; one action moves one army or one fleet.</p>
-  <p>A unit moves up to its <strong>Move</strong> value in province move-cost along the adjacency graph. Plains, hills, forest, coast, and city provinces cost 1 to enter; mountains cost 2. Levies, infantry, archers, and siege units have Move 1; cavalry, galleys, and warships have Move 2. Ottoman Ghazi Akıncı ignore rough-terrain movement penalties.</p>
+  <p>A unit moves up to its <strong>Move</strong> value in province move-cost along the adjacency graph. Plains, hills, forest, coast, and city provinces cost 1 to enter; mountains cost 2; desert has no printed move cost (see the Unresolved Rule flag in <a href="#economy-trade-sources">Economy &amp; Trade</a>). Levies, infantry, archers, and siege units have Move 1; cavalry, galleys, and warships have Move 2. Ottoman Ghazi Akıncı ignore rough-terrain movement penalties.</p>
   <ul>
     <li><strong>Attack.</strong> Entering a province held by a non-ally with units declares a <strong>battle</strong>, queued for the Battle phase (see <a href="#combat-sieges">Combat &amp; Sieges</a>). Retreats are decided between battle rounds, not as an action.</li>
     <li><strong>Occupation.</strong> Entering an <strong>empty</strong> enemy or neutral province is an occupation: ownership flips at cleanup unless contested.</li>
@@ -446,7 +450,7 @@
       </tbody>
     </table>
   </div>
-  <p>Wall repair costs nothing: out of siege, damaged walls slowly repair at +1 HP per round, up to their maximum.</p>
+  <p>Out of siege, damaged walls slowly repair at +1 Wall HP per round, up to their maximum. Repairing wall <em>tiers</em> costs 🪨 stone (<em>Earthquake</em> damage is mended with 🪨 marble) &mdash; see the tiers-vs-HP Unresolved Rule flag in <a href="#combat-sieges-walls">Combat &amp; Sieges</a>.</p>
 
   <h3 id="actions-diplomacy">Diplomacy</h3>
   <p><strong>Cost:</strong> proposing and accepting are each an action for the initiating player; the responder answers for free.</p>
@@ -657,8 +661,13 @@
       <tr><td>Forest</td><td>🪵 timber 2, 🌾 grain 1</td></tr>
       <tr><td>Coast</td><td>🌾 grain 1, 🪙 gold 1; enables ports and trade</td></tr>
       <tr><td>City</td><td>🪙 gold 3, ✝️ faith 1</td></tr>
+      <tr><td>Desert</td><td>Low; 🪙 gold (caravan) &mdash; no numbers printed; see the flag below</td></tr>
     </tbody>
   </table>
+
+  <aside class="ambiguity" role="note" aria-label="Unresolved Rule — Desert Has No Numbers" data-title="Unresolved Rule — Desert Has No Numbers">
+    <p>The map document defines <strong>desert</strong> (Tunis, Cairo; the card <em>Drought</em> targets it too) only qualitatively &mdash; yield &ldquo;low; gold (caravan)&rdquo;, movement &ldquo;attrition&rdquo; &mdash; and the game-design terrain table, source of every number above, omits it: no base yield, move cost, or attrition rule is published. Use the two provinces&rsquo; registry yields. Flagged for the design team.</p>
+  </aside>
 
   <p>A handful of named cities (Constantinople, Thessalonica, Smyrna, Ragusa, Famagusta, Belgrade, …) carry extra yields, prestige value, and pre-built walls. Beyond province yields, income also flows from building bonuses (see <a href="#economy-trade-buildings">Buildings</a>), trade-route gold (see <a href="#economy-trade-routes">Trade Routes</a>), vassal and treaty tribute (see <a href="#economy-trade-vassals">Vassal &amp; Treaty Income</a>), and faction powers — Byzantium's Hagia Sophia, for one, yields +2 ✝️ faith/round at Constantinople on top of its listed yield.</p>
 
@@ -1020,6 +1029,10 @@
     </table>
   </div>
   <p>The remaining Independent provinces — Mamluk Egypt (Cairo, Alexandria, Aleppo, Antioch), the Duchy of Athens, Aragon (Naples, Sicily), the Papacy (Rome), and the Hafsids (Tunis) — are unaligned neutrals with a light garrison (1–2 levies, plus their listed walls). They are <em>not</em> vassalizable minors in the base game: they are conquest targets or, for Rome, a faith and diplomacy actor.</p>
+
+  <aside class="ambiguity" role="note" aria-label="Unresolved Rule — How Many Minors?" data-title="Unresolved Rule — How Many Minors?">
+    <p>The game-design document names <strong>five</strong> canonical minors &mdash; Serbia, Wallachia, Karaman, Trebizond, Rhodes &mdash; plus an optional sixth (e.g. Athens/Achaea) per player count; the map document fixes <strong>six</strong>, Ragusa included, with no optional seat. The registry above follows the map. Flagged for the design team.</p>
+  </aside>
 
   <aside class="ambiguity" role="note" aria-label="Unresolved Rule — Two Ledgers for the Minors" data-title="Unresolved Rule — Two Ledgers for the Minors">
     <p>Two conflicts surround the minors. <strong>(1) Walls:</strong> the game-design document says several minors sit &ldquo;in defensible terrain or behind Lv1 walls&rdquo;, but the map registry above places Serbia and Ragusa behind tier-2 walls and Trebizond and Rhodes behind tier-3 walls (see also the wall-tier flag in <a href="#combat-sieges-walls">Combat &amp; Sieges</a>). <strong>(2) Vassal income:</strong> the map registry gives each minor a fixed &ldquo;vassal yield if won over&rdquo; (e.g. Serbia: +2 🪙 gold tribute, +1 levy/round), while the vassal rules below grant province yields &times;0.5 as tribute plus a levy call once per 2 rounds. The documents never say which governs, or whether the two stack. Flagged for the design team.</p>
