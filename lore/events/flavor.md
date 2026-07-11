@@ -36,7 +36,7 @@ The devshirme takes its due from the Christian villages of Rumelia: the stronges
 Across the neck of the Morea the old rampart rises again, six miles of stone against the tide from the north. The Despot counts it his shield; wiser men count the guns that have not yet been cast. A wall stands only as tall as the age that assaults it.
 
 ### guild-charter
-The masters set their seal to a new charter, and the crafts of the city bind themselves in privilege and price. Apprentices grumble, merchants calculate, and the treasury takes its cut of every sanctioned trade. Order, once purchased, pays dividends.
+The masters set their seal to a new charter, and the crafts of the city bind themselves in privilege and price. Apprentices grumble, merchants calculate, and the treasury takes its cut of every sanctioned trade. Order, once purchased, repays its price with interest.
 
 ### pilgrim-season
 The roads to the holy places fill with the devout, staff in hand and coin in purse. Inns overflow, relics are kissed, and the pious depart lighter of pocket and heavier of grace. Faith travels well, and spends freely.
@@ -112,7 +112,7 @@ A cipher is intercepted, a servant talks too freely, and it grows plain that the
 ## Era III — rounds 11–16 (existential)
 
 ### rumeli-hisari
-On the European shore, at the narrowest of the straits, the Sultan raises a fortress in a single summer. Its guns can close the Bosphorus to any hull that will not pay. They call it Boğazkesen, the Throat-Cutter, and the City understands the name.
+On the European shore, at the narrowest of the straits, the Sultan raises a fortress in a single summer. Its guns can close the Bosporus to any hull that will not pay. They call it Boğazkesen, the Throat-Cutter, and the City understands the name.
 
 ### great-bombard-forged
 The founder Orban, spurned by the Greeks, casts for the Sultan a bombard so vast it must be dragged by sixty oxen. Its stone shot flies farther than any wall was built to withstand. The age of proud stone ramparts ends in the roar of its first firing.

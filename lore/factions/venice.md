@@ -35,7 +35,7 @@ One of the Ten who guard the Republic from the shadows — he speaks in whispers
 8. News, and unwelcome. It will not leave this room until I decide who is permitted to know it. [event card struck]
 9. The Ten answer to no council and no Doge — not even to Foscari. We answer only to Venice. [idle/flavor]
 10. A denunciation waits in the lion's mouth each dawn. Most are envy. A few are worth a life. [idle/flavor]
-11. I have never raised my voice, my lord. Men who must shout have already lost the room. [idle/flavor]
+11. I have never raised my voice, my lord. Men who must shout have already lost the council. [idle/flavor]
 12. Venice will outlive her enemies because she keeps her secrets and buries them deeper than her dead. [idle/flavor]
 
 ### Vettor Mocenigo, Captain-General of the Sea

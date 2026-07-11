@@ -172,14 +172,14 @@ Prestige stands apart, upon its own track.
 - **Grain** —
   > `The bread of hosts and cities alike. Empty granaries breed thin soldiers and thinner loyalty.`
 
-- **Manpower** —
-  > `The strong backs of the realm. From these levies are hosts mustered, and by their spending are they emptied.`
+- **Timber** —
+  > `Keel and siege-engine, rafter and palisade — whatever a realm would build, sail, or batter down begins in the woodyard.`
+
+- **Marble** —
+  > `Cut for churches, monuments, and the tombs of the great — the stone in which a crown writes its name for the ages.`
 
 - **Faith** —
   > `Piety and the right to rule, bound as one. It hallows a crown, blesses a war, and steadies a people when the walls shake.`
-
-- **Trade** —
-  > `The goods that move by galley and caravan. Where commerce flows, the counting-house fills; where it fails, the coin runs dry.`
 
 **The Prestige Track**
 
@@ -241,36 +241,37 @@ At least ten, all in voice. No "OK," no "error," no modern phrasing.
 
 1. `Not enough gold in the treasury.`
 2. `The granaries are bare — no grain to spare.`
-3. `Too few levies answer the muster.`
-4. `The people's faith will not stretch so far.`
-5. `The counting-house is empty; you have no goods to trade.`
+3. `The woodyards are empty — no timber for keel, wall, or engine.`
+4. `The quarries have given their last — no marble for the work.`
+5. `The people's faith will not stretch so far.`
+6. `The muster fields are empty — no levies to raise.`
 
 **Movement & targets**
 
-6. `No path leads a host from here to there.`
-7. `There is no worthy target within reach.`
-8. `That province lies too far for one march.`
-9. `A host already holds that ground — it cannot move twice.`
+7. `No path leads a host from here to there.`
+8. `There is no worthy target within reach.`
+9. `That province lies too far for one march.`
+10. `A host already holds that ground — it cannot move twice.`
 
 **Ownership & rules**
 
-10. `That province already flies your banner.`
-11. `You cannot lay siege to your own city.`
-12. `This deed is not yours to do — the turn belongs to another.`
-13. `You have spent your deeds this round. Rest the banner.`
+11. `That province already flies your banner.`
+12. `You cannot lay siege to your own city.`
+13. `This deed is not yours to do — the turn belongs to another.`
+14. `You have spent your deeds this round. Rest the banner.`
 
 **Diplomacy**
 
-14. `A truce forbids this. You are sworn to peace.`
-15. `You hold no pact with that crown to break.`
-16. `A vassal may not treat with foreign powers.`
-17. `They have refused your hand.`
+15. `A truce forbids this. You are sworn to peace.`
+16. `You hold no pact with that crown to break.`
+17. `A vassal may not treat with foreign powers.`
+18. `They have refused your hand.`
 
 **The table & connection**
 
-18. `The herald cannot reach the table — the connection is lost.`
-19. `The messenger returns; the table is restored.`
-20. `You wait upon another court. Be patient.`
+19. `The herald cannot reach the table — the connection is lost.`
+20. `The messenger returns; the table is restored.`
+21. `You wait upon another court. Be patient.`
 
 Success toasts (the pleasant kind):
 

@@ -77,14 +77,23 @@ and tooltips (where brevity and clarity rule).
 | Open war | **the field**, "to take the field" | **War** |
 | Resource 1 — coin/wealth | **gold**, **coin** | **Gold** |
 | Resource 2 — food/supply | **grain** | **Grain** |
-| Resource 3 — levies/soldiery | **manpower** | **Manpower** |
-| Resource 4 — piety/legitimacy | **faith** | **Faith** |
-| Resource 5 — goods/commerce | **trade** | **Trade** |
+| Resource 3 — wood for fleet, siege & building | **timber** | **Timber** |
+| Resource 4 — stone for church & monument | **marble** | **Marble** |
+| Resource 5 — piety/legitimacy | **faith** | **Faith** |
 
-**The five resources are: Gold, Grain, Manpower, Faith, Trade.**
+**The five resources are: Gold, Grain, Timber, Marble, Faith.**
 **Prestige is the separate victory track — it is *not* one of the five resources.** Never
 call Prestige a resource, and never speak of "spending Prestige" as if it were coin
 (it is *won*, *lost*, *squandered*, *earned*).
+
+**Fighting strength is not a resource.** The realm's strength in arms lives on the board
+as its hosts and levies. Write "the levies are spent" or "the muster fields stand empty" —
+never a counted stockpile of fighting men, and never speak of spending them as if they
+sat in a granary.
+
+**Trade is not a resource.** Trading is an activity — routes, monopolies, the
+counting-house — and its fruit is Gold. "Trade routes," "to trade," and commerce as a
+deed are all welcome; "Trade" as a stockpiled, spendable quantity is not.
 
 Faction-specific coin names (*ducats*, *hyperpyra*, *akçe*) are flavor color: use them in
 prose where they add texture; the UI counter is always the neutral **Gold**.
@@ -95,8 +104,8 @@ prose where they add texture; the UI counter is always the neutral **Gold**.
 
 Capitalize:
 - **Prestige** — always, as a proper game concept.
-- **The five resource names as game terms in UI and headings:** Gold, Grain, Manpower,
-  Faith, Trade. In running prose, lowercase them as ordinary nouns unless referring to
+- **The five resource names as game terms in UI and headings:** Gold, Grain, Timber,
+  Marble, Faith. In running prose, lowercase them as ordinary nouns unless referring to
   the tracked quantity as a named thing ("Grain fell to two" vs. "the grain rotted").
 - **Faction names:** Byzantium, the Ottomans, Venice, Genoa, Hungary. Also **Byzantine**,
   **Ottoman**, **Venetian**, **Genoese**, **Hungarian**.
