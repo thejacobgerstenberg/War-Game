@@ -181,13 +181,19 @@ Modeled since the stacking round (2026-07-11); `CONFIG.stacking`
   re-terrain a province — the cap reads the authored tier.
 - **Land units** = levy + professional + mercenary + **siege engines**;
   galleys are naval (§6.4 counts them per SEA ZONE, cap 6/player). The
-  unique Great Bombard is a flag, not an Army unit — it consumes no
-  headroom (canon §8.4: never recruited). **KNOWN DIVERGENCE — the engine
-  (feature/engine-core @462b7da) stacks the gun as a `GREAT_BOMBARD`
-  variant piece that DOES occupy a §6.4 slot (capital-if-room placement,
-  defer-retry). Not adopted: the engine-unit reading breaks the T5d bar
-  (worst case 39.1% < 50% at garrison 10) while fullgame bands hold —
-  coordinator ruling pending; see TUNING_REPORT §2.8 NEEDS-DECISION.**
+  unique Great Bombard **OCCUPIES one §6.4 land slot** (coordinator
+  ruling A, 2026-07-11 — unit semantics, matching the engine's
+  `GREAT_BOMBARD` variant piece, feature/engine-core @462b7da; §8.4 gains
+  a "counts against stacking" clause): a with-Bombard camp fields at most
+  **11 line units + the gun**. The sim reserves the gun's slot in
+  `landCommitted` at its siege/resting province and gates siege
+  deployment on camp room. **Placement on forge** (engine omen #34
+  mirror, `grantBombard`): the recipient's **capital if it has headroom,
+  else the owned province adjacent to the capital with the most remaining
+  room (tie → lowest province id), else any owned province (same rule),
+  else DEFER** — retried each omen phase (a deferred grant still counts
+  as claimed: the gun stays unique). Consequence: the T5d bar was
+  re-based — see TUNING_REPORT §2.8 RESOLVED note.
 - **"Excess cannot enter" — enforcement points**: recruit (`actRecruit`,
   non-galley), friendly moves incl. harbor ferries (`actMove`), attack-stack
   assembly and siege reinforcement (`actAttack` via `planForce`), §7.5
@@ -410,11 +416,14 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   **Canon §8.4 Assault row (modeled since the stacking round): the
   emplaced Bombard "adds the standard SIEGE +3 vs walls"** — one extra
   engine-threshold die in assaults (`greatBombard.assaultDice` 1, via
-  `CombatModifiers.attackerEngineExtraDice`; it is a flag, not an Army
-  unit, so it consumes no §6.4 headroom — engine diverges, see the
-  KNOWN DIVERGENCE under "Stacking" above). In
+  `CombatModifiers.attackerEngineExtraDice`). **Ruling A (2026-07-11): the
+  gun occupies one §6.4 stacking slot** (unit semantics, engine-matched —
+  placement/defer rule under "Stacking" above); it is still not an Army
+  unit (rolls no melee dice, never starves first). In
   the full game its owner deploys it at their most valuable siege
-  (Constantinople first). Unmodeled: 3-grain upkeep/silence, 1-province
+  (Constantinople first) — only a camp with a free §6.4 slot can receive
+  it; with no roomy siege it stays at its resting place and does not
+  fire. Unmodeled: 3-grain upkeep/silence, 1-province
   movement, no-mountains, sink-on-transport-loss, capture-as-loot (it
   stays with its owner).
 - **Byzantine unique power NOT modeled**: FACTIONS gives Constantinople an
@@ -424,18 +433,22 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   calibrated without it per the coordinator's target spec.
 - Calibrated consequence (full-scale results/siege.json, 20k iters/cell,
   §6.4-LEGAL stacks — the Constantinople besieger is the strongest legal
-  12-unit stack, 11 mercenaries + 1 engine + the Bombard flag): (a) direct
+  stack: 11 mercenaries + 1 engine without the Bombard; 10 mercenaries +
+  1 engine + the gun in the 12th slot with it, per ruling A): (a) direct
   assault on the intact T5 walls: ≤ ~0.31% win for any stack 1-12 vs
   garrisons 6-10; (b) no Bombard + no blockade: 0% capture within 12 siege
   rounds (sea resupply + masonry cap); (c) no Bombard + full blockade:
   starve-out works (≥ 92.2%), median capture at siege round 7/9/11 for
   garrisons 6/8/10; (d) with the Bombard: emplacement in siege round 1,
   breach in rounds 3-4, capture at median siege round 4 — **capture within
-  4 rounds of its FIRST SHOT (siege rounds ≤ 5) with 55.9-98.4%
-  probability** (the re-derived T5d target, >50%; the pre-stacking 19-unit
-  camp scored 91.7-100%). With the omen drawn uniformly r11-16, the City
-  falls ~r13-16 — the 1453 anchor holds in expectation (fullgame SD
-  completions all r12+).
+  4 rounds of its FIRST SHOT (siege rounds ≤ 5) with 94.5 / 73.6%
+  probability at garrisons 6 / 8** (the T5d bar re-based per coordinator
+  ruling 2026-07-11: >50% at garrisons 6-8, the typical case) **and 39.5%
+  at max garrison 10 — accepted per the same ruling** (the flag-era
+  12-line-unit camp scored 55.9-98.0%; the pre-stacking 19-unit camp
+  91.7-100%). With the omen drawn uniformly r11-16, the City falls
+  ~r13-16 — the 1453 anchor holds in expectation (fullgame SD completions
+  all r12+).
 
 ## Economy & map
 

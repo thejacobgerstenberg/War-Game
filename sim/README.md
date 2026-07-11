@@ -143,7 +143,9 @@ the committed file is the 3,000-game fresh-seed final run.)
 - **T5** Constantinople capture curves: intact-assault <2%, un-blockaded
   un-Bombarded capture <10% in 12 rounds, blockade starve-out median ≥6
   rounds, with-Bombard capture within 2–4 siege rounds AFTER it first
-  fires >50% (errata E3: the Bombard is emplaced 1 siege round before
-  firing, so the window is siege rounds ≤5)
+  fires >50% at garrisons 6–8 (errata E3: the Bombard is emplaced 1 siege
+  round before firing, so the window is siege rounds ≤5; coordinator
+  ruling 2026-07-11: the Bombard occupies a §6.4 stacking slot, and the
+  ~39% at max garrison 10 is accepted)
 - **T6** every faction × archetype stays solvent through round 16 and can
   field a credible strike force by rounds 4–5

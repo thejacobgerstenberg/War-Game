@@ -3,8 +3,10 @@
  * re-derived under canon §6.4 STACKING (stacking round, 2026-07-11): every
  * besieger stack is §6.4-LEGAL — at most 12 land units total (incl. siege
  * engines) in a CITY/capital province, the cap the camp itself occupies
- * (engine-matched co-location reading). The unique Great Bombard is a flag,
- * not an Army unit, and consumes no headroom (canon §8.4: never recruited).
+ * (engine-matched co-location reading). The unique Great Bombard OCCUPIES
+ * one §6.4 slot (coordinator ruling A, 2026-07-11 — unit semantics, matching
+ * feature/engine-core omen #34): a with-Bombard camp fields at most 11 line
+ * units + the gun.
  *
  * 1. Grid: wall tier T1-T5 x garrison size 2-12 x siege engines 0-6, the
  *    attacker fixed at the LEGAL city-cap total of 12 land units —
@@ -21,8 +23,10 @@
  *
  * 3. Constantinople scenarios (T5b-T5d): T5 Theodosian Walls (16 HP, +4),
  *    garrison 6-10 professionals, attacker = the strongest §6.4-LEGAL
- *    grand-assault stack — 11 mercenaries (free-company shock troops at
- *    CAVALRY grade) + 1 siege engine = 12 land units — in all four
+ *    grand-assault stack: without the Bombard 11 mercenaries (free-company
+ *    shock troops at CAVALRY grade) + 1 siege engine = 12 land units; WITH
+ *    the Bombard the gun takes the 12th slot (ruling A), so the camp is 10
+ *    mercenaries + 1 siege engine = 11 line units + gun — in all four
  *    combinations of Great Bombard x naval blockade. The city is COASTAL:
  *    unblockaded => sea-resupplied, no starvation (canon §8.2.3); vs intact
  *    T5 an ordinary train deals at most 1 wall HP/round (canon §8.3) — only
@@ -35,8 +39,11 @@
  *   b) no Bombard + NO blockade: capture within 12 siege rounds < 10%
  *   c) no Bombard + FULL blockade: starve-out works, median capture >= 6
  *   d) with Bombard: capture within 2-4 siege rounds AFTER IT FIRST FIRES
- *      > 50% (E3 re-derivation: the Bombard is emplaced for 1 siege round
- *      before firing, so the window is siege rounds <= 1+4 = 5)
+ *      (E3 re-derivation: the Bombard is emplaced for 1 siege round before
+ *      firing, so the window is siege rounds <= 1+4 = 5) > 50% at garrisons
+ *      6-8 (the typical case); ~39% ACCEPTED at max garrison 10 per
+ *      coordinator ruling 2026-07-11 (ruling A re-base: the gun's §6.4 slot
+ *      costs the camp its 12th line unit)
  *
  * Writes sim/results/siege.json. SMOKE=1 cuts iterations 20000 -> 500.
  */
@@ -67,10 +74,14 @@ const ENGINES = [0, 1, 2, 3, 4, 5, 6] as const;
 const CPLE_GARRISONS = [6, 8, 10] as const;
 const CPLE_MAX_K = DEFAULT_SIEGE_POLICY.maxSiegeRounds; // 12
 // Grand assault army for the Constantinople scenarios: the strongest
-// §6.4-LEGAL 12-unit stack — free-company shock troops (CAVALRY-grade,
-// CV atk 3) around a single engine; the Great Bombard (scenario flag)
+// §6.4-LEGAL stack — free-company shock troops (CAVALRY-grade, CV atk 3)
+// around a single engine. Without the Bombard the camp fills the CITY cap
+// with 12 line units; WITH it the gun occupies the 12th slot (ruling A,
+// 2026-07-11), so the best legal camp is 11 line units + gun (10m+1e was
+// the best 11-line-unit mix in the 2026-07-11 parity sweep). The Bombard
 // supplies the train's real breaching power and its §8.4 assault die.
 const CPLE_ATTACKER = { mercenary: 11, siegeEngine: 1 } as const;
+const CPLE_ATTACKER_WITH_BOMBARD = { mercenary: 10, siegeEngine: 1 } as const;
 
 interface CellStats {
   tier: number;
@@ -219,7 +230,9 @@ for (const bombard of [false, true]) {
     for (const garrison of CPLE_GARRISONS) {
       cellSeed++;
       const setup: SiegeSetup = {
-        attacker: armyOf(CPLE_ATTACKER),
+        // ruling A: the gun occupies a §6.4 slot — with-Bombard camps field
+        // one fewer line unit (11 + gun vs 12).
+        attacker: armyOf(bombard ? CPLE_ATTACKER_WITH_BOMBARD : CPLE_ATTACKER),
         defender: armyOf({ professional: garrison }),
         wallTier: 5, // T5 Theodosian Walls (16 HP, +4; canon §8.1/§8.3)
         theodosian: true,
@@ -267,12 +280,22 @@ const t5bMet = worstNoBombNoBlock12 < 0.10;
 const minBlockCapture = Math.min(...noBombBlock.map((c) => c.captureProb));
 const minBlockMedian = Math.min(...noBombBlock.map((c) => c.medianRoundsToCapture ?? Infinity));
 const t5cMet = minBlockCapture > 0.5 && minBlockMedian >= 6;
-// T5d (E3 re-derived): with Bombard (unblockaded): capture within 4 siege
-// rounds AFTER the Bombard first fires > 50%. The Bombard fires from siege
-// round emplacementRounds+1, so the window closes at k = emplacementRounds+4.
+// T5d (E3 re-derived; RE-BASED per coordinator ruling A, 2026-07-11): with
+// Bombard (unblockaded): capture within 4 siege rounds AFTER the Bombard
+// first fires > 50% at garrisons 6-8 (the TYPICAL case). The Bombard fires
+// from siege round emplacementRounds+1, so the window closes at
+// k = emplacementRounds+4. At MAX garrison 10 the §6.4-legal 11-line-unit
+// camp lands ~39% — ACCEPTED per the ruling (reported, not gated).
 const t5dWindowK = CONFIG.siege.greatBombard.emplacementRounds + 4;
-const worstWithBomb4 = Math.min(...withBombNoBlock.map((c) => c.pCaptureWithinK[t5dWindowK - 1]));
-const t5dMet = worstWithBomb4 > 0.50;
+const withinWindow = (c: CpleCurve) => c.pCaptureWithinK[t5dWindowK - 1];
+const T5D_TYPICAL_GARRISON_MAX = 8;
+const worstWithBomb4Typical = Math.min(
+  ...withBombNoBlock.filter((c) => c.garrison <= T5D_TYPICAL_GARRISON_MAX).map(withinWindow),
+);
+const worstWithBomb4MaxGarrison = Math.min(
+  ...withBombNoBlock.filter((c) => c.garrison > T5D_TYPICAL_GARRISON_MAX).map(withinWindow),
+);
+const t5dMet = worstWithBomb4Typical > 0.50;
 
 // ----------------------------------------------------------------- report
 
@@ -321,7 +344,7 @@ console.log(
 console.log();
 
 console.log(`CONSTANTINOPLE (T5 Theodosian Walls, ${wallHitpoints(5, true)} hp, coastal): P(capture within k siege rounds)`);
-console.log(`attacker = ${CPLE_ATTACKER.mercenary} mercenaries + ${CPLE_ATTACKER.siegeEngine} siege engine (= ${CPLE_ATTACKER.mercenary + CPLE_ATTACKER.siegeEngine} land units, §6.4-legal at the city cap)`);
+console.log(`attacker = ${CPLE_ATTACKER.mercenary} mercenaries + ${CPLE_ATTACKER.siegeEngine} siege engine (= ${CPLE_ATTACKER.mercenary + CPLE_ATTACKER.siegeEngine} land units, §6.4-legal at the city cap); with Bombard: ${CPLE_ATTACKER_WITH_BOMBARD.mercenary} mercenaries + ${CPLE_ATTACKER_WITH_BOMBARD.siegeEngine} engine + the gun in the 12th slot (ruling A)`);
 console.log(
   table(
     ['scenario', ...[1, 2, 3, 4, 6, 8, 10, 12].map((k) => `k=${k}`), 'P(cap)', 'median'],
@@ -339,7 +362,7 @@ console.log('TARGETS (T5)');
 console.log(`  a) direct assault intact Theodosian < 2%:            worst=${pct(worstDirectAssault, 2)}  ${t5aMet ? 'MET' : 'MISSED'}`);
 console.log(`  b) no Bombard + no blockade, capture <=12r < 10%:    worst=${pct(worstNoBombNoBlock12)}  ${t5bMet ? 'MET' : 'MISSED'}`);
 console.log(`  c) no Bombard + blockade: starve works, median >= 6: minCap=${pct(minBlockCapture)} minMedian=${minBlockMedian}  ${t5cMet ? 'MET' : 'MISSED'}`);
-console.log(`  d) with Bombard, capture <=${t5dWindowK} rounds (4 after 1st fire) > 50%: worst=${pct(worstWithBomb4)}  ${t5dMet ? 'MET' : 'MISSED'}`);
+console.log(`  d) with Bombard, capture <=${t5dWindowK} rounds (4 after 1st fire) > 50% at garrisons 6-8: worst=${pct(worstWithBomb4Typical)}  ${t5dMet ? 'MET' : 'MISSED'}  (max garrison 10: ${pct(worstWithBomb4MaxGarrison)} — accepted per coordinator ruling 2026-07-11)`);
 console.log();
 
 const path = writeResults('siege', {
@@ -350,11 +373,12 @@ const path = writeResults('siege', {
     elapsedMs,
     gridAttacker: `(${LEGAL_STACK} - engines) professionals + <engines> siege engines = ${LEGAL_STACK} land units total (canon §6.4 city cap; landlocked city)`,
     cpleAttacker: CPLE_ATTACKER,
+    cpleAttackerWithBombard: CPLE_ATTACKER_WITH_BOMBARD,
     garrisonComposition: 'professionals',
     terrain: 'plains',
     policy: DEFAULT_SIEGE_POLICY,
     config: { walls: CONFIG.walls, siege: CONFIG.siege, combat: CONFIG.combat },
-    note: 'FINAL canon (2b42386) + ratified errata E3 (2026-07-11) + canon §6.4 STACKING RAW (stacking round, 2026-07-11): every attacker stack is legal at the 12-unit CITY cap (engines included; the camp co-locates on the invested province, engine-matched reading). Walls T1-T5, binary wall bonus, escalade -1, stores-then-starve, sea resupply (blockade = every adjacent zone enemy-held), T5 masonry cap 1 HP/round lifted by the Great Bombard (2 wall-damage dice) AFTER a 1-siege-round emplacement (no Bombard wall damage in siege round 1). Stacking-round canon-RAW re-readings: siege engines keep rolling their +3-vs-walls dice in BREACH assaults (canon §7.2 "in sieges, SIEGE roll"; combat.siegeEnginesFightAtBreach) and the emplaced Bombard adds its own §8.4 assault die (greatBombard.assaultDice 1). Bombard scenarios assume the great-bombard-forged omen has been drawn (per-game seeded draw round, uniform over rounds 11-16 in the full game).',
+    note: 'FINAL canon (2b42386) + ratified errata E3 (2026-07-11) + canon §6.4 STACKING RAW (stacking round, 2026-07-11): every attacker stack is legal at the 12-unit CITY cap (engines included; the camp co-locates on the invested province, engine-matched reading). COORDINATOR RULING A (2026-07-11): the unique Great Bombard OCCUPIES one §6.4 slot (unit semantics, matching feature/engine-core omen #34) — with-Bombard Constantinople camps field 10 mercenaries + 1 engine + the gun; the T5d bar is re-based to >50% at garrisons 6-8 (typical case) with ~39% accepted at max garrison 10. Walls T1-T5, binary wall bonus, escalade -1, stores-then-starve, sea resupply (blockade = every adjacent zone enemy-held), T5 masonry cap 1 HP/round lifted by the Great Bombard (2 wall-damage dice) AFTER a 1-siege-round emplacement (no Bombard wall damage in siege round 1). Stacking-round canon-RAW re-readings: siege engines keep rolling their +3-vs-walls dice in BREACH assaults (canon §7.2 "in sieges, SIEGE roll"; combat.siegeEnginesFightAtBreach) and the emplaced Bombard adds its own §8.4 assault die (greatBombard.assaultDice 1). Bombard scenarios assume the great-bombard-forged omen has been drawn (per-game seeded draw round, uniform over rounds 11-16 in the full game).',
   },
   grid,
   directAssaultIntactTheodosian: {
@@ -368,7 +392,13 @@ const path = writeResults('siege', {
     t5a_directAssaultUnder2pct: { worst: worstDirectAssault, met: t5aMet },
     t5b_noBombardNoBlockadeWithin12Under10pct: { worst: worstNoBombNoBlock12, met: t5bMet },
     t5c_blockadeStarveWorksMedianAtLeast6: { minCaptureProb: minBlockCapture, minMedianRounds: minBlockMedian, met: t5cMet },
-    t5d_withBombardWithin4OfFirstFireOver50pct: { windowSiegeRounds: t5dWindowK, worst: worstWithBomb4, met: t5dMet },
+    t5d_withBombardWithin4OfFirstFireOver50pctTypical: {
+      windowSiegeRounds: t5dWindowK,
+      bar: '>50% at garrisons 6-8 (typical case); ~39% accepted at max garrison 10 per coordinator ruling 2026-07-11 (ruling A: the Bombard occupies a §6.4 slot)',
+      worstTypicalGarrison6to8: worstWithBomb4Typical,
+      maxGarrison10Accepted: worstWithBomb4MaxGarrison,
+      met: t5dMet,
+    },
   },
 });
 console.log(`wrote ${path}  (${fmt(elapsedMs / 1000, 1)}s)`);

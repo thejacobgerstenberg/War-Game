@@ -44,6 +44,19 @@ sieges, SIEGE roll") and `GREAT_BOMBARD_ASSAULT_DICE 1` (§8.4 Assault
 row). See §2.6/§2.8 rows, §3.2, §5.A and the former §6 row 10 (now
 modeled).
 
+**Addendum — Bombard stacking ruling A (2026-07-11, same day):** the
+coordinator ruled the unique Great Bombard **OCCUPIES a §6.4 stacking
+slot** (unit semantics, matching feature/engine-core omen #34); the docs
+get a "counts against stacking" clause in §8.4 and there is **no dice
+errata**. The sim adopted the engine's placement/defer-retry machinery
+(§2.8 RESOLVED note), a with-Bombard camp now fields at most **11 line
+units + the gun** (best legal mix 10 mercenaries + 1 engine), and the T5d
+bar was **re-based**: capture within 4 siege rounds of first fire **>50%
+at garrisons 6–8** (the typical case — **94.5 / 73.6%**), with **39.5%
+ACCEPTED at max garrison 10**. Fullgame is insensitive to the reading
+(re-run 3,000g SEED=24681357: every band metric within 0.1pp of the flag
+model; pacing bit-identical) — see §3.2 and TUNING_LOG.
+
 The previous revision was the **ENGINE RECONCILIATION (2026-07-11)**
 against `server/src/engine/balance.ts` (feature/engine-core): the ratified
 tactic hand limit **3** (GD §7.7's "4" is a docs error), canon §9.2
@@ -62,21 +75,21 @@ the 3,000-game fresh-seed final run (`GAMES=3000 SEED=24681357`) — see §7.
 | Headline metric | 5,000-game verify (primary) | 3,000-game final (committed) | Target |
 |---|---|---|---|
 | Byzantium win rate | **14.3%** | 14.8% | 12–30% |
-| Ottomans win rate | **15.8%** | 14.3% | 12–30% |
-| Venice win rate | **17.7%** | 17.6% | 12–30% |
-| Genoa win rate | **25.4%** | 25.8% | 12–30% |
-| Hungary win rate | **26.8%** | 27.5% | 12–30% |
-| Policy: rusher / trader / turtler / opportunist | **15.9 / 28.9 / 12.0 / 23.2%** | 14.3 / 29.6 / 12.4 / 23.7% | each 10–40% |
+| Ottomans win rate | **15.8%** | 14.2% | 12–30% |
+| Venice win rate | **17.7%** | 17.7% | 12–30% |
+| Genoa win rate | **25.4%** | 25.9% | 12–30% |
+| Hungary win rate | **26.8%** | 27.4% | 12–30% |
+| Policy: rusher / trader / turtler / opportunist | **15.9 / 28.9 / 12.0 / 23.2%** | 14.3 / 29.5 / 12.5 / 23.7% | each 10–40% |
 | Median end round (mean) | **15** (14.97) | 15 (14.93) | 12–16 |
 | Games ending before round 11 | **0.4%** | 0.7% | <10% |
-| Victory split: threshold / cap / sudden death | **59.4 / 35.7 / 4.9%** | 60.8 / 34.4 / 4.8% | threshold 40–70%, SD 1–15% |
+| Victory split: threshold / cap / sudden death | **59.4 / 35.7 / 4.9%** | 60.7 / 34.5 / 4.8% | threshold 40–70%, SD 1–15% |
 | Sudden-death completions | all r12+ | **all 145 at r12–16** | none before r10; **<15% (errata brief)** |
 | Eliminations | **0** | 0 | no early kingmaker deaths |
 | §6.4 stacking invariant (1,000-game probe) | — | **0 over-cap stacks** | 0 |
 | Constantinople (LEGAL 12-unit besieger): intact-T5 assault, worst case | — | **0.31%** (siege module) | <2% |
 | Constantinople: no Bombard + no blockade, 12 siege rounds | — | **0.0%** | <10% |
 | Constantinople: full blockade starve-out, median round | — | **7 / 9 / 11** (garrison 6/8/10) | ≥6 |
-| Constantinople: with Great Bombard, capture ≤4 rounds after its FIRST SHOT (E3 re-derived: siege rounds ≤5) | — | **55.9–98.4%** | >50% |
+| Constantinople: with Great Bombard (11 line units + gun — ruling A), capture ≤4 rounds after its FIRST SHOT (E3 re-derived: siege rounds ≤5) | — | **94.5 / 73.6 / 39.5%** (garrison 6/8/10) | >50% at garrisons 6–8; ~39% at max garrison 10 accepted (ruling 2026-07-11) |
 | Economy: solvency / rush credibility | — | **15/15 solvent, 5/5 strike ≥8** | all pass |
 
 **Three sentences for the engine lead.**
@@ -289,10 +302,11 @@ Enforced RAW since the stacking round; reading is **engine-matched**
 besieger and garrison never sum; a besieger camp **co-locates on the
 invested province** and counts against its cap (max legal besieger at
 Constantinople = 12 land units total, engines included; the unique Great
-Bombard is a flag, not a unit — no headroom. **The engine DIVERGES here:
-@462b7da stacks the gun as a `GREAT_BOMBARD` variant piece occupying a
-§6.4 slot — see the §2.8 NEEDS-DECISION note**). Full mechanics:
-RULES_MODEL.md "Stacking".
+Bombard **OCCUPIES one of those slots** — coordinator ruling A,
+2026-07-11, unit semantics matching the engine's `GREAT_BOMBARD` variant
+piece @462b7da; a with-Bombard camp fields at most 11 line units + the
+gun. **See the §2.8 RESOLVED note**). Full mechanics: RULES_MODEL.md
+"Stacking".
 
 | Key | Value | Home | Evidence |
 |---|---|---|---|
@@ -360,77 +374,54 @@ Not modeled (engine should ship canon): wall repair +1 HP/round out of siege
 | `GREAT_BOMBARD_DRAW_ROUND_MIN` / `MAX` | **11 / 16** — RATIFIED ERRATA **E3**: the omen `great-bombard-forged` sits at a uniformly random position in the Era III deck; per-game seeded draw round uniform over rounds 11–16 (replaces the former fixed-r15 reveal divergence) | balance.ts (Era III deck position — event-deck data + `ERA_BOUNDARIES`) | fullgame SD in band (all completions late-game); TUNING_LOG errata round |
 | `GREAT_BOMBARD_EMPLACEMENT_ROUNDS` | **1** — E3: after acquisition (or moving to a new siege) the Bombard is emplaced for 1 full siege round before it first fires (no wall damage / no masonry-cap lift from it that round) | balance.ts (`GREAT_BOMBARD.emplacementRounds`) | siege.json E3 curve at legal stacks: k=3 = 4.5–9.9%, k=4 = 35.8–84.1%; median capture siege round 4 |
 | `GREAT_BOMBARD_FREE_TO_OTTOMAN` | true; else auction — sim fallback: richest payer at `GREAT_BOMBARD_AUCTION_GOLD = 40` | free-to-Ottoman: balance.ts (delta-3 spawn semantics); `GREAT_BOMBARD_AUCTION_GOLD = 40`: **sim-only-guardrail** (the engine auctions gold+marble bids per canon §8.4, not a fixed price) | canon §8.4 (card auctions gold+marble bids; sim simplifies) |
-| `GREAT_BOMBARD_DAMAGE_DICE` | 2 wall-damage dice/round (~4 avg, max 6); **lifts the T5 masonry cap for the whole train** once emplaced | balance.ts (`GREAT_BOMBARD.bombardDice` / `ignoresMasonryCap`) | canon §8.4; siege.json T5d (stacking re-derivation, LEGAL 12-unit camp): capture ≤4 rounds after first shot 55.9–98.4% |
-| **`GREAT_BOMBARD_ASSAULT_DICE`** | **1 — NEW (stacking round)**: the emplaced Bombard adds one engine-threshold die (CV 0 + `SIEGE_ENGINE_ESCALADE_BONUS`) to its owner's assaults; it is a flag, not an Army unit, so it consumes no §6.4 headroom (engine diverges — NEEDS-DECISION note below) | needs-new-engine-field (canon §8.4 RAW **Assault row**: "Adds the standard SIEGE +3 vs walls" — previously unmodeled) | with `SIEGE_ENGINES_FIGHT_AT_BREACH` and the strongest legal mix (11m+1e), restores T5d under the 12-unit cap: worst case 16.0% → 31.6% → **55.9%** (TUNING_LOG stacking round) |
+| `GREAT_BOMBARD_DAMAGE_DICE` | 2 wall-damage dice/round (~4 avg, max 6); **lifts the T5 masonry cap for the whole train** once emplaced | balance.ts (`GREAT_BOMBARD.bombardDice` / `ignoresMasonryCap`) | canon §8.4; siege.json T5d (ruling-A camp, 11 line units + gun): capture ≤4 rounds after first shot 94.5/73.6% at garrisons 6/8, 39.5% at 10 (accepted) |
+| **`GREAT_BOMBARD_ASSAULT_DICE`** | **1 — NEW (stacking round)**: the emplaced Bombard adds one engine-threshold die (CV 0 + `SIEGE_ENGINE_ESCALADE_BONUS`) to its owner's assaults; per **ruling A (2026-07-11)** the gun ALSO occupies one §6.4 slot (unit semantics, engine-matched — RESOLVED note below) | needs-new-engine-field (canon §8.4 RAW **Assault row**: "Adds the standard SIEGE +3 vs walls" — previously unmodeled) | with `SIEGE_ENGINES_FIGHT_AT_BREACH` and the best legal with-Bombard mix (10m+1e + gun), T5d clears its re-based bar: 94.5/73.6% at garrisons 6/8 (39.5% at 10, accepted); derivation ladder at the flag-era 11m+1e mix: 16.0% → 31.6% → 55.9% (TUNING_LOG stacking round) |
 
 Unmodeled Bombard riders (ship per canon §8.4): 3-grain upkeep/silence,
 1-province move, no mountains, sink-on-transport-loss, capture-as-loot.
 Byzantine "auto-repel first two siege rounds" (FACTIONS) unmodeled —
 sensitivity: shifts T5d capture from ~2–4 to ~4–6 siege rounds (§6).
 
-> **NEEDS-DECISION (2026-07-11, Bombard stacking parity — coordinator
-> ruling required): does the Great Bombard occupy a §6.4 stacking slot?**
+> **RESOLVED (coordinator ruling A, 2026-07-11): the Great Bombard
+> OCCUPIES a §6.4 stacking slot** — unit semantics, matching the engine
+> (feature/engine-core @462b7da, omen #34 fix): the gun enters play as a
+> **`GREAT_BOMBARD` variant piece (base SIEGE) fielded as its own
+> singleton army** and counts toward the §6.4 cap. Placement on forge
+> (mirrored in `game.ts grantBombard`): the recipient's **capital if it
+> has room, else the owned province adjacent to the capital with the most
+> remaining room (tie → lowest province id), else any owned province
+> (same rule), else DEFER** — retried each omen phase. A with-Bombard
+> camp therefore fields at most **11 line units + the gun**; the sim
+> reserves the gun's slot in `landCommitted` at its siege/resting
+> province and gates siege deployment on camp room. Canon §8.4 was
+> genuinely ambiguous (the gun is statted like a unit but absent from the
+> §6.1 table); the ruling fixes the reading and the design docs gain a
+> **"counts against stacking" clause in §8.4**. **No dice errata**
+> (option B rejected); option C (change the engine) rejected. The former
+> cross-implementation divergence is CLOSED.
 >
-> **Engine reading (unit)** — feature/engine-core @462b7da, omen #34 fix
-> (`events/cards.ts`): the gun enters play as a **`GREAT_BOMBARD` variant
-> piece (base SIEGE) fielded as its own singleton army**; `ownUnitsAt`
-> counts variant stacks toward the §6.4 cap, and `bombardEmplacement`
-> places it only where `stackingRoom > 0` — the recipient's **capital if
-> it has room, else the owned province adjacent to the capital with the
-> most remaining room (tie → lowest province id), else any owned province
-> (same rule), else DEFER** (`retryPendingGreatBombard` retries each Omen
-> phase). The gun therefore **occupies one of the 12 city-cap slots**: a
-> with-Bombard camp fields at most **11 line units + the gun**.
+> **Consequences, adopted with the ruling:**
 >
-> **Sim reading (flag)** — this package (`rules.ts greatBombard`,
-> `game.ts hasGreatBombard`, `siege.ts SiegeSetup.hasGreatBombard`): the
-> gun is a **faction flag consuming no headroom**; the with-Bombard camp
-> fields **12 line units + the gun**.
->
-> **Canon §8.4 is genuinely ambiguous.** The gun is statted like a unit
-> in most rows — Movement (1 province/round consuming a full Move action,
-> no `MOUNTAINS`), a naval-transport rule, Field battle "rolls **no
-> dice** (as `SIEGE`)", 3-grain upkeep, capture-as-loot — but it is
-> styled a "unique siege engine", is absent from the §6.1 unit table, and
-> neither §8.4 nor §6.4 ("a province may hold up to **8 land units** per
-> player, 12 in a `CITY`/capital") says whether it counts against
-> stacking.
->
-> **Evidence both ways (parity probe, 2026-07-11):**
->
-> * **T5d BREAKS under Bombard-as-unit.** Siege module, 20k iters/cell,
->   T5 Theodosian, open sea; bar = capture within 4 siege rounds of first
->   fire (k ≤ 5) > 50% at garrisons 6/8/10. The best legal 11-line-unit
->   mix is **10 mercenaries + 1 engine**: **94.4 / 73.2 / 39.1%** —
->   worst case **39.1% MISSES** the bar. Every other 11-unit mix is worse
->   at garrison 10 (11m+0e 16.7%, 9m+2e 31.3%, 8m+3e 21.6%, 7m+4e 11.9%).
->   The committed flag model (11m+1e = 12 line units + gun) scores
->   **98.0 / 85.2 / 55.9%** — MET. The 12th line unit is decisive exactly
->   at the garrison-10 worst case the bar is calibrated to; median
->   capture stays at siege round 4 either way.
-> * **Fullgame bands HOLD under Bombard-as-unit** (spot-check, 1,000
->   games, seed 24530000; probe wired through `game.ts`: one slot
->   reserved for the gun at its siege/resting province in
->   `landCommitted`, siege deployment gated on camp room, engine
->   placement + defer-retry mirrored): factions
->   **15.1 / 14.8 / 17.0 / 23.7 / 29.4%** (byz/ott/ven/gen/hun) vs flag
->   baseline 15.0 / 14.9 / 17.0 / 23.8 / 29.3% (band 12–30); policies
->   15.4/27.6/13.2/23.8 vs 15.4/27.6/13.3/23.7 (band 10–40); SD **5.9% vs
->   6.0%** (band 1–15); threshold-decided 57.2 vs 57.1% (40–70); median
->   end round 15, early-end 0.4%, 0 eliminations — all deltas ≤ 0.1pp.
->   The full game is insensitive to the reading; only the T5d module bar
->   breaks.
->
-> **Not adopted** (decision rule: a broken bar blocks adoption). Options
-> for the ruling: **(A)** adopt engine-unit semantics and re-base the T5d
-> bar (garrison-10 worst case drops to ~39%; garrisons ≤ 8 still clear at
-> 73%+); **(B)** adopt unit semantics and retune a Bombard lever to
-> restore >50% at garrison 10 (e.g. `GREAT_BOMBARD_ASSAULT_DICE` 1→2 —
-> un-derived, needs a fresh sweep); **(C)** keep the sim-flag reading and
-> change the ENGINE so the gun stops counting toward §6.4 (the omen #34
-> placement/defer machinery then becomes unnecessary). Until ruled, the
-> sim keeps the flag model and the engine keeps the unit model — a
-> **known cross-implementation divergence**.
+> * **T5d RE-BASED.** Bar is now **capture within 4 siege rounds of first
+>   fire (k ≤ 5) > 50% at garrisons 6–8** (the typical case), with the
+>   **max-garrison-10 figure reported and ACCEPTED at ~39%**. Full-scale
+>   evidence (20k iters/cell, best legal 11-line-unit mix **10
+>   mercenaries + 1 engine**): **94.5 / 73.6 / 39.5%** at garrisons
+>   6/8/10 — **MET** (JSON key
+>   `t5d_withBombardWithin4OfFirstFireOver50pctTypical`). Every other
+>   11-unit mix is worse at garrison 10 (11m+0e 16.7%, 9m+2e 31.3%,
+>   8m+3e 21.6%, 7m+4e 11.9%; parity probe). The retired flag model
+>   (11m+1e = 12 line units + free gun) scored 98.0 / 85.2 / 55.9% — the
+>   12th line unit was decisive only at the garrison-10 worst case;
+>   median capture stays at siege round 4 either way.
+> * **Fullgame is insensitive.** Re-run at the committed config (3,000
+>   games, SEED=24681357): factions **14.8 / 14.2 / 17.7 / 25.9 / 27.4%**
+>   (byz/ott/ven/gen/hun) vs flag baseline 14.8 / 14.3 / 17.6 / 25.8 /
+>   27.5 (band 12–30); policies 14.3/29.5/12.5/23.7 vs 14.3/29.6/12.4/
+>   23.7 (band 10–40); threshold/cap/SD 60.7/34.5/**4.8%** vs
+>   60.8/34.4/4.8; median end round 15, pre-r11 0.7%, 0 eliminations —
+>   **every delta ≤ 0.1pp**; pacing bit-identical. (The 1,000-game parity
+>   spot-check at seed 24530000 agreed: all deltas ≤ 0.1pp.)
 
 ### 2.9 Tactic cards (canon §7.7) — ratified magnitudes as fixed inputs
 
@@ -755,10 +746,12 @@ ratio is ~4.1–4.3 attackers per defender (only reachable for garrisons ≤ 2).
 **Stacking re-derivation (2026-07-11): every attacker stack is §6.4-LEGAL**
 — at most 12 land units total (engines included), the CITY cap the camp
 itself occupies (engine-matched co-location reading, §2.6b). The
-Constantinople attacker is the strongest legal 12-stack: **11 mercenaries
-(free-company shock troops, CV atk 3) + 1 siege engine**, plus the Great
-Bombard flag where the scenario grants it (the Bombard is not an Army unit
-and consumes no headroom). Professional garrisons, T5 16 HP/+4, sea
+Constantinople attacker is the strongest legal stack: without the Bombard
+**11 mercenaries (free-company shock troops, CV atk 3) + 1 siege engine**
+(12 line units); with it, **10 mercenaries + 1 siege engine + the gun in
+the 12th slot** (coordinator ruling A, 2026-07-11: the Bombard OCCUPIES a
+§6.4 slot — best legal 11-line-unit mix per the parity sweep).
+Professional garrisons, T5 16 HP/+4, sea
 resupply active; Bombard scenarios include the **E3 1-round emplacement**
 (first fires in siege round 2) and its **§8.4 assault die**; breach
 assaults include the train's dice (`SIEGE_ENGINES_FIGHT_AT_BREACH`):
@@ -767,35 +760,39 @@ assaults include the train's dice (`SIEGE_ENGINES_FIGHT_AT_BREACH`):
 |---|---|---|---|
 | no Bombard, no blockade — capture ≤12 rounds | **0.0%** | 0.0% | 0.0% |
 | full blockade, no Bombard — capture prob / median round | 97.8% / **7** | 95.6% / **9** | 92.2% / **11** |
-| Great Bombard, open sea — capture ≤5 (= 4 after first shot) / median | 97.6% / 4 | 85.5% / 4 | **55.9%** / 4 |
-| Great Bombard + blockade — capture ≤5 | 99.8% | 94.9% | 75.6% |
+| Great Bombard, open sea — capture ≤5 (= 4 after first shot) / median | 94.5% / 4 | **73.6%** / 4 | **39.5%** / 4 |
+| Great Bombard + blockade — capture ≤5 | 98.8% | 88.2% | 59.3% |
 
 Targets: T5a intact-assault worst **0.31%** (<2%) · T5b **0.0%** (<10%) ·
 T5c min capture **92.2%**, min median **7** (≥6) · **T5d (capture within
-2–4 siege rounds AFTER the Bombard first fires, i.e. k ≤ 5)** worst
-**55.9%** at k≤5 open-sea (>50%; JSON key
-`t5d_withBombardWithin4OfFirstFireOver50pct`). Versus the pre-stacking
-19-unit evidence camp (12p+4m+3e): T5a/T5b unchanged, T5c capture prob
-99.9% → 92.2% (medians identical — the starvation clock, not camp mass,
-sets the pace), T5d 91.7–100% → 55.9–98.4% and median capture slips one
-round (3 → 4): a LEGAL camp storms the breach with its train's dice, not
-with mass, and a 10-strong garrison is now a real fight. With the omen
-drawn uniform r11–16, the City falls ~r13–16 — fullgame SD completions all
-r12+ (1453 anchor holds in expectation).
+2–4 siege rounds AFTER the Bombard first fires, i.e. k ≤ 5; RE-BASED per
+coordinator ruling A, 2026-07-11)** — **>50% at garrisons 6–8 (typical
+case)**: worst **73.6%** at k≤5 open-sea, MET; **max garrison 10 = 39.5%,
+reported and ACCEPTED per the ruling** (JSON key
+`t5d_withBombardWithin4OfFirstFireOver50pctTypical`). Versus the
+pre-stacking 19-unit evidence camp (12p+4m+3e): T5a/T5b unchanged, T5c
+capture prob 99.9% → 92.2% (medians identical — the starvation clock, not
+camp mass, sets the pace), T5d 91.7–100% → 39.5–94.5% and median capture
+slips one round (3 → 4): a LEGAL camp storms the breach with its train's
+dice, not with mass — the gun's own §6.4 slot costs it its 12th line unit
+(flag-era 11m+1e scored 55.9–98.0%) — and a 10-strong garrison is now a
+genuinely hard fight. With the omen drawn uniform r11–16, the City falls
+~r13–16 — fullgame SD completions all r12+ (1453 anchor holds in
+expectation).
 
 Capture curves (garrison 8; P(capture ≤ k siege rounds); E3 emplacement
-visible as the k=1–2 flat start, the §6.4 cap as the curve topping out at
-87% instead of 99%):
+visible as the k=1–2 flat start, the §6.4 cap — now including the gun's
+own slot (ruling A) — as the curve topping out at 75% instead of 99%):
 
 | k rounds | 1 | 2 | 3 | 4 | 5 | 8 | 9 | 10 | 12 |
 |---|---|---|---|---|---|---|---|---|---|
-| Great Bombard (open sea) | 0% | 0% | 7.3% | 62.7% | 85.5% | 87.3% | 87.3% | 87.3% | 87.3% |
+| Great Bombard (open sea) | 0% | 0% | 6.1% | 51.6% | 73.6% | 75.3% | 75.3% | 75.3% | 75.3% |
 | full blockade, no Bombard | 0 | 0 | 0 | 0 | 0 | 0 | 87.4% | 95.6% | 95.6% |
 | no Bombard, no blockade | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-<svg viewBox="0 0 720 340" width="720" role="img" aria-label="Constantinople capture probability by siege round for a legal 12-unit besieger, garrison 8: the Great Bombard is emplaced through siege rounds 1 and 2, the curve rises to 63 percent at round 4 and tops out near 87 percent; full blockade starves the city out at rounds 9 to 10 reaching 96 percent; without either the city never falls." xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 720 340" width="720" role="img" aria-label="Constantinople capture probability by siege round for a legal besieger of 11 line units plus the Great Bombard in its own stacking slot, garrison 8: the Bombard is emplaced through siege rounds 1 and 2, the curve rises to 52 percent at round 4 and tops out near 75 percent; full blockade starves the city out at rounds 9 to 10 reaching 96 percent; without either the city never falls." xmlns="http://www.w3.org/2000/svg">
   <rect x="0" y="0" width="720" height="340" fill="#fcfcfb"/>
-  <text x="60" y="24" font-family="sans-serif" font-size="14" font-weight="bold" fill="#0b0b0b">Constantinople: P(capture &#8804; k siege rounds) — garrison 8, LEGAL 12-unit camp (&#167;6.4), 20k iterations/cell</text>
+  <text x="60" y="24" font-family="sans-serif" font-size="14" font-weight="bold" fill="#0b0b0b">Constantinople: P(capture &#8804; k siege rounds) — garrison 8, LEGAL camp (&#167;6.4; Bombard occupies a slot — ruling A), 20k iterations/cell</text>
   <!-- gridlines -->
   <g stroke="#e4e3df" stroke-width="1">
     <line x1="60" y1="60" x2="700" y2="60"/><line x1="60" y1="120" x2="700" y2="120"/>
@@ -813,15 +810,15 @@ visible as the k=1–2 flat start, the §6.4 cap as the curve topping out at
     <text x="700" y="318">12</text>
     <text x="380" y="334">siege rounds (k)</text>
   </g>
-  <!-- Great Bombard, open sea (E3 + legal stack): rises k=3-5, tops out at 87.3% -->
-  <polyline fill="none" stroke="#2a78d6" stroke-width="2" points="60.0,300 113.3,300 166.7,299.8 220.0,282.5 273.3,149.5 326.7,94.8 380.0,91.2 433.3,90.7 486.7,90.5 540.0,90.5 593.3,90.5 646.7,90.5 700.0,90.5"/>
+  <!-- Great Bombard, open sea (E3 + ruling-A legal stack, 10m+1e + gun): rises k=3-5, tops out at 75.3% -->
+  <polyline fill="none" stroke="#2a78d6" stroke-width="2" points="60.0,300.0 113.3,300.0 166.7,300.0 220.0,285.3 273.3,176.0 326.7,123.3 380.0,119.4 433.3,119.4 486.7,119.4 540.0,119.4 593.3,119.4 646.7,119.4 700.0,119.4"/>
   <!-- full blockade, no Bombard: 0 through k=8, 87.4% at 9, 95.6% at 10+ -->
   <polyline fill="none" stroke="#1baf7a" stroke-width="2" points="60.0,300 113.3,300 166.7,300 220.0,300 273.3,300 326.7,300 380.0,300 433.3,300 486.7,300 540.0,90.2 593.3,70.6 646.7,70.6 700.0,70.6"/>
   <!-- no Bombard, no blockade: flat 0 -->
   <polyline fill="none" stroke="#eda100" stroke-width="2" stroke-dasharray="6 3" points="60,299 700,299"/>
   <g font-family="sans-serif" font-size="12" font-weight="bold">
-    <text x="200" y="52" fill="#2a78d6">Great Bombard: 1-round emplacement, then median capture round 4 (tops out 87%)</text>
-    <text x="410" y="110" fill="#1baf7a">full blockade starve-out (median 9)</text>
+    <text x="200" y="52" fill="#2a78d6">Great Bombard (in its own &#167;6.4 slot): 1-round emplacement, then median capture round 4 (tops out 75%)</text>
+    <text x="410" y="95" fill="#1baf7a">full blockade starve-out (median 9)</text>
     <text x="90" y="288" fill="#8a6500">no Bombard + no blockade: never falls (sea resupply + T5 masonry cap)</text>
   </g>
 </svg>
@@ -1269,7 +1266,9 @@ band and the errata brief's <15%; all SD completions r12+; T5d re-derived
 (capture within 2–4 siege rounds AFTER first fire >50%): worst **91.7%**,
 median capture siege round 3. (Stacking round, 2026-07-11: re-derived
 again on §6.4-LEGAL 12-unit camps — worst **55.9%**, median 4, still MET;
-fullgame SD 4.8–4.9%. See §3.2.)
+fullgame SD 4.8–4.9%. Bombard ruling A, same day: the gun now occupies a
+§6.4 slot, the bar is re-based to garrisons 6–8 — **94.5 / 73.6%** MET,
+garrison 10 **39.5%** accepted. See §2.8 RESOLVED note and §3.2.)
 
 **E4 — Three independent secret objectives** *(closes former item 4,
 LOW)*. 3 per faction (canon), **+4 each independently** at game end.

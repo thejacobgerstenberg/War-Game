@@ -1290,3 +1290,55 @@ No CONFIG number moved besides the additions above; `victoryThreshold`
 stays 78. TUNING_REPORT §6 row 10 moved unmodeled → modeled (§2 rows
 STACKING_*, ROUT_RETREAT_OVERFLOW_SURRENDERS, SIEGE_ENGINES_FIGHT_AT_BREACH,
 GREAT_BOMBARD_ASSAULT_DICE).
+
+## Bombard stacking ruling round (2026-07-11) — ruling A adopted: the Great Bombard occupies a §6.4 slot; T5d re-based
+
+**Coordinator ruling (2026-07-11), closing the §2.8 NEEDS-DECISION
+divergence:** option **A** — the unique Great Bombard **OCCUPIES a §6.4
+stacking slot** (unit semantics, matching feature/engine-core @462b7da
+omen #34). The T5d worst-case bar is **re-based** to the ~39%
+garrison-10 figure (accepted; garrisons 6-8 — the typical case — remain
+gated at >50%). The design docs gain a "counts against stacking" clause
+in §8.4. **No dice errata** (option B rejected); the engine keeps its
+reading (option C rejected).
+
+**Sim adoption (game.ts — the validated parity-probe patch, now
+permanent):** `bombardLocation` + `bombardPendingOwner` state; the gun
+reserves one land slot in `landCommitted` at its siege/resting province
+(`bombardReservedAt`: juiciest owned siege WITH ROOM, Constantinople
+preferred, else resting place — reserving during the action phase keeps
+camps at <= 11 line units so the gun can always join its intended
+siege); `resolveSieges` deploys it only to a camp with a free §6.4 slot;
+placement on forge/purchase via `grantBombard` = the engine's omen #34
+rule (capital if room, else adjacent-to-capital owned province with most
+room, tie -> lowest province id, else any owned, else DEFER — retried
+each omen phase; a pending grant counts as claimed for uniqueness).
+`run/siege.ts` scenarios match: with-Bombard Constantinople camps field
+**10 mercenaries + 1 engine + the gun** (best legal 11-line-unit mix per
+the parity sweep; no-Bombard camps stay 11m+1e = 12 line units).
+
+**T5d re-derivation (full scale, 20k iters/cell, seed 20260711):**
+capture within 4 siege rounds of first fire (k <= 5), open sea —
+**94.5 / 73.6 / 39.5%** at garrisons 6/8/10 (flag model scored
+97.6/85.5/55.9 on the same seeds). New bar: **>50% at garrisons 6-8** —
+worst **73.6% MET**; garrison 10 **39.5% accepted** per the ruling (JSON
+key `t5d_withBombardWithin4OfFirstFireOver50pctTypical`, which records
+both figures). Bombard+blockade k<=5: 98.8/88.2/59.3%. Median capture
+stays siege round 4 everywhere; T5a/T5b/T5c untouched (0.31% / 0.0% /
+minCap 92.2%, medians 7/9/11).
+
+**Fullgame insensitivity confirmed at the committed config** (3,000g
+SEED=24681357, results/fullgame.json regenerated): factions byz 14.8 /
+ott 14.2 / ven 17.7 / gen 25.9 / hun 27.4 (flag baseline
+14.8/14.3/17.6/25.8/27.5 — max delta 0.10pp); policies
+14.3/29.5/12.5/23.7 (was 14.3/29.6/12.4/23.7); threshold/cap/SD
+60.7/34.5/4.8% (was 60.8/34.4/4.8); median end round 15 (mean 14.93),
+pre-r11 0.7%, eliminations 0 — every band metric within 0.1pp.
+`sim:pacing` re-run: results/pacing.json **bit-identical** (the pacing
+model stacks no armies).
+
+No CONFIG number moved; no new constants. Docs: TUNING_REPORT §2.8
+NEEDS-DECISION -> **RESOLVED** (+ §1 addendum, §2.6b pointer, headline
+row, §3.2 tables/curves, §5.A E3 note), RULES_MODEL.md "Stacking" +
+"Great Bombard" sections carry the ruled semantics and the placement
+rule.

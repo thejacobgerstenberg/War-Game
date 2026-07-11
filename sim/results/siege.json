@@ -3,10 +3,14 @@
     "seed": 20260711,
     "iterationsPerCell": 20000,
     "smoke": false,
-    "elapsedMs": 11778,
+    "elapsedMs": 11794,
     "gridAttacker": "(12 - engines) professionals + <engines> siege engines = 12 land units total (canon §6.4 city cap; landlocked city)",
     "cpleAttacker": {
       "mercenary": 11,
+      "siegeEngine": 1
+    },
+    "cpleAttackerWithBombard": {
+      "mercenary": 10,
       "siegeEngine": 1
     },
     "garrisonComposition": "professionals",
@@ -89,7 +93,7 @@
         "riverCrossingPenalty": 1
       }
     },
-    "note": "FINAL canon (2b42386) + ratified errata E3 (2026-07-11) + canon §6.4 STACKING RAW (stacking round, 2026-07-11): every attacker stack is legal at the 12-unit CITY cap (engines included; the camp co-locates on the invested province, engine-matched reading). Walls T1-T5, binary wall bonus, escalade -1, stores-then-starve, sea resupply (blockade = every adjacent zone enemy-held), T5 masonry cap 1 HP/round lifted by the Great Bombard (2 wall-damage dice) AFTER a 1-siege-round emplacement (no Bombard wall damage in siege round 1). Stacking-round canon-RAW re-readings: siege engines keep rolling their +3-vs-walls dice in BREACH assaults (canon §7.2 \"in sieges, SIEGE roll\"; combat.siegeEnginesFightAtBreach) and the emplaced Bombard adds its own §8.4 assault die (greatBombard.assaultDice 1). Bombard scenarios assume the great-bombard-forged omen has been drawn (per-game seeded draw round, uniform over rounds 11-16 in the full game)."
+    "note": "FINAL canon (2b42386) + ratified errata E3 (2026-07-11) + canon §6.4 STACKING RAW (stacking round, 2026-07-11): every attacker stack is legal at the 12-unit CITY cap (engines included; the camp co-locates on the invested province, engine-matched reading). COORDINATOR RULING A (2026-07-11): the unique Great Bombard OCCUPIES one §6.4 slot (unit semantics, matching feature/engine-core omen #34) — with-Bombard Constantinople camps field 10 mercenaries + 1 engine + the gun; the T5d bar is re-based to >50% at garrisons 6-8 (typical case) with ~39% accepted at max garrison 10. Walls T1-T5, binary wall bonus, escalade -1, stores-then-starve, sea resupply (blockade = every adjacent zone enemy-held), T5 masonry cap 1 HP/round lifted by the Great Bombard (2 wall-damage dice) AFTER a 1-siege-round emplacement (no Bombard wall damage in siege round 1). Stacking-round canon-RAW re-readings: siege engines keep rolling their +3-vs-walls dice in BREACH assaults (canon §7.2 \"in sieges, SIEGE roll\"; combat.siegeEnginesFightAtBreach) and the emplaced Bombard adds its own §8.4 assault die (greatBombard.assaultDice 1). Bombard scenarios assume the great-bombard-forged omen has been drawn (per-game seeded draw round, uniform over rounds 11-16 in the full game)."
   },
   "grid": [
     {
@@ -3086,24 +3090,24 @@
       "greatBombard": true,
       "blockaded": false,
       "iterations": 20000,
-      "captureProb": 0.98435,
-      "expectedRoundsToCapture": 4.0534870726875605,
+      "captureProb": 0.95635,
+      "expectedRoundsToCapture": 4.10268207246301,
       "medianRoundsToCapture": 4,
-      "capturedByAssault": 0.9253,
-      "capturedByStarvation": 0.05905,
+      "capturedByAssault": 0.87035,
+      "capturedByStarvation": 0.086,
       "pCaptureWithinK": [
         0,
         0,
-        0.09875,
-        0.84145,
-        0.97585,
-        0.98435,
-        0.98435,
-        0.98435,
-        0.98435,
-        0.98435,
-        0.98435,
-        0.98435
+        0.09275,
+        0.7764,
+        0.94535,
+        0.95635,
+        0.95635,
+        0.95635,
+        0.95635,
+        0.95635,
+        0.95635,
+        0.95635
       ]
     },
     {
@@ -3111,24 +3115,24 @@
       "greatBombard": true,
       "blockaded": false,
       "iterations": 20000,
-      "captureProb": 0.8728,
-      "expectedRoundsToCapture": 4.2184922089825845,
+      "captureProb": 0.75265,
+      "expectedRoundsToCapture": 4.254301468145885,
       "medianRoundsToCapture": 4,
-      "capturedByAssault": 0.7615,
-      "capturedByStarvation": 0.1113,
+      "capturedByAssault": 0.65175,
+      "capturedByStarvation": 0.1009,
       "pCaptureWithinK": [
         0,
         0,
-        0.0734,
-        0.62665,
-        0.85485,
-        0.8728,
-        0.8728,
-        0.8728,
-        0.8728,
-        0.8728,
-        0.8728,
-        0.8728
+        0.06105,
+        0.5165,
+        0.73635,
+        0.75265,
+        0.75265,
+        0.75265,
+        0.75265,
+        0.75265,
+        0.75265,
+        0.75265
       ]
     },
     {
@@ -3136,24 +3140,24 @@
       "greatBombard": true,
       "blockaded": false,
       "iterations": 20000,
-      "captureProb": 0.57315,
-      "expectedRoundsToCapture": 4.323039343976271,
+      "captureProb": 0.4049,
+      "expectedRoundsToCapture": 4.321684366510249,
       "medianRoundsToCapture": 4,
-      "capturedByAssault": 0.49845,
-      "capturedByStarvation": 0.0747,
+      "capturedByAssault": 0.35695,
+      "capturedByStarvation": 0.04795,
       "pCaptureWithinK": [
         0,
         0,
-        0.0447,
-        0.35795,
-        0.55855,
-        0.5731,
-        0.57315,
-        0.57315,
-        0.57315,
-        0.57315,
-        0.57315,
-        0.57315
+        0.03155,
+        0.2533,
+        0.39475,
+        0.40485,
+        0.4049,
+        0.4049,
+        0.4049,
+        0.4049,
+        0.4049,
+        0.4049
       ]
     },
     {
@@ -3161,24 +3165,24 @@
       "greatBombard": true,
       "blockaded": true,
       "iterations": 20000,
-      "captureProb": 0.99825,
-      "expectedRoundsToCapture": 4.002003506135738,
+      "captureProb": 0.98955,
+      "expectedRoundsToCapture": 4.034813804254459,
       "medianRoundsToCapture": 4,
-      "capturedByAssault": 0.9711,
-      "capturedByStarvation": 0.02715,
+      "capturedByAssault": 0.93595,
+      "capturedByStarvation": 0.0536,
       "pCaptureWithinK": [
         0,
         0,
-        0.09735,
-        0.89965,
-        0.9975,
-        0.99825,
-        0.99825,
-        0.99825,
-        0.99825,
-        0.99825,
-        0.99825,
-        0.99825
+        0.09145,
+        0.8653,
+        0.9879,
+        0.98955,
+        0.98955,
+        0.98955,
+        0.98955,
+        0.98955,
+        0.98955,
+        0.98955
       ]
     },
     {
@@ -3186,24 +3190,24 @@
       "greatBombard": true,
       "blockaded": true,
       "iterations": 20000,
-      "captureProb": 0.9562,
-      "expectedRoundsToCapture": 4.1647144948755495,
+      "captureProb": 0.89175,
+      "expectedRoundsToCapture": 4.222483880011214,
       "medianRoundsToCapture": 4,
-      "capturedByAssault": 0.8203,
-      "capturedByStarvation": 0.1359,
+      "capturedByAssault": 0.74445,
+      "capturedByStarvation": 0.1473,
       "pCaptureWithinK": [
         0,
         0,
-        0.07385,
-        0.73165,
-        0.9494,
-        0.9562,
-        0.9562,
-        0.9562,
-        0.9562,
-        0.9562,
-        0.9562,
-        0.9562
+        0.06155,
+        0.64165,
+        0.8819,
+        0.89175,
+        0.89175,
+        0.89175,
+        0.89175,
+        0.89175,
+        0.89175,
+        0.89175
       ]
     },
     {
@@ -3211,24 +3215,24 @@
       "greatBombard": true,
       "blockaded": true,
       "iterations": 20000,
-      "captureProb": 0.77665,
-      "expectedRoundsToCapture": 4.374686152063349,
+      "captureProb": 0.6113,
+      "expectedRoundsToCapture": 4.431457549484705,
       "medianRoundsToCapture": 4,
-      "capturedByAssault": 0.62795,
-      "capturedByStarvation": 0.1487,
+      "capturedByAssault": 0.4938,
+      "capturedByStarvation": 0.1175,
       "pCaptureWithinK": [
         0,
         0,
-        0.04205,
-        0.4644,
-        0.7559,
-        0.7766,
-        0.77665,
-        0.77665,
-        0.77665,
-        0.77665,
-        0.77665,
-        0.77665
+        0.0289,
+        0.33715,
+        0.59285,
+        0.61125,
+        0.6113,
+        0.6113,
+        0.6113,
+        0.6113,
+        0.6113,
+        0.6113
       ]
     }
   ],
@@ -3246,9 +3250,11 @@
       "minMedianRounds": 7,
       "met": true
     },
-    "t5d_withBombardWithin4OfFirstFireOver50pct": {
+    "t5d_withBombardWithin4OfFirstFireOver50pctTypical": {
       "windowSiegeRounds": 5,
-      "worst": 0.55855,
+      "bar": ">50% at garrisons 6-8 (typical case); ~39% accepted at max garrison 10 per coordinator ruling 2026-07-11 (ruling A: the Bombard occupies a §6.4 slot)",
+      "worstTypicalGarrison6to8": 0.73635,
+      "maxGarrison10Accepted": 0.39475,
       "met": true
     }
   }

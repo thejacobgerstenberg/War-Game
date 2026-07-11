@@ -383,6 +383,18 @@ export class Game {
    * after `emplacementRounds` full siege rounds at the same siege.
    */
   private bombardEmplacement: { provinceId: string; rounds: number } | null = null;
+  /**
+   * Bombard-as-unit (coordinator ruling A, 2026-07-11 — matches
+   * feature/engine-core omen #34): province where the gun currently sits;
+   * it consumes one §6.4 land slot there for its owner (see landCommitted /
+   * bombardReservedAt).
+   */
+  private bombardLocation: string | null = null;
+  /**
+   * Ruling A: forged recipient whose territory had no §6.4 room anywhere
+   * at grant time — engine omen #34 defer-retry semantics.
+   */
+  private bombardPendingOwner: FactionId | null = null;
 
   /** Agents may draw exploration randomness from this stream. */
   readonly agentRng: RNG;
@@ -608,6 +620,49 @@ export class Game {
 
   // --------------------------------------------------------------- events
 
+  /**
+   * Engine omen #34 mirror (ruling A): §6.4-safe entry province for
+   * the forged Bombard. Preference: (1) the recipient's capital if it has
+   * headroom; (2) the recipient-OWNED province adjacent to the capital with
+   * the MOST remaining room (tie -> lowest province id); (3) any owned
+   * province, same rule; (4) null -> caller defers (retry each omen phase).
+   */
+  private bombardPlacementTarget(f: FactionId): string | null {
+    const capId = CAPITALS[f];
+    if (this.stackHeadroom(f, capId) > 0) return capId;
+    const bestByRoom = (ids: string[]): string | null => {
+      let best: string | null = null;
+      let bestRoom = 0;
+      for (const pid of ids) {
+        const room = this.stackHeadroom(f, pid);
+        if (room < 1) continue;
+        if (room > bestRoom || (room === bestRoom && best !== null && pid < best)) {
+          best = pid;
+          bestRoom = room;
+        }
+      }
+      return best;
+    };
+    const owned: string[] = [];
+    for (const [pid, p] of this.provinces) if (p.owner === f) owned.push(pid);
+    const adj = new Set(PROVINCE_BY_ID.get(capId)!.adjacentProvinces);
+    const adjacent = bestByRoom(owned.filter((pid) => adj.has(pid)));
+    if (adjacent) return adjacent;
+    return bestByRoom(owned);
+  }
+
+  /** Place-or-defer grant of the unique Bombard (ruling A, §6.4 room). */
+  private grantBombard(f: FactionId): void {
+    const target = this.bombardPlacementTarget(f);
+    if (target === null) {
+      this.bombardPendingOwner = f; // at cap everywhere: defer-retry (engine parity)
+      return;
+    }
+    this.bombardPendingOwner = null;
+    this.factions[f].hasGreatBombard = true;
+    this.bombardLocation = target;
+  }
+
   private drawEvent(): void {
     // Era III card: `great-bombard-forged` (EVENT_CARDS #34) is revealed at
     // the per-game seeded draw round (E3: uniform over rounds 11-16 — the
@@ -619,20 +674,24 @@ export class Game {
     const gb = CONFIG.siege.greatBombard;
     if (this.round >= this.bombardDrawRound) {
       this.bombardForged = true;
-      let claimed = false;
-      for (const f of FACTION_IDS) if (this.factions[f].hasGreatBombard) claimed = true;
-      if (!claimed) {
-        if (this.factions.ottomans.alive) {
-          this.factions.ottomans.hasGreatBombard = true;
-        } else {
-          let best: FactionId | null = null;
-          for (const f of FACTION_IDS) {
-            const fs = this.factions[f];
-            if (fs.alive && fs.gold >= gb.goldCost && (best === null || fs.gold > this.factions[best].gold)) best = f;
-          }
-          if (best) {
-            this.factions[best].gold -= gb.goldCost;
-            this.factions[best].hasGreatBombard = true;
+      if (this.bombardPendingOwner !== null) {
+        this.grantBombard(this.bombardPendingOwner); // engine defer-retry
+      } else {
+        let claimed = false;
+        for (const f of FACTION_IDS) if (this.factions[f].hasGreatBombard) claimed = true;
+        if (!claimed) {
+          if (this.factions.ottomans.alive) {
+            this.grantBombard('ottomans');
+          } else {
+            let best: FactionId | null = null;
+            for (const f of FACTION_IDS) {
+              const fs = this.factions[f];
+              if (fs.alive && fs.gold >= gb.goldCost && (best === null || fs.gold > this.factions[best].gold)) best = f;
+            }
+            if (best) {
+              this.factions[best].gold -= gb.goldCost;
+              this.grantBombard(best);
+            }
           }
         }
       }
@@ -1134,7 +1193,27 @@ export class Game {
     if (s && s.attacker === f) n += landUnits(s.army);
     for (const r of this.pendingRecruits) if (r.faction === f && r.province === pid && r.unit !== 'galley') n += r.count;
     for (const pa of this.pendingAttacks) if (pa.faction === f && pa.to === pid) n += landUnits(pa.army);
+    if (this.bombardReservedAt(f) === pid) n += 1; // ruling A: the gun occupies one §6.4 slot
     return n;
+  }
+
+  /**
+   * Bombard-as-unit (ruling A): the province where the owner's gun
+   * occupies (or is about to occupy) one §6.4 land slot this round — the
+   * juiciest owned siege WITH ROOM for it (Constantinople preferred, same
+   * rule as the resolveSieges deployment), else its current resting place.
+   * Reserving the slot during the action phase keeps camps at <= 11 line
+   * units so the gun can always join its intended siege.
+   */
+  private bombardReservedAt(f: FactionId): string | null {
+    if (!this.factions[f].hasGreatBombard) return null;
+    let target: string | null = null;
+    for (const [pid, s] of this.sieges) {
+      if (s.attacker !== f) continue;
+      if (landUnits(s.army) >= stackCapOf(pid)) continue; // full camp: no slot for the gun
+      if (target === null || pid === 'constantinople') target = pid;
+    }
+    return target ?? this.bombardLocation;
   }
 
   /**
@@ -1370,9 +1449,10 @@ export class Game {
     const fs = this.factions[f];
     const gb = CONFIG.siege.greatBombard;
     if (!this.bombardForged || fs.gold < gb.goldCost) return false;
+    if (this.bombardPendingOwner !== null) return false; // unique — a pending (deferred) grant counts as claimed
     for (const other of FACTION_IDS) if (this.factions[other].hasGreatBombard) return false; // unique: already claimed
     fs.gold -= gb.goldCost;
-    fs.hasGreatBombard = true;
+    this.grantBombard(f); // ruling A: place-or-defer (§6.4 room)
     this.consume();
     return true;
   }
@@ -1686,9 +1766,13 @@ export class Game {
 
   private resolveSieges(): void {
     // the unique Great Bombard: its owner deploys it at their juiciest siege
+    // Ruling A (Bombard-as-unit): only a camp with a free §6.4 slot
+    // (line units < cap) can receive the gun; with no roomy siege it stays
+    // at its resting place and does not fire.
     const bombardAt = new Map<FactionId, string>();
     for (const [pid, s] of this.sieges) {
       if (!this.factions[s.attacker].hasGreatBombard) continue;
+      if (landUnits(s.army) >= stackCapOf(pid)) continue; // no slot for the gun
       const cur = bombardAt.get(s.attacker);
       if (cur === undefined || pid === 'constantinople') bombardAt.set(s.attacker, pid);
     }
@@ -1705,6 +1789,7 @@ export class Game {
         if (this.bombardEmplacement?.provinceId !== target) this.bombardEmplacement = { provinceId: target, rounds: 0 };
         if (this.bombardEmplacement.rounds >= sc.greatBombard.emplacementRounds) bombardFiresAt = target;
         this.bombardEmplacement.rounds++; // this siege round counts toward emplacement
+        this.bombardLocation = target; // the gun moves to (and occupies a slot at) its siege
       }
     }
     for (const [pid, s] of [...this.sieges]) {

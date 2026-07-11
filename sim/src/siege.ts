@@ -59,7 +59,10 @@ export interface SiegeSetup {
    * omen has been drawn — rounds 11-16 in the full game). Emplacement is
    * modeled: it fires only after greatBombard.emplacementRounds (1) full
    * siege rounds — no wall damage (and no masonry-cap lift) from it in siege
-   * round 1.
+   * round 1. Coordinator ruling A (2026-07-11): the gun OCCUPIES one §6.4
+   * stacking slot — callers must budget it into the camp (a legal
+   * with-Bombard city camp holds at most 11 line units in `attacker`; the
+   * gun itself is not an Army unit and rolls no melee dice).
    */
   hasGreatBombard: boolean;
   /**
