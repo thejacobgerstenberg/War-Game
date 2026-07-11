@@ -2,3 +2,7 @@
 node_modules/
 
 # NOTE: results/ is intentionally NOT ignored — simulation outputs are committed.
+
+# sim:regression scratch output (SIM_RESULTS_DIR override) — never committed;
+# CI archives it from sim/out/ as a workflow artifact.
+out/

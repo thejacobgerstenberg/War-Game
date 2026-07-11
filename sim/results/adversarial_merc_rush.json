@@ -9,7 +9,7 @@
       "control"
     ],
     "smoke": false,
-    "elapsedMs": 29633,
+    "elapsedMs": 30928,
     "seedScheme": "seed = 311001 + factionIdx*100000 + i, identical across variants (paired)",
     "opponents": "other four factions run rusher/trader/turtler/opportunist (one each, seeded shuffle fork(97))",
     "rulesNote": "final canon config: merc 9g (genoa 6g, surcharge waived), 0 grain to raise, instant, 4 grain/round upkeep, desert-first on shortfall; engine force-buys grain at 2g before desertion"
@@ -17,18 +17,18 @@
   "overall": {
     "cycle": {
       "games": 3000,
-      "wins": 217,
-      "rate": 0.07233333333333333
+      "wins": 214,
+      "rate": 0.07133333333333333
     },
     "honest": {
       "games": 3000,
-      "wins": 194,
-      "rate": 0.06466666666666666
+      "wins": 216,
+      "rate": 0.072
     },
     "control": {
       "games": 3000,
-      "wins": 435,
-      "rate": 0.145
+      "wins": 470,
+      "rate": 0.15666666666666668
     }
   },
   "byVariantFaction": {
@@ -48,30 +48,30 @@
         "suddenDeathWinRate": 0,
         "eliminatedRate": 0,
         "avgElimRound": null,
-        "avgRounds": 15.136,
-        "avgFinalPrestige": 50.054,
-        "avgMercsHired": 8.822,
-        "avgPeakMercs": 3.932
+        "avgRounds": 15.15,
+        "avgFinalPrestige": 49.982,
+        "avgMercsHired": 8.838,
+        "avgPeakMercs": 3.966
       },
       "ottomans": {
         "games": 500,
-        "wins": 68,
-        "rate": 0.136,
-        "fieldAvgOtherSeats": 0.216,
-        "ratioVsField": 0.6296296296296297,
+        "wins": 67,
+        "rate": 0.134,
+        "fieldAvgOtherSeats": 0.2165,
+        "ratioVsField": 0.6189376443418014,
         "winTypes": {
-          "threshold": 10,
-          "cap": 11,
-          "suddenDeath": 47,
+          "threshold": 6,
+          "cap": 4,
+          "suddenDeath": 57,
           "elimination": 0
         },
-        "suddenDeathWinRate": 0.094,
+        "suddenDeathWinRate": 0.114,
         "eliminatedRate": 0,
         "avgElimRound": null,
-        "avgRounds": 15.172,
-        "avgFinalPrestige": 51.634,
-        "avgMercsHired": 18.134,
-        "avgPeakMercs": 9.464
+        "avgRounds": 15.144,
+        "avgFinalPrestige": 52.176,
+        "avgMercsHired": 18.106,
+        "avgPeakMercs": 9.518
       },
       "venice": {
         "games": 500,
@@ -88,19 +88,163 @@
         "suddenDeathWinRate": 0,
         "eliminatedRate": 0,
         "avgElimRound": null,
-        "avgRounds": 15.062,
-        "avgFinalPrestige": 61.176,
-        "avgMercsHired": 5.722,
-        "avgPeakMercs": 2.812
+        "avgRounds": 15.096,
+        "avgFinalPrestige": 61.388,
+        "avgMercsHired": 5.724,
+        "avgPeakMercs": 2.844
       },
       "genoa": {
         "games": 1000,
-        "wins": 17,
-        "rate": 0.017,
-        "fieldAvgOtherSeats": 0.24575,
-        "ratioVsField": 0.06917599186164802,
+        "wins": 16,
+        "rate": 0.016,
+        "fieldAvgOtherSeats": 0.246,
+        "ratioVsField": 0.06504065040650407,
         "winTypes": {
           "threshold": 0,
+          "cap": 16,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "suddenDeathWinRate": 0,
+        "eliminatedRate": 0,
+        "avgElimRound": null,
+        "avgRounds": 15.15,
+        "avgFinalPrestige": 61.192,
+        "avgMercsHired": 5.604,
+        "avgPeakMercs": 1.746
+      },
+      "hungary": {
+        "games": 500,
+        "wins": 115,
+        "rate": 0.23,
+        "fieldAvgOtherSeats": 0.1925,
+        "ratioVsField": 1.1948051948051948,
+        "winTypes": {
+          "threshold": 23,
+          "cap": 92,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "suddenDeathWinRate": 0,
+        "eliminatedRate": 0,
+        "avgElimRound": null,
+        "avgRounds": 14.894,
+        "avgFinalPrestige": 66.658,
+        "avgMercsHired": 6.926,
+        "avgPeakMercs": 4.648
+      }
+    },
+    "honest": {
+      "byzantium": {
+        "games": 500,
+        "wins": 1,
+        "rate": 0.002,
+        "fieldAvgOtherSeats": 0.2495,
+        "ratioVsField": 0.008016032064128256,
+        "winTypes": {
+          "threshold": 0,
+          "cap": 1,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "suddenDeathWinRate": 0,
+        "eliminatedRate": 0,
+        "avgElimRound": null,
+        "avgRounds": 15.2,
+        "avgFinalPrestige": 50.044,
+        "avgMercsHired": 7.144,
+        "avgPeakMercs": 4.09
+      },
+      "ottomans": {
+        "games": 500,
+        "wins": 68,
+        "rate": 0.136,
+        "fieldAvgOtherSeats": 0.216,
+        "ratioVsField": 0.6296296296296297,
+        "winTypes": {
+          "threshold": 7,
+          "cap": 7,
+          "suddenDeath": 54,
+          "elimination": 0
+        },
+        "suddenDeathWinRate": 0.108,
+        "eliminatedRate": 0,
+        "avgElimRound": null,
+        "avgRounds": 15.148,
+        "avgFinalPrestige": 51.938,
+        "avgMercsHired": 16.86,
+        "avgPeakMercs": 9.638
+      },
+      "venice": {
+        "games": 500,
+        "wins": 13,
+        "rate": 0.026,
+        "fieldAvgOtherSeats": 0.2435,
+        "ratioVsField": 0.10677618069815195,
+        "winTypes": {
+          "threshold": 1,
+          "cap": 12,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "suddenDeathWinRate": 0,
+        "eliminatedRate": 0,
+        "avgElimRound": null,
+        "avgRounds": 15.062,
+        "avgFinalPrestige": 60.828,
+        "avgMercsHired": 4.738,
+        "avgPeakMercs": 2.794
+      },
+      "genoa": {
+        "games": 1000,
+        "wins": 14,
+        "rate": 0.014,
+        "fieldAvgOtherSeats": 0.2465,
+        "ratioVsField": 0.056795131845841784,
+        "winTypes": {
+          "threshold": 0,
+          "cap": 14,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "suddenDeathWinRate": 0,
+        "eliminatedRate": 0,
+        "avgElimRound": null,
+        "avgRounds": 15.153,
+        "avgFinalPrestige": 61.172,
+        "avgMercsHired": 3.593,
+        "avgPeakMercs": 1.973
+      },
+      "hungary": {
+        "games": 500,
+        "wins": 120,
+        "rate": 0.24,
+        "fieldAvgOtherSeats": 0.19,
+        "ratioVsField": 1.263157894736842,
+        "winTypes": {
+          "threshold": 28,
+          "cap": 92,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "suddenDeathWinRate": 0,
+        "eliminatedRate": 0,
+        "avgElimRound": null,
+        "avgRounds": 14.91,
+        "avgFinalPrestige": 66.694,
+        "avgMercsHired": 6.324,
+        "avgPeakMercs": 4.712
+      }
+    },
+    "control": {
+      "byzantium": {
+        "games": 500,
+        "wins": 87,
+        "rate": 0.174,
+        "fieldAvgOtherSeats": 0.20650000000000002,
+        "ratioVsField": 0.8426150121065374,
+        "winTypes": {
+          "threshold": 70,
           "cap": 17,
           "suddenDeath": 0,
           "elimination": 0
@@ -108,172 +252,28 @@
         "suddenDeathWinRate": 0,
         "eliminatedRate": 0,
         "avgElimRound": null,
-        "avgRounds": 15.261,
-        "avgFinalPrestige": 61.643,
-        "avgMercsHired": 5.612,
-        "avgPeakMercs": 1.75
-      },
-      "hungary": {
-        "games": 500,
-        "wins": 116,
-        "rate": 0.232,
-        "fieldAvgOtherSeats": 0.192,
-        "ratioVsField": 1.2083333333333333,
-        "winTypes": {
-          "threshold": 20,
-          "cap": 96,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "suddenDeathWinRate": 0,
-        "eliminatedRate": 0,
-        "avgElimRound": null,
-        "avgRounds": 14.866,
-        "avgFinalPrestige": 65.928,
-        "avgMercsHired": 7.056,
-        "avgPeakMercs": 4.642
-      }
-    },
-    "honest": {
-      "byzantium": {
-        "games": 500,
-        "wins": 0,
-        "rate": 0,
-        "fieldAvgOtherSeats": 0.25,
-        "ratioVsField": 0,
-        "winTypes": {
-          "threshold": 0,
-          "cap": 0,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "suddenDeathWinRate": 0,
-        "eliminatedRate": 0,
-        "avgElimRound": null,
-        "avgRounds": 15.188,
-        "avgFinalPrestige": 49.89,
-        "avgMercsHired": 7.122,
-        "avgPeakMercs": 4.058
-      },
-      "ottomans": {
-        "games": 500,
-        "wins": 63,
-        "rate": 0.126,
-        "fieldAvgOtherSeats": 0.2185,
-        "ratioVsField": 0.5766590389016019,
-        "winTypes": {
-          "threshold": 10,
-          "cap": 9,
-          "suddenDeath": 44,
-          "elimination": 0
-        },
-        "suddenDeathWinRate": 0.088,
-        "eliminatedRate": 0,
-        "avgElimRound": null,
-        "avgRounds": 15.166,
-        "avgFinalPrestige": 51.428,
-        "avgMercsHired": 16.824,
-        "avgPeakMercs": 9.622
-      },
-      "venice": {
-        "games": 500,
-        "wins": 10,
-        "rate": 0.02,
-        "fieldAvgOtherSeats": 0.245,
-        "ratioVsField": 0.0816326530612245,
-        "winTypes": {
-          "threshold": 2,
-          "cap": 8,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "suddenDeathWinRate": 0,
-        "eliminatedRate": 0,
-        "avgElimRound": null,
-        "avgRounds": 15.062,
-        "avgFinalPrestige": 60.848,
-        "avgMercsHired": 4.864,
-        "avgPeakMercs": 2.786
-      },
-      "genoa": {
-        "games": 1000,
-        "wins": 13,
-        "rate": 0.013,
-        "fieldAvgOtherSeats": 0.24675,
-        "ratioVsField": 0.05268490374873353,
-        "winTypes": {
-          "threshold": 0,
-          "cap": 13,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "suddenDeathWinRate": 0,
-        "eliminatedRate": 0,
-        "avgElimRound": null,
-        "avgRounds": 15.225,
-        "avgFinalPrestige": 61.463,
-        "avgMercsHired": 3.566,
-        "avgPeakMercs": 1.963
-      },
-      "hungary": {
-        "games": 500,
-        "wins": 108,
-        "rate": 0.216,
-        "fieldAvgOtherSeats": 0.196,
-        "ratioVsField": 1.1020408163265305,
-        "winTypes": {
-          "threshold": 20,
-          "cap": 88,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "suddenDeathWinRate": 0,
-        "eliminatedRate": 0,
-        "avgElimRound": null,
-        "avgRounds": 14.868,
-        "avgFinalPrestige": 65.578,
-        "avgMercsHired": 6.324,
-        "avgPeakMercs": 4.62
-      }
-    },
-    "control": {
-      "byzantium": {
-        "games": 500,
-        "wins": 78,
-        "rate": 0.156,
-        "fieldAvgOtherSeats": 0.211,
-        "ratioVsField": 0.7393364928909952,
-        "winTypes": {
-          "threshold": 68,
-          "cap": 10,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "suddenDeathWinRate": 0,
-        "eliminatedRate": 0,
-        "avgElimRound": null,
-        "avgRounds": 14.784,
-        "avgFinalPrestige": 55.952,
+        "avgRounds": 14.834,
+        "avgFinalPrestige": 56.496,
         "avgMercsHired": 0,
         "avgPeakMercs": 0
       },
       "ottomans": {
         "games": 500,
-        "wins": 215,
-        "rate": 0.43,
-        "fieldAvgOtherSeats": 0.14250000000000002,
-        "ratioVsField": 3.0175438596491224,
+        "wins": 234,
+        "rate": 0.468,
+        "fieldAvgOtherSeats": 0.133,
+        "ratioVsField": 3.518796992481203,
         "winTypes": {
-          "threshold": 110,
-          "cap": 43,
+          "threshold": 122,
+          "cap": 50,
           "suddenDeath": 62,
           "elimination": 0
         },
         "suddenDeathWinRate": 0.124,
         "eliminatedRate": 0,
         "avgElimRound": null,
-        "avgRounds": 14.798,
-        "avgFinalPrestige": 68.026,
+        "avgRounds": 14.83,
+        "avgFinalPrestige": 69.046,
         "avgMercsHired": 0,
         "avgPeakMercs": 0
       },
@@ -292,48 +292,48 @@
         "suddenDeathWinRate": 0,
         "eliminatedRate": 0,
         "avgElimRound": null,
-        "avgRounds": 15.082,
-        "avgFinalPrestige": 60.524,
+        "avgRounds": 15.014,
+        "avgFinalPrestige": 60.25,
         "avgMercsHired": 0,
         "avgPeakMercs": 0
       },
       "genoa": {
         "games": 1000,
-        "wins": 14,
-        "rate": 0.014,
-        "fieldAvgOtherSeats": 0.2465,
-        "ratioVsField": 0.056795131845841784,
+        "wins": 16,
+        "rate": 0.016,
+        "fieldAvgOtherSeats": 0.246,
+        "ratioVsField": 0.06504065040650407,
         "winTypes": {
           "threshold": 0,
-          "cap": 14,
+          "cap": 16,
           "suddenDeath": 0,
           "elimination": 0
         },
         "suddenDeathWinRate": 0,
         "eliminatedRate": 0,
         "avgElimRound": null,
-        "avgRounds": 15.233,
-        "avgFinalPrestige": 61.37,
+        "avgRounds": 15.159,
+        "avgFinalPrestige": 61.087,
         "avgMercsHired": 0,
         "avgPeakMercs": 0
       },
       "hungary": {
         "games": 500,
-        "wins": 122,
-        "rate": 0.244,
-        "fieldAvgOtherSeats": 0.189,
-        "ratioVsField": 1.291005291005291,
+        "wins": 127,
+        "rate": 0.254,
+        "fieldAvgOtherSeats": 0.1865,
+        "ratioVsField": 1.3619302949061662,
         "winTypes": {
-          "threshold": 12,
-          "cap": 110,
+          "threshold": 10,
+          "cap": 117,
           "suddenDeath": 0,
           "elimination": 0
         },
         "suddenDeathWinRate": 0,
         "eliminatedRate": 0,
         "avgElimRound": null,
-        "avgRounds": 15.122,
-        "avgFinalPrestige": 66.838,
+        "avgRounds": 15.144,
+        "avgFinalPrestige": 67.082,
         "avgMercsHired": 0,
         "avgPeakMercs": 0
       }
@@ -341,39 +341,37 @@
   },
   "pairedSameSeed": {
     "cycleVsHonest": {
-      "aOnly": 35,
-      "bOnly": 12,
-      "both": 182,
-      "neither": 2771,
-      "z": 3.354894804451575
+      "aOnly": 22,
+      "bOnly": 24,
+      "both": 192,
+      "neither": 2762,
+      "z": -0.29488391230979427
     },
     "cycleVsControl": {
-      "aOnly": 81,
-      "bOnly": 299,
-      "both": 136,
-      "neither": 2484,
-      "z": -11.183164037728181
+      "aOnly": 83,
+      "bOnly": 339,
+      "both": 131,
+      "neither": 2447,
+      "z": -12.461885017887628
     },
     "honestVsControl": {
-      "aOnly": 64,
-      "bOnly": 305,
-      "both": 130,
-      "neither": 2501,
-      "z": -12.545958871718021
+      "aOnly": 76,
+      "bOnly": 330,
+      "both": 140,
+      "neither": 2454,
+      "z": -12.605808341430814
     }
   },
   "opponentPolicyWinsVsCycle": {
-    "rusher": 600,
-    "trader": 954,
-    "turtler": 389,
-    "opportunist": 840
+    "rusher": 606,
+    "trader": 952,
+    "turtler": 406,
+    "opportunist": 822
   },
   "exploitThresholds": {
     "singleFactionAbove40pct": "flagged below if any",
     "beatsFieldAvgBy2x": "p > 2*(1-p)/4 i.e. p > 33.33%",
     "cyclingDominates": "paired same-seed z > 2 vs honest or control"
   },
-  "exploitFlags": [
-    "merc-cycling beats honest upkeep on the same seeds (cycle-only 35 vs honest-only 12, z=3.35)"
-  ]
+  "exploitFlags": []
 }

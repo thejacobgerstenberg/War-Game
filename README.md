@@ -1,82 +1,84 @@
-# IMPERIUM: Twilight of Empires
+# IMPERIUM — Twilight of Empires
 
-A browser strategy game set in the late Roman/Byzantine world (~1400–1453).
-Byzantium, the Ottomans, Venice, Genoa and Hungary contend for the ruins of
-empire across the Aegean and the Balkans.
+*A browser grand-strategy board game for the last age of the Roman world.*
 
-This repository is a TypeScript **npm-workspaces monorepo**:
+It is the year 1400, and the Queen of Cities is a shrunken jewel ringed by the
+rising crescent. Byzantium, the Ottomans, Venice, Genoa and Hungary — five
+powers, each with its own economy, war machine and secret ambitions — contend
+for Prestige across sixteen rounds as the clock runs down to 1453 and the fate
+of Constantinople. 2–5 players, in the browser.
 
-| Workspace            | Package             | Role                                             |
-| -------------------- | ------------------- | ------------------------------------------------ |
-| `shared/`            | `@imperium/shared`  | Game-state types + the Socket.IO wire protocol.  |
-| `server/`            | `@imperium/server`  | Express + Socket.IO server, lobby, game engine.  |
-| `client/`            | `@imperium/client`  | React + Vite client (screens + themed map stub). |
+![The campaign board — a mid-game view of the Round VII Campaign phase](docs/SCREENSHOTS/hero.png)
 
-## Prerequisites
+## Quick start
 
-- **Node.js ≥ 20** (developed on Node 22)
-- **npm ≥ 10** (workspaces)
-
-## Install
+Requires Node.js ≥ 20 and npm ≥ 10.
 
 ```bash
 npm install
-```
-
-A single install at the repo root wires up all three workspaces.
-
-## Develop
-
-```bash
 npm run dev
 ```
 
-This builds `@imperium/shared`, then starts:
+This builds the shared package, then starts the server on
+<http://localhost:8080> and the Vite client on <http://localhost:5173>.
+Open the client in two browser tabs: in the first, **Create Game** and note the
+six-character room code; in the second, **Join Game** with that code. The host
+starts the game once everyone has picked a faction.
 
-- the **server** on <http://localhost:8080> (override with `PORT`), and
-- the **client** on <http://localhost:5173> (Vite).
+## How to play
 
-The client talks to the server via `VITE_SERVER_URL` (default
-`http://localhost:8080`).
+- Each round is a year-cluster of the century: **Income → Muster → Campaign →
+  Council → Twilight**, sixteen rounds from 1400 to 1453.
+- Provinces are resource tiles (gold, grain, timber, marble, faith) you tax
+  each Income phase — spend them on levies, fleets, walls and great works.
+- Campaigns are fought with armies, fleets and modified dice; the Council is
+  where alliances, tribute and betrayal happen.
+- Victory goes to the highest **Prestige** once someone passes the era
+  threshold (scaled ~72/75/80/78 by player count), or the highest Prestige when
+  Round 16 ends — or, in sudden death, to whoever captures Constantinople and
+  holds it through two cleanup rounds.
+- Full rules live in [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) (the master
+  rulebook), with the map, factions and event cards in its sibling docs under
+  [`docs/`](docs/).
 
-The server is configured entirely through environment variables (see the
-Operations section of [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)):
-`PORT` (default `8080`), `CORS_ORIGIN` (comma-separated allowed origins;
-defaults to the Vite dev client `http://localhost:5173` outside production),
-`ROOM_TTL_SECONDS` (empty-room reap TTL, default `3600`), and `LOG_LEVEL`
-(default `info`). A health probe is served at `GET /healthz`.
+## Project map
 
-## Test
+| Directory  | What lives there                                                    |
+| ---------- | ------------------------------------------------------------------- |
+| `shared/`  | `@imperium/shared` — game-state types and the Socket.IO wire protocol |
+| `server/`  | `@imperium/server` — Express + Socket.IO server, lobby, game engine |
+| `client/`  | `@imperium/client` — React + Vite client                            |
+| `docs/`    | Design docs: game design, architecture, map, factions, UI           |
+| `design/`  | Static HTML/CSS screen mockups and their screenshots                |
+| `art/`     | Original SVG illustrations (events, factions, lore)                 |
+| `audio/`   | Music and SFX, plus the tools that generate them                    |
+| `lore/`    | Narrative text: chronicle entries, events, tutorial, UI copy        |
+| `e2e/`     | Playwright end-to-end tests and a socket load harness               |
+| `sim/`     | Balance simulation harness — adversarial regression gate and reports |
+| `rulebook/`| Illuminated HTML rulebook                                            |
+| `deploy/`  | Dockerfiles, compose file, nginx config, Fly.io config              |
+
+## Testing
+
+The unit tests import the built `@imperium/shared` package, so build it once
+first (running `npm run dev` or `npm run build` also does this):
 
 ```bash
-npm test          # runs the server's vitest suite (engine + lobby)
-npm run typecheck # type-checks every workspace
+npm run build --workspace @imperium/shared
+npm test                        # vitest: server engine + lobby, client socket layer
+npm run test:e2e                # Playwright: full two-player lobby flow in Chromium
+cd server && node --import tsx scripts/smoke.mjs   # socket smoke test: boots the server, drives a lobby with two clients
 ```
 
-There is also an end-to-end socket smoke test that boots the server and drives a
-full lobby flow with two clients:
+## Deployment
 
-```bash
-cd server && node --import tsx scripts/smoke.mjs
-```
+Docker images, compose setup and Fly.io notes are in
+[`deploy/README.md`](deploy/README.md).
 
-## Build
+## Credits
 
-```bash
-npm run build     # builds shared, server (tsc), and client (vite)
-```
-
-## Architecture
-
-- `shared/` is the single source of truth for game types and the socket
-  protocol; both server and client import it so the contract can never drift.
-- `server/src/engine/` is a **pure, tested** module: map data, adjacency, income
-  and initial-state construction, with no transport dependencies.
-- `server/src/lobby/` manages rooms in memory and is likewise transport
-  agnostic; `server/src/index.ts` is the only place that touches Socket.IO.
-- `client/src/` is a small screen-router React app (Home → Create/Join →
-  Faction Pick → Lobby → Game Board) built on the theme tokens in `theme.css`.
-
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the fuller design, and
-`docs/MAP.md` for the canonical map (the engine currently ships a representative
-sample of it).
+All art and audio assets are original works created for this project and
+dedicated to the public domain under CC0 1.0 — see
+[`art/illustrations/CREDITS.md`](art/illustrations/CREDITS.md) and
+[`audio/CREDITS.md`](audio/CREDITS.md) (the current audio files are
+procedurally generated placeholders).
