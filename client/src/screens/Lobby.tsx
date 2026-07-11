@@ -30,11 +30,17 @@ export function Lobby({
           <div
             key={p.id}
             className="imp-row"
-            style={{ justifyContent: "space-between", width: "100%" }}
+            style={{
+              justifyContent: "space-between",
+              width: "100%",
+              // Dim dropped players; their seat is held for rejoin.
+              opacity: p.connected ? 1 : 0.5,
+            }}
           >
             <span>
               {p.name}
               {p.isHost ? " · host" : ""}
+              {!p.connected && <em> (disconnected)</em>}
             </span>
             <span style={{ color: "var(--imp-gold-soft)" }}>
               {p.faction ?? "choosing…"}

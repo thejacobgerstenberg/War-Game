@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   SOCKET_EVENTS,
   type Faction,
@@ -6,6 +6,7 @@ import {
   type LobbyPlayer,
 } from "@imperium/shared";
 import { getSocket } from "./socket";
+import { clearSession, loadSession, saveSession } from "./session";
 import { Home } from "./screens/Home";
 import { CreateJoin } from "./screens/CreateJoin";
 import { FactionPick } from "./screens/FactionPick";
@@ -23,11 +24,29 @@ export function App() {
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // True between emitting rejoin_game and its outcome, so error_msg can be
+  // recognised as a rejoin failure (=> clear stored creds).
+  const rejoinPending = useRef(false);
 
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on(SOCKET_EVENTS.GAME_CREATED, ({ roomCode, playerId }) => {
+    // Reclaim our seat with the stored session (page load with saved creds,
+    // and every socket.io reconnect after a drop).
+    const attemptRejoin = () => {
+      const session = loadSession();
+      if (!session) return;
+      rejoinPending.current = true;
+      setRoomCode(session.roomCode);
+      setPlayerId(session.playerId);
+      socket.emit(SOCKET_EVENTS.REJOIN_GAME, {
+        roomCode: session.roomCode,
+        sessionToken: session.sessionToken,
+      });
+    };
+
+    socket.on(SOCKET_EVENTS.GAME_CREATED, ({ roomCode, playerId, sessionToken }) => {
+      saveSession({ roomCode, playerId, sessionToken });
       setRoomCode(roomCode);
       setPlayerId(playerId);
       setError(null);
@@ -37,9 +56,17 @@ export function App() {
     socket.on(SOCKET_EVENTS.LOBBY_UPDATE, (payload) => {
       setRoomCode(payload.roomCode);
       setPlayers(payload.players);
+      if (rejoinPending.current) {
+        // Rejoin succeeded (we only receive room broadcasts once reattached).
+        rejoinPending.current = false;
+        // After a full page reload we are still on "home": resume in the
+        // lobby; game_started follows immediately for started games.
+        setScreen((s) => (s === "home" ? "lobby" : s));
+      }
     });
 
     socket.on(SOCKET_EVENTS.GAME_STARTED, ({ state }) => {
+      rejoinPending.current = false;
       setGameState(state);
       setError(null);
       setScreen("game");
@@ -50,8 +77,16 @@ export function App() {
     });
 
     socket.on(SOCKET_EVENTS.ERROR_MSG, ({ message }) => {
+      if (rejoinPending.current) {
+        // Rejoin was refused (room reaped / token invalid): drop stale creds.
+        rejoinPending.current = false;
+        clearSession();
+      }
       setError(message);
     });
+
+    socket.on("connect", attemptRejoin);
+    if (socket.connected) attemptRejoin();
 
     return () => {
       socket.off(SOCKET_EVENTS.GAME_CREATED);
@@ -59,6 +94,7 @@ export function App() {
       socket.off(SOCKET_EVENTS.GAME_STARTED);
       socket.off(SOCKET_EVENTS.STATE_UPDATE);
       socket.off(SOCKET_EVENTS.ERROR_MSG);
+      socket.off("connect", attemptRejoin);
     };
   }, []);
 

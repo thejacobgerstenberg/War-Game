@@ -1,7 +1,35 @@
 /* IMPERIUM: Twilight of Empires — theme foundation.
    Display face: Cinzel (Roman inscriptional capitals).
-   Body face: EB Garamond (humanist serif). */
-@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap");
+   Body face: EB Garamond (humanist serif).
+
+   Fonts are SELF-HOSTED from /fonts (client/public/fonts/, latin subsets,
+   variable-weight woff2 fetched from Google Fonts). Do not reintroduce a
+   fonts.googleapis.com @import: under restricted egress that request stalls
+   the page ~13s before `load` fires. font-display: swap keeps the serif
+   fallbacks visible until the files arrive. */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400 900; /* variable file; covers the 500/700/900 uses below */
+  font-display: swap;
+  src: url("/fonts/cinzel-latin-600-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 400 800; /* variable file; covers 400/500/700 */
+  font-display: swap;
+  src: url("/fonts/eb-garamond-latin-400-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: italic;
+  font-weight: 400 800; /* variable file */
+  font-display: swap;
+  src: url("/fonts/eb-garamond-latin-italic-400.woff2") format("woff2");
+}
 
 :root {
   /* Imperial palette */
