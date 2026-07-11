@@ -28,11 +28,12 @@ import {
   CONQUEST_PRESTIGE,
   GREAT_BOMBARD,
   SIEGE,
+  STACKING,
   UNIQUE_UNIT_OVERRIDES,
   UNIT_STATS,
   WALL_TIERS,
 } from "./balance.js";
-import { appendLog } from "./logEntry.js";
+import { appendLog, type LogInput } from "./logEntry.js";
 import { neighborsOf } from "./adjacency.js";
 import { addModifier, getModifiers, sumModifierValues } from "./modifiers.js";
 import { playTactic } from "./tactics/index.js";
@@ -541,7 +542,34 @@ function removeCasualties(side: Working[], n: number): void {
   }
 }
 
-/** First adjacent land province owned by `ownerId` or empty, for a retreat (§7.5). */
+/** §6.4 stacking cap for a province: 12 for a CITY/capital, else 8 ordinary land. */
+function landStackingCap(state: GameState, provId: string): number {
+  const prov = state.provinces.find((p) => p.id === provId);
+  return prov && (prov.terrain === TerrainType.CITY || prov.isCapitalOf !== undefined)
+    ? STACKING.city
+    : STACKING.land;
+}
+
+/**
+ * §6.4 land-stacking room remaining for `ownerId` at province `provId`: the cap
+ * (12 city/capital, else 8) minus the units the owner already has stacked there.
+ * Never negative. Used to clamp a rout retreat so it can never over-stack the
+ * destination (mirrors the FL-02 vassal-levy clamp in diplomacy.ts).
+ */
+function landStackingRoom(state: GameState, ownerId: string, provId: string): number {
+  const current = state.armies
+    .filter((a) => a.ownerId === ownerId && a.locationId === provId)
+    .reduce((acc, a) => acc + realCount(a), 0);
+  return Math.max(0, landStackingCap(state, provId) - current);
+}
+
+/**
+ * First adjacent land province owned by `ownerId` or empty and with §6.4 stacking
+ * room to spare, for a rout retreat (§7.5 / GD §7 "else surrenders"). Neighbours
+ * are scanned in the deterministic map-graph order; a province with ZERO remaining
+ * capacity is skipped in favour of the next eligible one. Returns undefined when no
+ * adjacent friendly/empty province has any room — the whole routed stack surrenders.
+ */
 function findRetreat(
   state: GameState,
   ownerId: string | null,
@@ -551,9 +579,32 @@ function findRetreat(
   for (const n of neighborsOf(fromId)) {
     const prov = state.provinces.find((p) => p.id === n);
     if (!prov) continue; // skip sea zones
-    if (prov.ownerId === ownerId || prov.ownerId === null) return n;
+    if (prov.ownerId !== ownerId && prov.ownerId !== null) continue;
+    // §6.4: only retreat where the destination can accept at least one unit.
+    if (landStackingRoom(state, ownerId, n) > 0) return n;
   }
   return undefined;
+}
+
+/** §6.4/§7 log entry for units lost when a rout retreat overflows the destination cap. */
+function retreatOverflowLog(
+  state: GameState,
+  ownerId: string | null,
+  retreatTo: string | undefined,
+  count: number,
+): LogInput {
+  const prov = retreatTo ? state.provinces.find((p) => p.id === retreatTo) : undefined;
+  return {
+    round: state.round,
+    phase: state.phase,
+    type: "battle",
+    actors: ownerId ? [ownerId] : [],
+    targets: retreatTo ? [retreatTo] : [],
+    message: `§6.4: ${count} routed unit(s) could not fit into ${
+      prov?.name ?? retreatTo ?? "the retreat"
+    } and surrendered.`,
+    data: { retreatOverflowSurrendered: count, retreatTo },
+  };
 }
 
 /**
@@ -683,14 +734,31 @@ function report(
   return { losses, routed: routed ? side.map((w) => w.id) : [] };
 }
 
-/** Write surviving working stacks back onto the (cloned) state and prune empties. */
+/**
+ * Write surviving working stacks back onto the (cloned) state and prune empties.
+ *
+ * §6.4 rout retreat: when a routed land stack retreats into `retreatTo`, it may
+ * only add units up to that province's REMAINING stacking room (cap − units the
+ * owner already has there, 12 city/capital else 8). Units that do not fit
+ * SURRENDER (are removed), per GD §7 "…else surrenders". Room is consumed across
+ * all of this side's retreating stacks so their combined arrival can never breach
+ * the cap. Returns the number of units surrendered to overflow (0 when everything
+ * fit, or when there was no capacity-limited retreat).
+ */
 function writeBack(
   state: GameState,
   side: Working[],
   kind: "army" | "fleet",
   routed: boolean,
   retreatTo: string | undefined,
-): void {
+): number {
+  let surrendered = 0;
+  // Remaining §6.4 room at the retreat destination, shared across this side's
+  // stacks. Sea retreats never occur (naval has no rout), so this only bites land.
+  let room =
+    kind === "army" && routed && retreatTo && side.length > 0
+      ? landStackingRoom(state, side[0].ownerId, retreatTo)
+      : Number.POSITIVE_INFINITY;
   for (const w of side) {
     if (w.garrison) {
       const prov = state.provinces.find((p) => p.id === w.provinceRef);
@@ -704,10 +772,21 @@ function writeBack(
       // §7.5 no retreat available → the routed stack surrenders (removed).
       s.units = zeroUnits();
       s.variants = [];
+    } else if (routed && retreatTo) {
+      // §6.4/§7: retreat as many as fit; any overflow surrenders. Overflow is shed
+      // lowest-value-first (§7.1 casualty order) via removeCasualties on this stack.
+      const total = stackTotal(w);
+      const fit = Math.max(0, Math.min(total, room));
+      const overflow = total - fit;
+      if (overflow > 0) removeCasualties([w], overflow);
+      surrendered += overflow;
+      room -= fit;
+      s.units = w.units;
+      s.variants = w.variants;
+      s.locationId = retreatTo;
     } else {
       s.units = w.units;
       s.variants = w.variants;
-      if (routed && retreatTo) s.locationId = retreatTo;
     }
   }
   if (kind === "army") {
@@ -715,6 +794,7 @@ function writeBack(
   } else {
     state.fleets = state.fleets.filter((f) => realCount(f) > 0);
   }
+  return surrendered;
 }
 
 /**
@@ -979,8 +1059,15 @@ export function resolveBattle(
     else if (defAlive > 0 && atkAlive === 0) winnerId = battle.defenderId;
   }
 
-  writeBack(post, attackers, "army", outcome.attackerRouted, outcome.attackerRetreatTo);
-  writeBack(post, defenders, "army", outcome.defenderRouted, outcome.defenderRetreatTo);
+  const atkSurrendered = writeBack(post, attackers, "army", outcome.attackerRouted, outcome.attackerRetreatTo);
+  const defSurrendered = writeBack(post, defenders, "army", outcome.defenderRouted, outcome.defenderRetreatTo);
+  // §6.4: log any units that could not fit into the retreat destination and surrendered.
+  if (atkSurrendered > 0) {
+    post = appendLog(post, retreatOverflowLog(post, battle.attackerId, outcome.attackerRetreatTo, atkSurrendered));
+  }
+  if (defSurrendered > 0) {
+    post = appendLog(post, retreatOverflowLog(post, battle.defenderId, outcome.defenderRetreatTo, defSurrendered));
+  }
 
   // §8.4 delta 3 (capture-passes-intact): a defeated GB-carrying stack does NOT
   // lose the gun — it passes INTACT to the victor. Runs on the post-writeBack state
@@ -1506,7 +1593,10 @@ export function resolveSiege(
     }
   }
   // Persist garrison casualties (starvation and/or assault) and besieger losses.
-  writeBack(next, defenders, "army", defRouted, defRetreat);
+  // Capture the defending owner BEFORE captureProvince may flip ownership, so any
+  // §6.4 retreat-overflow surrender is attributed to the routed defender.
+  const siegeDefenderId = prov.ownerId;
+  const defSurrendered = writeBack(next, defenders, "army", defRouted, defRetreat);
   writeBack(next, besiegers, "army", false, undefined);
 
   // §8.4 delta 3 (capture-passes-intact): if the besieging escort carrying the
@@ -1541,6 +1631,10 @@ export function resolveSiege(
   // §13 conquest-prestige on a storm — POST prestige_pending (CONTRACT2 §12.8),
   // consumed by the prestige subsystem at Cleanup. Never mutate prestige here.
   let scored = next;
+  // §6.4: log any routed defender units that could not fit into the retreat and surrendered.
+  if (defSurrendered > 0) {
+    scored = appendLog(scored, retreatOverflowLog(scored, siegeDefenderId, defRetreat, defSurrendered));
+  }
   const pending: Record<string, number> = {};
   if (captured) {
     const bf = factionOf(scored, siege.besiegerId);

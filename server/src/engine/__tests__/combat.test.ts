@@ -259,6 +259,91 @@ describe("resolveBattle (§7)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// §6.4 / §7.5 rout retreat respects the stacking cap ("else surrenders")
+// ---------------------------------------------------------------------------
+
+describe("rout retreat enforces §6.4 stacking (overflow surrenders)", () => {
+  // philippopolis is adjacent to edirne (an Ottoman CAPITAL → 12-cap) in the
+  // canonical map graph, so a routed p2 stack at philippopolis retreats into
+  // edirne. A morale −6 modifier forces the rout deterministically; the p1
+  // attacker is cavalry-free so pursuit inflicts no extra hits. Seed 6 makes the
+  // defender rout with 3 survivors, so the destination's remaining room decides
+  // how many make it home.
+  const morale = (v: number): ActiveModifier => ({
+    id: "mor",
+    scope: "round",
+    kind: "morale",
+    target: { faction: Faction.BYZANTIUM }, // the defender p2
+    value: v,
+  });
+  const build = (edirneGarrison: number): [GameState, PendingBattle] => [
+    makeState({
+      provinces: [
+        province("philippopolis", { ownerId: "p2", terrain: TerrainType.PLAINS }),
+        // Capital → §6.4 cap 12; pre-seeded with `edirneGarrison` friendly units.
+        province("edirne", { ownerId: "p2", isCapitalOf: Faction.OTTOMAN }),
+      ],
+      armies: [
+        army("a1", "p1", "philippopolis", { [UnitType.INFANTRY]: 20 }), // no cavalry → no pursuit
+        army("d1", "p2", "philippopolis", { [UnitType.LEVY]: 8 }),
+        army("garr", "p2", "edirne", { [UnitType.INFANTRY]: edirneGarrison }),
+      ],
+      activeModifiers: [morale(-6)],
+    }),
+    {
+      id: "b1",
+      provinceId: "philippopolis",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+    },
+  ];
+  const p2AtEdirne = (s: GameState): number =>
+    s.armies
+      .filter((a) => a.ownerId === "p2" && a.locationId === "edirne")
+      .reduce((n, a) => n + Object.values(a.units).reduce((x, y) => x + y, 0), 0);
+
+  it("only moves what fits into a near-full destination; overflow surrenders (never exceeds cap)", () => {
+    // edirne holds 11/12 → exactly 1 slot free. The 3 rout survivors: 1 retreats,
+    // 2 surrender. edirne lands on the cap, not over it.
+    const [state, battle] = build(11);
+    const res = resolveBattle(state, battle, makeRng(6, 0));
+    expect(res.defender.routed).toContain("d1");
+    expect(p2AtEdirne(res.state)).toBe(12); // §6.4 cap, never breached
+    const survivor = res.state.armies.find((a) => a.id === "d1");
+    expect(survivor?.locationId).toBe("edirne");
+    expect(Object.values(survivor!.units).reduce((x, y) => x + y, 0)).toBe(1);
+    const overflow = res.state.log.find((l) => (l.data as { retreatOverflowSurrendered?: number }).retreatOverflowSurrendered);
+    expect((overflow?.data as { retreatOverflowSurrendered?: number })?.retreatOverflowSurrendered).toBe(2);
+  });
+
+  it("surrenders the whole stack when the only adjacent destination is at capacity", () => {
+    // edirne holds 12/12 → no room; philippopolis's other neighbours are off-map
+    // here, so there is nowhere to retreat and the routed stack surrenders entirely.
+    const [state, battle] = build(12);
+    const res = resolveBattle(state, battle, makeRng(6, 0));
+    expect(res.defender.routed).toContain("d1");
+    expect(p2AtEdirne(res.state)).toBe(12); // unchanged, still at cap
+    expect(res.state.armies.find((a) => a.id === "d1")).toBeUndefined(); // wholly removed
+  });
+
+  it("a normal retreat into a low-occupancy destination still moves every survivor", () => {
+    // edirne holds 2/12 → ample room; all 3 survivors retreat, nothing surrenders.
+    const [state, battle] = build(2);
+    const res = resolveBattle(state, battle, makeRng(6, 0));
+    expect(res.defender.routed).toContain("d1");
+    const survivor = res.state.armies.find((a) => a.id === "d1");
+    expect(survivor?.locationId).toBe("edirne");
+    expect(Object.values(survivor!.units).reduce((x, y) => x + y, 0)).toBe(3);
+    expect(p2AtEdirne(res.state)).toBe(5); // 2 pre-existing + 3 retreated
+    expect(
+      res.state.log.some((l) => (l.data as { retreatOverflowSurrendered?: number }).retreatOverflowSurrendered),
+    ).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // §8 Sieges
 // ---------------------------------------------------------------------------
 
