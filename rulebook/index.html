@@ -150,7 +150,7 @@
         <tr><td>Hold your own capital</td><td class="num">+1 / round</td></tr>
         <tr><td>Hold an enemy capital</td><td class="num">+3 / round</td></tr>
         <tr><td>Hold a named key city</td><td class="num">+1 each / round</td></tr>
-        <tr><td>Trade monopoly (control both ends of a major route, or most ports of a sea)</td><td class="num">+2 / round</td></tr>
+        <tr><td>Trade monopoly (control both ends of a major route, or most ports of a sea)</td><td class="num">+2 / round for your first monopoly; +1 / round each additional (diminishing)</td></tr>
         <tr><td>Complete a Great Work</td><td class="num">+5&nbsp;&hellip;&nbsp;+10 once</td></tr>
         <tr><td>Win a decisive battle (attacker or defender wipes/routs the enemy)</td><td class="num">+1</td></tr>
         <tr><td>Win a war (force peace, tribute, or vassalage)</td><td class="num">+3</td></tr>
@@ -159,6 +159,7 @@
         <tr><td>Complete a secret objective</td><td class="num">+4 each &mdash; hidden; revealed &amp; scored only at game end</td></tr>
         <tr><td>Royal-marriage bond, per round it holds</td><td class="num">+2</td></tr>
         <tr><td>Betray a treaty</td><td class="num">&minus;2&nbsp;&hellip;&nbsp;&minus;4</td></tr>
+        <tr><td>Open an unjustified war (no casus belli &mdash; see <a href="#diplomacy-vassals-betrayal">Diplomacy &amp; Vassals</a>)</td><td class="num">&minus;1</td></tr>
         <tr><td>Lose your capital</td><td class="num">&minus;3</td></tr>
       </tbody>
     </table>
@@ -188,7 +189,7 @@
   <p>If no one has hit the threshold, the game ends after round 16&rsquo;s Cleanup and the highest prestige wins. Tiebreak: most key cities, then most 🪙 gold.</p>
 
   <h4 id="how-to-win-sudden-death">3. Sudden Death &mdash; the Fall of Constantinople</h4>
-  <p>If any power captures Constantinople and holds it through two full Cleanup phases (2 rounds), it wins immediately, regardless of prestige. This is the game&rsquo;s dramatic spine: every faction&rsquo;s clock is really counting down to whether the City stands.</p>
+  <p>If any power captures Constantinople and holds it through two full Cleanup phases (2 rounds), it wins immediately, regardless of prestige. If the sudden-death condition and the prestige threshold both trigger in the <strong>same Cleanup</strong>, the capture of Constantinople <strong>outranks the threshold</strong> &mdash; the City&rsquo;s captor wins. This is the game&rsquo;s dramatic spine: every faction&rsquo;s clock is really counting down to whether the City stands.</p>
 
   <aside class="scribe-note" role="note" aria-label="Scribe's Note &mdash; The Year 1453" data-title="Scribe's Note &mdash; The Year 1453">
     <p>The Era III event card <em>The Fall of Constantinople (&ldquo;1453&rdquo;)</em> triggers at round 16, or whenever Constantinople is besieged in Era III. If the City is still Byzantine at round 16, Byzantium gains +5 prestige and fulfils <em>Queen of Cities</em>; if it has fallen to the Ottoman, the Ottoman gains +5 prestige and <em>Fetih</em> is scored. Either way it triggers the sudden-death check above. See <a href="#event-cards-eras">Event Cards &amp; Eras</a>.</p>
@@ -248,7 +249,7 @@
   <p>All fighting declared during the action phases resolves now: battles, assaults, sieges, and naval clashes. Entering a province held by a non-ally with units declares a battle, resolved in this phase. How they resolve is the business of <a href="#combat-sieges">Combat &amp; Sieges</a>.</p>
 
   <h3 id="your-turn-cleanup">Phase 5 &mdash; Cleanup</h3>
-  <p>In order: flip contested ownership (entering an <em>empty</em> enemy or neutral province is an occupation &mdash; ownership flips at Cleanup unless contested); score prestige (see <a href="#how-to-win">How to Win</a>); check victory; discard down to the 4-card tactic hand limit (see <a href="#combat-sieges-tactics">Tactic Cards</a>); and re-sort turn order. Turn order is re-sorted so the <strong>lowest-prestige power acts first</strong> next round (tiebreak: fewer provinces) &mdash; a deliberate catch-up lever that keeps a runaway leader in reach and the table tense to the final year.</p>
+  <p>In order: flip contested ownership (entering an <em>empty</em> enemy or neutral province is an occupation &mdash; ownership flips at Cleanup unless contested); score prestige (see <a href="#how-to-win">How to Win</a>); check victory; discard down to the 3-card tactic hand limit (see <a href="#combat-sieges-tactics">Tactic Cards</a>); and re-sort turn order. Turn order is re-sorted so the <strong>lowest-prestige power acts first</strong> next round (tiebreak: fewer provinces) &mdash; a deliberate catch-up lever that keeps a runaway leader in reach and the table tense to the final year.</p>
 
   <h3 id="your-turn-eras">Rounds, Years, and the Three Eras</h3>
   <p>The Omen deck is not one pile. It is split into three era decks, each shuffled separately, so the mood of the game darkens as 1453 approaches; at the start of each round the game draws from the deck matching the current era.</p>
@@ -442,10 +443,10 @@
         <tr><th scope="col">Great Work</th><th scope="col">Cost</th><th class="num" scope="col">Rounds</th><th scope="col">Effect</th><th class="num" scope="col">Prestige</th></tr>
       </thead>
       <tbody>
-        <tr><td>Hagia Sophia Repair</td><td>20 🪙, 10 🪨, 8 ✝️</td><td class="num">3</td><td>+2 faith/round; unlocks unique Byzantine cards</td><td class="num">+10</td></tr>
+        <tr><td>Hagia Sophia Repair</td><td>20 🪙, 10 🪨, 8 ✝️</td><td class="num">3</td><td>Endowment/restoration of the <strong>standing</strong> Great Church (prestige only &mdash; the +2 ✝️ faith/round is the intact building&rsquo;s own income from round 1; see <a href="#economy-trade-great-works">Great Works</a>); unlocks unique Byzantine cards</td><td class="num">+10</td></tr>
         <tr><td>Theodosian Walls (Grand Walls)</td><td>15 🪙, 12 🪨</td><td class="num">2</td><td>Wall tier T5: Wall HP 16, defender +4</td><td class="num">+6</td></tr>
         <tr><td>Great University</td><td>18 🪙, 8 🪨, 4 ✝️</td><td class="num">3</td><td>+2 card draw/round; tactic reroll aura</td><td class="num">+6</td></tr>
-        <tr><td>Grand Bazaar</td><td>16 🪙, 6 🪵, 6 🪨</td><td class="num">2</td><td>Best trade ratio; <strong>+3 gold/route</strong> from this port</td><td class="num">+5</td></tr>
+        <tr><td>Grand Bazaar</td><td>16 🪙, 6 🪵, 6 🪨</td><td class="num">2</td><td>Trade-ratio port: <strong>2&nbsp;:&nbsp;1</strong> conversions, <strong>1&nbsp;:&nbsp;1</strong> for gold&harr;this port&rsquo;s specialty; <strong>+3 gold/route</strong> from this port</td><td class="num">+5</td></tr>
       </tbody>
     </table>
   </div>
@@ -469,7 +470,7 @@
     </table>
   </div>
   <h4 id="actions-vassalize">Vassalize</h4>
-  <p>Instead of fighting a minor state, buy its loyalty. Spend 1 Diplomacy action and pay the minor an up-front bribe of <strong>8 gold + 4 &times; (garrison unit count)</strong>; then roll <strong>1d6 + your prestige-tier &minus; garrison tier</strong>, where prestige-tier = &lfloor;your prestige &divide; 10&rfloor; (capped at 2) and garrison tier = &lfloor;garrison unit count &divide; 2&rfloor;. On <strong>&ge; 4</strong> the minor becomes your <span class="term" tabindex="0" data-tip="A minor state bound to you: it pays half its province yields as tribute each Income phase and can lend you levies.">vassal</span>. A standing NAP or royal-marriage-adjacent bribe (paying an extra +4 gold) grants <strong>+1</strong> to the roll. On failure the bribe is half-refunded and you may retry next round. A vassal pays tribute of half its province yields each Income phase, grants +1 prestige per round, and once per 2 rounds you may call its levies: a free stack of 2 Levy (+1 per garrison tier) raised in the vassal&rsquo;s capital. See <a href="#diplomacy-vassals">Diplomacy &amp; Vassals</a> for the full rules.</p>
+  <p>Instead of fighting a minor state, buy its loyalty. Spend 1 Diplomacy action and pay the minor an up-front bribe of <strong>8 gold + 4 &times; (garrison unit count)</strong>; then roll <strong>1d6 + your prestige-tier &minus; garrison tier</strong>, where prestige-tier = &lfloor;your prestige &divide; 10&rfloor; (capped at 2) and garrison tier = &lfloor;garrison unit count &divide; 2&rfloor;. On <strong>&ge; 4</strong> the minor becomes your <span class="term" tabindex="0" data-tip="A minor state bound to you: it pays half its province yields as tribute each Income phase and can lend you levies.">vassal</span>. A royal-marriage-adjacent bribe (paying an extra +4 gold) grants <strong>+1</strong> to the roll &mdash; minors hold no treaties, so no pact can sweeten the odds, only coin. On failure the bribe is half-refunded and you may retry next round. A vassal pays tribute of half its province yields each Income phase, grants +1 prestige per round, and once per 2 rounds you may call its levies: a free stack of 2 Levy (+1 per garrison tier) raised in the vassal&rsquo;s capital. See <a href="#diplomacy-vassals">Diplomacy &amp; Vassals</a> for the full rules.</p>
   <p>Some courts play deeper games: Byzantium may spend ✝️ faith to sway Orthodox neutrals (Serbia, Trebizond, Wallachia, Epirus, Thessaly, Athens) toward neutrality or alliance instead of paying gold, and may bribe an attacker to stand down for gold; Genoa may take an instant loan and lend gold to other factions and neutrals; Hungary may declare a Crusade with papal support by spending faith. See each power&rsquo;s entry in <a href="#factions">The Factions</a>.</p>
 
   <h3 id="actions-play-card">Play Card</h3>
@@ -574,7 +575,7 @@
     <li><strong>Morale modifiers</strong> — effects phrased as <strong>±1 morale</strong> (event cards, a Church or Mosque) apply to this rout check: each +1 morale adds 1 to the side's rout-check die (routing less likely), each −1 subtracts 1, for any side containing affected units.</li>
     <li><strong>Pursuit</strong> — if a side routs and the enemy has cavalry, each cavalry inflicts <strong>1 automatic pursuit hit</strong> on the fleeing stack.</li>
   </ul>
-  <p>Glory follows the sword: win a <strong>decisive battle</strong> (wipe out or rout the enemy, as attacker or defender) for <strong>+1 prestige</strong>; win a field battle <strong>outnumbered</strong> (the enemy's starting stack larger than yours) for <strong>+1</strong> more, stacking with the decisive-battle award; take a <strong>walled city</strong> (T1+) by storm or siege for <strong>+2</strong> (<strong>+3</strong> if T4–T5); win a <strong>war</strong> — forcing peace, tribute, or vassalage — for <strong>+3</strong>. Lose your capital and pay <strong>−3</strong>. A casus belli lets the claimant attack without the usual prestige cost and scores <strong>+1</strong> extra prestige for wins in that war (see <a href="#diplomacy-vassals">Diplomacy &amp; Vassals</a>).</p>
+  <p>Glory follows the sword: win a <strong>decisive battle</strong> (wipe out or rout the enemy, as attacker or defender) for <strong>+1 prestige</strong>; win a field battle <strong>outnumbered</strong> (the enemy's starting stack larger than yours) for <strong>+1</strong> more, stacking with the decisive-battle award; take a <strong>walled city</strong> (T1+) by storm or siege for <strong>+2</strong> (<strong>+3</strong> if T4–T5); win a <strong>war</strong> — forcing peace, tribute, or vassalage — for <strong>+3</strong>. Lose your capital and pay <strong>−3</strong>. Opening a war <strong>without a casus belli</strong> costs <strong>−1 prestige</strong> (an unjustified war); a casus belli lets the claimant attack without that penalty and scores <strong>+1</strong> extra prestige for wins in that war (see <a href="#diplomacy-vassals">Diplomacy &amp; Vassals</a>).</p>
 
   <h3 id="combat-sieges-naval">Naval Battles</h3>
   <p>Sea battles use the identical hit rules with naval CVs in a sea zone. There is no terrain; there are no walls. The winner controls the zone and may pursue into an adjacent zone. Galley transports carrying an army are destroyed with their cargo if the fleet is wiped out.</p>
@@ -624,6 +625,7 @@
 
   <h4 id="combat-sieges-great-bombard">The Great Bombard</h4>
   <p>The <strong>Great Bombard</strong> — Orban's monster gun — is a <span class="term" tabindex="0" data-tip="One exists per game. It cannot be recruited, rebuilt, or duplicated; it enters play only through the Era III omen The Great Bombard Forged.">unique siege engine</span>: one exists per game, and only if the Era III omen <em>The Great Bombard Forged</em> is drawn. When that card resolves, the Bombard enters play <strong>at no cost</strong> in the recipient's capital (or any owned city): the <strong>Ottoman</strong> player receives it if in play; otherwise the card auctions it (gold + 🪨 marble bids) to the highest bidder. It cannot be recruited, rebuilt, or duplicated.</p>
+  <p>The Great Bombard counts against the <a href="#actions-move">stacking limit</a> like any other unit. If the recipient&rsquo;s capital is already at the stacking cap when the Bombard is forged, it instead enters play in the recipient&rsquo;s <strong>adjacent owned province with the most remaining stacking room</strong> &mdash; falling back to <strong>any owned province with room</strong>, and if none exists, placement is <strong>deferred</strong> until one does.</p>
   <div class="table-scroll">
   <table class="rules-table">
     <caption>The Great Bombard</caption>
@@ -637,19 +639,20 @@
       <tr><td>Naval transport</td><td>Never by ordinary transport. A fleet containing at least one galley may spend its <strong>entire Move action</strong> carrying the Bombard <strong>alone</strong> (no army cargo) exactly <strong>one sea zone</strong>; if that fleet is destroyed at sea the Bombard <strong>sinks</strong> (removed from the game)</td></tr>
       <tr><td>Field battle</td><td>Rolls <strong>no dice</strong> (as a siege engine)</td></tr>
       <tr><td>Assault</td><td>Adds the standard siege-engine <strong>+3 vs walls</strong></td></tr>
-      <tr><td>Bombardment</td><td>Rolls <strong>two wall-damage dice</strong> per siege round — up to <strong>6 Wall HP/round</strong>. It <strong>ignores the T5 masonry cap</strong>, and while it is emplaced against a wall the cap is <strong>lifted for the entire besieging train</strong></td></tr>
+      <tr><td>Emplacement</td><td>On arriving at a siege the Bombard needs <strong>one full round of emplacement</strong> before it fires: it rolls <strong>no</strong> wall-damage dice the round it arrives, and counts as <strong>emplaced</strong> from the following round</td></tr>
+      <tr><td>Bombardment</td><td>Once emplaced, rolls <strong>two wall-damage dice</strong> per siege round — up to <strong>6 Wall HP/round</strong>. It <strong>ignores the T5 masonry cap</strong>, and while it is emplaced against a wall the cap is <strong>lifted for the entire besieging train</strong></td></tr>
       <tr><td>Capture</td><td>If the stack escorting it is destroyed, routs, or surrenders — or the city it garrisons falls — the Bombard is <strong>never destroyed by battle</strong>: it transfers <strong>intact to the victor as loot</strong>. The captor may instead <strong>spike it</strong> (remove it from the game) at the moment of capture</td></tr>
     </tbody>
   </table>
   </div>
   <aside class="scribe-note" role="note" aria-label="Scribe's Note — The Key to the City" data-title="Scribe's Note — The Key to the City">
-    <p>Before the Bombard exists, an intact T5 wall loses at most 1 HP per round — unbreachable in practice. With it, the Bombard averages ~4 HP/round (two wall-damage dice) and un-caps the rest of the train, so the Bombard plus one ordinary siege unit averages ~6 HP/round: a fresh 16-HP Theodosian circuit opens in <strong>~3 rounds</strong> of sustained bombardment. Whoever owns the gun holds the key to the City; whoever destroys its escort <em>takes the key</em>.</p>
+    <p>Before the Bombard exists, an intact T5 wall loses at most 1 HP per round — unbreachable in practice. With it, the Bombard averages ~4 HP/round (two wall-damage dice) and un-caps the rest of the train, so the Bombard plus one ordinary siege unit averages ~6 HP/round: a fresh 16-HP Theodosian circuit opens in <strong>~3 rounds</strong> of sustained bombardment once the gun is emplaced (~4 rounds from its arrival). Whoever owns the gun holds the key to the City; whoever destroys its escort <em>takes the key</em>.</p>
   </aside>
   <p>The prize is the game itself: capture Constantinople and hold it through <strong>two full cleanup phases</strong> (2 rounds) and you win <strong>immediately</strong>, regardless of prestige (see <a href="#how-to-win">How to Win</a>). Several factions also field unique warriors and combat powers — see <a href="#factions">The Factions</a> — and Omen cards can tilt battles and sieges alike (see <a href="#event-cards-eras">Event Cards &amp; Eras</a>).</p>
 
   <h3 id="combat-sieges-tactics">Tactic Cards</h3>
   <p>Tactic cards are the card layer of combat — held surprises that bend a battle without replacing the dice. The shared <span class="term" tabindex="0" data-tip="The shared deck of battle stratagems: 48 cards over 24 designs (8 Common ×3, 8 Uncommon ×2, 8 Rare ×1), shuffled with the seeded RNG.">tactic deck</span> holds <strong>48 cards over 24 designs</strong> (8 Common ×3, 8 Uncommon ×2, 8 Rare ×1), shuffled with the seeded RNG.</p>
-  <p><strong>Drawing &amp; holding.</strong> Each player draws <strong>1 tactic card</strong> during the Income &amp; Upkeep phase, after the Omen resolves. A <strong>University</strong> adds +1 draw per round; the <strong>Great University</strong> adds +2. Omen <em>Grant</em> cards add specific cards on top of these draws. The <strong>hand limit is 4 tactic cards</strong> — discard down to 4 at Cleanup; hands are hidden. When the draw pile empties, reshuffle the discard pile; cards that read <em>remove from game</em> never return.</p>
+  <p><strong>Drawing &amp; holding.</strong> Each player draws <strong>1 tactic card</strong> during the Income &amp; Upkeep phase, after the Omen resolves. A <strong>University</strong> adds +1 draw per round; the <strong>Great University</strong> adds +2. Omen <em>Grant</em> cards add specific cards on top of these draws. The <strong>hand limit is 3 tactic cards</strong> — discard down to 3 at Cleanup; hands are hidden. When the draw pile empties, reshuffle the discard pile; cards that read <em>remove from game</em> never return.</p>
   <p><strong>Playing.</strong> A card scoped to a <strong>battle, assault, or siege</strong> is played <em>during that engagement</em> in the Battle phase at <strong>no action cost</strong>; any printed resource cost is still paid. Each side may play <strong>at most one tactic card per battle round</strong>; <em>The Intercepted Letter</em> is a <strong>reaction</strong> and exempt from this limit. A card with <strong>no battle scope</strong> is played with the <a href="#actions-play-card">Play Card</a> action — except <em>Forced March</em>, which is played as a free rider on one of your Move actions.</p>
   <ul>
     <li><strong>&ldquo;+N dice&rdquo;</strong> — extra dice granted by a card are rolled in your <em>melee step</em>, at the hit threshold of <strong>one participating unit of your choice</strong> (chosen when the card is played). They obey the normal 2–6 clamp.</li>
@@ -681,7 +684,7 @@
       <tr><td>The Hexamilion Manned</td><td>Uncommon ×2</td><td>One land battle you defend in an <strong>unwalled</strong> province: gain <strong>defender +2</strong> (a temporary T2-grade wall bonus; creates no Wall HP; does not stack with real walls).</td></tr>
       <tr><td>Greek Fire</td><td>Rare ×1</td><td>Before dice in a fleet battle you are fighting: <strong>win it outright</strong> — all enemy naval units in the zone are destroyed (transports and cargo with them). Then <strong>discard one other tactic card</strong> from your hand and <strong>remove this card from the game</strong>.</td></tr>
       <tr><td>Master Founders Hired</td><td>Rare ×1</td><td>One siege you are pressing, for <strong>one full round</strong>: the defender's <strong>wall bonus is 0</strong> (Wall HP unchanged; escalade −1 still applies) and your side rolls <strong>+1 die</strong> in each melee step of the assault. Hires the founders, not the gun: creates <strong>no siege engine</strong> and never interacts with the <a href="#combat-sieges-great-bombard">Great Bombard</a>, which stays unique.</td></tr>
-      <tr><td>Treason at the Gate</td><td>Rare ×1</td><td>Pay <strong>4 🪙</strong>. Play on a walled city you have besieged for <strong>2+ consecutive rounds</strong>: the city <strong>falls without an assault</strong> — its garrison surrenders (removed) and you occupy it, walls at their current HP. <strong>Remove this card from the game.</strong></td></tr>
+      <tr><td>Treason at the Gate</td><td>Rare ×1</td><td>Pay <strong>4 🪙</strong>. Playable on a walled city you have besieged for <strong>2+ consecutive rounds</strong>, counting <strong>only siege rounds from game round 6 onward</strong> toward that requirement (so the earliest legal play is <strong>round 7</strong>), whose garrison holds <strong>4 or fewer units</strong>: the city <strong>falls without an assault</strong> — its garrison surrenders (removed) and you occupy it, walls at their current HP. <strong>Remove this card from the game.</strong></td></tr>
       <tr><td>The Pay Chest Taken</td><td>Rare ×1</td><td>Take <strong>up to 3 🪙</strong> from one rival's treasury (never more than they hold).</td></tr>
       <tr><td>Holy War Proclaimed</td><td>Rare ×1</td><td>Pay <strong>2 ✝️</strong>: until the start of your next turn, your side rolls <strong>+1 die</strong> in each melee step of <strong>every</strong> battle you fight.</td></tr>
       <tr><td>Sails from the West</td><td>Rare ×1</td><td>Play while a coastal city you hold is besieged: this round its stores do <strong>not</strong> deplete and it takes no hunger loss — <strong>even under full naval blockade</strong> — and <strong>restore 2 depleted grain stores</strong> (up to its maximum).</td></tr>
@@ -759,7 +762,7 @@
 
   <p>Six terrain types cover the whole board &mdash; plains, hills, mountains, forest, coast, and city. There is no desert terrain: the map&rsquo;s southern edge is carried by coast (Tunis) and city (Cairo) tiles.</p>
 
-  <p>A handful of named key cities — exactly the provinces the map flags HV(n): Constantinople HV(5); Venice, Genoa, Rome HV(4); Thessalonica, Athens, Trebizond, Crete, Cairo, Alexandria, Naples, Kaffa HV(3) — carry extra yields, prestige value, and pre-built walls. Beyond province yields, income also flows from building bonuses (see <a href="#economy-trade-buildings">Buildings</a>), trade-route gold (see <a href="#economy-trade-routes">Trade Routes</a>), vassal and treaty tribute (see <a href="#economy-trade-vassals">Vassal &amp; Treaty Income</a>), and faction powers — Byzantium's Hagia Sophia, for one, yields +2 ✝️ faith/round at Constantinople on top of its listed yield.</p>
+  <p>A handful of named key cities — exactly the provinces the map flags HV(n): Constantinople HV(5); Venice, Genoa, Rome HV(4); Thessalonica, Athens, Trebizond, Crete, Cairo, Alexandria, Naples, Kaffa HV(3) — carry extra yields, prestige value, and pre-built walls. Beyond province yields, income also flows from building bonuses (see <a href="#economy-trade-buildings">Buildings</a>), trade-route gold (see <a href="#economy-trade-routes">Trade Routes</a>), vassal and treaty tribute (see <a href="#economy-trade-vassals">Vassal &amp; Treaty Income</a>), and faction powers — Byzantium's Hagia Sophia, for one, yields +2 ✝️ faith/round at Constantinople on top of its listed yield. A ratified balance rider also gives Venice and Genoa each a flat <strong>🪨 marble 1/round</strong> on top of their capitals&rsquo; listed yields.</p>
 
   <hr class="ornament-divider">
 
@@ -887,7 +890,7 @@
     <li><strong>River ports.</strong> Buda and Belgrade are river ports on the Danube: they can build and berth fleets on the river but are <em>not</em> on any sea zone and cannot be reached by seagoing fleets.</li>
   </ul>
 
-  <p>Merchants earn glory too: a trade monopoly — control both ends of a major route, or most ports of a sea — is worth +2 prestige per round (see <a href="#how-to-win">How to Win</a>).</p>
+  <p>Merchants earn glory too: a trade monopoly — control both ends of a major route, or most ports of a sea — is worth +2 prestige per round for your first monopoly and +1 per round for each additional one (see <a href="#how-to-win">How to Win</a>).</p>
 
   <hr class="ornament-divider">
 
@@ -927,13 +930,17 @@
         <tr><th scope="col">Great Work</th><th scope="col">Cost</th><th class="num" scope="col">Rounds</th><th scope="col">Effect</th><th class="num" scope="col">Prestige</th></tr>
       </thead>
       <tbody>
-        <tr><td>Hagia Sophia Repair</td><td>🪙 20, 🪨 10, ✝️ 8</td><td class="num">3</td><td>+2 faith/round; unlocks unique Byzantine cards</td><td class="num">+10</td></tr>
+        <tr><td>Hagia Sophia Repair</td><td>🪙 20, 🪨 10, ✝️ 8</td><td class="num">3</td><td>Endowment/restoration of the <strong>standing</strong> Great Church (see the note below); unlocks unique Byzantine cards</td><td class="num">+10</td></tr>
         <tr><td>Theodosian Walls (Grand Walls)</td><td>🪙 15, 🪨 12</td><td class="num">2</td><td>Wall tier T5: Wall HP 16, defender +4</td><td class="num">+6</td></tr>
         <tr><td>Great University</td><td>🪙 18, 🪨 8, ✝️ 4</td><td class="num">3</td><td>+2 card draw/round; tactic reroll aura</td><td class="num">+6</td></tr>
-        <tr><td>Grand Bazaar</td><td>🪙 16, 🪵 6, 🪨 6</td><td class="num">2</td><td>Best trade ratio; <strong>+3 gold/route</strong> from this port</td><td class="num">+5</td></tr>
+        <tr><td>Grand Bazaar</td><td>🪙 16, 🪵 6, 🪨 6</td><td class="num">2</td><td>Trade-ratio port: <strong>2&nbsp;:&nbsp;1</strong> conversions, <strong>1&nbsp;:&nbsp;1</strong> for gold&harr;this port&rsquo;s specialty; <strong>+3 gold/route</strong> from this port</td><td class="num">+5</td></tr>
       </tbody>
     </table>
   </div>
+
+  <aside class="scribe-note" role="note" aria-label="Scribe's Note — Hagia Sophia, a Ratified Ruling" data-title="Scribe's Note — Hagia Sophia, a Ratified Ruling">
+    <p>The Great Church <strong>starts the game intact</strong> and yields its +2 ✝️ faith/round <strong>from round 1</strong> — that income is the standing building&rsquo;s own (Byzantium&rsquo;s <em>Hagia Sophia</em> unique power), not a product of the great work. The great work does <strong>not</strong> construct the building: it is an <strong>endowment/restoration</strong> of the standing church, granting its +10 prestige (and the Byzantine card unlocks) only. For the <em>Faith of the Fathers</em> objective, &ldquo;intact&rdquo; means <strong>never captured by assault</strong>: a successful assault on Constantinople sets a permanent <strong>sack flag</strong> that voids the objective; a starvation <strong>surrender does not</strong> set the sack flag. See <a href="#faction-byzantium">Byzantium</a>.</p>
+  </aside>
 
   <hr class="ornament-divider">
 
@@ -944,8 +951,8 @@
   <ul>
     <li><strong>Byzantium</strong> — Hagia Sophia yields +2 ✝️ faith/round at Constantinople on top of its listed yield; Byzantium may spend faith to sway Orthodox neutrals instead of paying gold.</li>
     <li><strong>Ottomans</strong> — Levies cost −1 🌾 to sustain and can be raised in one turn in any owned province; Akıncı riders pillage adjacent enemy or neutral provinces for 🪙 gold; razzias cost −25% and return extra 🪙 plunder.</li>
-    <li><strong>Venice</strong> — +1 🪙 per controlled port each round, and +1 🪙 per enemy-free sea zone linking two of its ports (a live trade route); war and merchant galleys cost −1 🪵; may build up to 2 fleets per round at Venice (others build one); colonies yield +1 🪙 and are −50% garrison cost; routes pay &times;1.5.</li>
-    <li><strong>Genoa</strong> — the Banco di San Giorgio grants instant loans (gain 🪙 now, repay with interest later) and lends gold to other factions and neutrals, to be called in later; Kaffa and Chios each yield +2 🪙; may sell Genoese Crossbowmen to any other faction or neutral for 🪙 gold; routes pay &times;1.5.</li>
+    <li><strong>Venice</strong> — +1 🪙 per controlled port each round, and +1 🪙 per enemy-free sea zone linking two of its ports (a live trade route); war and merchant galleys cost −1 🪵; may build up to 2 fleets per round at Venice (others build one); colonies yield +1 🪙 and are −50% garrison cost; routes pay &times;1.5; Venice itself yields a flat 🪨 marble 1/round on top of its listed yields (ratified balance rider).</li>
+    <li><strong>Genoa</strong> — the Banco di San Giorgio grants instant loans (gain 🪙 now, repay with interest later) and lends gold to other factions and neutrals, to be called in later; Kaffa and Chios each yield +2 🪙; may sell Genoese Crossbowmen to any other faction or neutral for 🪙 gold; routes pay &times;1.5; Genoa itself yields a flat 🪨 marble 1/round on top of its listed yields (ratified balance rider).</li>
     <li><strong>Hungary</strong> — levies cost −1 🪙; earns steady ✝️ faith and may convert indulgences → gold.</li>
   </ul>
 
@@ -1021,7 +1028,7 @@
 
   <h3 id="diplomacy-vassals-betrayal">Betrayal, Reputation &amp; Casus Belli</h3>
   <p>Betraying a treaty costs −2 to −4 prestige, as the table above sets out, and the deed is written into the chronicle for all to read. A power that has betrayed twice suffers a standing <span class="term" tabindex="0" data-tip="A power that has betrayed twice suffers a standing −1 to all diplomacy proposals — others trust it less.">−1 to all diplomacy proposals</span> (others trust it less; some AI and objective cards react). Betraying any treaty also tests the loyalty of your vassals — see <a href="#diplomacy-vassals-revolts">Vassal Revolts</a> below.</p>
-  <p>A <span class="term" tabindex="0" data-tip="A claim from a broken marriage or seized key city; it lets the claimant attack without the usual prestige cost and scores +1 extra prestige for wins in that war.">casus belli</span> — a claim from a broken marriage or seized key city — lets the claimant attack without the usual prestige cost and scores +1 extra prestige for wins in that war.</p>
+  <p>Opening a war <strong>without a casus belli</strong> is an <strong>unjustified war</strong>: it costs <strong>−1 prestige</strong>, scored at that Cleanup. Treaty-break penalties (table above) still apply on top if the attack also broke a standing treaty. A <span class="term" tabindex="0" data-tip="A claim from a broken marriage or seized key city; it lets the claimant attack without the unjustified-war penalty and scores +1 extra prestige for wins in that war.">casus belli</span> — a claim from a broken marriage or seized key city — lets the claimant attack without the unjustified-war penalty and scores +1 extra prestige for wins in that war.</p>
   <div class="table-scroll">
     <table class="rules-table">
       <caption>Statecraft in the Prestige Ledger</caption>
@@ -1034,6 +1041,7 @@
         <tr><td>Royal-marriage bond, per round it holds (each partner)</td><td class="num">+2</td></tr>
         <tr><td>Holding a vassal, per round</td><td class="num">+1</td></tr>
         <tr><td>Betray a treaty</td><td class="num">−2 to −4</td></tr>
+        <tr><td>Open an unjustified war (no casus belli)</td><td class="num">−1</td></tr>
       </tbody>
     </table>
   </div>
@@ -1119,7 +1127,7 @@
 
   <h3 id="diplomacy-vassals-two-paths">Two Paths to a Minor: Sword or Purse</h3>
   <p><strong>Conquest.</strong> Attack and defeat the minor's garrison like any defender (see <a href="#combat-sieges">Combat &amp; Sieges</a>). Several minors sit in defensible terrain or behind <strong>T2&ndash;T3 walls</strong>, so this is costly and may take a siege. On victory the minor's provinces flip to the conqueror as normal territory. Conquest scores the usual battle prestige but earns the minor's enmity — see revolts below.</p>
-  <p><strong>Vassalize.</strong> Instead of fighting, buy loyalty. Spend 1 Diplomacy action and pay the minor an up-front bribe of 8 gold + 4 × (garrison unit count); then roll 1d6 + your <span class="term" tabindex="0" data-tip="Prestige-tier = your prestige ÷ 10, rounded down, capped at 2. Garrison tier = the minor's garrison unit count ÷ 2, rounded down.">prestige-tier</span> − the minor's garrison tier, where prestige-tier = ⌊your prestige ÷ 10⌋ (capped at 2) and garrison tier = ⌊garrison unit count ÷ 2⌋. On 4 or more, the minor becomes your <span class="term" tabindex="0" data-tip="A minor state bound to your throne: it pays you tribute, lends you levies, and screens your border — but it can revolt.">vassal</span>. A standing NAP or royal-marriage-adjacent bribe (paying an extra +4 gold) grants +1 to the roll. On failure the bribe is half-refunded and you may retry next round.</p>
+  <p><strong>Vassalize.</strong> Instead of fighting, buy loyalty. Spend 1 Diplomacy action and pay the minor an up-front bribe of 8 gold + 4 × (garrison unit count); then roll 1d6 + your <span class="term" tabindex="0" data-tip="Prestige-tier = your prestige ÷ 10, rounded down, capped at 2. Garrison tier = the minor's garrison unit count ÷ 2, rounded down.">prestige-tier</span> − the minor's garrison tier, where prestige-tier = ⌊your prestige ÷ 10⌋ (capped at 2) and garrison tier = ⌊garrison unit count ÷ 2⌋. On 4 or more, the minor becomes your <span class="term" tabindex="0" data-tip="A minor state bound to your throne: it pays you tribute, lends you levies, and screens your border — but it can revolt.">vassal</span>. A royal-marriage-adjacent bribe (paying an extra +4 gold) grants +1 to the roll &mdash; minors hold no treaties, so no pact can sweeten the odds, only coin. On failure the bribe is half-refunded and you may retry next round.</p>
   <aside class="scribe-note" role="note" aria-label="Scribe's Note — Buying Serbia" data-title="Scribe's Note — Buying Serbia">
     <p>Serbia's garrison is 2 Levies + 1 professional Infantry — 3 units, so its garrison tier is ⌊3 ÷ 2⌋ = 1. The bribe is 8 + 4 × 3 = 20 🪙 gold. Paying the extra +4 gold (24 in all) as a royal-marriage-adjacent sweetener grants +1 to the roll: 1d6 + your prestige-tier − 1, needing 4 or more. Fail, and half the bribe comes back; the Despot will hear you again next round.</p>
   </aside>
@@ -1335,7 +1343,7 @@
         <tr><th class="num" scope="col">#</th><th scope="col">Card</th><th scope="col">Type</th><th scope="col">Effect</th></tr>
       </thead>
       <tbody>
-        <tr><td class="num">34</td><td>The Great Bombard Forged</td><td>Good (Ottoman)</td><td>The Great Bombard enters play at no cost in the recipient's capital (or any owned city): the Ottoman receives it if in play; otherwise the founder Orban auctions it to the highest bidder (🪙+🪨 marble bids). It rolls two wall-damage dice &mdash; up to 6 Wall HP/round &mdash; enough to batter even the Tier-5 Theodosian Walls (see <a href="#combat-sieges-great-bombard">Combat &amp; Sieges</a>). One per game; it can never be recruited or built. <strong>Persistent.</strong></td></tr>
+        <tr><td class="num">34</td><td>The Great Bombard Forged</td><td>Good (Ottoman)</td><td>The Great Bombard enters play at no cost in the recipient's capital (or any owned city): the Ottoman receives it if in play; otherwise the founder Orban auctions it to the highest bidder (🪙+🪨 marble bids). After one full round of emplacement at a siege it rolls two wall-damage dice &mdash; up to 6 Wall HP/round &mdash; enough to batter even the Tier-5 Theodosian Walls (see <a href="#combat-sieges-great-bombard">Combat &amp; Sieges</a>). One per game; it can never be recruited or built. <strong>Persistent.</strong></td></tr>
         <tr><td class="num">35</td><td>Black Death Returns</td><td>Ill</td><td>For 2 rounds, every city and high-value (HV) province produces &minus;1 🌾 and &minus;1 🪙; each faction destroys 1 levy/infantry per 3 such units it fields (densest provinces first).</td></tr>
         <tr><td class="num">36</td><td>Gunpowder Revolution</td><td>Mixed (tech)</td><td>For the rest of the game, bombards &amp; handgunners cost &minus;1 and gain +1 siege, but old-style stone walls defend at &minus;1 tier against them. Favors attackers everywhere. <strong>Persistent.</strong></td></tr>
         <tr><td class="num">37</td><td>The Final Crusade</td><td>Mixed</td><td>All Christian factions may pool units into a grand Crusade targeting any Ottoman-held city. <em>Success:</em> +4 prestige to joiners and the city changes hands. <em>Failure or non-participation:</em> each abstaining Christian faction &minus;1 prestige (the West stood idle).</td></tr>
@@ -1419,7 +1427,7 @@
       </tbody>
     </table>
   </div>
-  <p><small>* Like all siege engines, the Great Bombard rolls no dice in a field battle and adds +3 vs walls in assaults; its bombardment rolls two wall-damage dice per siege round. &dagger; It moves 1 province per round as a full Move action regardless of terrain, and may not enter mountains. Its 3-grain upkeep never causes desertion &mdash; unpaid, it falls silent instead. See <a href="#combat-sieges-great-bombard">Combat &amp; Sieges</a>.</small></p>
+  <p><small>* Like all siege engines, the Great Bombard rolls no dice in a field battle and adds +3 vs walls in assaults; after one full round of emplacement at a siege, its bombardment rolls two wall-damage dice per siege round. &dagger; It moves 1 province per round as a full Move action regardless of terrain, and may not enter mountains. Its 3-grain upkeep never causes desertion &mdash; unpaid, it falls silent instead. See <a href="#combat-sieges-great-bombard">Combat &amp; Sieges</a>.</small></p>
 
   <article class="faction-card" id="faction-byzantium">
     <header class="faction-head">
@@ -1466,7 +1474,7 @@
       <h4>Unique Powers</h4>
       <ol>
         <li><strong>Theodosian Walls.</strong> Constantinople starts at wall Tier&nbsp;5 (16 Wall HP, defender +4) and, while Byzantine-held, auto-repels the first two siege rounds each time it is besieged (the defenders sally; no bombardment damage those rounds). Against intact T5 masonry an ordinary siege train inflicts at most 1 Wall HP per round; only the <a href="#combat-sieges-great-bombard">Great Bombard</a> lifts that cap and rolls enough wall damage to batter the circuit down quickly.</li>
-        <li><strong>Hagia Sophia.</strong> Constantinople yields +2 ✝️ faith/round on top of its listed yield. Byzantium may spend faith to sway Orthodox neutrals (Serbia, Trebizond, Wallachia, Epirus, Thessaly, Athens) toward neutrality or alliance instead of paying gold.</li>
+        <li><strong>Hagia Sophia.</strong> The Great Church stands intact from the game&rsquo;s start: Constantinople yields +2 ✝️ faith/round on top of its listed yield from round 1 (the <em>Hagia Sophia Repair</em> great work is an endowment/restoration of the standing building &mdash; prestige only, not construction). Byzantium may spend faith to sway Orthodox neutrals (Serbia, Trebizond, Wallachia, Epirus, Thessaly, Athens) toward neutrality or alliance instead of paying gold.</li>
         <li><strong>Reconquista of the Romans.</strong> Byzantium holds a standing claim on former imperial cities &mdash; Nicaea, Bursa, Athens, Trebizond, Thessaly &mdash; and pays &minus;25% cost to besiege or capture them. It may also bribe an attacker to stand down for gold, buying one round of peace on a single front.</li>
       </ol>
 
@@ -1474,7 +1482,7 @@
       <ol>
         <li><strong>Queen of Cities.</strong> Control Constantinople at game end (round 16) &mdash; survival, the core Byzantine dream.</li>
         <li><strong>Restoration of the Empire.</strong> Simultaneously control Thessalonica, Morea, <strong>and</strong> at least one of Nicaea / Athens &mdash; a reborn imperial spine on both shores of the Aegean.</li>
-        <li><strong>Faith of the Fathers.</strong> Hold Constantinople (with Hagia Sophia intact) and finish the game with &ge;&nbsp;15 ✝️ faith banked, having refused Church Union &mdash; never resolving <em>Council of Florence</em> in the Union&rsquo;s favor.</li>
+        <li><strong>Faith of the Fathers.</strong> Hold Constantinople (with Hagia Sophia intact) and finish the game with &ge;&nbsp;15 ✝️ faith banked, having refused Church Union &mdash; never resolving <em>Council of Florence</em> in the Union&rsquo;s favor. &ldquo;Intact&rdquo; means the city was <strong>never captured by assault</strong> (a sack flag); a starvation <strong>surrender does not</strong> set the sack flag.</li>
       </ol>
 
       <aside class="scribe-note" role="note" aria-label="Scribe's Note — Byzantium in the Wider Rules" data-title="Scribe's Note — Byzantium in the Wider Rules">
@@ -1535,7 +1543,7 @@
       <h4>Unique Powers</h4>
       <ol>
         <li><strong>Devshirme &amp; the Timariots.</strong> Levies cost &minus;1 🌾 to sustain and can be raised in one turn in any owned province. The Ottoman fields the largest, cheapest land army on the map.</li>
-        <li><strong>The Great Bombard.</strong> When the Era III omen <em>The Great Bombard Forged</em> resolves, <strong>Orban&rsquo;s Great Bombard</strong> enters play &mdash; free, in the recipient&rsquo;s capital or any owned city: the Ottoman receives it if in play (otherwise it is auctioned to the highest bidder). One exists per game; it cannot be recruited, rebuilt, or duplicated. It rolls <strong>two wall-damage dice</strong> per siege round and lifts the T5 masonry cap for the whole besieging train &mdash; the only reliable answer to the Tier-5 Theodosian Walls. Slow, grain-hungry, rolls no dice in open battle &mdash; and if its escort falls, it passes <strong>intact to the victor</strong> (see <a href="#combat-sieges-great-bombard">Combat &amp; Sieges</a>).</li>
+        <li><strong>The Great Bombard.</strong> When the Era III omen <em>The Great Bombard Forged</em> resolves, <strong>Orban&rsquo;s Great Bombard</strong> enters play &mdash; free, in the recipient&rsquo;s capital or any owned city: the Ottoman receives it if in play (otherwise it is auctioned to the highest bidder). One exists per game; it cannot be recruited, rebuilt, or duplicated. After <strong>one full round of emplacement</strong> at a siege it rolls <strong>two wall-damage dice</strong> per siege round and lifts the T5 masonry cap for the whole besieging train &mdash; the only reliable answer to the Tier-5 Theodosian Walls. Slow, grain-hungry, rolls no dice in open battle &mdash; and if its escort falls, it passes <strong>intact to the victor</strong> (see <a href="#combat-sieges-great-bombard">Combat &amp; Sieges</a>).</li>
         <li><strong>Ghaza (Holy Raid).</strong> Razzias against neutral beyliks and Christian frontier provinces cost &minus;25% and return extra 🪙 plunder; the Ottoman gains a small prestige bump each time it takes a new city.</li>
       </ol>
 
@@ -1795,7 +1803,7 @@
     <li><strong>Income &amp; Upkeep</strong> &mdash; collect province yields (tax posture: Lenient &times;0.75 / Normal &times;1.0 / Heavy &times;1.5 with 1-in-6 revolt check), draw 1 tactic card, pay 🌾 grain upkeep, resolve starvation.</li>
     <li><strong>Action Phases</strong> &mdash; in turn order, each player spends <strong>4 actions</strong> in any mix and any order (certain cards can raise this to 5).</li>
     <li><strong>Battle Resolution</strong> &mdash; resolve all queued battles, assaults, sieges, and naval clashes.</li>
-    <li><strong>Cleanup</strong> &mdash; flip contested ownership, score prestige, check victory, discard to the 4-card tactic hand limit, re-sort turn order.</li>
+    <li><strong>Cleanup</strong> &mdash; flip contested ownership, score prestige, check victory, discard to the 3-card tactic hand limit, re-sort turn order.</li>
   </ol>
   <ul>
     <li><strong>Turn order:</strong> lowest-prestige power acts first (tiebreak: fewer provinces), re-sorted each Cleanup.</li>
@@ -1851,7 +1859,7 @@
     <li><strong>Bombardment</strong> (each siege engine, each round): 1d6 &rarr; 1&ndash;2: 1 HP &middot; 3&ndash;4: 2 HP &middot; 5&ndash;6: 3 HP. The Great Bombard rolls two such dice and lifts the T5 cap.</li>
     <li><strong>Hold-out:</strong> grain stores default 3 rounds (+2 with a Granary); at 0 stores the garrison loses 1 unit per round. <strong>Sea resupply:</strong> a coastal city depletes stores only while <em>every</em> adjacent sea zone is enemy-controlled.</li>
     <li><strong>Assault</strong> (any time, as a Move/Attack action): while Wall HP &gt; 0 &mdash; defender keeps the full wall bonus and the attacker takes escalade &minus;1; at a breach (0 HP) &mdash; normal field-battle odds. Winning captures the city.</li>
-    <li><strong>Constantinople:</strong> Tier 5; while Byzantine-held, auto-repels the first two siege rounds each siege; intact T5 masonry takes max 1 Wall HP/round from an ordinary train &mdash; only the Great Bombard (Era III omen; 2 wall-damage dice, lifts the cap for the whole train) opens it.</li>
+    <li><strong>Constantinople:</strong> Tier 5; while Byzantine-held, auto-repels the first two siege rounds each siege; intact T5 masonry takes max 1 Wall HP/round from an ordinary train &mdash; only the Great Bombard (Era III omen; emplaces one full round, then 2 wall-damage dice, lifting the cap for the whole train) opens it.</li>
   </ul>
 
   <h3 id="quick-reference-eras">Eras &amp; Events</h3>
@@ -1870,14 +1878,14 @@
     <li>Cards resolve immediately unless marked <strong>Persistent</strong> (lasting modifier) or <strong>Grant</strong> (adds a card to the drawer&rsquo;s hand; none in the base deck).</li>
     <li>Era balance: Era I skews Good (8 / 5 / 3); Era II skews Ill (3 / 12 / 2); Era III evens out (4 / 5 / 4). A faction-specific card with no valid target is treated as neutral.</li>
     <li>An empty era deck reshuffles its discards; on entering the next era, retire the previous deck. Draw 1 per round regardless of player count; with 4&ndash;5 players, the next card is also revealed as a gathering omen.</li>
-    <li><strong>Tactic deck:</strong> 48 cards over 24 designs (8 Common &times;3, 8 Uncommon &times;2, 8 Rare &times;1); draw 1/round in Income (University +1, Great University +2); hand limit 4, discard at Cleanup.</li>
+    <li><strong>Tactic deck:</strong> 48 cards over 24 designs (8 Common &times;3, 8 Uncommon &times;2, 8 Rare &times;1); draw 1/round in Income (University +1, Great University +2); hand limit 3, discard at Cleanup.</li>
   </ul>
 
   <h3 id="quick-reference-victory">Victory</h3>
   <ul>
     <li><strong>Prestige threshold</strong> (checked at Cleanup &mdash; the only point victory is checked): 2 players &mdash; 72 &middot; 3 &mdash; 75 &middot; 4 &mdash; 80 &middot; 5 &mdash; 78 (subject to final balance tuning).</li>
     <li><strong>Round 16 (&ldquo;1453&rdquo;):</strong> highest prestige wins; tiebreak most key cities, then most 🪙 gold.</li>
-    <li><strong>Sudden death:</strong> capture Constantinople and hold it through two full Cleanup phases (2 rounds) &rarr; immediate win, regardless of prestige.</li>
+    <li><strong>Sudden death:</strong> capture Constantinople and hold it through two full Cleanup phases (2 rounds) &rarr; immediate win, regardless of prestige; if it triggers in the same Cleanup as the prestige threshold, the City&rsquo;s captor wins.</li>
     <li><strong>Conquest prestige:</strong> take a walled city (T1+) +2 (+3 if T4&ndash;T5); win a field battle outnumbered +1 (stacks with the decisive-battle +1).</li>
     <li><strong>Secret objectives:</strong> 3 per faction, +4 prestige each, revealed &amp; scored only at game end (round 16).</li>
   </ul>
