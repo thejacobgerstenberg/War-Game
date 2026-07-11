@@ -7,9 +7,11 @@
  */
 import type {
   BuildingType,
+  Faction,
   GreatWorkType,
   ResourceBundle,
   SpyMission,
+  TacticCardId,
   TaxPosture,
   TreatyType,
   UnitType,
@@ -155,6 +157,36 @@ export interface PassAction {
   player: string;
 }
 
+/**
+ * Play a tactic card (§7.7) into a battle already on `state.pendingBattles`. Free
+ * (not action-budgeted); any printed resource cost is still paid. At most one per
+ * side per battle round is enforced by the tactic subsystem.
+ */
+export interface PlayTacticAction {
+  type: "PLAY_TACTIC";
+  player: string;
+  /** Id of the {@link PendingBattle} this card is played into. */
+  battleId: string;
+  /** The tactic card being played (namespaced tactic keyspace). */
+  cardId: TacticCardId;
+}
+
+/** Declare war on a rival faction (opens a casus belli / {@link WarState}; §11). */
+export interface DeclareWarAction {
+  type: "DECLARE_WAR";
+  player: string;
+  /** The faction being declared upon. */
+  target: Faction;
+}
+
+/** Call up a vassal minor's levy (§11.5), subject to its levy cooldown. */
+export interface LevyCallAction {
+  type: "LEVY_CALL";
+  player: string;
+  /** The vassalised NPC minor answering the call. */
+  minorId: string;
+}
+
 /** Advance the phase / turn state machine (engine- or host-driven). */
 export interface AdvancePhaseAction {
   type: "ADVANCE_PHASE";
@@ -171,6 +203,9 @@ export type GameAction =
   | DiplomacyAction
   | VassalizeAction
   | PlayCardAction
+  | PlayTacticAction
+  | DeclareWarAction
+  | LevyCallAction
   | SpyAction
   | MercBidAction
   | SetTaxAction

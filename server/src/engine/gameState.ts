@@ -17,6 +17,7 @@ import {
   type GameState,
   type Player,
   type Province,
+  type TacticCardId,
   type Treaty,
 } from "@imperium/shared";
 import { NPC_MINORS, PROVINCES, SEA_ZONES } from "./mapData.js";
@@ -30,6 +31,7 @@ import {
   startingWallState,
 } from "./factions.js";
 import { OMEN_CARDS_BY_ERA } from "./events/cards.js";
+import { buildTacticDeck } from "./tactics/cards.js";
 import { makeRng } from "./rng.js";
 import { appendLog } from "./logEntry.js";
 
@@ -123,6 +125,7 @@ export function createInitialState(
     vassals: [] as string[],
     betrayals: 0,
     actionsRemaining: ACTIONS_PER_ROUND,
+    tacticHand: [] as TacticCardId[],
   }));
 
   // Asymmetric starting armies & fleets per province (docs/FACTIONS.md), placed
@@ -133,6 +136,9 @@ export function createInitialState(
   // Seed the Omen deck for Era I (shuffled by the RNG); stash the later eras.
   const rng = makeRng(rngSeed, 0);
   const omenDeck = rng.shuffle(OMEN_CARDS_BY_ERA[1]);
+  // Build + shuffle the tactic deck from the same RNG stream (§7.7). Empty until
+  // the tactic agent authors TACTIC_CARDS; consumes no cursor while empty.
+  const tacticDeck = buildTacticDeck(rng);
 
   const base: GameState = {
     roomCode,
@@ -153,6 +159,9 @@ export function createInitialState(
       2: [...OMEN_CARDS_BY_ERA[2]],
       3: [...OMEN_CARDS_BY_ERA[3]],
     },
+    tacticDeck,
+    tacticDiscard: [],
+    tacticRemoved: [],
     mercMarket: [],
     minors: NPC_MINORS.map((m) => ({ ...m, provinceIds: [...m.provinceIds] })),
     pendingBattles: [],
