@@ -84,13 +84,18 @@ export interface SeaZone {
 
 export interface TradeRoute {
   id: string;
-  /** Endpoint province ids; both must be ports. */
+  /** Endpoint province ids; both must be ports unless the route is overland. */
   a: string;
   b: string;
   /** Sea zones the route passes through; an enemy fleet here can cut it. */
   seaZones: string[];
   /** Gold per round while the route is open and owned. */
   income: number;
+  /**
+   * Overland caravan route: endpoints need not be ports, seaZones is empty,
+   * and the route can never be blockaded by fleets.
+   */
+  overland?: boolean;
 }
 
 export interface FactionStart {
@@ -222,6 +227,8 @@ export interface PrestigeLedger {
   keyCities: number;
   tradeRoutes: number;
   greatWorks: number;
+  /** Conquest track: one-off prestige per province captured. */
+  conquests: number;
   warsWon: number;
   objectives: number;
   events: number;

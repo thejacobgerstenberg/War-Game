@@ -135,6 +135,10 @@ function tryAttack(g: Game, f: FactionId, o: AttackOpts): boolean {
         feasible = n >= 2; // reinforcing an existing siege is cheap
       } else if (walled) {
         feasible = myPower >= o.walledRatio * (armyPower(t.garrison) + 1);
+        // Great fortresses (near-intact wall bonus >= 3, e.g. Constantinople)
+        // are a siege tar pit without the Great Bombard: the siege module
+        // curves show pre-Bombard capture is very unlikely. Stay away.
+        if (g.wallBonusAt(r.to) >= 3 && !g.faction(f).hasGreatBombard) feasible = false;
       } else {
         feasible = myPower >= o.minRatio * g.defenseScore(r.to);
       }
@@ -397,11 +401,12 @@ function rusherTurn(g: Game, f: FactionId): void {
   while (g.actionsLeft > 0) {
     if (tryBuyBombard(g, f, 5)) continue;
     if (tryRelief(g, f)) continue;
+    if (tryDefend(g, f, 1.0)) continue; // keep the core intact before pressing on
     if (tryAttack(g, f, { minRatio: 1.4, walledRatio: 2.0, players: 'any' })) continue;
     if (tryRecruitMilitary(g, f, true)) continue;
     if (tryConsolidate(g, f)) continue;
     if (tryMoveToFront(g, f)) continue;
-    if (tryDefend(g, f)) continue;
+    if (tryOpenRoute(g, f)) continue; // idle actions: free prestige/income
     g.actPass(f);
   }
 }

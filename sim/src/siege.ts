@@ -43,6 +43,8 @@ export interface SiegeSetup {
   terrain: Terrain; // defender terrain bonus applies on assault
   hasGreatBombard: boolean; // assumes game round >= greatBombard.availableFromRound
   blockaded: boolean; // every coast blockaded => garrison attrition doubled
+  /** Constantinople's Golden Horn: unblockaded garrison is sea-resupplied (attrition halved). */
+  seaResupplied?: boolean;
 }
 
 export interface SiegePolicy {
@@ -128,7 +130,11 @@ export function runSiege(
   const terrainBonus = CONFIG.combat.terrain[setup.terrain];
   const garrisonAttrition =
     s.garrisonAttritionPerRound *
-    (setup.blockaded && s.seaBlockadeDoublesAttrition ? 2 : 1);
+    (setup.blockaded && s.seaBlockadeDoublesAttrition
+      ? 2
+      : setup.seaResupplied && !setup.blockaded
+        ? s.cpleSeaResupplyAttritionMult
+        : 1);
 
   let wallDamage = 0;
   let assaults = 0;

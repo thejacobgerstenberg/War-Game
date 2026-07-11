@@ -3,7 +3,7 @@
     "seed": 20260711,
     "iterationsPerCell": 20000,
     "smoke": false,
-    "elapsedMs": 7056,
+    "elapsedMs": 7481,
     "attacker": "12 professionals + <engines> siege engines",
     "garrisonComposition": "professionals",
     "terrain": "plains",
@@ -23,7 +23,7 @@
         ],
         "theodosianBonus": 1.5,
         "hitpointsPerTier": 4,
-        "theodosianExtraHitpoints": 4
+        "theodosianExtraHitpoints": 8
       },
       "siege": {
         "engineDamagePerRound": 1,
@@ -32,9 +32,10 @@
         "besiegerAttritionPerRound": 0.03,
         "assaultAllowedAnytime": true,
         "seaBlockadeDoublesAttrition": true,
+        "cpleSeaResupplyAttritionMult": 0.5,
         "greatBombard": {
-          "availableFromRound": 9,
-          "goldCost": 30,
+          "availableFromRound": 12,
+          "goldCost": 40,
           "damagePerRound": 4
         }
       },
@@ -1702,42 +1703,42 @@
       "garrison": 6,
       "greatBombard": false,
       "iterations": 20000,
-      "captureProb": 0.91075,
-      "expectedRoundsToCapture": 6.984628053801812,
+      "captureProb": 0.85615,
+      "expectedRoundsToCapture": 8.056882555626935,
       "pCaptureWithinK": [
         0,
         0,
         0,
-        0.00345,
-        0.01655,
-        0.03865,
-        0.8661,
-        0.91075
+        0.0001,
+        0.00045,
+        0.00265,
+        0.00685,
+        0.7974
       ]
     },
     {
       "garrison": 8,
       "greatBombard": false,
       "iterations": 20000,
-      "captureProb": 0.84585,
-      "expectedRoundsToCapture": 7.086540166696222,
+      "captureProb": 0.74755,
+      "expectedRoundsToCapture": 8.11096247742626,
       "pCaptureWithinK": [
         0,
         0,
         0,
         0,
         0,
-        0.00075,
-        0.7719,
-        0.84585
+        0,
+        0.00005,
+        0.66455
       ]
     },
     {
       "garrison": 10,
       "greatBombard": false,
       "iterations": 20000,
-      "captureProb": 0.75545,
-      "expectedRoundsToCapture": 7.127606062611688,
+      "captureProb": 0.6221,
+      "expectedRoundsToCapture": 8.165246744896319,
       "pCaptureWithinK": [
         0,
         0,
@@ -1745,69 +1746,69 @@
         0,
         0,
         0,
-        0.65905,
-        0.75545
+        0,
+        0.5193
       ]
     },
     {
       "garrison": 6,
       "greatBombard": true,
       "iterations": 20000,
-      "captureProb": 0.9214,
-      "expectedRoundsToCapture": 3.0783047536357717,
+      "captureProb": 0.9011,
+      "expectedRoundsToCapture": 3.0916102541338364,
       "pCaptureWithinK": [
         0,
         0,
-        0.84925,
-        0.9214,
-        0.9214,
-        0.9214,
-        0.9214,
-        0.9214
+        0.81855,
+        0.9011,
+        0.9011,
+        0.9011,
+        0.9011,
+        0.9011
       ]
     },
     {
       "garrison": 8,
       "greatBombard": true,
       "iterations": 20000,
-      "captureProb": 0.8344,
-      "expectedRoundsToCapture": 3.1269175455417066,
+      "captureProb": 0.7941,
+      "expectedRoundsToCapture": 3.1486588590857574,
       "pCaptureWithinK": [
         0,
         0,
-        0.7285,
-        0.8344,
-        0.8344,
-        0.8344,
-        0.8344,
-        0.8344
+        0.67605,
+        0.7941,
+        0.7941,
+        0.7941,
+        0.7941,
+        0.7941
       ]
     },
     {
       "garrison": 10,
       "greatBombard": true,
       "iterations": 20000,
-      "captureProb": 0.7281,
-      "expectedRoundsToCapture": 3.1952341711303394,
+      "captureProb": 0.6662,
+      "expectedRoundsToCapture": 3.2238066646652657,
       "pCaptureWithinK": [
         0,
         0,
-        0.58595,
-        0.7281,
-        0.7281,
-        0.7281,
-        0.7281,
-        0.7281
+        0.5171,
+        0.6662,
+        0.6662,
+        0.6662,
+        0.6662,
+        0.6662
       ]
     }
   ],
   "targets": {
-    "noBombardWithin3Under10pct": {
-      "worst": 0,
+    "noBombardWithin6Under15pct": {
+      "worst": 0.00265,
       "met": true
     },
     "withBombardWithin4Over50pct": {
-      "worst": 0.7281,
+      "worst": 0.6662,
       "met": true
     }
   }

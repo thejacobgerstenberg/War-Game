@@ -35,16 +35,16 @@ interface ProvinceSpec {
 
 const P: Record<string, ProvinceSpec> = {
   // ---- Italy ----
-  venice: { name: 'Venice', owner: 'venice', terrain: 'plains', wall: 2, key: true, y: [5, 1, 0, 1, 0], coasts: ['adriatic_north'] },
+  venice: { name: 'Venice', owner: 'venice', terrain: 'plains', wall: 2, key: true, y: [5, 1, 0, 1, 1], coasts: ['adriatic_north'] },
   friuli: { name: 'Friuli', owner: null, terrain: 'plains', wall: 0, y: [1, 2, 2, 0, 0], coasts: ['adriatic_north'] },
   milan: { name: 'Milan', owner: null, terrain: 'plains', wall: 2, y: [4, 3, 0, 0, 0] },
-  genoa: { name: 'Genoa', owner: 'genoa', terrain: 'hills', wall: 2, key: true, y: [5, 1, 1, 0, 0], coasts: ['ligurian'] },
+  genoa: { name: 'Genoa', owner: 'genoa', terrain: 'hills', wall: 2, key: true, y: [5, 1, 1, 0, 1], coasts: ['ligurian'] },
   tuscany: { name: 'Tuscany', owner: null, terrain: 'hills', wall: 1, y: [3, 2, 0, 2, 0], coasts: ['ligurian'] },
   rome: { name: 'Rome', owner: null, terrain: 'plains', wall: 2, key: true, y: [3, 2, 0, 1, 2], coasts: ['tyrrhenian'] },
   naples: { name: 'Naples', owner: null, terrain: 'plains', wall: 1, y: [3, 3, 0, 0, 0], coasts: ['tyrrhenian'] },
   apulia: { name: 'Apulia', owner: null, terrain: 'plains', wall: 0, y: [2, 3, 0, 0, 0], coasts: ['adriatic_south', 'ionian'] },
   sicily: { name: 'Sicily', owner: null, terrain: 'plains', wall: 1, y: [3, 4, 0, 0, 0], coasts: ['tyrrhenian', 'ionian'] },
-  corsica: { name: 'Corsica', owner: 'genoa', terrain: 'mountains', wall: 0, y: [1, 1, 2, 0, 0], coasts: ['ligurian', 'tyrrhenian'] },
+  corsica: { name: 'Corsica', owner: 'genoa', terrain: 'mountains', wall: 0, y: [1, 1, 2, 1, 0], coasts: ['ligurian', 'tyrrhenian'] },
   // ---- Western Balkans ----
   ragusa: { name: 'Ragusa', owner: null, terrain: 'hills', wall: 2, key: true, y: [4, 1, 0, 0, 0], coasts: ['adriatic_south'] },
   zara: { name: 'Zara', owner: 'venice', terrain: 'hills', wall: 1, y: [2, 1, 1, 0, 0], coasts: ['adriatic_north'] },
@@ -55,34 +55,36 @@ const P: Record<string, ProvinceSpec> = {
   albania: { name: 'Albania', owner: null, terrain: 'mountains', wall: 0, y: [1, 1, 0, 0, 0], coasts: ['adriatic_south'] },
   epirus: { name: 'Epirus', owner: null, terrain: 'mountains', wall: 0, y: [1, 1, 0, 0, 0], coasts: ['ionian'] },
   athens: { name: 'Athens', owner: null, terrain: 'plains', wall: 1, key: true, y: [2, 1, 0, 2, 1], coasts: ['aegean_south'] },
-  morea: { name: 'Morea', owner: 'byzantium', terrain: 'hills', wall: 1, y: [2, 2, 0, 1, 0], coasts: ['ionian', 'sea_of_crete'] },
+  morea: { name: 'Morea', owner: 'byzantium', terrain: 'hills', wall: 1, y: [2, 3, 0, 1, 0], coasts: ['ionian', 'sea_of_crete'] },
   // ---- Hungary & lower Danube ----
-  buda: { name: 'Buda', owner: 'hungary', terrain: 'plains', wall: 2, key: true, y: [4, 3, 0, 0, 0] },
-  upper_hungary: { name: 'Upper Hungary', owner: 'hungary', terrain: 'mountains', wall: 0, y: [3, 1, 1, 0, 0] },
+  buda: { name: 'Buda', owner: 'hungary', terrain: 'plains', wall: 2, key: true, y: [4, 3, 0, 0, 1] },
+  upper_hungary: { name: 'Upper Hungary', owner: 'hungary', terrain: 'mountains', wall: 0, y: [3, 1, 1, 1, 0] },
   transylvania: { name: 'Transylvania', owner: 'hungary', terrain: 'mountains', wall: 0, y: [2, 2, 2, 0, 0] },
   banat: { name: 'Banat', owner: 'hungary', terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0] },
   moldavia: { name: 'Moldavia', owner: null, terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0], coasts: ['black_sea_west'] },
   wallachia: { name: 'Wallachia', owner: null, terrain: 'plains', wall: 0, y: [1, 4, 0, 0, 0] },
   vidin: { name: 'Vidin', owner: null, terrain: 'hills', wall: 1, y: [1, 2, 0, 0, 0] },
   nicopolis: { name: 'Nicopolis', owner: null, terrain: 'plains', wall: 1, y: [1, 2, 0, 0, 0] },
-  mesembria: { name: 'Mesembria', owner: 'byzantium', terrain: 'plains', wall: 1, y: [2, 2, 0, 0, 0], coasts: ['black_sea_west'] },
+  mesembria: { name: 'Mesembria', owner: 'byzantium', terrain: 'plains', wall: 1, y: [2, 3, 0, 0, 0], coasts: ['black_sea_west'] },
   // ---- Ottoman Balkans & Thrace ----
   sofia: { name: 'Sofia', owner: 'ottomans', terrain: 'hills', wall: 1, y: [2, 2, 0, 0, 0] },
   philippopolis: { name: 'Philippopolis', owner: 'ottomans', terrain: 'plains', wall: 0, y: [2, 3, 0, 0, 0] },
   macedonia: { name: 'Macedonia', owner: null, terrain: 'hills', wall: 0, y: [1, 2, 0, 0, 0] },
-  salonica: { name: 'Salonica', owner: 'byzantium', terrain: 'plains', wall: 2, key: true, y: [4, 2, 0, 0, 1], coasts: ['aegean_north'] },
-  edirne: { name: 'Edirne', owner: 'ottomans', terrain: 'plains', wall: 2, key: true, y: [3, 3, 0, 0, 0] },
+  // Salonica: contested prize (Venetian 1423-1430, Ottoman after) — neutral key city.
+  salonica: { name: 'Salonica', owner: null, terrain: 'plains', wall: 2, key: true, y: [4, 2, 0, 0, 1], coasts: ['aegean_north'] },
+  edirne: { name: 'Edirne', owner: 'ottomans', terrain: 'plains', wall: 2, key: true, y: [3, 3, 0, 0, 1] },
   gallipoli: { name: 'Gallipoli', owner: 'ottomans', terrain: 'plains', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['aegean_north', 'sea_of_marmara'] },
-  constantinople: { name: 'Constantinople', owner: 'byzantium', terrain: 'plains', wall: 3, key: true, y: [5, 1, 0, 1, 2], coasts: ['sea_of_marmara', 'black_sea_west'] },
+  constantinople: { name: 'Constantinople', owner: 'byzantium', terrain: 'plains', wall: 3, key: true, y: [5, 2, 0, 1, 2], coasts: ['sea_of_marmara', 'black_sea_west'] },
   // ---- Anatolia ----
-  bursa: { name: 'Bursa', owner: 'ottomans', terrain: 'plains', wall: 1, y: [3, 2, 0, 0, 0], coasts: ['sea_of_marmara'] },
+  bursa: { name: 'Bursa', owner: 'ottomans', terrain: 'plains', wall: 1, y: [3, 2, 0, 1, 0], coasts: ['sea_of_marmara'] },
   nicaea: { name: 'Nicaea', owner: 'ottomans', terrain: 'hills', wall: 1, y: [2, 2, 0, 0, 0] },
   smyrna: { name: 'Smyrna', owner: 'ottomans', terrain: 'plains', wall: 0, y: [3, 2, 0, 0, 0], coasts: ['aegean_south'] },
   ankara: { name: 'Ankara', owner: 'ottomans', terrain: 'plains', wall: 0, y: [2, 2, 0, 0, 0] },
   karaman: { name: 'Karaman', owner: null, terrain: 'mountains', wall: 1, y: [2, 2, 0, 0, 0] },
   attaleia: { name: 'Attaleia', owner: null, terrain: 'hills', wall: 0, y: [2, 1, 1, 0, 0], coasts: ['eastern_med'] },
   sinope: { name: 'Sinope', owner: null, terrain: 'hills', wall: 1, y: [2, 1, 1, 0, 0], coasts: ['black_sea_east'] },
-  trebizond: { name: 'Trebizond', owner: 'byzantium', terrain: 'mountains', wall: 2, key: true, y: [3, 1, 0, 0, 1], coasts: ['black_sea_east'] },
+  // Trebizond: the Komnenos empire was separate from Constantinople — neutral key city.
+  trebizond: { name: 'Trebizond', owner: null, terrain: 'mountains', wall: 2, key: true, y: [3, 1, 0, 0, 1], coasts: ['black_sea_east'] },
   // ---- Islands & overseas colonies ----
   crete: { name: 'Crete', owner: 'venice', terrain: 'hills', wall: 1, y: [3, 2, 0, 0, 0], coasts: ['sea_of_crete', 'eastern_med'] },
   negroponte: { name: 'Negroponte', owner: 'venice', terrain: 'plains', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['aegean_south'] },
@@ -243,12 +245,17 @@ export const KEY_CITY_IDS: string[] = PROVINCES.filter((p) => p.keyCity).map((p)
 export const TRADE_ROUTES: TradeRoute[] = [
   { id: 'venice_constantinople', a: 'venice', b: 'constantinople', seaZones: ['adriatic_north', 'adriatic_south', 'ionian', 'sea_of_crete', 'aegean_south', 'aegean_north', 'sea_of_marmara'], income: 4 },
   { id: 'genoa_caffa', a: 'genoa', b: 'caffa', seaZones: ['ligurian', 'tyrrhenian', 'ionian', 'sea_of_crete', 'aegean_south', 'aegean_north', 'sea_of_marmara', 'black_sea_west', 'black_sea_east'], income: 4 },
-  { id: 'constantinople_caffa', a: 'constantinople', b: 'caffa', seaZones: ['black_sea_west', 'black_sea_east'], income: 3 },
   { id: 'venice_crete', a: 'venice', b: 'crete', seaZones: ['adriatic_north', 'adriatic_south', 'ionian', 'sea_of_crete'], income: 2 },
   { id: 'genoa_chios', a: 'genoa', b: 'chios', seaZones: ['ligurian', 'tyrrhenian', 'ionian', 'sea_of_crete', 'aegean_south'], income: 2 },
   { id: 'ragusa_venice', a: 'ragusa', b: 'venice', seaZones: ['adriatic_south', 'adriatic_north'], income: 2 },
   { id: 'crete_cyprus', a: 'crete', b: 'cyprus', seaZones: ['eastern_med'], income: 3 },
-  { id: 'salonica_constantinople', a: 'salonica', b: 'constantinople', seaZones: ['aegean_north', 'sea_of_marmara'], income: 2 },
+  { id: 'trebizond_caffa', a: 'trebizond', b: 'caffa', seaZones: ['black_sea_east'], income: 2 },
+  // Overland caravan routes (cannot be blockaded): the Buda corridors give
+  // landlocked Hungary access to trade prestige/income.
+  { id: 'buda_ragusa', a: 'buda', b: 'ragusa', seaZones: [], income: 3, overland: true },
+  { id: 'buda_venice', a: 'buda', b: 'venice', seaZones: [], income: 3, overland: true },
+  // Silk Road terminus at Bursa (Ottoman caravan trade).
+  { id: 'bursa_ankara', a: 'bursa', b: 'ankara', seaZones: [], income: 3, overland: true },
 ];
 
 // -------------------------------------------------------------- starts
@@ -262,10 +269,8 @@ export const FACTION_STARTS: Record<FactionId, FactionStart> = {
   byzantium: {
     treasury: { gold: 30, grain: 12 },
     garrisons: {
-      constantinople: armyOf({ levy: 2, professional: 2, galley: 1 }),
-      salonica: armyOf({ levy: 1, professional: 1 }),
+      constantinople: armyOf({ levy: 2, professional: 4, galley: 1 }),
       morea: armyOf({ levy: 1 }),
-      trebizond: armyOf({ levy: 1 }),
       mesembria: armyOf({ levy: 1 }),
     },
   },
@@ -361,7 +366,10 @@ export function validateMap(): string[] {
     for (const end of [r.a, r.b]) {
       const p = PROVINCE_BY_ID.get(end);
       if (!p) problems.push(`route ${r.id}: unknown endpoint ${end}`);
-      else if (!p.port) problems.push(`route ${r.id}: endpoint ${end} is not a port`);
+      else if (!r.overland && !p.port) problems.push(`route ${r.id}: endpoint ${end} is not a port`);
+    }
+    if (r.overland && r.seaZones.length > 0) {
+      problems.push(`route ${r.id}: overland route must not have sea zones`);
     }
     for (let i = 0; i < r.seaZones.length; i++) {
       const z = SEA_ZONE_BY_ID.get(r.seaZones[i]);

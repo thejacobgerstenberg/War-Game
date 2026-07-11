@@ -84,13 +84,13 @@ export const ARCHETYPES: Record<ArchetypeName, ArchetypeParams> = {
   rusher: {
     name: 'rusher',
     startKeyCities: 1,
-    maxKeyCities: 6,
-    conquestAttemptProbEarly: 0.5,
-    conquestAttemptProbLate: 0.85,
-    conquestSuccessProb: 0.55,
-    keyCityChanceOnConquest: 0.4,
-    keyCityLossProb: 0.06,
-    warWonChanceOnConquest: 0.25,
+    maxKeyCities: 5,
+    conquestAttemptProbEarly: 0.35,
+    conquestAttemptProbLate: 0.45,
+    conquestSuccessProb: 0.5,
+    keyCityChanceOnConquest: 0.3,
+    keyCityLossProb: 0.1,
+    warWonChanceOnConquest: 0.15,
     defensiveWarWonProb: 0.02,
     routeRampPerRound: 0.15,
     maxRoutes: 1,
@@ -98,8 +98,8 @@ export const ARCHETYPES: Record<ArchetypeName, ArchetypeParams> = {
     greatWorkSchedule: [{ round: 14, prob: 0.15 }],
     objectiveWindow: [8, 14],
     objectiveHazard: 0.12,
-    cpleAttemptFromRound: 10, // Great Bombard from round 9, built + moved
-    cpleCaptureProb: 0.15,
+    cpleAttemptFromRound: 12, // Great Bombard from round 11, built + moved
+    cpleCaptureProb: 0.12,
     cpleLossProb: 0.05,
     prestigeEventProb: 0.25,
   },
@@ -112,14 +112,14 @@ export const ARCHETYPES: Record<ArchetypeName, ArchetypeParams> = {
     conquestAttemptProbEarly: 0.1,
     conquestAttemptProbLate: 0.2,
     conquestSuccessProb: 0.5,
-    keyCityChanceOnConquest: 0.35,
+    keyCityChanceOnConquest: 0.25,
     keyCityLossProb: 0.04,
-    warWonChanceOnConquest: 0.2,
+    warWonChanceOnConquest: 0.1,
     defensiveWarWonProb: 0.03,
     routeRampPerRound: 0.75, // 3 routes open by round 4
     maxRoutes: 3,
-    routeRaidProb: 0.12,
-    greatWorkSchedule: [{ round: 12, prob: 0.5 }],
+    routeRaidProb: 0.18,
+    greatWorkSchedule: [{ round: 12, prob: 0.4 }],
     objectiveWindow: [7, 13],
     objectiveHazard: 0.15,
     cpleAttemptFromRound: null,
@@ -144,9 +144,9 @@ export const ARCHETYPES: Record<ArchetypeName, ArchetypeParams> = {
     maxRoutes: 2,
     routeRaidProb: 0.08,
     greatWorkSchedule: [
-      { round: 7, prob: 0.7 },
-      { round: 11, prob: 0.6 },
-      { round: 14, prob: 0.45 },
+      { round: 7, prob: 0.6 },
+      { round: 11, prob: 0.5 },
+      { round: 14, prob: 0.35 },
     ],
     objectiveWindow: [9, 15],
     objectiveHazard: 0.15,
@@ -161,24 +161,24 @@ export const ARCHETYPES: Record<ArchetypeName, ArchetypeParams> = {
     name: 'opportunist',
     startKeyCities: 1,
     maxKeyCities: 4,
-    conquestAttemptProbEarly: 0.3,
-    conquestAttemptProbLate: 0.5,
-    conquestSuccessProb: 0.55,
-    keyCityChanceOnConquest: 0.35,
+    conquestAttemptProbEarly: 0.2,
+    conquestAttemptProbLate: 0.28,
+    conquestSuccessProb: 0.5,
+    keyCityChanceOnConquest: 0.3,
     keyCityLossProb: 0.05,
-    warWonChanceOnConquest: 0.2,
+    warWonChanceOnConquest: 0.15,
     defensiveWarWonProb: 0.03,
     routeRampPerRound: 0.35, // 2 routes by round 6
     maxRoutes: 2,
     routeRaidProb: 0.1,
     greatWorkSchedule: [
-      { round: 10, prob: 0.35 },
-      { round: 13, prob: 0.25 },
+      { round: 10, prob: 0.3 },
+      { round: 13, prob: 0.2 },
     ],
     objectiveWindow: [8, 14],
     objectiveHazard: 0.13,
-    cpleAttemptFromRound: 11,
-    cpleCaptureProb: 0.08,
+    cpleAttemptFromRound: 12,
+    cpleCaptureProb: 0.06,
     cpleLossProb: 0.05,
     prestigeEventProb: 0.25,
   },
@@ -213,7 +213,11 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
     // --- conquest attempts (territory + war prestige) ---
     const attemptProb = r <= 3 ? p.conquestAttemptProbEarly : p.conquestAttemptProbLate;
     if (rng.chance(attemptProb) && rng.chance(p.conquestSuccessProb)) {
-      if (keyCities < p.maxKeyCities && rng.chance(p.keyCityChanceOnConquest)) keyCities++;
+      cum += pr.provinceCapture; // conquest-track one-off
+      if (keyCities < p.maxKeyCities && rng.chance(p.keyCityChanceOnConquest)) {
+        keyCities++;
+        cum += pr.keyCityCapture; // sack/triumph one-off
+      }
       if (rng.chance(p.warWonChanceOnConquest)) cum += pr.warWon;
     }
     // gained key cities can be retaken
@@ -224,7 +228,10 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
     // --- Constantinople (extra prestige on top of a normal key city) ---
     if (p.cpleAttemptFromRound !== null && r >= p.cpleAttemptFromRound) {
       if (!hasCple) {
-        if (rng.chance(p.cpleCaptureProb)) hasCple = true;
+        if (rng.chance(p.cpleCaptureProb)) {
+          hasCple = true;
+          cum += pr.provinceCapture + pr.keyCityCapture;
+        }
       } else if (rng.chance(p.cpleLossProb)) {
         hasCple = false;
       }

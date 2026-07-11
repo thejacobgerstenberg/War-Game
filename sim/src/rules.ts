@@ -45,7 +45,7 @@ export const CONFIG = {
   },
 
   factions: {
-    byzantium: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.0, capitalExtraGold: 4 }, // rich capital
+    byzantium: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.0, capitalExtraGold: 2 }, // rich capital
     ottomans: { unitGoldCostMult: 0.75, levyGoldCostMult: 0.75, levyRecruitBonus: 0, tradeIncomeMult: 1.0, capitalExtraGold: 0 }, // cheap troops
     venice: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.5, capitalExtraGold: 0 }, // trade empire
     genoa: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.4, capitalExtraGold: 0 }, // trade empire
@@ -67,7 +67,7 @@ export const CONFIG = {
     tierBonus: [0, 1, 2, 3], // defender die bonus by wall tier 0..3 (intact)
     theodosianBonus: 1.5, // Constantinople extra on top of tier 3
     hitpointsPerTier: 4, // damage points needed to fully erase one tier of bonus
-    theodosianExtraHitpoints: 4, // extra hitpoints for the Theodosian Walls
+    theodosianExtraHitpoints: 8, // extra hitpoints for the Theodosian Walls
   },
 
   siege: {
@@ -77,9 +77,10 @@ export const CONFIG = {
     besiegerAttritionPerRound: 0.03, // fraction of besieging army lost per round (disease)
     assaultAllowedAnytime: true, // may assault intact walls (at full wall bonus)
     seaBlockadeDoublesAttrition: true, // blockading every coast doubles garrison attrition
+    cpleSeaResupplyAttritionMult: 0.5, // Constantinople (Golden Horn) starves at this multiplier unless blockaded
     greatBombard: {
-      availableFromRound: 9, // cannot be built before this round
-      goldCost: 30, // one-off purchase price
+      availableFromRound: 12, // cannot be built before this round
+      goldCost: 40, // one-off purchase price
       damagePerRound: 4, // wall hitpoints per round (stacks with regular engines)
     },
   },
@@ -122,13 +123,15 @@ export const CONFIG = {
   },
 
   prestige: {
-    keyCityPerRound: 1, // per key city held at round end
-    constantinopleExtraPerRound: 1, // Constantinople counts extra on top
-    tradeRoutePerRound: 0.5, // per open trade route at round end
+    keyCityPerRound: 1.5, // per key city held at round end
+    constantinopleExtraPerRound: 0, // Constantinople counts extra on top (0: its reward is sudden death + yields)
+    tradeRoutePerRound: 0.6, // per open trade route at round end
     greatWork: 5, // one-off on completion
-    warWon: 3, // one-off when an enemy sues for peace / is eliminated from a war
+    provinceCapture: 2, // one-off conquest-track prestige per province captured (any owner)
+    keyCityCapture: 4, // one-off sack/triumph bonus when a key city is taken from any owner (incl. neutrals)
+    warWon: 6, // one-off when an enemy sues for peace / is eliminated from a war
     secretObjective: 6, // one-off on completing the secret objective
-    victoryThreshold: 50, // reach this prestige => immediate win (initial guess; tune via pacing sim)
+    victoryThreshold: 70, // reach this prestige => immediate win (idle engines alone must not suffice)
   },
 
   neutrals: {

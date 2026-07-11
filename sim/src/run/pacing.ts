@@ -31,7 +31,7 @@ import { bar, fmt, isSmoke, pct, table, writeResults } from '../util';
 const SEED = 14530529;
 const N_GAMES = isSmoke() ? 500 : 10000; // 5 players/game => >=N_GAMES trajectories per archetype
 const THRESHOLD_MIN = 15;
-const THRESHOLD_MAX = 70; // extended past 60: curves show leaders still crossing in the mid-60s
+const THRESHOLD_MAX = 85; // extended: conquest one-offs push leader curves into the 70s
 const ROUNDS = CONFIG.game.maxRounds;
 
 const t0 = Date.now();

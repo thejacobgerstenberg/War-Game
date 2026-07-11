@@ -139,6 +139,7 @@ for (const bombard of [false, true]) {
       terrain: 'plains', // Constantinople is a plains province
       hasGreatBombard: bombard,
       blockaded: false,
+      seaResupplied: true, // the Golden Horn: resupplied unless blockaded
     };
     const { stats, captureRounds } = simulateCell(setup, ITERS, cellSeed);
     const withinK: number[] = [];
@@ -162,9 +163,10 @@ for (const bombard of [false, true]) {
 
 const noBomb = cple.filter((c) => !c.greatBombard);
 const withBomb = cple.filter((c) => c.greatBombard);
-// Target 1: WITHOUT bombard, strong stack (12 prof + 2 engines) <10% within 3 rounds.
-const worstNoBombWithin3 = Math.max(...noBomb.map((c) => c.pCaptureWithinK[2]));
-const target1Met = worstNoBombWithin3 < 0.10;
+// Target 1: WITHOUT bombard, strong stack (12 prof + 2 engines) <15% within 6 rounds
+// (a siege begun ~round 3 should rarely take the city before round 10).
+const worstNoBombWithin6 = Math.max(...noBomb.map((c) => c.pCaptureWithinK[5]));
+const target1Met = worstNoBombWithin6 < 0.15;
 // Target 2: WITH bombard, capture within 4 rounds (i.e. inside the 2-4 window) >50%.
 const worstWithBombWithin4 = Math.min(...withBomb.map((c) => c.pCaptureWithinK[3]));
 const target2Met = worstWithBombWithin4 > 0.50;
@@ -221,7 +223,7 @@ console.log(
 console.log();
 
 console.log('TARGETS');
-console.log(`  without Bombard, P(capture <=3 rounds) < 10%: worst=${pct(worstNoBombWithin3)}  ${target1Met ? 'MET' : 'MISSED'}`);
+console.log(`  without Bombard, P(capture <=6 rounds) < 15%: worst=${pct(worstNoBombWithin6)}  ${target1Met ? 'MET' : 'MISSED'}`);
 console.log(`  with Bombard, P(capture <=4 rounds) > 50%:    worst=${pct(worstWithBombWithin4)}  ${target2Met ? 'MET' : 'MISSED'}`);
 console.log();
 
@@ -242,7 +244,7 @@ const path = writeResults('siege', {
   grid,
   constantinople: cple,
   targets: {
-    noBombardWithin3Under10pct: { worst: worstNoBombWithin3, met: target1Met },
+    noBombardWithin6Under15pct: { worst: worstNoBombWithin6, met: target1Met },
     withBombardWithin4Over50pct: { worst: worstWithBombWithin4, met: target2Met },
   },
 });

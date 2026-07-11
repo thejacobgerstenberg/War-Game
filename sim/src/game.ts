@@ -251,7 +251,7 @@ export function unitGoldCost(faction: FactionId, t: UnitType): number {
 }
 
 function emptyLedger(): PrestigeLedger {
-  return { keyCities: 0, tradeRoutes: 0, greatWorks: 0, warsWon: 0, objectives: 0, events: 0, total: 0 };
+  return { keyCities: 0, tradeRoutes: 0, greatWorks: 0, conquests: 0, warsWon: 0, objectives: 0, events: 0, total: 0 };
 }
 
 // -------------------------------------------------------------------- game
@@ -855,6 +855,12 @@ export class Game {
     p.owner = f;
     p.garrison = copyArmy(army);
     this.sieges.delete(pid);
+    if (prev !== f) {
+      const fs = this.factions[f];
+      fs.ledger.conquests += CONFIG.prestige.provinceCapture;
+      if (PROVINCE_BY_ID.get(pid)!.keyCity) fs.ledger.conquests += CONFIG.prestige.keyCityCapture;
+      this.recomputeTotal(fs);
+    }
     if (prev && prev !== f) {
       const w = this.touchWar(f, prev);
       w.captures[f] = (w.captures[f] ?? 0) + 1;
@@ -911,7 +917,13 @@ export class Game {
       p.wallDamage = Math.min(hp, p.wallDamage + bombardmentPerRound(s.army, bombardAt.get(s.attacker) === pid));
       // 2. attrition
       const blockaded = prov.coasts.length > 0 && s.army.galley >= prov.coasts.length;
-      const gRate = sc.garrisonAttritionPerRound * (blockaded && sc.seaBlockadeDoublesAttrition ? 2 : 1);
+      const gRate =
+        sc.garrisonAttritionPerRound *
+        (blockaded && sc.seaBlockadeDoublesAttrition
+          ? 2
+          : prov.theodosianWalls && !blockaded
+            ? sc.cpleSeaResupplyAttritionMult
+            : 1);
       this.applyAttrition(p.garrison, attritionLosses(combatants(p.garrison), gRate, this.rngCombat));
       this.applyAttrition(s.army, attritionLosses(combatants(s.army), sc.besiegerAttritionPerRound, this.rngCombat));
       if (p.owner) this.touchWar(s.attacker, p.owner);
@@ -960,7 +972,7 @@ export class Game {
 
   private recomputeTotal(fs: FactionState): void {
     const l = fs.ledger;
-    l.total = l.keyCities + l.tradeRoutes + l.greatWorks + l.warsWon + l.objectives + l.events;
+    l.total = l.keyCities + l.tradeRoutes + l.greatWorks + l.conquests + l.warsWon + l.objectives + l.events;
   }
 
   openRoutesOf(f: FactionId): typeof TRADE_ROUTES {

@@ -1,9 +1,12 @@
 /**
  * Full-game Monte-Carlo (npm run sim:fullgame).
  *
- * Runs 5-player games with all five factions. Policy assignment and seat
- * order rotate deterministically across games (game i: faction j gets policy
- * (i+j)%4, seat order rotated by i%5) so every faction sees every policy mix.
+ * Runs 5-player games with all five factions. Every game fields each of the
+ * four policies at least once plus one duplicate (rotating across games so
+ * each policy gets exactly N_GAMES/4 duplicates); the assignment of policies
+ * to factions is a seeded per-game shuffle so every faction sees every policy
+ * mix (a fixed rotation like (i+j)%4 keeps seat-relative pairings constant
+ * and confounds the per-faction policy stats). Seat order rotates by i%5.
  * Game i seeds from BASE_SEED + i.
  *
  * Reports: win rate per faction / per policy / per faction-policy pair,
@@ -16,12 +19,20 @@
 
 import { FACTION_IDS, type FactionId } from '../types';
 import { CONFIG } from '../rules';
+import { create } from '../rng';
 import { Game, POLICY_NAMES, type Agent, type PolicyName, type VictoryType } from '../game';
 import { makeAgent } from '../agents';
 import { bar, fmt, isSmoke, pct, table, writeResults } from '../util';
 
-const BASE_SEED = 14_530_000;
-const N_GAMES = isSmoke() ? 40 : 1000;
+// Env overrides (for independent verification): GAMES=<n> SEED=<n>
+const envInt = (name: string): number | undefined => {
+  const v = process.env[name];
+  if (v === undefined || v === '') return undefined;
+  const n = Number.parseInt(v, 10);
+  return Number.isFinite(n) ? n : undefined;
+};
+const BASE_SEED = envInt('SEED') ?? 14_530_000;
+const N_GAMES = envInt('GAMES') ?? (isSmoke() ? 40 : 1000);
 
 // ------------------------------------------------------------- aggregation
 
@@ -62,8 +73,10 @@ for (let i = 0; i < N_GAMES; i++) {
   const seatOrder = FACTION_IDS.map((_, k) => FACTION_IDS[(k + i) % FACTION_IDS.length]);
   const policyOf = {} as Record<FactionId, PolicyName>;
   const agents = {} as Record<FactionId, Agent>;
+  const pool: PolicyName[] = [...POLICY_NAMES, POLICY_NAMES[i % POLICY_NAMES.length]];
+  create(BASE_SEED + i).fork(97).shuffle(pool);
   FACTION_IDS.forEach((f, j) => {
-    policyOf[f] = POLICY_NAMES[(i + j) % POLICY_NAMES.length];
+    policyOf[f] = pool[j];
     agents[f] = makeAgent(policyOf[f]);
   });
 

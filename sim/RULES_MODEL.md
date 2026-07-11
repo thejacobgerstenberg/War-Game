@@ -52,22 +52,30 @@ Risk-style. Per battle round:
 - Wall tiers 0–3 give the defender a die bonus (`walls.tierBonus` = 0/1/2/3).
   Constantinople's Theodosian Walls add `theodosianBonus` (+1.5) on top of
   tier 3 → +4.5 intact.
-- Walls have hitpoints: `tier × hitpointsPerTier` (4), Theodosian +4 (16 total
+- Walls have hitpoints: `tier × hitpointsPerTier` (4), Theodosian +8 (20 total
   for Constantinople). The die bonus scales **linearly** with remaining
   hitpoints (`effectiveWallBonus`), so bombardment gradually softens a city.
 - Siege procedure per round while an army besieges a walled province:
   1. Each siege engine deals `engineDamagePerRound` (1) wall damage, at most
      `maxEffectiveEngines` (3) engines counting. The **Great Bombard**
-     (buildable from round 9, 30 gold, one-off) adds 4 damage/round.
+     (buildable from round 12, 40 gold, one-off) adds 4 damage/round.
   2. Garrison starves: loses 6% per round (rounded stochastically), doubled
      if every coast of the province is blockaded by enemy galleys.
+     **Constantinople sea resupply (Golden Horn)**: while NOT fully
+     blockaded, Constantinople's garrison starves at half rate
+     (`cpleSeaResupplyAttritionMult` 0.5). Board implementation: the
+     Constantinople card says "starvation markers accrue every other round
+     unless all its sea zones are blockaded".
   3. Besieger loses 3% per round to disease.
   4. The attacker may **assault** at any time (walls need not be breached);
      the current effective wall bonus applies to the defender's dice.
-- Consequence: intact Constantinople (+4.5 walls, on plains) is effectively
-  unassailable; with the Great Bombard from round ~9–10 its 16 wall
-  hitpoints fall in ~2–3 siege rounds, making a round-11+ capture plausible —
-  matching the spec anchor.
+- Consequence: intact Constantinople (+4.5 walls, on plains, sea-resupplied)
+  is effectively unassailable before the Bombard — P(capture within 6 siege
+  rounds, 12 professionals + 2 engines, garrison 8, no Bombard) ≈ 0% and
+  even 12 siege rounds rarely suffice; with the Great Bombard (round 12+)
+  its 20 wall hitpoints fall in ~3 siege rounds and capture lands in siege
+  rounds 3-4 with 67-90% probability — a round-14/15 fall of the city,
+  matching the 1453 anchor.
 
 ## Economy & map
 
@@ -80,9 +88,18 @@ Risk-style. Per battle round:
   sea-zone path; an enemy fleet in any zone on the path cuts the route
   (`blockadeCancels`). A faction profits from at most
   `maxRoutesPerFaction` (3) routes; Venice ×1.5 and Genoa ×1.4 income.
+- **Overland caravan routes** (new, rules-visible): routes marked
+  `overland: true` connect two land provinces (endpoints need not be ports),
+  cross no sea zones, and can never be blockaded by fleets. Authored: the
+  Buda-Ragusa and Buda-Venice corridors (landlocked Hungary's trade access)
+  and the Bursa-Ankara Silk Road terminus (Ottoman caravan trade).
 - Faction flavor multipliers (`CONFIG.factions`): Ottomans pay 75% for all
   troops; Hungary pays 50% for levies and recruits +2 levies per recruit
-  action; Byzantium's capital yields +4 extra gold/round while held.
+  action; Byzantium's capital yields +2 extra gold/round while held.
+- Map ownership notes (1438 setup): Salonica (Venetian 1423-30, Ottoman
+  after) and Trebizond (the separate Komnenos empire) are **neutral key
+  cities**, not Byzantine — Byzantium starts as the historical rump state:
+  Constantinople, Morea, Mesembria.
 - Starting treasuries/garrisons (`map.ts FACTION_STARTS`) are tuned so grain
   upkeep ≈ starting grain income (±2, coverable via the grain market).
 - Neutral provinces defend with `2 + 2×wallTier` levies (+2 professionals in
@@ -90,11 +107,16 @@ Risk-style. Per battle round:
 
 ## Prestige & victory
 
-- Per round-end: +1 per key city held (Constantinople counts +1 extra),
-  +0.5 per open trade route.
-- One-off: great work +5, war won +3, secret objective +6.
-- Win immediately at `victoryThreshold` (50, initial guess) prestige, else
-  highest prestige after round 16.
+- Per round-end: +1.5 per key city held, +0.6 per open trade route.
+  (Constantinople no longer scores extra per round — its rewards are its
+  yields, its route endpoint, and the sudden-death clock.)
+- One-off: great work +5, war won +6, secret objective +6.
+- **Conquest track** (new, rules-visible): capturing any province is +2
+  prestige one-off; capturing a key city adds a further +4 "sack/triumph"
+  bonus (applies against neutral minors too). Board implementation: advance
+  a marker on a conquest track when you take a province.
+- Win immediately at `victoryThreshold` (70) prestige, else highest prestige
+  after round 16.
 - **Sudden death**: hold Constantinople for 2 consecutive full rounds → win.
 
 ## Deliberate simplifications (v1)
@@ -102,7 +124,18 @@ Risk-style. Per battle round:
 - One global event per round, no event hand management.
 - Diplomacy modeled as a policy action (non-aggression targeting), no formal
   alliance rules yet.
-- Tactic cards abstracted to a ±1 die swing when a policy chooses to play one.
+- Tactic cards abstracted to a ±1 die swing when a policy chooses to play
+  one. **Guardrail (rules-visible)**: the combat MC shows a ±1 swing moves a
+  6v4 open-field battle from 62% to 91% (attacker card) or 27% (defender
+  card) — huge. The physical rules must cap tactic cards at ONE per side per
+  battle and deal them from a limited hand (no stacking); the full-game sim
+  does not model tactic-card actions at all.
 - Movement is 1 province (or 1 sea zone per galley move) per move action;
   sea transport requires 1 galley per 2 land units (assumption).
-- Secret objectives modeled as "hold N specific provinces by round R" checks.
+- Secret objectives modeled as "hold N specific provinces by round R"
+  checks. Observed completion rate in full games is ≈0% — the objective
+  mechanic likely needs a redesign (see TUNING_LOG round 1).
+- Scripted agents refuse to besiege a near-intact great fortress (effective
+  wall bonus ≥ 3) until they own the Great Bombard, matching the siege-module
+  capture curves; rushers garrison threatened core provinces before
+  attacking and open trade routes with idle actions.
