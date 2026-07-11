@@ -33,11 +33,18 @@ npm run dev
 
 This builds `@imperium/shared`, then starts:
 
-- the **server** on <http://localhost:4000> (override with `PORT`), and
+- the **server** on <http://localhost:8080> (override with `PORT`), and
 - the **client** on <http://localhost:5173> (Vite).
 
 The client talks to the server via `VITE_SERVER_URL` (default
-`http://localhost:4000`).
+`http://localhost:8080`).
+
+The server is configured entirely through environment variables (see the
+Operations section of [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)):
+`PORT` (default `8080`), `CORS_ORIGIN` (comma-separated allowed origins;
+defaults to the Vite dev client `http://localhost:5173` outside production),
+`ROOM_TTL_SECONDS` (empty-room reap TTL, default `3600`), and `LOG_LEVEL`
+(default `info`). A health probe is served at `GET /healthz`.
 
 ## Test
 

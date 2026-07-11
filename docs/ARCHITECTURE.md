@@ -497,6 +497,45 @@ disconnected or idle player from stalling the table, the server enforces a
 
 ---
 
+## Operations
+
+The server implements the production ops contract in `deploy/OPERATIONS.md`
+(that file is canonical; this is the summary). All of it lives in the
+transport layer (`server/src/index.ts` + `server/src/log.ts`) — the engine and
+lobby stay pure.
+
+* **Health** — `GET /healthz` → `200`
+  `{"status":"ok","rooms":<int>,"uptime":<seconds>}`. Cheap O(1) reads only
+  (`rooms` is the live room count, `uptime` is seconds since process start);
+  no auth, same port as everything else.
+* **Environment variables** (defaults live in code; unknown vars are ignored):
+
+  | Name | Default | Meaning |
+  |---|---|---|
+  | `PORT` | `8080` | HTTP + socket.io listen port; the server binds `0.0.0.0`. |
+  | `CORS_ORIGIN` | *(unset)* | Comma-separated allowed origins, applied to **both** the Express CORS middleware and the socket.io `cors` config. Unset ⇒ deny cross-origin in production, `http://localhost:5173` (the Vite dev client) otherwise. |
+  | `ROOM_TTL_SECONDS` | `3600` | Rooms empty (0 connected players) for longer than this are reaped. `LobbyManager` owns the eligibility logic (injectable clock, tested); `index.ts` runs the periodic sweep and logs `room_reaped`. |
+  | `LOG_LEVEL` | `info` | Minimum log level emitted (`debug`\|`info`\|`warn`\|`error`). |
+
+* **Graceful shutdown** — on SIGTERM (and SIGINT, identically): (1) stop
+  accepting new rooms — `create_game` is refused with an `error_msg`
+  ("Server restarting, retry shortly."); (2) broadcast `server_shutdown`
+  `{ reconnectAfterMs }` to all connected sockets (event + payload live in
+  `shared/src/protocol/socket.ts`); (3) drain up to **20s** — close as soon as
+  every socket disconnects, else force at the deadline; (4) close socket.io +
+  HTTP and `process.exit(0)`. Room state is in-memory, so a restart still ends
+  live games — the shutdown makes that orderly, not survivable.
+* **Logging** — single-line JSON to stdout, one object per line:
+  `{ts, level, roomCode?, event, msg}` (extra context keys may follow).
+  Emitted by the tiny logger in `server/src/log.ts` for server start, room
+  create/join/leave, game start, room reaping, and each shutdown phase — e.g.
+
+  ```json
+  {"ts":"2026-07-11T14:02:11.412Z","level":"info","roomCode":"K7QF2X","event":"room_created","msg":"room created by Basil (2-5 players)"}
+  ```
+
+---
+
 ## 12. Roadmap / Next Phases
 
 **Now (scaffold):**
