@@ -125,32 +125,32 @@ does not change per faction.
 - **trigger:** siege_available
 - **highlight:** action:lay-siege
 - **speaker:** advisor:war
-- **copy:** "Corinth has shut her gates. The Hexamilion is old stone, but old stone still stops young men — you will not carry walls with courage alone. Lay siege, and let hunger do what spears cannot."
-- **completion:** player lays siege to Corinth
+- **copy:** "The Morea has shut her gates, Basileus — the beaten remnant sits behind the Hexamilion, six miles of old stone across the Isthmus, and old stone still stops young men. You will not carry walls with courage alone. Lay siege, and let hunger do what spears cannot."
+- **completion:** player lays siege in the Morea
 
 ### step-12-the-siege-tightens
 - **id:** step-12-the-siege-tightens
 - **trigger:** siege_begun
-- **highlight:** province:corinth
+- **highlight:** province:morea
 - **speaker:** advisor:war
 - **copy:** "The siege is laid, and each turn it tightens. Timber builds your engines; grain keeps your own men from starving before theirs do; patience does the rest. Hold the lines through the turn, and the gates will come to you."
 - **completion:** player ends the turn with the siege maintained
 
 ### step-13-the-hand-that-deals
 - **id:** step-13-the-hand-that-deals
-- **trigger:** event_card_drawn
-- **highlight:** deck:events
+- **trigger:** omen_revealed
+- **highlight:** deck:omens
 - **speaker:** advisor:faith
-- **copy:** "The deck of events, my son: plague, storm, a prince dead without an heir. Men call it chance; I call it the hand of God turning the page. Each round it turns one — read what has been written for you."
-- **completion:** player resolves the event card
+- **copy:** "The Omen deck, my son: plague, storm, a prince dead without an heir. Each round one omen is drawn, and it falls upon every realm at the table — no crown is exempt. Men call it chance; I call it the hand of God turning the page."
+- **completion:** player resolves the omen
 
-### step-14-answering-fate
-- **id:** step-14-answering-fate
-- **trigger:** reaction_window_opened
-- **highlight:** hand:reactions
-- **speaker:** advisor:faith
-- **copy:** "Fate deals, but it does not forbid an answer. You hold a reaction card; play it now, against this event, or keep it and let the blow land whole. The prudent man sees the storm and takes shelter — take yours."
-- **completion:** player plays a reaction card
+### step-14-stratagems-in-hand
+- **id:** step-14-stratagems-in-hand
+- **trigger:** tactic_card_drawn
+- **highlight:** action:play-card
+- **speaker:** advisor:war
+- **copy:** "Some battles are won before the first spear is lowered, Basileus. Cards of stratagem come to your hand — a night march, a false ford, a bought captain — and the Play Card action spends them at the hour of your choosing. Guard your hand: one card alone, The Intercepted Letter, can cancel a rival's stratagem as it is played."
+- **completion:** player plays one card from the hand
 
 ### step-15-the-counting-house
 - **id:** step-15-the-counting-house
@@ -181,8 +181,8 @@ does not change per faction.
 - **trigger:** spy_available
 - **highlight:** action:spy
 - **speaker:** advisor:coin
-- **copy:** "I keep two ledgers, Majesty: one of coin, one of secrets. Send a spy to a rival court and the second ledger grows — their hosts, their treasuries, now and then their intentions. It is cheaper than a war and far quieter than a truce."
-- **completion:** player dispatches one spy
+- **copy:** "I keep two ledgers, Majesty: one of coin, one of secrets. Send an agent to a rival court and choose his errand — read the coming omen before God turns the page, unseal one rival's hidden ambition, or stir a province to unrest so it yields its master nothing. It is cheaper than a war and far quieter than a truce."
+- **completion:** player dispatches one spy on any of the three missions
 
 ### step-19-the-whisper-returns
 - **id:** step-19-the-whisper-returns
@@ -194,11 +194,11 @@ does not change per faction.
 
 ### step-20-the-coin-of-heaven
 - **id:** step-20-the-coin-of-heaven
-- **trigger:** faith_action_available
-- **highlight:** action:endow
+- **trigger:** build_available
+- **highlight:** action:build
 - **speaker:** advisor:faith
-- **copy:** "Faith is not coin, my son, and yet the world exchanges it. Endow a monastery, keep the feasts, and your Faith will rise — and with it the people's patience for your wars. An emperor the Church will not bless is only a soldier with a larger tent."
-- **completion:** player completes one endowment action
+- **copy:** "Faith is not coin, my son, and yet the world exchanges it. Build a church — in other lands they raise a mosque — and your Faith will rise, and with it the people's patience for your wars. An emperor the Church will not bless is only a soldier with a larger tent."
+- **completion:** player builds a church or mosque
 
 ### step-21-renown-and-the-chronicle
 - **id:** step-21-renown-and-the-chronicle
@@ -208,13 +208,13 @@ does not change per faction.
 - **copy:** "You have won Prestige, and the scribes have noticed. Victories, wonders, crowned heads humbled — all of it feeds your renown; defeats and broken oaths bleed it away. When the age closes, this track alone divides the remembered from the forgotten."
 - **completion:** player dismisses the counsel
 
-### step-22-the-sealed-ambition
-- **id:** step-22-the-sealed-ambition
-- **trigger:** objective_revealed
+### step-22-the-sealed-ambitions
+- **id:** step-22-the-sealed-ambitions
+- **trigger:** objectives_revealed
 - **highlight:** panel:objectives
 - **speaker:** advisor:faith
-- **copy:** "Here is your sealed ambition — an objective known to you alone, worth Prestige if it is fulfilled before the age closes. Every prince at the table carries one. Confess it to no man; God knows it already, and that is audience enough."
-- **completion:** player closes the objectives panel
+- **copy:** "Here are your sealed ambitions — three objectives known to you alone, each worth Prestige if it is fulfilled before the age closes. Every prince at the table carries three of his own. Confess them to no man; God knows them already, and that is audience enough."
+- **completion:** player reviews all three objectives and closes the panel
 
 ### step-23-the-shape-of-the-age
 - **id:** step-23-the-shape-of-the-age
