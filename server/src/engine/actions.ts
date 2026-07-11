@@ -304,9 +304,8 @@ function applyRecruit(state: GameState, action: GameAction): GameState {
   };
 
   const markMerc = (stack: Army | Fleet, type: UnitType, n: number): void => {
-    const s = stack as Army & { mercenaries?: Partial<Record<UnitType, number>> };
-    if (!s.mercenaries) s.mercenaries = {};
-    s.mercenaries[type] = (s.mercenaries[type] ?? 0) + n;
+    if (!stack.mercenaries) stack.mercenaries = {};
+    stack.mercenaries[type] = (stack.mercenaries[type] ?? 0) + n;
   };
 
   for (const [type, n] of Object.entries(action.units) as [UnitType, number][]) {

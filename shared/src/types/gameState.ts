@@ -194,6 +194,12 @@ export interface Army {
   units: Record<UnitType, number>;
   /** Named unique units carried in this stack (data-driven stat overrides). */
   variants?: UnitVariantStack[];
+  /**
+   * How many of this stack's generic {@link units} are mercenary-tagged, by type
+   * (§6.3). Mercenaries pay double grain upkeep (§4.4) and desert first. A count
+   * never exceeds the matching `units` entry; absent means none are mercenaries.
+   */
+  mercenaries?: Partial<Record<UnitType, number>>;
 }
 
 /** A stack of naval units occupying a sea zone or coastal province. */
@@ -203,6 +209,8 @@ export interface Fleet {
   locationId: string;
   units: Record<UnitType, number>;
   variants?: UnitVariantStack[];
+  /** Mercenary-tagged generic units by type (§6.3); see {@link Army.mercenaries}. */
+  mercenaries?: Partial<Record<UnitType, number>>;
 }
 
 /** A political/event card held or played by a player. */

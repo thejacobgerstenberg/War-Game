@@ -22,7 +22,6 @@ import {
   Faction,
   TerrainType,
   UnitType,
-  type Army,
   type GameAction,
   type GameState,
   type MercCompanyOffer,
@@ -38,9 +37,6 @@ import { EngineError } from "./actions.js";
 // ---------------------------------------------------------------------------
 // Mercenary-tag helper (the field economy.upkeep reads; attached via cast)
 // ---------------------------------------------------------------------------
-
-/** A stack view exposing the optional per-type mercenary-count map. */
-type MercTagged = { mercenaries?: Partial<Record<UnitType, number>> };
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -136,14 +132,13 @@ function fieldCompany(state: GameState, companyId: string): GameState {
     };
     next.armies.push(army);
   }
-  const tag = army as Army & MercTagged;
-  if (!tag.mercenaries) tag.mercenaries = {};
+  if (!army.mercenaries) army.mercenaries = {};
 
   for (const [key, count] of Object.entries(def.roster)) {
     const u = key as UnitType;
     const c = count ?? 0;
     army.units[u] = (army.units[u] ?? 0) + c;
-    tag.mercenaries[u] = (tag.mercenaries[u] ?? 0) + c;
+    army.mercenaries[u] = (army.mercenaries[u] ?? 0) + c;
   }
   for (const v of def.variants ?? []) {
     army.variants = army.variants ?? [];

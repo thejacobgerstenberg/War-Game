@@ -205,13 +205,11 @@ function routeIncome(state: GameState, route: TradeRoute): number {
 // ---------------------------------------------------------------------------
 
 /**
- * Mercenary count of a unit type in a stack. No dedicated field marks which of a
- * stack's generic units are mercenaries (see NEEDS-FROM-INTEGRATOR); this reads
- * an optional `mercenaries` map if one has been attached, clamped to the count.
+ * Mercenary count of a unit type in a stack (§6.3). Reads the typed
+ * {@link Army.mercenaries} tag map, clamped to the actual unit count.
  */
 function mercCount(stack: Army | Fleet, u: UnitType): number {
-  const m = (stack as { mercenaries?: Partial<Record<UnitType, number>> })
-    .mercenaries;
+  const m = stack.mercenaries;
   return Math.max(0, Math.min(stack.units[u] ?? 0, m?.[u] ?? 0));
 }
 
@@ -419,9 +417,7 @@ export function upkeep(state: GameState): GameState {
     for (const u of DESERTION_ORDER) {
       const per = UNIT_STATS[u].grainUpkeep;
       for (const stack of stacks) {
-        const m = (stack as {
-          mercenaries?: Partial<Record<UnitType, number>>;
-        }).mercenaries;
+        const m = stack.mercenaries;
         while (deficit > 0 && mercCount(stack, u) > 0) {
           stack.units[u] -= 1;
           if (m) m[u] = (m[u] ?? 0) - 1;
