@@ -1,0 +1,81 @@
+# syntax=docker/dockerfile:1
+# =============================================================================
+# IMPERIUM: Twilight of Empires — game server (Node 20 + Express + socket.io)
+#
+# Build context is the REPO ROOT (not deploy/). From the repo root run either:
+#   docker build -f deploy/Dockerfile.server -t imperium-server .
+#   docker compose -f deploy/docker-compose.yml up --build
+#
+# Canonical production contract implemented by this image:
+#   - listens on PORT (default 8080)
+#   - env: PORT, NODE_ENV, CORS_ORIGIN, ROOM_TTL_SECONDS, LOG_LEVEL
+#   - GET /healthz -> 200 {"status":"ok","rooms":<int>,"uptime":<seconds>}
+#   - socket.io at /socket.io/ on the same HTTP port as Express
+#   - SIGTERM -> graceful shutdown (stop new rooms, broadcast "server_shutdown",
+#     drain up to 20s, exit 0). CMD uses exec form so node is PID 1 and
+#     receives SIGTERM directly — do not switch to shell form.
+#   - one room lives on exactly one instance (in-memory state): scale = 1
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 1: build — install all workspace deps, compile shared then server
+# ---------------------------------------------------------------------------
+FROM node:20-slim AS build
+WORKDIR /app
+
+# Manifests first so the dependency layer caches across source-only changes.
+# The `package-lock.json*` / `tsconfig*.json` globs tolerate absent files.
+# TODO(scaffold): no package.json exists on main yet — these paths assume the intended npm-workspaces layout (root + shared/ + server/) from CONTRIBUTING.md.
+COPY package.json package-lock.json* tsconfig*.json ./
+COPY shared/package.json shared/
+COPY server/package.json server/
+
+# TODO(scaffold): switch to `npm ci` once a package-lock.json is committed (no lockfile exists yet, so `npm install` is the only option — same fallback CI uses).
+RUN npm install --include-workspace-root --workspace=shared --workspace=server
+
+# Sources (each workspace carries its own tsconfig).
+COPY shared/ shared/
+COPY server/ server/
+
+# Build shared first — the server consumes shared's build output.
+# TODO(scaffold): no build scripts exist yet — assumes each workspace exposes `npm run build` per the CI contract (`npm run build --if-present`).
+RUN npm run build --workspace=shared \
+ && npm run build --workspace=server
+
+# ---------------------------------------------------------------------------
+# Stage 2: runtime — production deps only, non-root, Node 20 slim
+# ---------------------------------------------------------------------------
+FROM node:20-slim AS runtime
+ENV NODE_ENV=production
+ENV PORT=8080
+WORKDIR /app
+
+# Manifests again so npm can resolve the workspace graph for a prod-only install.
+COPY package.json package-lock.json* ./
+COPY shared/package.json shared/
+COPY server/package.json server/
+
+# Production dependencies only (dev deps pruned).
+# TODO(scaffold): switch to `npm ci --omit=dev` once a package-lock.json is committed.
+RUN npm install --omit=dev --include-workspace-root --workspace=shared --workspace=server \
+ && npm cache clean --force
+
+# Compiled output from the build stage.
+# TODO(scaffold): assumes tsc-style outDir `dist/` in each workspace — adjust when the real tsconfig/build output lands.
+COPY --from=build /app/shared/dist shared/dist
+COPY --from=build /app/server/dist server/dist
+
+# Run as the non-root "node" user shipped with the official image.
+USER node
+
+EXPOSE 8080
+
+# Health probe against the canonical GET /healthz endpoint (no auth, cheap).
+# Node 20 has global fetch, so no extra tooling (curl/wget) is needed.
+# TODO(scaffold): the server scaffold has not implemented /healthz yet — this check reports unhealthy until that route lands; the endpoint shape itself is the canonical contract, not a guess.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD node -e 'fetch("http://localhost:"+(process.env.PORT||8080)+"/healthz").then(function(r){process.exit(r.ok?0:1)}).catch(function(){process.exit(1)})'
+
+# Exec form: node = PID 1 => SIGTERM reaches the graceful-shutdown handler.
+# TODO(scaffold): entrypoint assumed to be server/dist/index.js — align with server/package.json "main"/"start" once it exists.
+CMD ["node", "server/dist/index.js"]
