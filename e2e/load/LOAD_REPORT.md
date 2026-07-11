@@ -21,8 +21,8 @@ committed sample from a green run; re-running the script overwrites it.
 
 | Metric | p50 | p95 | max | samples |
 | --- | --- | --- | --- | --- |
-| Connect latency (io() -> 'connect') | 244.9 ms | 261.8 ms | 262.8 ms | 250 |
-| pick_faction RTT (emit -> confirming lobby_update) | 24.3 ms | 56.3 ms | 62.8 ms | 250 |
+| Connect latency (io() -> 'connect') | 240.6 ms | 264.6 ms | 267.0 ms | 250 |
+| pick_faction RTT (emit -> confirming lobby_update) | 24.9 ms | 55.5 ms | 69.1 ms | 250 |
 
 ## Dropped-events assertion — PASS
 
