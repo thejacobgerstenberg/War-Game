@@ -22,9 +22,9 @@
  */
 
 import type { FactionId, UnitType } from '../types';
-import { CONFIG } from '../rules';
+import { CONFIG, statsFor } from '../rules';
 import { combatants } from '../combat';
-import { PROVINCE_BY_ID } from '../map';
+import { PROVINCE_BY_ID, TRADE_ROUTES } from '../map';
 import {
   armyPower,
   CAPITALS,
@@ -211,5 +211,212 @@ export function makeTradeMaxTurtleAgent(): Agent {
     name: 'turtler',
     siege: TRADE_MAX_SIEGE_PREFS,
     takeTurn: (game, faction) => tradeMaxTurn(game, faction),
+  };
+}
+
+// ===========================================================================
+// MONOPOLY-MAX turtle (final-canon variant of the hunt).
+//
+// Under the retuned canon config, per-route prestige is 0 and the passive
+// prestige lever is the §13.1 trade MONOPOLY: +2/round for every open route
+// whose BOTH endpoints you own. Venice/Genoa each start with exactly one
+// (venice_crete / genoa_caffa) — by design (map.ts comment). But several
+// routes have a NEUTRAL second endpoint:
+//   genoa:  chios_smyrna  -> Smyrna    (T1 walls, 3 levies)
+//           trebizond_caffa -> Trebizond (T3 key city, 5 levies + 2 prof)
+//   venice: crete_cyprus  -> Cyprus    (T2 walls, 4 levies)
+//           ragusa_venice -> Ragusa    (T2 key city, 4 levies + 2 prof)
+// Capturing one converts an open route into a second/third +2/round monopoly
+// (plus key-city +1/round where applicable) while never fighting a PLAYER —
+// i.e. it stays inside the "passive turtle" envelope the hunt targets.
+//
+// The agent = trade-max turtle + monopoly-endpoint sniping of NEUTRALS only
+// (+ neutral secret-objective pickups en route, since those pay +4 at cap).
+// ===========================================================================
+
+// Assault small neutral cities promptly instead of camping for years.
+const MONOPOLY_MAX_SIEGE_PREFS: SiegePrefs = {
+  assaultWallThreshold: 2.0, // T1/T2 walls: assault at full bonus
+  assaultGarrisonMax: 4,
+  strengthRatio: 1.4,
+  desperationRound: 11,
+};
+
+/**
+ * Solvency-guarded recruit (agents.ts recruitAt), EXCEPT that a rich
+ * merchant republic willingly runs a gold-funded grain deficit: the engine
+ * auto-buys shortfall grain at 2g/grain during upkeep, so spare treasury
+ * over a 20-gold reserve is counted as feeding capacity across a 6-round
+ * campaign horizon. (The shipping agents' hard grainHeadroom>=1 gate is what
+ * kept Venice — whose 8 starting galleys eat its whole grain income — from
+ * ever recruiting at 400 idle gold; see hunt trace.)
+ */
+function recruitGuarded(g: Game, f: FactionId, pid: string, unit: UnitType): boolean {
+  let cap = CONFIG.recruit.perAction[unit];
+  if (unit === 'levy') cap += CONFIG.factions[f].levyRecruitBonus;
+  const fs = g.faction(f);
+  const perUnitGrain = statsFor(f, unit).grainUpkeep;
+  if (perUnitGrain > 0) {
+    const goldSpare = Math.max(0, fs.gold - g.goldNeedOf(f) - 10);
+    const boughtGrainPerRound = goldSpare / (CONFIG.economy.grainMarket.buyGoldPerGrain * 4);
+    const affordable = Math.floor((g.grainHeadroom(f) + boughtGrainPerRound) / perUnitGrain);
+    if (affordable < cap) cap = affordable;
+    if (cap <= 0) return false;
+  }
+  const cost = unitGoldCost(f, unit);
+  if (cost > 0) {
+    const affordable = Math.floor((fs.gold - g.goldNeedOf(f)) / cost);
+    if (affordable < cap) cap = affordable;
+    if (cap <= 0) return false;
+  }
+  return g.actRecruit(f, pid, unit, cap);
+}
+
+/**
+ * Neutral provinces whose capture completes a monopoly for f:
+ * routes where f owns exactly one endpoint and the other is neutral, and
+ * the route is already open or a slot is free to open it.
+ */
+function monopolyTargets(g: Game, f: FactionId): string[] {
+  const fs = g.faction(f);
+  const out: string[] = [];
+  for (const r of TRADE_ROUTES) {
+    const ownA = g.province(r.a).owner === f;
+    const ownB = g.province(r.b).owner === f;
+    if (ownA === ownB) continue; // both ends (done) or neither (not ours)
+    if (!fs.routes.includes(r.id) && fs.routes.length >= CONFIG.trade.maxRoutesPerFaction) continue;
+    const other = ownA ? r.b : r.a;
+    if (g.province(other).owner === null && !out.includes(other)) out.push(other);
+  }
+  return out;
+}
+
+/** Neutral secret-objective provinces (pay +4 at the round-16 reveal). */
+function neutralObjectiveTargets(g: Game, f: FactionId): string[] {
+  const fs = g.faction(f);
+  if (fs.objective.done) return [];
+  return fs.objective.provinces.filter((pid) => g.province(pid).owner === null);
+}
+
+/** Open the route that maximizes monopoly prestige, then income. */
+function tryOpenRouteMonopolyFirst(g: Game, f: FactionId): boolean {
+  const cands = g.routeCandidates(f);
+  if (cands.length === 0) return false;
+  const score = (r: (typeof cands)[number]): number => {
+    const ownA = g.province(r.a).owner === f;
+    const ownB = g.province(r.b).owner === f;
+    if (ownA && ownB) return 100 + r.income; // instant +2/round monopoly
+    const other = ownA ? r.b : r.a;
+    if (g.province(other).owner === null) return 50 + r.income; // convertible by sniping
+    return r.income;
+  };
+  const best = [...cands].sort((x, y) => score(y) - score(x))[0];
+  return g.actOpenRoute(f, best.id);
+}
+
+/**
+ * Attack a NEUTRAL monopoly/objective target from the strongest adjacent
+ * owned stack when odds are overwhelming. Never touches player provinces.
+ */
+function trySnipeNeutralTarget(g: Game, f: FactionId, targets: readonly string[]): boolean {
+  if (targets.length === 0) return false;
+  let bestFrom = '';
+  let bestTo = '';
+  let bestScore = -Infinity;
+  let bestWalled = false;
+  for (const from of g.ownedProvinces(f)) {
+    if (g.isBesieged(from)) continue;
+    const garr = g.province(from).garrison;
+    const n = combatants(garr) - garr.galley;
+    const leave = garrisonToLeave(g, f, from);
+    if (n - leave < 3) continue;
+    const myPower = armyPower(garr);
+    for (const r of g.reachableFrom(from)) {
+      if (!targets.includes(r.to)) continue;
+      const t = g.province(r.to);
+      if (t.owner !== null) continue; // neutrals only, ever
+      const s = g.siegeAt(r.to);
+      if (s && s.attacker !== f) continue;
+      if (r.sea) {
+        const land = garr.levy + garr.professional + garr.mercenary;
+        if (garr.galley < Math.ceil(Math.min(land, n) / 2)) continue;
+      }
+      const walled = t.wallTier > 0 && combatants(t.garrison) > 0 && !(s && s.attacker === f);
+      let feasible: boolean;
+      if (s && s.attacker === f) feasible = n >= 2; // reinforce own siege
+      else if (walled) feasible = myPower >= 1.6 * (armyPower(t.garrison) + 1);
+      else feasible = myPower >= 1.6 * g.defenseScore(r.to);
+      if (!feasible) continue;
+      const score = 10 - (walled ? 2 : 0) - (r.sea ? 1 : 0) + PROVINCE_BY_ID.get(r.to)!.yields.gold;
+      if (score > bestScore) {
+        bestScore = score;
+        bestFrom = from;
+        bestTo = r.to;
+        bestWalled = walled;
+      }
+    }
+  }
+  if (bestScore === -Infinity) return false;
+  const garr = g.province(bestFrom).garrison;
+  const n = combatants(garr) - garr.galley;
+  const leave = garrisonToLeave(g, f, bestFrom);
+  return g.actAttack(f, bestFrom, bestTo, n - leave, bestWalled ? garr.siegeEngine : 0);
+}
+
+/**
+ * Build the snipe force: recruit at the owned province nearest to a target
+ * (adjacent staging point), plus galley escort for sea hops.
+ */
+function tryBuildStrike(g: Game, f: FactionId, targets: readonly string[]): boolean {
+  if (targets.length === 0) return false;
+  // find a staging province adjacent to some target
+  let staging = '';
+  let sea = false;
+  for (const from of g.ownedProvinces(f)) {
+    if (g.isBesieged(from)) continue;
+    for (const r of g.reachableFrom(from)) {
+      if (!targets.includes(r.to)) continue;
+      if (g.province(r.to).owner !== null) continue;
+      if (!staging || armyPower(g.province(from).garrison) > armyPower(g.province(staging).garrison)) {
+        staging = from;
+        sea = r.sea;
+      }
+    }
+  }
+  if (!staging) return false;
+  const garr = g.province(staging).garrison;
+  const land = garr.levy + garr.professional + garr.mercenary;
+  if (sea && garr.galley < Math.ceil(land / 2) && PROVINCE_BY_ID.get(staging)!.port) {
+    if (g.actRecruit(f, staging, 'galley', Math.ceil(land / 2) - garr.galley)) return true;
+  }
+  const unit: UnitType = f === 'hungary' ? 'levy' : 'professional';
+  return recruitGuarded(g, f, staging, unit);
+}
+
+function monopolyMaxTurn(g: Game, f: FactionId): void {
+  const fs = g.faction(f);
+  // sniping stops the moment every openable route is a monopoly
+  const targets = [...monopolyTargets(g, f), ...neutralObjectiveTargets(g, f)];
+  const sniping = targets.length > 0 && g.round <= 12; // late captures don't pay back
+  while (g.actionsLeft > 0) {
+    if (tryRelief(g, f)) continue;
+    if (tryDefend(g, f, 1.2)) continue;
+    if (tryOpenRouteMonopolyFirst(g, f)) continue;
+    if (sniping && trySnipeNeutralTarget(g, f, targets)) continue;
+    if (sniping && tryBuildStrike(g, f, targets)) continue;
+    if (tryGreatWork(g, f, sniping ? 25 : 0)) continue; // strike force gets first call on gold
+    if (tryMarket(g, f, 12)) continue;
+    if (tryRecruitGalleys(g, f, 2 + fs.routes.length, 8)) continue;
+    if (trySurplusWallUpgrade(g, f, 15)) continue;
+    if (tryGarrisonTopUp(g, f)) continue;
+    g.actPass(f);
+  }
+}
+
+export function makeMonopolyMaxAgent(): Agent {
+  return {
+    name: 'turtler',
+    siege: MONOPOLY_MAX_SIEGE_PREFS,
+    takeTurn: (game, faction) => monopolyMaxTurn(game, faction),
   };
 }

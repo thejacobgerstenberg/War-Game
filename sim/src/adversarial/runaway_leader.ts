@@ -1,16 +1,24 @@
 /**
  * ADVERSARIAL copy of the policy wiring (sim/src/agents.ts) for the
- * "runaway-leader" exploit hunt. Two changes vs the shared file:
+ * "runaway-leader" exploit hunt, re-synced 2026-07-11 to the retuned
+ * final-canon agents.ts (recruitAt solvency guards, tier-5 Theodosian
+ * tar-pit check, walls.maxBuildableTier). Changes vs the shared file:
  *
  *  1. LEADER-PRESSURE TOGGLE: the shared targetValue() adds +5 to any
  *     province owned by the prestige leader (once the leader crosses
  *     0.6 * victoryThreshold). Here prestigeLeader() can be disabled via
  *     setLeaderPressure(false) so we can measure whether that pressure
  *     mechanism actually restrains a runaway leader (compare leader win
- *     rates with it on vs off). A hit counter tells us how often the
- *     bonus even fires during target scoring.
+ *     rates with it on vs off). PRESSURE='strong' is the candidate fix
+ *     (activate at 0.4*threshold, +10 bonus).
  *
- *  2. INSTRUMENTATION WRAPPER: makeInstrumentedAgent() snapshots per-round
+ *  2. DECISION INSTRUMENTATION: tryAttack() computes the best target both
+ *     WITH and WITHOUT the pressure bonus and counts how often the bonus
+ *     actually changed the chosen attack (decisionsChanged) vs merely
+ *     firing during scoring (scoringHits). This separates "the bonus is
+ *     evaluated" from "the bonus does anything".
+ *
+ *  3. INSTRUMENTATION WRAPPER: makeInstrumentedAgent() snapshots per-round
  *     key-city counts (recorded at the first agent call of each round =
  *     state at the END of the previous round, since events/income never
  *     change province ownership).
@@ -22,7 +30,7 @@
 
 import type { FactionId, UnitType } from '../types';
 import { FACTION_IDS } from '../types';
-import { CONFIG } from '../rules';
+import { CONFIG, statsFor } from '../rules';
 import { combatants } from '../combat';
 import { KEY_CITY_IDS, PROVINCE_BY_ID } from '../map';
 import {
@@ -45,8 +53,12 @@ import {
 export type PressureMode = 'on' | 'off' | 'strong';
 let PRESSURE: PressureMode = 'on';
 
-/** Counts how often the leader bonus fired during target scoring. */
-export const pressureStats = { scoringHits: 0 };
+/** How often the leader bonus fired / actually changed an attack choice. */
+export const pressureStats = {
+  scoringHits: 0, // bonus evaluated >0 during target scoring
+  attackPicks: 0, // tryAttack calls that selected some target
+  decisionsChanged: 0, // ...where the bonus changed WHICH target was picked
+};
 
 export function setLeaderPressure(mode: PressureMode): void {
   PRESSURE = mode;
@@ -54,6 +66,8 @@ export function setLeaderPressure(mode: PressureMode): void {
 
 export function resetPressureStats(): void {
   pressureStats.scoringHits = 0;
+  pressureStats.attackPicks = 0;
+  pressureStats.decisionsChanged = 0;
 }
 
 // ------------------------------------------------------------ siege prefs
@@ -67,8 +81,8 @@ const SIEGE_PREFS: Record<PolicyName, SiegePrefs> = {
 
 // ------------------------------------------------------------- primitives
 
-/** Value of grabbing a province (attack target scoring). */
-function targetValue(g: Game, f: FactionId, pid: string): number {
+/** Shared-file targetValue WITHOUT the leader-pressure term. */
+function targetValueBase(g: Game, f: FactionId, pid: string): number {
   const prov = PROVINCE_BY_ID.get(pid)!;
   let v = prov.yields.gold + 0.5 * prov.yields.grain + 0.3 * (prov.yields.timber + prov.yields.marble + prov.yields.faith);
   if (prov.keyCity) v += 6;
@@ -76,22 +90,30 @@ function targetValue(g: Game, f: FactionId, pid: string): number {
   const fs = g.faction(f);
   if (!fs.objective.done && g.round <= fs.objective.deadline && fs.objective.provinces.includes(pid)) v += 8;
   const owner = g.province(pid).owner;
-  if (owner && owner !== f) {
-    v += 1.5; // hurting a rival is worth something
-    if (owner === prestigeLeader(g, f)) {
-      pressureStats.scoringHits++;
-      v += PRESSURE === 'strong' ? 10 : 5; // slow down the runaway leader
-    }
-  }
+  if (owner && owner !== f) v += 1.5; // hurting a rival is worth something
   return v;
 }
 
-/** The prestige leader (excluding f) if it is closing on the threshold. */
+/** The leader-pressure term of the shared targetValue (0 when inactive). */
+function pressureBonus(g: Game, f: FactionId, pid: string): number {
+  const owner = g.province(pid).owner;
+  if (!owner || owner === f) return 0;
+  if (owner !== prestigeLeader(g, f)) return 0;
+  pressureStats.scoringHits++;
+  return PRESSURE === 'strong' ? 10 : 5; // slow down the runaway leader
+}
+
+/** Shared-file targetValue (base + pressure), used outside tryAttack. */
+function targetValue(g: Game, f: FactionId, pid: string): number {
+  return targetValueBase(g, f, pid) + pressureBonus(g, f, pid);
+}
+
+/** The prestige leader (excluding f) if it is pulling ahead (re-synced:
+ *  the shared file now activates at 0.4x threshold — fix round). */
 function prestigeLeader(g: Game, f: FactionId): FactionId | null {
   if (PRESSURE === 'off') return null; // ADVERSARIAL TOGGLE
   let leader: FactionId | null = null;
-  // only worry when close ('strong': engage much earlier)
-  let best = (PRESSURE === 'strong' ? 0.4 : 0.6) * CONFIG.prestige.victoryThreshold;
+  let best = 0.4 * CONFIG.prestige.victoryThreshold; // re-synced to shared agents.ts
   for (const other of ['byzantium', 'ottomans', 'venice', 'genoa', 'hungary'] as FactionId[]) {
     if (other === f || !g.faction(other).alive) continue;
     const t = g.faction(other).ledger.total;
@@ -122,6 +144,9 @@ function tryAttack(g: Game, f: FactionId, o: AttackOpts): boolean {
   let bestTo = '';
   let bestScore = -Infinity;
   let bestWalled = false;
+  // counterfactual argmax WITHOUT the pressure bonus (instrumentation only)
+  let cfBestTo = '';
+  let cfBestScore = -Infinity;
   for (const from of g.ownedProvinces(f)) {
     if (g.isBesieged(from)) continue;
     const garr = g.province(from).garrison;
@@ -144,26 +169,40 @@ function tryAttack(g: Game, f: FactionId, o: AttackOpts): boolean {
         if (garr.galley < Math.ceil(Math.min(land, n) / 2)) continue;
       }
       const walled = t.wallTier > 0 && combatants(t.garrison) > 0 && !(s && s.attacker === f);
+      // Re-synced (fix round): leader pressure changes FEASIBILITY (relaxed
+      // odds gates vs leader-owned targets, 0.85x in the shared file) — the
+      // ordering-only +5 bonus was measured inert. 'strong' probes 0.75x.
+      const gateScale =
+        t.owner !== null && t.owner === prestigeLeader(g, f) ? (PRESSURE === 'strong' ? 0.75 : 0.85) : 1;
       let feasible: boolean;
       if (s && s.attacker === f) {
         feasible = n >= 2;
       } else if (walled) {
-        feasible = myPower >= o.walledRatio * (armyPower(t.garrison) + 1);
-        if (g.wallBonusAt(r.to) >= 3 && !g.faction(f).hasGreatBombard) feasible = false;
+        feasible = myPower >= o.walledRatio * gateScale * (armyPower(t.garrison) + 1);
+        // Tier-5 fortresses (the Theodosian Walls) are a siege tar pit
+        // without the Great Bombard (shared-file check, re-synced).
+        if (t.wallTier >= 5 && g.wallBonusAt(r.to) > 0 && !g.faction(f).hasGreatBombard) feasible = false;
       } else {
-        feasible = myPower >= o.minRatio * g.defenseScore(r.to);
+        feasible = myPower >= o.minRatio * gateScale * g.defenseScore(r.to);
       }
       if (!feasible) continue;
-      const score = targetValue(g, f, r.to) - (walled ? 2 : 0) - (r.sea ? 1 : 0);
+      const scoreBase = targetValueBase(g, f, r.to) - (walled ? 2 : 0) - (r.sea ? 1 : 0);
+      const score = scoreBase + pressureBonus(g, f, r.to);
       if (score > bestScore) {
         bestScore = score;
         bestFrom = from;
         bestTo = r.to;
         bestWalled = walled;
       }
+      if (scoreBase > cfBestScore) {
+        cfBestScore = scoreBase;
+        cfBestTo = r.to;
+      }
     }
   }
   if (bestScore === -Infinity) return false;
+  pressureStats.attackPicks++;
+  if (bestTo !== cfBestTo) pressureStats.decisionsChanged++;
   const garr = g.province(bestFrom).garrison;
   const n = combatants(garr) - garr.galley;
   const leave = garrisonToLeave(g, f, bestFrom);
@@ -191,8 +230,29 @@ function tryRelief(g: Game, f: FactionId): boolean {
       const n = combatants(garr) - garr.galley - 1; // leave a caretaker
       if (n >= 2 && g.actAttack(f, bestFrom, pid, n)) return true;
     }
+    // Re-synced (fix round): ferry through an open harbor (canon §8.2.3).
+    if (g.harborOpen(pid) && tryFerryIn(g, f, pid)) return true;
   }
   return false;
+}
+
+/** Ferry spare fighters by sea into an own besieged sea-resupplied city (re-synced). */
+function tryFerryIn(g: Game, f: FactionId, pid: string): boolean {
+  let bestFrom = '';
+  let bestN = 0;
+  for (const r of g.reachableFrom(pid)) {
+    if (!r.sea) continue;
+    const q = g.province(r.to);
+    if (q.owner !== f || g.isBesieged(r.to)) continue;
+    const garr = q.garrison;
+    const spare = combatants(garr) - garr.galley - garrisonToLeave(g, f, r.to);
+    const n = Math.min(spare, 2 * garr.galley); // 1 galley escorts 2 land units
+    if (n > bestN) {
+      bestN = n;
+      bestFrom = r.to;
+    }
+  }
+  return bestN >= 2 && g.actMove(f, bestFrom, pid, bestN);
 }
 
 function tryDefend(g: Game, f: FactionId, cushion = 1.0): boolean {
@@ -200,7 +260,7 @@ function tryDefend(g: Game, f: FactionId, cushion = 1.0): boolean {
   let worstPid = '';
   let worstGap = 0;
   for (const pid of g.ownedProvinces(f)) {
-    if (g.isBesieged(pid)) continue;
+    if (g.isBesieged(pid) && !g.harborOpen(pid)) continue; // re-synced: sea-resupplied city recruits inside
     const threat = g.threatAt(pid);
     if (threat <= 0) continue;
     const gap = threat * cushion - g.defenseScore(pid);
@@ -223,6 +283,20 @@ function pickDefUnit(g: Game, f: FactionId): UnitType {
 function recruitAt(g: Game, f: FactionId, pid: string, unit: UnitType): boolean {
   let cap = CONFIG.recruit.perAction[unit];
   if (unit === 'levy') cap += CONFIG.factions[f].levyRecruitBonus;
+  // Solvency guards (shared-file, re-synced): never recruit a batch the
+  // grain economy cannot feed, and keep gold back for the standing wage bill.
+  const perUnitGrain = statsFor(f, unit).grainUpkeep;
+  if (perUnitGrain > 0) {
+    const affordable = Math.floor(g.grainHeadroom(f) / perUnitGrain);
+    if (affordable < cap) cap = affordable;
+    if (cap <= 0) return false;
+  }
+  const cost = unitGoldCost(f, unit);
+  if (cost > 0) {
+    const affordable = Math.floor((g.faction(f).gold - g.goldNeedOf(f)) / cost);
+    if (affordable < cap) cap = affordable;
+    if (cap <= 0) return false;
+  }
   return g.actRecruit(f, pid, unit, cap);
 }
 
@@ -342,7 +416,7 @@ function tryWallUpgrade(g: Game, f: FactionId, goldReserve: number): boolean {
   if (fs.gold < w.goldCost + goldReserve || fs.timber < w.timberCost || fs.marble < w.marbleCost) return false;
   const spots = g
     .borderOf(f)
-    .filter((pid) => g.province(pid).wallTier < 3 && !g.isBesieged(pid))
+    .filter((pid) => g.province(pid).wallTier < CONFIG.walls.maxBuildableTier && !g.isBesieged(pid))
     .sort((a, b) => targetValue(g, f, b) - targetValue(g, f, a));
   return spots.length > 0 && g.actBuild(f, spots[0], 'wallUpgrade');
 }
@@ -506,8 +580,7 @@ export function makeAdvAgent(name: PolicyName): Agent {
 /**
  * Per-game recorder. keyCitiesAtRoundEnd[r] = key-city count per faction at
  * the END of round r (snapshotted at the first agent call of round r+1;
- * events/income between cleanup and the action phase never change province
- * ownership, so the snapshot is exact).
+ * events/income never change province ownership, so the snapshot is exact).
  */
 export interface Recorder {
   seenRounds: Set<number>;

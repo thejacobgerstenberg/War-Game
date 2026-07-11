@@ -89,9 +89,9 @@ const P: Record<string, ProvinceSpec> = {
   edirne: { name: 'Edirne', owner: 'ottomans', terrain: 'plains', wall: 3, key: true, y: [3, 3, 0, 0, 1] },
   gallipoli: { name: 'Gallipoli', owner: 'ottomans', terrain: 'plains', wall: 2, y: [2, 1, 0, 0, 0], coasts: ['aegean_north', 'sea_of_marmara'] },
   constantinople: { name: 'Constantinople', owner: 'byzantium', terrain: 'plains', wall: 5, key: true, y: [5, 2, 0, 1, 2], coasts: ['sea_of_marmara', 'black_sea_west'] }, // T5 Theodosian Walls
-  pera: { name: 'Pera (Galata)', owner: 'genoa', terrain: 'plains', wall: 1, y: [3, 0, 0, 1, 0], coasts: ['sea_of_marmara', 'black_sea_west'] }, // canon Genoese enclave on the Horn; marble = Proconnesian entrepot — Genoa's great-work source lives on the warpath (parity with Venice's Zara)
+  pera: { name: 'Pera (Galata)', owner: 'genoa', terrain: 'plains', wall: 1, y: [2, 0, 0, 1, 0], coasts: ['sea_of_marmara', 'black_sea_west'] }, // canon Genoese enclave on the Horn; marble = Proconnesian entrepot — Genoa's great-work source lives on the warpath (parity with Venice's Zara); gold 3 -> 2 in the adversarial fix round (Genoa ceiling trim after the §5.2 blockade fix made trade income more robust)
   // ---- Anatolia ----
-  bursa: { name: 'Bursa', owner: 'ottomans', terrain: 'plains', wall: 3, y: [3, 2, 0, 1, 0], coasts: ['sea_of_marmara'] },
+  bursa: { name: 'Bursa', owner: 'ottomans', terrain: 'plains', wall: 3, y: [4, 2, 0, 1, 0], coasts: ['sea_of_marmara'] }, // gold 3 -> 4 in the adversarial fix round (silk-road terminus; Ottoman floor re-lift after the §8.2.3 harbor fixes slowed the siege game)
   nicaea: { name: 'Nicaea', owner: 'ottomans', terrain: 'hills', wall: 2, y: [2, 2, 0, 0, 0] }, // canon nicaea + bithynia folded
   smyrna: { name: 'Smyrna', owner: null, terrain: 'plains', wall: 1, y: [3, 2, 0, 0, 0], coasts: ['aegean_south'] }, // canon Independent (Aydin beylik)
   ankara: { name: 'Ankara', owner: null, terrain: 'plains', wall: 1, y: [2, 2, 0, 0, 0] }, // canon Independent (Karaman league)

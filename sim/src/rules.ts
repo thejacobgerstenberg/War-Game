@@ -230,7 +230,7 @@ export const CONFIG = {
 
   factions: {
     byzantium: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.0, capitalExtraGold: 2, cityCapturePrestige: 0 }, // rich capital (Hagia Sophia income proxy)
-    ottomans: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 2, tradeIncomeMult: 1.0, capitalExtraGold: 0, cityCapturePrestige: 1 }, // devshirme levy bulk + Ghaza city-capture prestige
+    ottomans: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 2, tradeIncomeMult: 1.0, capitalExtraGold: 0, cityCapturePrestige: 2 }, // devshirme levy bulk + Ghaza city-capture prestige (1 -> 2 in the adversarial fix round: the canon §8.2.3 harbor-reinforcement fixes slowed the Ottoman siege game; recalibrated within the §14 asymmetry budget)
     venice: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.5, capitalExtraGold: 0, cityCapturePrestige: 0 }, // canon §5.2 merchant x1.5
     genoa: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.5, capitalExtraGold: 0, cityCapturePrestige: 0 }, // canon §5.2 merchant x1.5
     hungary: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.0, capitalExtraGold: 0, cityCapturePrestige: 0 }, // quality levies (see factionUnits); R9 floor fix adopted = Option A overland routes (map.ts buda_belgrade; Option B crusade-prestige A/B recorded in TUNING_LOG)
@@ -342,7 +342,14 @@ export const CONFIG = {
   trade: {
     routeIncomeBase: 3, // default gold/round for a route (map routes may override)
     maxRoutesPerFaction: 3, // open routes a faction can profit from simultaneously
-    blockadeCancels: true, // enemy fleet in any route sea zone cuts the income
+    /**
+     * Canon §5.2: a BLOCKADED route (any at-war enemy war fleet on a route
+     * sea zone) yields x this multiplier (0.5); only a SEVERED route (an
+     * endpoint lost) yields 0. 1.0 disables blockades; the pre-fix sim
+     * cancelled blockaded routes outright (0), which made a single 5g
+     * picket galley delete a trader faction — see TUNING_LOG fix round.
+     */
+    blockadeIncomeMult: 0.5,
   },
 
   economy: {
@@ -382,7 +389,7 @@ export const CONFIG = {
     warWon: 3, // canon §13.1: win a war (force peace / eliminate)
     loseCapital: -3, // canon §13.1: lose your own capital
     secretObjective: 4, // canon §13.1: +4 each, hidden, scored at GAME END only
-    victoryThreshold: 82, // reach this prestige at Cleanup => immediate win (owned by the TUNING_REPORT; recalibrated to canon §13.1 sources — see TUNING_LOG)
+    victoryThreshold: 84, // reach this prestige at Cleanup => immediate win (owned by the TUNING_REPORT; recalibrated to canon §13.1 sources; 82 -> 84 in the adversarial fix round — trims the genoa/venice trader threshold ceiling after the canon §5.2 blockade-halving fix made trade income more robust, see TUNING_LOG)
   },
 
   neutrals: {

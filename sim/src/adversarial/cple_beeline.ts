@@ -1,91 +1,105 @@
 /**
- * ADVERSARIAL: Constantinople beeline policy ("cple-beeline" hunter).
+ * ADVERSARIAL: Constantinople sudden-death beeline ("cple-beeline" hunter),
+ * rebuilt for the FINAL canon-kernel config (2b42386 rules: T5 = 16 HP / +4
+ * binary bonus, t5 masonry cap 1 HP/round, grain-stores starvation, R3 sea
+ * resupply with per-zone galley-superiority blockade, Great Bombard r15).
  *
- * A dedicated agent that ignores normal development and races to trigger the
- * sudden-death win (hold Constantinople 2 consecutive round-ends). It uses
- * ONLY the public legal-action API of game.ts — no engine edits.
+ * Uses ONLY the public legal-action API of game.ts — no engine edits.
  *
- * Ottoman overland line:
- *   R1  order 1 siege engine + professionals at Edirne, top off with instant
- *       mercenaries, attack Constantinople the moment the stack is big enough
- *       (usually round 1-2) => siege established, Byzantium's capital yields
- *       freeze and its garrison can no longer recruit or move.
- *   R2+ order the remaining engines (cap 3) and ferry them into the camp
- *       (attacking one's own siege merges immediately), ship 2 galleys from
- *       Gallipoli via sea reinforcement (escort galleys join the siege army;
- *       2 galleys >= Constantinople's 2 coasts => "fully blockaded" =>
- *       garrison attrition doubles to 12%/round and the Golden Horn resupply
- *       halving is bypassed), march idle home garrisons to Edirne and pump
- *       them in. Fighter recruiting is grain-gated so the economy never
- *       collapses; engines are exempt (they are the win condition).
- *   The engine's own per-siege-round assault check (SiegePrefs) fires once
- *       the 3 engines have battered the Theodosian walls low enough.
+ * The win path under the canon kernel is NOT the walls (an ordinary train
+ * cannot breach 16 HP at 1 HP/round in time) — it is the STARVATION CLOCK:
+ *   1. invest Constantinople as early as possible (round 1-2);
+ *   2. establish a full naval blockade (strict galley superiority in BOTH
+ *      the Sea of Marmara and the West Black Sea; the defender's harbor
+ *      fleet counts, so bring defenderGalleys+1 per zone — camp galleys
+ *      count in every zone the city coasts, and galleys parked in an owned
+ *      port that coasts a zone count too, e.g. Genoese Pera covers BOTH);
+ *   3. stores (3) deplete, then the garrison starves 1 unit/round;
+ *   4. escalade once the garrison is starved to <= 2, or wait for zero.
+ *   Capture at cleanup R => hold R, R+1 => sudden death at round R+1.
  *
- * Amphibious variant (Genoa from Caffa/Lesbos; Venice staging via Salonica):
- * sea attacks carry ceil(land/2) escort galleys straight into the siege camp,
- * so the blockade is automatic from siege round 1.
+ * Faction lines:
+ *   ottomans : overland from Edirne round 1 with the starting stack; feed
+ *              the camp with 6-levy batches (devshirme levies cost 0 grain);
+ *              deliver 2 galleys from Gallipoli by sea reinforcement.
+ *   genoa    : overland from Pera (land-adjacent across the Golden Horn);
+ *              cheap Crossbowmen (3g); blockade by stacking galleys in
+ *              Pera's own harbor (coasts both of Constantinople's zones).
+ *   venice   : amphibious with a staging hop (Lemnos: T1, 1-levy garrison,
+ *              North Aegean port that sea-reaches Constantinople).
  */
 
-import type { FactionId } from '../types';
-import { CONFIG } from '../rules';
+import type { Army, FactionId, UnitType } from '../types';
+import { CONFIG, statsFor } from '../rules';
 import { combatants } from '../combat';
-import { PROVINCE_BY_ID } from '../map';
+import { PROVINCE_BY_ID, SEA_ZONE_BY_ID } from '../map';
 import { unitGoldCost, type Agent, type Game, type SiegePrefs } from '../game';
 
 export const TARGET = 'constantinople';
+
+// ------------------------------------------------------------- telemetry
 
 export interface BeelineTelemetry {
   /** game.round when the agent first saw itself owning the target at turn start. */
   firstOwnedSeenRound: number | null;
   /** game.round when its own siege of the target was first seen at turn start. */
   siegeSeenRound: number | null;
+  /** Garrison combatants inside the walls when our siege was first observed. */
+  garrisonAtSiegeStart: number | null;
+  /** Garrison combatants at the last turn-start observation while sieging. */
+  lastGarrisonSeen: number | null;
+  /** Wall damage at the last turn-start observation while sieging. */
+  lastWallDamageSeen: number;
+  /** Turn-start observations of our own target siege. */
+  siegeObsRounds: number;
+  /** ...of which the full naval blockade was up. */
+  blockadedRounds: number;
+  /** Lowest grain-stores value observed in the siege record. */
+  minStoresSeen: number | null;
+  /** We ever held treason-at-the-gate while besieging (engine auto-plays it). */
+  treasonHeld: boolean;
 }
 
 export function freshTelemetry(): BeelineTelemetry {
-  return { firstOwnedSeenRound: null, siegeSeenRound: null };
+  return {
+    firstOwnedSeenRound: null,
+    siegeSeenRound: null,
+    garrisonAtSiegeStart: null,
+    lastGarrisonSeen: null,
+    lastWallDamageSeen: 0,
+    siegeObsRounds: 0,
+    blockadedRounds: 0,
+    minStoresSeen: null,
+    treasonHeld: false,
+  };
 }
 
 export interface BeelineOptions {
   /** Intermediate objective when the target is unreachable from any owned
-   *  province (Venice needs an Aegean-North staging port first). */
+   *  province (Venice needs a North-Aegean staging port first). */
   staging?: string | null;
   /** Minimum fighters massed at the launch province before attacking. */
   launchMin?: number;
-  /** From this round, launch with whatever is on hand (>= 5 fighters). */
+  /** From this round, launch with whatever is on hand (>= 4 fighters). */
   launchBy?: number;
-  /** Prefer instant mercenaries or cheap professionals when raising troops. */
+  /** Legacy option (pre-canon-kernel agent); accepted and ignored. */
   recruitStyle?: 'merc' | 'prof';
   siegePrefs?: Partial<SiegePrefs>;
 }
 
 // ---------------------------------------------------------------- helpers
 
-function fighters(a: { levy: number; professional: number; mercenary: number }): number {
+function fighters(a: Army): number {
   return a.levy + a.professional + a.mercenary;
 }
 
-function wageNextRound(g: Game, f: FactionId): number {
-  let mercs = 0;
-  let galleys = 0;
-  for (const pid of g.ownedProvinces(f)) {
-    const a = g.province(pid).garrison;
-    mercs += a.mercenary;
-    galleys += a.galley;
-  }
-  for (const pid of [TARGET]) {
-    const s = g.siegeAt(pid);
-    if (s && s.attacker === f) {
-      mercs += s.army.mercenary;
-      galleys += s.army.galley;
-    }
-  }
-  return mercs * CONFIG.units.mercenary.goldUpkeep + galleys * CONFIG.units.galley.goldUpkeep;
-}
-
-/** Gold spendable now without risking merc/galley desertion at next upkeep. */
+/** Gold wage bill + expected grain-purchase bill to protect before spending. */
 function spendable(g: Game, f: FactionId): number {
-  const reserve = Math.max(0, wageNextRound(g, f) - g.estGoldIncome(f)) + 4;
-  return g.faction(f).gold - reserve;
+  const fs = g.faction(f);
+  const grainShort = Math.max(0, g.grainNeedOf(f) - g.estGrainIncome(f) - fs.grain);
+  const reserve =
+    Math.max(0, g.goldNeedOf(f) + grainShort * CONFIG.economy.grainMarket.buyGoldPerGrain - g.estGoldIncome(f)) + 2;
+  return fs.gold - reserve;
 }
 
 /** Owned, unbesieged provinces that reach `target` in one action, by mode. */
@@ -120,6 +134,63 @@ function tryOpenRoute(g: Game, f: FactionId): boolean {
   return cands.length > 0 && g.actOpenRoute(f, cands[0].id);
 }
 
+// ------------------------------------------------------ blockade arithmetic
+
+/** Galleys `who` brings to bear on `zone` (owned coastal ports + own camps). */
+function galleysNearZone(g: Game, who: FactionId, zone: string): number {
+  let n = 0;
+  for (const pid of SEA_ZONE_BY_ID.get(zone)!.coastalProvinces) {
+    const p = g.province(pid);
+    if (p.owner === who) n += p.garrison.galley;
+    const s = g.siegeAt(pid);
+    if (s && s.attacker === who) n += s.army.galley;
+  }
+  return n;
+}
+
+/** Mirror of the engine's canon-RAW blockade test (enemy fleet present AND
+ *  uncontested by any friendly war fleet, in every adjacent zone). */
+export function blockadeUp(g: Game, f: FactionId, pid: string): boolean {
+  const prov = PROVINCE_BY_ID.get(pid)!;
+  if (prov.coasts.length === 0) return true;
+  const owner = g.province(pid).owner;
+  for (const z of prov.coasts) {
+    const friendly = owner ? galleysNearZone(g, owner, z) : 0;
+    if (galleysNearZone(g, f, z) === 0 || friendly > 0) return false;
+  }
+  return true;
+}
+
+/**
+ * Extra galleys the SIEGE CAMP would need to close every zone, or Infinity
+ * when a blockade is unattainable (canon-RAW contest: any friendly galley
+ * near a zone keeps it contested — the sim has no fleet battles to sink
+ * it, so blockade gold is wasted while the defender's fleet floats).
+ */
+function blockadeDeficit(g: Game, f: FactionId, pid: string): number {
+  const prov = PROVINCE_BY_ID.get(pid)!;
+  const owner = g.province(pid).owner;
+  let need = 0;
+  for (const z of prov.coasts) {
+    const friendly = owner ? galleysNearZone(g, owner, z) : 0;
+    if (friendly > 0) return Infinity; // contested: cannot be closed by numbers
+    need = Math.max(need, 1 - galleysNearZone(g, f, z));
+  }
+  return need;
+}
+
+/** Owned unbesieged ports whose harbor covers EVERY coast zone of `pid`. */
+function fullCoveragePorts(g: Game, f: FactionId, pid: string): string[] {
+  const want = PROVINCE_BY_ID.get(pid)!.coasts;
+  const out: string[] = [];
+  for (const q of g.ownedProvinces(f)) {
+    if (q === pid || g.isBesieged(q)) continue;
+    const coasts = PROVINCE_BY_ID.get(q)!.coasts;
+    if (want.every((z) => coasts.includes(z))) out.push(q);
+  }
+  return out;
+}
+
 // ------------------------------------------------------------------ agent
 
 export function makeBeelineAgent(
@@ -127,46 +198,54 @@ export function makeBeelineAgent(
   opts: BeelineOptions = {},
   tel?: BeelineTelemetry,
 ): Agent {
-  const launchMin = opts.launchMin ?? 8;
-  const launchBy = opts.launchBy ?? 2;
-  const style = opts.recruitStyle ?? 'prof';
+  const launchMin = opts.launchMin ?? 5;
+  const launchBy = opts.launchBy ?? 3;
   const prefs: SiegePrefs = {
-    assaultWallThreshold: 1.3,
+    // never assault on wall damage vs T5 (the masonry cap makes a breach a
+    // r16 event); assault once starvation thins the garrison to <= 2.
+    assaultWallThreshold: 1.0,
     assaultGarrisonMax: 2,
     strengthRatio: 1.5,
-    desperationRound: 12,
+    desperationRound: 15,
     ...opts.siegePrefs,
   };
-  let enginesOrdered = 0; // lifetime engine orders (pendings are invisible)
 
-  /** Gold to hold back for outstanding siege-engine orders (the win clock). */
-  function engineReserve(g: Game, f: FactionId): number {
-    return enginesOrdered < CONFIG.siege.maxEffectiveEngines ? unitGoldCost(f, 'siegeEngine') : 0;
+  const levyFaction = faction === 'ottomans' || faction === 'hungary';
+
+  /** Recruit fighters at pid; grain-gated via headroom, wage-gated via spendable. */
+  function recruitFighters(g: Game, f: FactionId, pid: string): boolean {
+    const sp = spendable(g, f);
+    const order: UnitType[] = levyFaction ? ['levy', 'professional'] : ['professional', 'levy'];
+    for (const u of order) {
+      const st = statsFor(f, u);
+      let cap = CONFIG.recruit.perAction[u] + (u === 'levy' ? CONFIG.factions[f].levyRecruitBonus : 0);
+      if (st.grainUpkeep > 0) {
+        const fed = Math.floor(g.grainHeadroom(f) / st.grainUpkeep);
+        // gold-financed grain: the upkeep engine buys shortfall grain at
+        // 2g/unit (already reserved by spendable), so a healthy treasury may
+        // run a modest deficit — 2 units/action while spendable stays >= 12.
+        const goldFed = sp >= 12 ? 2 : 0;
+        cap = Math.min(cap, Math.max(fed, goldFed));
+      }
+      const cost = unitGoldCost(f, u);
+      if (cost > 0) cap = Math.min(cap, Math.floor(sp / cost));
+      if (cap >= 1 && g.actRecruit(f, pid, u, cap)) return true;
+    }
+    return false;
   }
 
-  /** Recruit fighters at pid honoring grain headroom; mercs also wage-gated. */
-  function recruitFighters(g: Game, f: FactionId, pid: string, allowMerc: boolean): boolean {
-    // strict grain gate: sustained income must cover the bigger army, so the
-    // treasury is not bled dry buying grain (engines need the gold).
-    if (g.estGrainIncome(f) - g.grainNeedOf(f) < 1) return false;
-    const sp = spendable(g, f) - engineReserve(g, f);
-    const order: Array<'merc' | 'prof'> = style === 'merc' ? ['merc', 'prof'] : ['prof', 'merc'];
-    for (const o of order) {
-      if (o === 'merc') {
-        if (!allowMerc) continue;
-        if (sp >= unitGoldCost(f, 'mercenary') && g.actRecruit(f, pid, 'mercenary', 3)) return true;
-      } else {
-        if (sp >= unitGoldCost(f, 'professional') && g.actRecruit(f, pid, 'professional', 2)) return true;
-      }
-    }
-    if (f === 'hungary' && sp >= unitGoldCost(f, 'levy') && g.actRecruit(f, pid, 'levy', 6)) return true;
-    return false;
+  /** Instant mercenaries (hold-the-city emergencies only; x2 grain upkeep). */
+  function recruitMercs(g: Game, f: FactionId, pid: string): boolean {
+    const cost = unitGoldCost(f, 'mercenary');
+    const sp = spendable(g, f);
+    const n = Math.min(CONFIG.recruit.perAction.mercenary, Math.floor(sp / Math.max(1, cost)));
+    return n >= 1 && g.actRecruit(f, pid, 'mercenary', n);
   }
 
   /** March the biggest idle interior stack one step toward `to` (rally). */
   function marchToward(g: Game, f: FactionId, to: string): boolean {
     let from = '';
-    let bestSpare = 0;
+    let bestSpare = 1;
     for (const pid of g.ownedProvinces(f)) {
       if (pid === to || g.isBesieged(pid)) continue;
       const garr = g.province(pid).garrison;
@@ -182,12 +261,56 @@ export function makeBeelineAgent(
     return g.actMove(f, from, step, fighters(garr) - 1, garr.siegeEngine > 0);
   }
 
+  /** Blockade upkeep while besieging `pid`: harbor stacking, then delivery. */
+  function ensureBlockade(g: Game, f: FactionId, pid: string, campArmy: Army, src: { sea: string[] }): boolean {
+    const deficit = blockadeDeficit(g, f, pid);
+    if (deficit <= 0 || !Number.isFinite(deficit)) return false; // done, or unattainable: spend on troops instead
+    const fs = g.faction(f);
+    const st = statsFor(f, 'galley');
+    // (a) a harbor covering every zone (Genoese Pera): just build there.
+    for (const q of fullCoveragePorts(g, f, pid)) {
+      if (fs.gold >= st.goldCost && fs.timber >= st.timberCost &&
+          g.actRecruit(f, q, 'galley', Math.min(2, deficit))) return true;
+    }
+    // (b) deliver galleys into the camp by sea reinforcement (escort rule:
+    //     ceil(land/2) galleys accompany the land detachment and merge).
+    for (const q of src.sea) {
+      const garr = g.province(q).garrison;
+      const land = Math.min(fighters(garr), 2 * deficit);
+      if (land >= 1 && garr.galley >= Math.ceil(land / 2) &&
+          g.actAttack(f, q, pid, land, 0)) return true;
+    }
+    // (c) stage assets at the best sea source: galleys first, then carriers.
+    const port = bestBy(src.sea, (q) => g.province(q).garrison.galley);
+    if (port) {
+      const garr = g.province(port).garrison;
+      if (garr.galley < deficit + Math.ceil(fighters(garr) / 2) &&
+          fs.gold >= st.goldCost && fs.timber >= st.timberCost &&
+          g.actRecruit(f, port, 'galley', 2)) return true;
+      if (fighters(garr) < 2 * deficit && recruitFighters(g, f, port)) return true;
+    }
+    void campArmy;
+    return false;
+  }
+
   function takeTurn(g: Game, f: FactionId): void {
     if (tel) {
-      const owner = g.province(TARGET).owner;
-      if (owner === f && tel.firstOwnedSeenRound === null) tel.firstOwnedSeenRound = g.round;
+      const tp = g.province(TARGET);
+      if (tp.owner === f && tel.firstOwnedSeenRound === null) tel.firstOwnedSeenRound = g.round;
       const s0 = g.siegeAt(TARGET);
-      if (s0 && s0.attacker === f && tel.siegeSeenRound === null) tel.siegeSeenRound = g.round;
+      if (s0 && s0.attacker === f) {
+        if (tel.siegeSeenRound === null) {
+          tel.siegeSeenRound = g.round;
+          tel.garrisonAtSiegeStart = combatants(tp.garrison);
+        }
+        tel.siegeObsRounds++;
+        tel.lastGarrisonSeen = combatants(tp.garrison);
+        tel.lastWallDamageSeen = tp.wallDamage;
+        if (blockadeUp(g, f, TARGET)) tel.blockadedRounds++;
+        const raw = (g as unknown as { sieges: Map<string, { stores: number }> }).sieges.get(TARGET);
+        if (raw && (tel.minStoresSeen === null || raw.stores < tel.minStoresSeen)) tel.minStoresSeen = raw.stores;
+      }
+      if (g.faction(f).hand.includes('treason-at-the-gate')) tel.treasonHeld = true;
     }
     let guard = 0;
     while (g.actionsLeft > 0 && guard++ < 40) {
@@ -202,22 +325,21 @@ export function makeBeelineAgent(
     const tp = g.province(TARGET);
     const siege = g.siegeAt(TARGET);
 
-    // ---- HOLD phase: we own Constantinople; sit tight for 2 round-ends.
+    // ---- HOLD phase: we own Constantinople; survive 2 cleanups.
     if (tp.owner === f) {
       if (!g.isBesieged(TARGET)) {
-        const sp = spendable(g, f);
-        if (sp >= unitGoldCost(f, 'mercenary') && g.actRecruit(f, TARGET, 'mercenary', 3)) return true;
-        if (sp >= unitGoldCost(f, 'professional') && g.actRecruit(f, TARGET, 'professional', 2)) return true;
+        if (combatants(tp.garrison) < 12 && recruitMercs(g, f, TARGET)) return true;
+        if (combatants(tp.garrison) < 12 && recruitFighters(g, f, TARGET)) return true;
       }
       if (tryOpenRoute(g, f)) return true;
       return false;
     }
 
-    // ---- Rival (non-Byzantine) siege on the target: build up nearby, wait.
+    // ---- Rival (non-self) siege on the target: mass nearby and wait.
     if (siege && siege.attacker !== f) {
       const near = sources(g, f, TARGET);
       const pid = bestBy([...near.land, ...near.sea], (x) => fighters(g.province(x).garrison));
-      if (pid && recruitFighters(g, f, pid, true)) return true;
+      if (pid && fighters(g.province(pid).garrison) < 14 && recruitFighters(g, f, pid)) return true;
       if (tryOpenRoute(g, f)) return true;
       return false;
     }
@@ -242,92 +364,30 @@ export function makeBeelineAgent(
     // ---- FEED an existing siege of ours.
     if (objSiege && objSiege.attacker === f) {
       const army = objSiege.army;
-      const coasts = PROVINCE_BY_ID.get(objective)!.coasts.length;
-      const maxEng = CONFIG.siege.maxEffectiveEngines;
 
-      // 1. late siege: buy the Great Bombard.
-      if (
-        g.round >= CONFIG.siege.greatBombard.availableFromRound &&
-        !g.faction(f).hasGreatBombard &&
-        g.faction(f).gold >= CONFIG.siege.greatBombard.goldCost + 4 &&
-        g.actBuyBombard(f)
-      ) return true;
+      // 1. blockade first — the starvation clock does not tick without it.
+      if (objective === TARGET && ensureBlockade(g, f, objective, army, src)) return true;
 
-      // 2. ferry engines waiting at any source into the camp.
-      if (army.siegeEngine < maxEng) {
-        for (const pid of src.land) {
-          const garr = g.province(pid).garrison;
-          if (garr.siegeEngine > 0 && fighters(garr) >= 1) {
-            const n = Math.max(1, fighters(garr) - 1);
-            if (g.actAttack(f, pid, objective, n, garr.siegeEngine)) return true;
-          }
-        }
-        for (const pid of src.sea) {
-          const garr = g.province(pid).garrison;
-          if (garr.siegeEngine > 0 && fighters(garr) >= 1) {
-            const landN = Math.min(fighters(garr), 3);
-            if (garr.galley >= Math.ceil((landN + garr.siegeEngine) / 2) &&
-                g.actAttack(f, pid, objective, landN, garr.siegeEngine)) return true;
-          }
-        }
-      }
-
-      // 3. order engines (up to 3 lifetime) at the strongest source.
-      if (enginesOrdered < maxEng && army.siegeEngine < maxEng) {
-        const where =
-          bestBy(src.land, (pid) => fighters(g.province(pid).garrison)) ??
-          bestBy(src.sea, (pid) => fighters(g.province(pid).garrison));
-        if (where) {
-          if (spendable(g, f) >= unitGoldCost(f, 'siegeEngine') && g.actRecruit(f, where, 'siegeEngine', 1)) {
-            enginesOrdered++;
-            return true;
-          }
-          // keep a ferryman at the engine yard
-          if (fighters(g.province(where).garrison) < 2 && g.grainHeadroom(f) >= 1 &&
-              spendable(g, f) >= unitGoldCost(f, 'levy') && g.actRecruit(f, where, 'levy', 2)) return true;
-        }
-      }
-
-      // 4. blockade: deliver >= coasts escort galleys via sea reinforcement.
-      if (coasts > 0 && army.galley < coasts) {
-        for (const pid of src.sea) {
-          const garr = g.province(pid).garrison;
-          const landN = Math.min(fighters(garr), 2 * coasts);
-          if (landN >= Math.max(1, 2 * coasts - 1) && garr.galley >= Math.ceil(landN / 2)) {
-            if (g.actAttack(f, pid, objective, landN, 0)) return true;
-          }
-        }
-        const port = bestBy(src.sea, (pid) => g.province(pid).garrison.galley);
-        if (port) {
-          const garr = g.province(port).garrison;
-          if (garr.galley < coasts && spendable(g, f) >= CONFIG.units.galley.goldCost &&
-              g.actRecruit(f, port, 'galley', 2)) return true;
-          if (fighters(garr) < Math.max(1, 2 * coasts - 1) && recruitFighters(g, f, port, true)) return true;
-        }
-      }
-
-      // 5. troop pump: keep the camp strong enough to assault.
-      const want = Math.max(12, 2 * combatants(g.province(objective).garrison) + 4);
+      // 2. troop pump: strong enough to assault the starved garrison and to
+      //    shrug off relief sorties + 3%/round disease.
+      const garrN = combatants(g.province(objective).garrison);
+      const want = Math.min(24, Math.max(8, Math.ceil(garrN * prefs.strengthRatio) + 4));
       if (combatants(army) < want) {
-        // 5a. throw adjacent spare fighters in (land first, then sea).
         const pumpL = bestBy(src.land, (pid) => fighters(g.province(pid).garrison));
         if (pumpL) {
-          const garr = g.province(pumpL).garrison;
-          const spare = fighters(garr) - 1;
-          if (spare >= 3 && g.actAttack(f, pumpL, objective, spare, 0)) return true;
+          const spare = fighters(g.province(pumpL).garrison) - 1;
+          if (spare >= 2 && g.actAttack(f, pumpL, objective, spare, 0)) return true;
         }
         const pumpS = bestBy(src.sea, (pid) => fighters(g.province(pid).garrison));
         if (pumpS) {
           const garr = g.province(pumpS).garrison;
           const spare = fighters(garr) - 1;
-          if (spare >= 3 && garr.galley >= Math.ceil(spare / 2) &&
+          if (spare >= 2 && garr.galley >= Math.ceil(spare / 2) &&
               g.actAttack(f, pumpS, objective, spare, 0)) return true;
         }
-        // 5b. march idle interior garrisons toward the main source.
         const rally = pumpL ?? pumpS;
+        if (rally && recruitFighters(g, f, rally)) return true;
         if (rally && marchToward(g, f, rally)) return true;
-        // 5c. recruit fresh fighters at the source (grain-gated).
-        if (rally && recruitFighters(g, f, rally, true)) return true;
       }
 
       if (tryOpenRoute(g, f)) return true;
@@ -339,16 +399,11 @@ export function makeBeelineAgent(
       const from = bestBy(src.land, (pid) => fighters(g.province(pid).garrison))!;
       const garr = g.province(from).garrison;
       const n = fighters(garr);
-      const lastChance = g.actionsLeft === 1 && g.round >= launchBy && n >= 5;
-      if (n >= launchMin || lastChance) {
+      // camp must survive the <=2-combatant lift check + disease
+      if (n >= launchMin || (g.round >= launchBy && n >= 4)) {
         if (g.actAttack(f, from, objective, n, garr.siegeEngine)) return true;
       }
-      if (enginesOrdered < 2 && spendable(g, f) >= unitGoldCost(f, 'siegeEngine') &&
-          g.actRecruit(f, from, 'siegeEngine', 1)) {
-        enginesOrdered++;
-        return true;
-      }
-      if (recruitFighters(g, f, from, true)) return true;
+      if (recruitFighters(g, f, from)) return true;
       if (marchToward(g, f, from)) return true;
       if (tryOpenRoute(g, f)) return true;
       return false;
@@ -358,13 +413,15 @@ export function makeBeelineAgent(
       const garr = g.province(from).garrison;
       const n = fighters(garr);
       const enough = garr.galley >= Math.ceil(n / 2);
-      const lastChance = g.actionsLeft === 1 && g.round >= launchBy + 1 && n >= 5;
-      if ((n >= launchMin || lastChance) && enough) {
+      if ((n >= launchMin || (g.round >= launchBy + 1 && n >= 4)) && enough) {
         if (g.actAttack(f, from, objective, n, garr.siegeEngine)) return true;
       }
-      if (garr.galley < Math.ceil(Math.max(n, launchMin) / 2) &&
-          spendable(g, f) >= CONFIG.units.galley.goldCost && g.actRecruit(f, from, 'galley', 2)) return true;
-      if (n < launchMin && recruitFighters(g, f, from, true)) return true;
+      if (!enough || garr.galley < Math.ceil(Math.max(n, launchMin) / 2)) {
+        const st = statsFor(f, 'galley');
+        const fs = g.faction(f);
+        if (fs.gold >= st.goldCost && fs.timber >= st.timberCost && g.actRecruit(f, from, 'galley', 2)) return true;
+      }
+      if (n < launchMin && recruitFighters(g, f, from)) return true;
       if (marchToward(g, f, from)) return true;
       if (tryOpenRoute(g, f)) return true;
       return false;

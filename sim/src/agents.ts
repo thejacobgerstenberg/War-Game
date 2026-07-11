@@ -58,10 +58,15 @@ function targetValue(g: Game, f: FactionId, pid: string): number {
   return v;
 }
 
-/** The prestige leader (excluding f) if it is closing on the threshold. */
+/**
+ * The prestige leader (excluding f) if it is pulling ahead. Activation at
+ * 0.4x threshold (~r6-8) so anti-leader pressure exists while the race is
+ * still open — the old 0.6x gate only fired ~r11+, after threshold races
+ * were decided (runaway-leader hunter: provably inert).
+ */
 function prestigeLeader(g: Game, f: FactionId): FactionId | null {
   let leader: FactionId | null = null;
-  let best = 0.6 * CONFIG.prestige.victoryThreshold; // only worry when close
+  let best = 0.4 * CONFIG.prestige.victoryThreshold; // only worry when pulling ahead
   for (const other of ['byzantium', 'ottomans', 'venice', 'genoa', 'hungary'] as FactionId[]) {
     if (other === f || !g.faction(other).alive) continue;
     const t = g.faction(other).ledger.total;
@@ -97,6 +102,7 @@ interface AttackOpts {
  */
 function tryAttack(g: Game, f: FactionId, o: AttackOpts): boolean {
   const minStack = o.minStack ?? 4;
+  const leader = prestigeLeader(g, f); // anti-snowball: leader targets get relaxed odds gates
   let bestFrom = '';
   let bestTo = '';
   let bestScore = -Infinity;
@@ -130,18 +136,22 @@ function tryAttack(g: Game, f: FactionId, o: AttackOpts): boolean {
         if (garr.galley < Math.ceil(Math.min(land, n) / 2)) continue;
       }
       const walled = t.wallTier > 0 && combatants(t.garrison) > 0 && !(s && s.attacker === f);
+      // Leader pressure must change FEASIBILITY, not just target ordering:
+      // the +5 targetValue bonus alone was measured inert (0.2% decision
+      // changes) because leader provinces never passed the odds gates.
+      const gateScale = t.owner !== null && t.owner === leader ? 0.85 : 1;
       let feasible: boolean;
       if (s && s.attacker === f) {
         feasible = n >= 2; // reinforcing an existing siege is cheap
       } else if (walled) {
-        feasible = myPower >= o.walledRatio * (armyPower(t.garrison) + 1);
+        feasible = myPower >= o.walledRatio * gateScale * (armyPower(t.garrison) + 1);
         // Tier-5 fortresses (the Theodosian Walls) are a siege tar pit
         // without the Great Bombard: the canon §8.3 masonry cap limits an
         // ordinary train to 1 wall HP/round and the open sea feeds the city
         // (§8.2.3). Stay away unless we own the Bombard.
         if (t.wallTier >= 5 && g.wallBonusAt(r.to) > 0 && !g.faction(f).hasGreatBombard) feasible = false;
       } else {
-        feasible = myPower >= o.minRatio * g.defenseScore(r.to);
+        feasible = myPower >= o.minRatio * gateScale * g.defenseScore(r.to);
       }
       if (!feasible) continue;
       const score = targetValue(g, f, r.to) - (walled ? 2 : 0) - (r.sea ? 1 : 0);
@@ -182,8 +192,30 @@ function tryRelief(g: Game, f: FactionId): boolean {
       const n = combatants(garr) - garr.galley - 1; // leave a caretaker
       if (n >= 2 && g.actAttack(f, bestFrom, pid, n)) return true;
     }
+    // No field relief available: run troops in through an open harbor
+    // (canon §8.2.3 sea resupply — the Giustiniani ferry).
+    if (g.harborOpen(pid) && tryFerryIn(g, f, pid)) return true;
   }
   return false;
+}
+
+/** Ferry spare fighters by sea into an own besieged sea-resupplied city. */
+function tryFerryIn(g: Game, f: FactionId, pid: string): boolean {
+  let bestFrom = '';
+  let bestN = 0;
+  for (const r of g.reachableFrom(pid)) {
+    if (!r.sea) continue;
+    const q = g.province(r.to);
+    if (q.owner !== f || g.isBesieged(r.to)) continue;
+    const garr = q.garrison;
+    const spare = combatants(garr) - garr.galley - garrisonToLeave(g, f, r.to);
+    const n = Math.min(spare, 2 * garr.galley); // 1 galley escorts 2 land units
+    if (n > bestN) {
+      bestN = n;
+      bestFrom = r.to;
+    }
+  }
+  return bestN >= 2 && g.actMove(f, bestFrom, pid, bestN);
 }
 
 /** Recruit defenders into the most threatened own province. */
@@ -192,7 +224,7 @@ function tryDefend(g: Game, f: FactionId, cushion = 1.0): boolean {
   let worstPid = '';
   let worstGap = 0;
   for (const pid of g.ownedProvinces(f)) {
-    if (g.isBesieged(pid)) continue;
+    if (g.isBesieged(pid) && !g.harborOpen(pid)) continue; // sea-resupplied city: recruit inside
     const threat = g.threatAt(pid);
     if (threat <= 0) continue;
     const gap = threat * cushion - g.defenseScore(pid);

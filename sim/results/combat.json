@@ -11,8 +11,8 @@
     "composition": "professional vs professional (levyVsProfessional grid: pure levy attacker, open field)",
     "gridIndexing": "winProb[attackerSize-1][defenderSize-1]",
     "tacticCardSets": "attVeterans/attCondottieri/defLockedShields/bribedGatekeeperT3 encode RATIFIED canon §7.7 cards at final magnitudes",
-    "elapsedSec": 133.469,
-    "generatedAt": "2026-07-11T10:32:54.978Z"
+    "elapsedSec": 135.604,
+    "generatedAt": "2026-07-11T12:18:51.373Z"
   },
   "sets": {
     "openField": {

@@ -1,24 +1,31 @@
 /**
- * ADVERSARIAL runner: runaway-leader / snowball dynamics hunt.
+ * ADVERSARIAL runner: runaway-leader / snowball dynamics hunt vs the
+ * FINAL-canon retuned config (threshold 82, canon §13.1 prestige sources).
  *
- * Runs two arms over the SAME per-game seeds (base seed 111004, game i uses
- * seed 111004+i) with the adversarial copy of the shared policies
+ * Runs three arms over the SAME per-game seeds (base seed 311004, game i
+ * uses seed 311004+i) with the adversarial copy of the shared policies
  * (runaway_leader.ts):
  *
- *   arm "pressureOn"  — leader-pressure bonus active (verbatim shared logic)
- *   arm "pressureOff" — prestigeLeader() forced to null (the +5 anti-leader
- *                       targeting bonus never fires)
+ *   arm "pressureOn"     — leader-pressure bonus active (verbatim shared logic)
+ *   arm "pressureOff"    — prestigeLeader() forced to null (the +5 anti-leader
+ *                          targeting bonus never fires)
+ *   arm "pressureStrong" — candidate fix (activate at 0.4*threshold, +10)
  *
- * Per game we record per-round prestige (from GameResult.prestigeByRound)
- * and per-round key-city counts (instrumented agent wrapper). Metrics:
+ * Per game we record per-round prestige (GameResult.prestigeByRound), the
+ * winner, and per-round key-city counts (instrumented agent wrapper).
  *
+ * Metrics / exploit criteria:
  *   - P(round-r prestige leader wins) for r in {4,6,8,10,12}, among games
  *     that reach round r with a unique alive leader. EXPLOIT if r=8 > 70%.
  *   - P(win | faction holds >=2 key cities at end of round 6). EXPLOIT if
- *     > 75%. (Also reported for >=3 keys and with margin buckets at r8.)
- *   - Leader-pressure effectiveness: leader win rate / faction / policy
- *     deltas between arms plus a count of how often the +5 bonus actually
- *     fired in target scoring. EXPLOIT if the mechanism is a no-op.
+ *     > 75%. (Also >=3 keys and r8-margin buckets.)
+ *   - Leader-pressure effectiveness: scoring hits AND decision changes
+ *     (did the +5 ever change WHICH province gets attacked?), plus
+ *     same-seed paired winner diffs ON vs OFF. EXPLOIT if it is a no-op.
+ *   - Secret-objective reveal (+4, scored at GAME END only): among
+ *     cap-decided games, how often the apparent (pre-reveal) round-16
+ *     prestige leader LOSES after objectives are revealed. EXPLOIT if
+ *     flips > 30% of cap-decided games (kingmaker lottery).
  *
  * Usage: cd sim && npx tsx src/adversarial/run_runaway_leader.ts
  * Env: GAMES=<n> SEED=<n> SMOKE=1. Writes
@@ -45,7 +52,7 @@ const envInt = (name: string): number | undefined => {
   const n = Number.parseInt(v, 10);
   return Number.isFinite(n) ? n : undefined;
 };
-const BASE_SEED = envInt('SEED') ?? 111_004;
+const BASE_SEED = envInt('SEED') ?? 311_004;
 const N_GAMES = envInt('GAMES') ?? (isSmoke() ? 60 : 2000);
 const LEADER_ROUNDS = [4, 6, 8, 10, 12] as const;
 
@@ -71,23 +78,37 @@ interface PerGame {
   winner: FactionId;
   r8Leader: FactionId | null;
   hits: number; // leader +5 scoring evaluations during this game
+  changed: number; // attack decisions changed by the bonus during this game
+}
+
+interface ObjectiveStats {
+  capGames: number; // games decided at the round cap (objective reveal matters)
+  capUniqueLeader: number; // ...with a unique pre-reveal prestige leader
+  capPreRevealTies: number; // pre-reveal tie for the lead among survivors
+  flips: number; // unique pre-reveal leader did NOT win after reveal
+  flipWinnerGainedObjective: number; // in flips, the actual winner scored +4
+  gamesAnyObjectiveScored: number; // any faction completed its objective (cap games)
+  objectivesScoredTotal: number; // completed objectives across cap games
 }
 
 interface ArmResult {
   arm: string;
   games: number;
   scoringHits: number;
+  attackPicks: number;
+  decisionsChanged: number;
   gamesWithHits: number;
+  gamesWithChanged: number;
   perGame: PerGame[];
   victoryTypes: Record<VictoryType, number>;
   byFaction: Record<FactionId, Tally>;
   byPolicy: Record<PolicyName, Tally>;
   leader: LeaderStat[];
-  // margin-bucketed round-8 leader stats: [minMargin, uniqueLeaderGames, wins]
   r8MarginBuckets: Array<{ minMargin: number; games: number; wins: number }>;
   keys2AtR6: Tally; // faction-instances holding >=2 key cities at end of r6
   keys3AtR6: Tally;
   keys2AtR6AndLeaderR8: Tally; // both conditions on the same faction
+  objective: ObjectiveStats;
   medianRounds: number;
 }
 
@@ -106,9 +127,14 @@ function runArm(arm: string, pressure: PressureMode): ArmResult {
   const keys2AtR6 = tally();
   const keys3AtR6 = tally();
   const keys2AtR6AndLeaderR8 = tally();
+  const objective: ObjectiveStats = {
+    capGames: 0, capUniqueLeader: 0, capPreRevealTies: 0, flips: 0,
+    flipWinnerGainedObjective: 0, gamesAnyObjectiveScored: 0, objectivesScoredTotal: 0,
+  };
   const lengths: number[] = [];
   const perGame: PerGame[] = [];
   let gamesWithHits = 0;
+  let gamesWithChanged = 0;
 
   for (let i = 0; i < N_GAMES; i++) {
     // identical wiring to run/fullgame.ts, reseeded from BASE_SEED
@@ -124,10 +150,13 @@ function runArm(arm: string, pressure: PressureMode): ArmResult {
     });
 
     const hitsBefore = pressureStats.scoringHits;
+    const changedBefore = pressureStats.decisionsChanged;
     const game = new Game(BASE_SEED + i, agents, seatOrder);
     const res = game.run();
     const hits = pressureStats.scoringHits - hitsBefore;
+    const changed = pressureStats.decisionsChanged - changedBefore;
     if (hits > 0) gamesWithHits++;
+    if (changed > 0) gamesWithChanged++;
     lengths.push(res.rounds);
     victoryTypes[res.victoryType]++;
     for (const f of FACTION_IDS) {
@@ -180,7 +209,7 @@ function runArm(arm: string, pressure: PressureMode): ArmResult {
       }
     }
 
-    perGame.push({ winner: res.winner, r8Leader, hits });
+    perGame.push({ winner: res.winner, r8Leader, hits, changed });
 
     // ---- key cities at end of round 6
     const k6 = rec.keyCitiesAtRoundEnd[6];
@@ -200,6 +229,48 @@ function runArm(arm: string, pressure: PressureMode): ArmResult {
         }
       }
     }
+
+    // ---- secret-objective reveal flips (cap-decided games only).
+    // prestigeByRound holds PRE-reveal totals (cleanup pushes before run()
+    // reveals objectives); finalPrestige is POST-reveal. The delta per
+    // faction is exactly the objective bonus (0 or +4).
+    if (res.victoryType === 'cap') {
+      objective.capGames++;
+      const alive = FACTION_IDS.filter((f) => res.eliminated[f] === undefined);
+      let scoredAny = false;
+      for (const f of alive) {
+        const pre = res.prestigeByRound[f][res.prestigeByRound[f].length - 1];
+        const delta = res.finalPrestige[f] - pre;
+        if (delta > 0) {
+          scoredAny = true;
+          objective.objectivesScoredTotal += Math.round(delta / CONFIG.prestige.secretObjective);
+        }
+      }
+      if (scoredAny) objective.gamesAnyObjectiveScored++;
+      let best: FactionId | null = null;
+      let bestP = -Infinity;
+      let second = -Infinity;
+      for (const f of alive) {
+        const pre = res.prestigeByRound[f][res.prestigeByRound[f].length - 1];
+        if (pre > bestP) {
+          second = bestP;
+          bestP = pre;
+          best = f;
+        } else if (pre > second) {
+          second = pre;
+        }
+      }
+      if (best === null || bestP === second) {
+        objective.capPreRevealTies++;
+      } else {
+        objective.capUniqueLeader++;
+        if (best !== res.winner) {
+          objective.flips++;
+          const winPre = res.prestigeByRound[res.winner][res.prestigeByRound[res.winner].length - 1];
+          if (res.finalPrestige[res.winner] > winPre) objective.flipWinnerGainedObjective++;
+        }
+      }
+    }
   }
 
   lengths.sort((a, b) => a - b);
@@ -207,7 +278,10 @@ function runArm(arm: string, pressure: PressureMode): ArmResult {
     arm,
     games: N_GAMES,
     scoringHits: pressureStats.scoringHits,
+    attackPicks: pressureStats.attackPicks,
+    decisionsChanged: pressureStats.decisionsChanged,
     gamesWithHits,
+    gamesWithChanged,
     perGame,
     victoryTypes,
     byFaction,
@@ -217,6 +291,7 @@ function runArm(arm: string, pressure: PressureMode): ArmResult {
     keys2AtR6,
     keys3AtR6,
     keys2AtR6AndLeaderR8,
+    objective,
     medianRounds: lengths[Math.floor(lengths.length / 2)],
   };
 }
@@ -233,7 +308,8 @@ const elapsedMs = Math.round(performance.now() - t0);
 // ----------------------------------------------------------------- report
 
 function reportArm(a: ArmResult): void {
-  console.log(`\n=== arm ${a.arm} — ${a.games} games, leader +5 scoring hits: ${a.scoringHits} ===`);
+  console.log(`\n=== arm ${a.arm} — ${a.games} games; pressure: hits ${a.scoringHits}, ` +
+    `attackPicks ${a.attackPicks}, decisionsChanged ${a.decisionsChanged} (in ${a.gamesWithChanged} games) ===`);
   console.log(table(
     ['round', 'eligible', 'uniqueLeader', 'ties', 'P(leader wins)', 'avgMargin'],
     a.leader.map((l) => [
@@ -251,6 +327,14 @@ function reportArm(a: ArmResult): void {
     `keys>=3 @r6: ${a.keys3AtR6.wins}/${a.keys3AtR6.games} (${pct(rate(a.keys3AtR6))})  ` +
     `keys>=2 & r8-leader: ${a.keys2AtR6AndLeaderR8.wins}/${a.keys2AtR6AndLeaderR8.games} (${pct(rate(a.keys2AtR6AndLeaderR8))})`,
   );
+  const o = a.objective;
+  console.log(
+    `objective reveal (cap games ${o.capGames}): uniqueLeader ${o.capUniqueLeader}, preTies ${o.capPreRevealTies}, ` +
+    `FLIPS ${o.flips} (${o.capUniqueLeader > 0 ? pct(o.flips / o.capUniqueLeader) : '-'} of unique-leader cap games; ` +
+    `${o.capGames > 0 ? pct(o.flips / o.capGames) : '-'} of all cap games); ` +
+    `flips where winner scored +4: ${o.flipWinnerGainedObjective}; ` +
+    `objectives completed: ${o.objectivesScoredTotal} in ${o.gamesAnyObjectiveScored} games`,
+  );
   console.log(table(
     ['faction', 'winRate', '|', 'policy', 'winRate'],
     FACTION_IDS.map((f, i) => [
@@ -262,7 +346,8 @@ function reportArm(a: ArmResult): void {
   console.log(`victory types: threshold ${vt.threshold}, cap ${vt.cap}, suddenDeath ${vt.suddenDeath}, elimination ${vt.elimination}; median rounds ${a.medianRounds}`);
 }
 
-console.log(`runaway-leader adversarial run — base seed ${BASE_SEED}, ${N_GAMES} games/arm, ${elapsedMs}ms${isSmoke() ? ' (SMOKE)' : ''}`);
+console.log(`runaway-leader adversarial run — base seed ${BASE_SEED}, ${N_GAMES} games/arm, ` +
+  `threshold ${CONFIG.prestige.victoryThreshold}, ${elapsedMs}ms${isSmoke() ? ' (SMOKE)' : ''}`);
 reportArm(on);
 reportArm(off);
 reportArm(strong);
@@ -277,14 +362,14 @@ const p8strong = p8(strong);
 
 // ---- paired same-seed comparison: does the pressure toggle change anything?
 let winnerDiffers = 0;
-let winnerDiffersWithHits = 0;
+let winnerDiffersWithChanged = 0;
 const hitGames = { n: 0, onLeaderWins: 0, offLeaderWins: 0 };
 for (let i = 0; i < N_GAMES; i++) {
   const a = on.perGame[i];
   const b = off.perGame[i];
   if (a.winner !== b.winner) {
     winnerDiffers++;
-    if (a.hits > 0) winnerDiffersWithHits++;
+    if (a.changed > 0) winnerDiffersWithChanged++;
   }
   if (a.hits > 0 && a.r8Leader !== null) {
     hitGames.n++;
@@ -292,15 +377,27 @@ for (let i = 0; i < N_GAMES; i++) {
     if (b.winner === a.r8Leader) hitGames.offLeaderWins++;
   }
 }
+let winnerDiffersStrong = 0;
+for (let i = 0; i < N_GAMES; i++) {
+  if (strong.perGame[i].winner !== off.perGame[i].winner) winnerDiffersStrong++;
+}
+
+const flipShare = (a: ArmResult) =>
+  a.objective.capUniqueLeader > 0 ? a.objective.flips / a.objective.capUniqueLeader : 0;
 
 console.log('\n--- exploit checks ---');
 console.log(`P(r8 leader wins), pressure ON : ${pct(p8on)}  (threshold: exploit if >70%)`);
 console.log(`P(win | >=2 keys @r6), ON      : ${pct(rate(on.keys2AtR6))}  (exploit if >75%)`);
-console.log(`leader-pressure delta on P(r8 leader wins): ${pct(p8on - p8off)} (ON - OFF); scoring hits ON=${on.scoringHits}, OFF=${off.scoringHits}`);
-console.log(`games where +5 bonus ever fired (ON): ${on.gamesWithHits}/${N_GAMES} (${pct(on.gamesWithHits / N_GAMES)})`);
-console.log(`same-seed winner differs ON vs OFF: ${winnerDiffers}/${N_GAMES} (${pct(winnerDiffers / N_GAMES)}), of which in hit-games: ${winnerDiffersWithHits}`);
+console.log(`leader-pressure delta on P(r8 leader wins): ${pct(p8on - p8off)} (ON - OFF)`);
+console.log(`pressure decision changes ON: ${on.decisionsChanged}/${on.attackPicks} attack picks ` +
+  `(${pct(on.decisionsChanged / Math.max(1, on.attackPicks))}), in ${on.gamesWithChanged}/${N_GAMES} games`);
+console.log(`same-seed winner differs ON vs OFF: ${winnerDiffers}/${N_GAMES} (${pct(winnerDiffers / N_GAMES)}), of which with changed decisions: ${winnerDiffersWithChanged}`);
+console.log(`same-seed winner differs STRONG vs OFF: ${winnerDiffersStrong}/${N_GAMES} (${pct(winnerDiffersStrong / N_GAMES)})`);
 console.log(`within ON-hit games (n=${hitGames.n}): r8 leader wins ON ${pct(hitGames.onLeaderWins / Math.max(1, hitGames.n))} vs OFF ${pct(hitGames.offLeaderWins / Math.max(1, hitGames.n))}`);
-console.log(`candidate fix arm 'strong' (0.4*threshold, +10): P(r8 leader wins) ${pct(p8strong)} vs ON ${pct(p8on)}; hits ${strong.scoringHits} in ${strong.gamesWithHits} games`);
+console.log(`candidate fix arm 'strong' (0.4*threshold, +10): P(r8 leader wins) ${pct(p8strong)} vs ON ${pct(p8on)}; ` +
+  `decision changes ${strong.decisionsChanged} in ${strong.gamesWithChanged} games`);
+console.log(`objective-reveal flips (ON): ${on.objective.flips}/${on.objective.capUniqueLeader} unique-leader cap games ` +
+  `(${pct(flipShare(on))})  (exploit if >30%)`);
 
 writeResults('adversarial_runaway_leader', {
   config: {
@@ -309,10 +406,12 @@ writeResults('adversarial_runaway_leader', {
     smoke: isSmoke(),
     elapsedMs,
     victoryThreshold: CONFIG.prestige.victoryThreshold,
+    secretObjective: CONFIG.prestige.secretObjective,
     exploitCriteria: {
       r8LeaderWins: '>0.70',
       twoKeysByR6Wins: '>0.75',
-      leaderPressureNoOp: 'ON vs OFF delta ~0 and/or scoringHits ~0',
+      leaderPressureNoOp: 'ON vs OFF delta ~0 and/or decisionsChanged ~0',
+      objectiveRevealFlips: '>0.30 of cap-decided games',
     },
   },
   arms: {
@@ -323,18 +422,26 @@ writeResults('adversarial_runaway_leader', {
   paired: {
     winnerDiffers,
     winnerDiffersRate: winnerDiffers / N_GAMES,
-    winnerDiffersWithHits,
+    winnerDiffersWithChanged,
+    winnerDiffersStrongVsOff: winnerDiffersStrong,
     gamesWithHitsOn: on.gamesWithHits,
+    gamesWithChangedOn: on.gamesWithChanged,
     hitGames,
   },
   summary: {
     p_r8_leader_wins_on: p8on,
     p_r8_leader_wins_off: p8off,
+    p_r8_leader_wins_strong: p8strong,
     p_win_given_2keys_r6_on: rate(on.keys2AtR6),
     p_win_given_2keys_r6_off: rate(off.keys2AtR6),
     p_win_given_3keys_r6_on: rate(on.keys3AtR6),
-    p_r8_leader_wins_strong: p8strong,
-    leaderPressureScoringHits: { on: on.scoringHits, off: off.scoringHits, strong: strong.scoringHits },
+    objectiveFlipShare_on: flipShare(on),
+    objectiveFlipShare_off: flipShare(off),
+    leaderPressure: {
+      scoringHits: { on: on.scoringHits, off: off.scoringHits, strong: strong.scoringHits },
+      decisionsChanged: { on: on.decisionsChanged, off: off.decisionsChanged, strong: strong.decisionsChanged },
+      attackPicks: { on: on.attackPicks, off: off.attackPicks, strong: strong.attackPicks },
+    },
   },
 });
 console.log('\nResults written to sim/results/adversarial_runaway_leader.json');

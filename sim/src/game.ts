@@ -286,6 +286,13 @@ export class Game {
   readonly factions: Record<FactionId, FactionState>;
   readonly sieges = new Map<string, Siege>();
   readonly seatOrder: FactionId[];
+  /**
+   * Acting order for the CURRENT round. Round 1 = seatOrder; from then on
+   * it is re-sorted at every Cleanup so the lowest-prestige power acts
+   * first (canon §13.4 catch-up lever; tiebreak: fewer provinces, then
+   * previous order).
+   */
+  turnOrder: FactionId[];
 
   actionsLeft = 0;
   battles = 0;
@@ -316,6 +323,7 @@ export class Game {
     this.seed = seed;
     this.agents = agents;
     this.seatOrder = seatOrder;
+    this.turnOrder = [...seatOrder];
     const root = create(seed);
     this.rngEvent = root.fork(1);
     this.rngCombat = root.fork(2);
@@ -395,14 +403,14 @@ export class Game {
     for (let r = 1; r <= maxRounds; r++) {
       this.round = r;
       this.drawEvent();
-      for (const f of this.seatOrder) {
+      for (const f of this.turnOrder) {
         if (this.factions[f].alive) {
           this.collectIncome(f);
           this.payUpkeep(f);
           this.drawTacticCards(f); // canon §7.7: 1 draw in the Income window
         }
       }
-      for (const f of this.seatOrder) {
+      for (const f of this.turnOrder) {
         if (!this.factions[f].alive) continue;
         this.currentFaction = f;
         this.actionsLeft = CONFIG.game.actionsPerTurn;
@@ -428,12 +436,26 @@ export class Game {
           this.recomputeTotal(fs);
         }
       }
-      // round cap: highest prestige among survivors wins
+      // round cap: highest prestige among survivors wins (canon §13.3
+      // tiebreak: most key cities, then most gold)
+      const keyCount = (f: FactionId): number => {
+        let n = 0;
+        for (const pid of KEY_IDS) if (this.provinces.get(pid)!.owner === f) n++;
+        return n;
+      };
       let best: FactionId | null = null;
       for (const f of FACTION_IDS) {
         const fs = this.factions[f];
         if (!fs.alive) continue;
-        if (best === null || fs.ledger.total > this.factions[best].ledger.total) best = f;
+        if (
+          best === null ||
+          fs.ledger.total > this.factions[best].ledger.total ||
+          (fs.ledger.total === this.factions[best].ledger.total &&
+            (keyCount(f) > keyCount(best) ||
+              (keyCount(f) === keyCount(best) && fs.gold > this.factions[best].gold)))
+        ) {
+          best = f;
+        }
       }
       this.winner = best ?? FACTION_IDS[0];
       this.victoryType = 'cap';
@@ -519,11 +541,19 @@ export class Game {
         // Guardrail: an event never fully empties a garrison (leaves >= 1
         // combatant) — random plague opening a walled city's gates for a
         // walk-in capture is an artifact of the one-card event abstraction.
+        // A walled CAPITAL (or any besieged walled city) keeps >= 3
+        // combatants: a round-1 plague must not convert into a round-2
+        // escalade + sudden death at Constantinople (cple-beeline fix
+        // round; same abstraction-artifact class).
         const pid = this.provinces.get(CAPITALS[f])?.owner === f ? CAPITALS[f] : this.largestGarrison(f);
         if (!pid) continue;
-        const g = this.provinces.get(pid)!.garrison;
+        const prov = this.provinces.get(pid)!;
+        const g = prov.garrison;
         if (mag > 0) g.levy += mag;
-        else removeCasualties(g, Math.min(-mag, Math.max(0, combatants(g) - 1)));
+        else {
+          const floor = prov.wallTier > 0 && (this.sieges.has(pid) || pid === CAPITALS[f]) ? 3 : 1;
+          removeCasualties(g, Math.min(-mag, Math.max(0, combatants(g) - floor)));
+        }
       }
     }
   }
@@ -747,13 +777,22 @@ export class Game {
    * Armies with a desertion floor: peacetime insolvency (unpaid crews,
    * grain shortfall) never removes the LAST combatant of a garrison in a
    * walled province — a skeleton militia mans the walls, so an insolvent
-   * power cannot lose a fortress to a walk-in. Siege starvation
-   * (resolveSieges) is unaffected and can still empty a garrison.
+   * power cannot lose a fortress to a walk-in. A BESIEGED walled garrison
+   * is exempt from insolvency desertion entirely (floor = its full size):
+   * canon §8.2.3 makes the SIEGE's stores/hunger clock the sole source of
+   * garrison hunger — a sea-resupplied city is fed by the supply ships,
+   * and a blockaded one already starves 1 unit/round. Without this, the
+   * owner's treasury shortfall (worsened by the siege freezing the city's
+   * own income) deserted the garrison out from behind intact Theodosian
+   * walls — a back-door starvation the blockade rules say cannot happen
+   * (cple-beeline fix round). Siege starvation (resolveSieges) unaffected.
    */
   private armiesWithDesertionFloor(f: FactionId): Array<{ army: Army; floor: number }> {
     const out: Array<{ army: Army; floor: number }> = [];
     for (const p of this.provinces.values()) {
-      if (p.owner === f) out.push({ army: p.garrison, floor: p.wallTier > 0 ? 1 : 0 });
+      if (p.owner !== f) continue;
+      const besiegedWalled = p.wallTier > 0 && this.sieges.has(p.id);
+      out.push({ army: p.garrison, floor: besiegedWalled ? combatants(p.garrison) : p.wallTier > 0 ? 1 : 0 });
     }
     for (const s of this.sieges.values()) if (s.attacker === f) out.push({ army: s.army, floor: 0 });
     return out;
@@ -922,10 +961,26 @@ export class Game {
     g.galley -= plan.galley;
   }
 
+  /**
+   * Harbor reinforcement (canon §8.2.3 sea-resupply corollary): while a
+   * besieged COASTAL walled city is NOT under full naval blockade, supply
+   * ships slip in — its owner may still recruit there and ferry troops in
+   * through the harbor (the historical Giustiniani relief). Only a full
+   * blockade (or a landlocked siege) seals the city.
+   */
+  harborOpen(pid: string): boolean {
+    const s = this.sieges.get(pid);
+    if (!s) return false;
+    if (!CONFIG.siege.seaResupplyEnabled) return false;
+    if (PROVINCE_BY_ID.get(pid)!.coasts.length === 0) return false;
+    return !this.isSeaBlockaded(pid, s.attacker);
+  }
+
   actRecruit(f: FactionId, pid: string, unit: UnitType, count: number): boolean {
     if (!this.canAct(f)) return false;
     const p = this.provinces.get(pid);
-    if (!p || p.owner !== f || this.sieges.has(pid)) return false;
+    if (!p || p.owner !== f) return false;
+    if (this.sieges.has(pid) && !this.harborOpen(pid)) return false;
     if (unit === 'galley' && !PROVINCE_BY_ID.get(pid)!.port) return false;
     const fs = this.factions[f];
     let cap = CONFIG.recruit.perAction[unit];
@@ -948,15 +1003,20 @@ export class Game {
     return true;
   }
 
-  /** Move within friendly territory (immediate). */
+  /**
+   * Move within friendly territory (immediate). A besieged own coastal
+   * city with an OPEN harbor (see harborOpen) may be reinforced by a SEA
+   * move — troops ferry in through the blockade gap and join the garrison.
+   */
   actMove(f: FactionId, from: string, to: string, count: number, withEngines = false): boolean {
     if (!this.canAct(f)) return false;
     const pf = this.provinces.get(from);
     const pt = this.provinces.get(to);
     if (!pf || !pt || pf.owner !== f || pt.owner !== f) return false;
-    if (this.sieges.has(from) || this.sieges.has(to)) return false;
+    if (this.sieges.has(from)) return false;
     const reach = this.reachEntry(from, to);
     if (!reach) return false;
+    if (this.sieges.has(to) && !(reach.sea && this.harborOpen(to))) return false;
     const plan = this.planForce(pf.garrison, count, withEngines ? pf.garrison.siegeEngine : 0, reach.sea);
     if (!plan) return false;
     this.extract(pf.garrison, plan);
@@ -1254,10 +1314,22 @@ export class Game {
   }
 
   /**
-   * R3 blockade test: the besieged coastal city is blockaded only if the
-   * attacker has strict galley superiority over the defender in EVERY
-   * adjacent sea zone. The defender's own harbor fleet counts (it holds the
-   * boom); landlocked cities are always fully invested.
+   * Blockade test, canon §8.2.3 RAW: a zone is enemy-controlled only while
+   * an enemy war fleet is PRESENT and UNCONTESTED by a friendly war fleet.
+   * The besieged coastal city is blockaded only if EVERY adjacent sea zone
+   * is enemy-controlled; a single friendly galley (the harbor fleet holds
+   * the boom, or a squadron in a friendly port on the zone) contests the
+   * zone and keeps the supply lane open. Landlocked cities are always
+   * fully invested.
+   *
+   * The pre-fix sim used strict galley SUPERIORITY per zone — a gap-fill
+   * that let 2 siege-camp galleys "defeat" a defending harbor galley
+   * without the naval battle canon §7.6 requires, handing navy-poor land
+   * powers a full blockade of Constantinople from the camp itself (see
+   * TUNING_LOG fix round). The sim has no fleet-vs-fleet battles, so the
+   * canon-RAW contest rule is the consistent reading: to starve a defended
+   * harbor you must first destroy its fleet, which the kernel only allows
+   * through assault/starvation casualties (galleys die last, §4.4 order).
    */
   private isSeaBlockaded(pid: string, attacker: FactionId): boolean {
     const prov = PROVINCE_BY_ID.get(pid)!;
@@ -1266,7 +1338,7 @@ export class Game {
     for (const z of prov.coasts) {
       const hostile = this.galleysNearZone(attacker, z);
       const friendly = owner ? this.galleysNearZone(owner, z) : 0;
-      if (hostile <= friendly) return false; // zone not enemy-controlled
+      if (hostile === 0 || friendly > 0) return false; // zone not enemy-controlled (canon: contested)
     }
     return true;
   }
@@ -1401,13 +1473,25 @@ export class Game {
     l.total = l.capitals + l.keyCities + l.tradeRoutes + l.greatWorks + l.conquests + l.warsWon + l.objectives + l.events;
   }
 
+  /**
+   * Open routes with their CURRENT income (canon §5.2): a SEVERED route
+   * (neither endpoint owned) yields nothing and is dropped; a BLOCKADED
+   * route (at-war enemy war fleet on a route zone) stays open at
+   * income x trade.blockadeIncomeMult (0.5). Monopoly prestige (§13.1)
+   * follows endpoint ownership, not the blockade.
+   */
   openRoutesOf(f: FactionId): typeof TRADE_ROUTES {
     const fs = this.factions[f];
+    const mult = CONFIG.trade.blockadeIncomeMult;
     const out: typeof TRADE_ROUTES = [];
     for (const rid of fs.routes) {
       const r = TRADE_ROUTES.find((x) => x.id === rid)!;
-      if (this.provinces.get(r.a)!.owner !== f && this.provinces.get(r.b)!.owner !== f) continue;
-      if (CONFIG.trade.blockadeCancels && this.routeBlockaded(f, r.seaZones)) continue;
+      if (this.provinces.get(r.a)!.owner !== f && this.provinces.get(r.b)!.owner !== f) continue; // severed: 0
+      if (mult !== 1 && this.routeBlockaded(f, r.seaZones)) {
+        if (mult <= 0) continue; // legacy cancel-outright behavior
+        out.push({ ...r, income: r.income * mult });
+        continue;
+      }
       out.push(r);
     }
     return out;
@@ -1489,6 +1573,18 @@ export class Game {
     }
 
     for (const f of FACTION_IDS) this.prestigeByRound[f].push(this.factions[f].ledger.total);
+
+    // canon §13.4: re-sort turn order so the lowest-prestige power acts
+    // first next round (initiative to the underdog; tiebreak: fewer
+    // provinces, then the current order — Array.sort is stable).
+    const provCount = {} as Record<FactionId, number>;
+    for (const f of FACTION_IDS) provCount[f] = 0;
+    for (const p of this.provinces.values()) if (p.owner) provCount[p.owner]++;
+    this.turnOrder = [...this.turnOrder].sort(
+      (a, b) =>
+        this.factions[a].ledger.total - this.factions[b].ledger.total ||
+        provCount[a] - provCount[b],
+    );
   }
 
   private checkVictory(): boolean {

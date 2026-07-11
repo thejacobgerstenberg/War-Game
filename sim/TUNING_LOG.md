@@ -725,3 +725,117 @@ measurement artifacts in the economy harness, not rules numbers.
 - economy.ts / run/economy.ts: rushCredibleR5 measurement fix as above
   (harness metric only; mechanics untouched).
 - T1-T6 ALL PASS on the final full-scale run.
+
+## Adversarial fix round (2026-07-11, fixer) — exploit suite closed out vs final canon config
+
+Input: six hunter verdicts vs the retuned final-canon config (threshold 82).
+All fixes below are canon-compliance corrections (sim diverged from 2b42386
+text), guardrail extensions of the existing abstraction-artifact class, or
+owned CONFIG/map numbers. RATIFIED tactic-card magnitudes untouched.
+
+### Engine fixes (canon compliance — game.ts)
+1. **Trade blockade = canon §5.2 halving** (economy-exploit, HIGH). Replaced
+   `trade.blockadeCancels` with `trade.blockadeIncomeMult: 0.5`: a blockaded
+   route yields ×0.5; only a severed route (endpoint lost) yields 0.
+   (Hunter had validated exactly this via monkey-patch.) Post-fix rerun of
+   the full griefing suite (1000 games/arm, paired seeds 311905000+):
+   trader-Genoa under the dedicated Ottoman griefer 36.6% vs 51.3% control
+   (was 0.1%); blockade-mechanism attribution shrinks to ~0.5pp (36.6% vs
+   37.1% with the mechanism off — the rest is the war pokes themselves);
+   passive-picket griefer now wins 0.0% (total self-sacrifice, was
+   self-profitable +25pt). Levy-flood: flood never beats the faction's best
+   shipping policy (max delta +0.1pp). Omen swing 0.20-0.35x mean income.
+   EXPLOIT DEAD.
+2. **Siege blockade = canon §8.2.3 RAW contest** (cple-beeline, HIGH). A
+   zone is enemy-controlled only if an enemy war fleet is PRESENT and
+   UNCONTESTED by any friendly war fleet; the old strict-superiority
+   gap-fill let 2 siege-camp galleys blockade Constantinople over the 1
+   Byzantine harbor galley from the camp itself (telemetry: 54-86% blockade
+   coverage for a LAND-power beeline; Byzantium can never rebuild galleys —
+   zero timber income).
+3. **Harbor reinforcement (§8.2.3 corollary, new `Game.harborOpen`)**:
+   while a besieged coastal walled city is not fully blockaded its owner
+   may recruit inside and ferry troops in by sea move (Giustiniani relief);
+   agents + byz_guard now use it (recruit-inside, tryFerryIn).
+4. **Besieged walled garrisons exempt from insolvency desertion**: treasury
+   grain shortfalls were deserting the Constantinople garrison out from
+   behind intact T5 walls (trace: 3 prof -> 1 over rounds 3-5) — a back-door
+   starvation canon §8.2.3 forbids for a sea-resupplied port. Siege hunger
+   clock unaffected.
+5. **Omen unit-loss floor 3** for walled capitals / besieged walled cities
+   (was 1): a round-1 plague no longer converts to a round-2 escalade + SD.
+6. **Canon §13.4 turn order** (runaway-leader): turn order re-sorts each
+   Cleanup, lowest prestige first (tiebreak fewer provinces). Previously a
+   documented divergence (fixed rotation).
+7. **Canon §13.3 cap tiebreak**: round-16 winner ties break by most key
+   cities, then most gold (was first-in-enum-order).
+
+### CPLE-BEELINE result (GAMES=1000 SEED=311002, all 8 scenarios)
+Progression at solo_ottoman: 78.1% SD (filed) -> 85.6% (harbor fix alone —
+camp-galley blockade was the real driver) -> 38.2% (canon-RAW contest) ->
+22.6% final (desertion exemption + omen floor). Final grid: solo_ottoman
+22.6% SD / 15.0% <=r8; solo_genoa 18.8%/11.4%; solo_venice 6.5%/1.3%;
+duo 23.1%/15.4%; guard_ottoman 23.8%/16.6%; guard_genoa 17.5%/10.9%.
+**noTreason counterfactuals: 0.0% SD everywhere** (solo AND guard; were
+74.9%/28.9%). Every remaining SD win holds treason-at-the-gate
+(sdWithTreasonHeld == SD count). The residual breach of the <=20%/<=10%
+bars is therefore 100% the RATIFIED rare (4g, 2+ siege rounds, 1 copy,
+auto-buys any garrisoned city) => NOT FIXABLE with owned numbers; errata
+options recorded in RULES_MODEL NEEDS-RULES-CHANGE #1. Constantinople's
+authored start garrison was left at the canon FACTIONS.md sheet (4 units) —
+with the four fixes above it no longer needs inflating.
+
+### Rebalance after the safety fixes (T1 drifted: ottomans 10.0%, genoa 30.2%)
+- prestige.victoryThreshold 82 -> 84 (trims the trader threshold ceiling;
+  82-vs-84 A/B: 84 better on T1 margins AND r8-leader predictivity).
+- factions.ottomans.cityCapturePrestige 1 -> 2 (Ghaza; the §8.2.3 fixes
+  slowed the Ottoman siege game; within the §14 asymmetry budget).
+- map.ts pera gold 3 -> 2 (Genoa ceiling trim, same class as chios/caffa).
+- map.ts bursa gold 3 -> 4 (Ottoman floor re-lift, silk-road terminus).
+
+### Runaway-leader (5000-game arms were rerun at 2000/arm, seed 311004)
+Canon §13.4 modeled (fix 6) + agents' leader pressure converted from an
+ordering-only +5 bonus (proven inert: 0.2-0.3% decision changes) to a
+FEASIBILITY relaxation (odds gates x0.85 vs leader targets, activation
+0.4x threshold; adversarial copy re-synced). Engagement is now real
+(winner flips 1.7% ON-vs-OFF, 2.8% STRONG) but r8-leader predictivity
+stays 72.8% (line 70%; STRONG 0.75x probe 72.1%; keys@r6 19.2% vs 75%
+line; objective flips 0.0%). Residual is passive-prestige lead stickiness
+— same design root as turtle-dominance; recorded as NEEDS-RULES-CHANGE #4.
+
+### Turtle-dominance / faction-floor (reruns at final config)
+Confirmed NOT fixable with owned numbers, as the hunter's fix-check
+already showed (monopoly scalar cuts break T1/T3; the knobs are
+canon-locked §13.1 values). Final-config numbers: monopolyMax Venice
+66.2% / Genoa 61.7%; shipping-trader Genoa-seat 60-64%; all-turtle
+cap-margin<2 46.8-56.1%; threshold 84 did not clear the genoa+trader
+verification cell (60.3%). Dead faction+policy cells persist (venice/
+genoa rusher+opportunist 0-1%, ottomans trader/turtler 0-3% — naval/land
+archetype-agent limitation, filed for faction-aware agents). Recorded as
+NEEDS-RULES-CHANGE #2/#3 + harness follow-up. No T1-T6 headline touched.
+
+### Merc-rush (rerun, seeds 311001+)
+No exploit thresholds crossed at the final config; cycle-vs-honest edge
+decays to z=1.81 (was 3.63) — documented wart (NEEDS-RULES-CHANGE #7).
+
+### Final verification (all at the shipped CONFIG)
+- FULLGAME 1000 @ seed 14530000: byz 19.7 / ott 14.4 / ven 14.5 / gen 27.8
+  / hun 23.6; policies 13.1/26.0/20.2/20.7; median 16; SD 8.2% (all r16).
+- FRESH-SEED CONFIRMATION, GAMES=3000 SEED=24681357: byz 18.9 / ott 13.9 /
+  ven 13.0 / gen 27.8 / hun 26.5 — T1 PASS; rusher 12.5 / trader 25.7 /
+  turtler 19.2 / opportunist 22.6 — T2 PASS; median 16, 0.27% end <r11,
+  99.03% end r12-16, threshold-decided 44.2% — T3 PASS; sudden death 8.0%,
+  ALL 240 completions at r16 — T4 PASS; eliminations 0.
+- SIEGE module (20k iters/cell): T5a worst 0.31% (<2%), T5b 0% (<10%),
+  T5c minCap 99.9% / minMedian 7 (>=6), T5d worst 94.5% (>50%) — T5 PASS.
+- ECONOMY module: 15/15 solvency PASS, rushCredibleR5 5/5 PASS (strike
+  byz 9 / ott 13.8 / ven 11.6 / gen 11 / hun 8.7) — T6 PASS. (Pre-existing
+  non-T6 reds — ottomans/byz balancedMid, genoa turtleStrong — unchanged.)
+- combat MC: 0 monotonicity/ordering violations.
+
+### Config deltas this round
+rules.ts: trade.blockadeCancels -> blockadeIncomeMult 0.5;
+victoryThreshold 82 -> 84; ottomans.cityCapturePrestige 1 -> 2.
+map.ts: pera gold 3 -> 2; bursa gold 3 -> 4.
+game.ts/agents.ts/byz_guard.ts/runaway_leader.ts: engine + agent changes
+enumerated above. All results/*.json regenerated at this config.

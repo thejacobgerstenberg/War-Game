@@ -7,7 +7,7 @@
  *     shipping 'turtler' policy. Question: does anyone actually win, or do
  *     these games limp to the round-16 cap in a near-tie (winner margin
  *     < 2 prestige over the best surviving rival)?
- *     Seed = 111003 + i, seat order rotates i%5.
+ *     Seed = 311003 + i, seat order rotates i%5.
  *
  *  B. lone turtler vs 4 aggressive seats (default 250 games x 5 factions
  *     per arm): the turtler rotates through every faction; the other four
@@ -16,16 +16,20 @@
  *       arm 'std' : rusher/trader/opportunist + a rotating duplicate
  *     shuffled per game with fork(97). Question: does the lone turtle
  *     free-ride on the wars around it to > 40% overall?
- *     Seed = 111003 + 100000*(factionIdx+1) + i (same seeds in both arms).
+ *     Seed = 311003 + 100000*(factionIdx+1) + i (same seeds in both arms).
  *
  *  C. trade-max turtle as Venice / as Genoa (default 600 games per faction
- *     per arm): the adversarial agent from turtle_dominance.ts stacks
- *     routes + great works and never attacks. Control arms run the shipping
- *     'turtler' and the shipping 'trader' in the same seat on identical
- *     seeds. The other four seats run the four standard policies (one each,
- *     fork(97) shuffle). Question: does passive trade-prestige stacking
- *     exceed 50%?
- *     Seed = 111003 + 600000 + i (venice), 111003 + 700000 + i (genoa).
+ *     per arm): the adversarial agents from turtle_dominance.ts.
+ *       arm 'tradeMax'    : stacks routes + great works, never attacks;
+ *       arm 'monopolyMax' : same, plus snipes NEUTRAL route endpoints to
+ *                           convert open routes into +2/round monopolies
+ *                           (final-canon prestige economy: route prestige 0,
+ *                           monopoly 2) and neutral objective provinces.
+ *     Control arms run the shipping 'turtler' and the shipping 'trader' in
+ *     the same seat on identical seeds. The other four seats run the four
+ *     standard policies (one each, fork(97) shuffle). Question: does
+ *     passive trade-prestige stacking exceed 50%?
+ *     Seed = 311003 + 600000 + i (venice), 311003 + 700000 + i (genoa).
  *
  * EXPLOIT THRESHOLDS (hunt brief):
  *   - pure turtle > 40% overall in experiment B;
@@ -43,9 +47,9 @@ import { create } from '../rng';
 import { Game, POLICY_NAMES, type Agent, type GameResult, type PolicyName, type VictoryType } from '../game';
 import { makeAgent } from '../agents';
 import { isSmoke, pct, table, writeResults } from '../util';
-import { makeTradeMaxTurtleAgent } from './turtle_dominance';
+import { makeMonopolyMaxAgent, makeTradeMaxTurtleAgent } from './turtle_dominance';
 
-const BASE_SEED = 111003;
+const BASE_SEED = 311003;
 const envInt = (name: string): number | undefined => {
   const v = process.env[name];
   if (v === undefined || v === '') return undefined;
@@ -165,12 +169,13 @@ for (const arm of B_ARMS) {
 
 // ============================== C. trade-max turtle as Venice and as Genoa
 
-type CArm = 'tradeMax' | 'ctrlTurtler' | 'ctrlTrader';
-const C_ARMS: CArm[] = ['tradeMax', 'ctrlTurtler', 'ctrlTrader'];
+type CArm = 'tradeMax' | 'monopolyMax' | 'ctrlTurtler' | 'ctrlTrader';
+const C_ARMS: CArm[] = ['tradeMax', 'monopolyMax', 'ctrlTurtler', 'ctrlTrader'];
 const C_FACTIONS: FactionId[] = ['venice', 'genoa'];
 
 function cAgent(arm: CArm): Agent {
   if (arm === 'tradeMax') return makeTradeMaxTurtleAgent();
+  if (arm === 'monopolyMax') return makeMonopolyMaxAgent();
   return makeAgent(arm === 'ctrlTurtler' ? 'turtler' : 'trader');
 }
 
@@ -182,6 +187,10 @@ interface CStats {
   prestigeSum: number;
   greatWorkPrestigeSum: number;
   tradePrestigeSum: number;
+  keyCityPrestigeSum: number;
+  capitalPrestigeSum: number;
+  conquestPrestigeSum: number;
+  objectivePrestigeSum: number;
   roundsSum: number;
 }
 const cStats: Record<CArm, Record<FactionId, CStats>> = Object.fromEntries(
@@ -190,7 +199,11 @@ const cStats: Record<CArm, Record<FactionId, CStats>> = Object.fromEntries(
     Object.fromEntries(
       C_FACTIONS.map((f) => [
         f,
-        { games: 0, wins: 0, winTypes: newVT(), eliminated: 0, prestigeSum: 0, greatWorkPrestigeSum: 0, tradePrestigeSum: 0, roundsSum: 0 },
+        {
+          games: 0, wins: 0, winTypes: newVT(), eliminated: 0, prestigeSum: 0,
+          greatWorkPrestigeSum: 0, tradePrestigeSum: 0, keyCityPrestigeSum: 0,
+          capitalPrestigeSum: 0, conquestPrestigeSum: 0, objectivePrestigeSum: 0, roundsSum: 0,
+        },
       ]),
     ),
   ]),
@@ -215,8 +228,13 @@ for (const arm of C_ARMS) {
       s.games++;
       s.roundsSum += res.rounds;
       s.prestigeSum += res.finalPrestige[advFaction];
-      s.greatWorkPrestigeSum += game.faction(advFaction).ledger.greatWorks;
-      s.tradePrestigeSum += game.faction(advFaction).ledger.tradeRoutes;
+      const led = game.faction(advFaction).ledger;
+      s.greatWorkPrestigeSum += led.greatWorks;
+      s.tradePrestigeSum += led.tradeRoutes;
+      s.keyCityPrestigeSum += led.keyCities;
+      s.capitalPrestigeSum += led.capitals;
+      s.conquestPrestigeSum += led.conquests;
+      s.objectivePrestigeSum += led.objectives;
       if (res.winner === advFaction) {
         s.wins++;
         s.winTypes[res.victoryType]++;
@@ -255,10 +273,12 @@ for (const arm of B_ARMS) {
   const o = bOverall(arm);
   if (o.rate > 0.4) exploitFlags.push(`lone turtler (${arm} field) overall ${pct(o.rate)} > 40%`);
 }
-for (const f of C_FACTIONS) {
-  const s = cStats.tradeMax[f];
-  const r = s.wins / s.games;
-  if (r > 0.5) exploitFlags.push(`trade-max turtle as ${f}: ${pct(r)} > 50%`);
+for (const arm of ['tradeMax', 'monopolyMax'] as const) {
+  for (const f of C_FACTIONS) {
+    const s = cStats[arm][f];
+    const r = s.wins / s.games;
+    if (r > 0.5) exploitFlags.push(`${arm} turtle as ${f}: ${pct(r)} > 50%`);
+  }
 }
 
 const results = {
@@ -271,9 +291,9 @@ const results = {
     victoryThreshold: CONFIG.prestige.victoryThreshold,
     elapsedMs: Math.round(elapsedMs),
     seedScheme: {
-      A: 'seed = 111003 + i',
-      B: 'seed = 111003 + 100000*(factionIdx+1) + i, same seeds in both arms',
-      C: 'seed = 111003 + 600000 + i (venice) / + 700000 + i (genoa), same seeds in all arms',
+      A: 'seed = 311003 + i',
+      B: 'seed = 311003 + 100000*(factionIdx+1) + i, same seeds in both arms',
+      C: 'seed = 311003 + 600000 + i (venice) / + 700000 + i (genoa), same seeds in all arms',
     },
   },
   allTurtle: {
@@ -337,6 +357,10 @@ const results = {
               avgFinalPrestige: s.prestigeSum / s.games,
               avgGreatWorkPrestige: s.greatWorkPrestigeSum / s.games,
               avgTradeRoutePrestige: s.tradePrestigeSum / s.games,
+              avgKeyCityPrestige: s.keyCityPrestigeSum / s.games,
+              avgCapitalPrestige: s.capitalPrestigeSum / s.games,
+              avgConquestPrestige: s.conquestPrestigeSum / s.games,
+              avgObjectivePrestige: s.objectivePrestigeSum / s.games,
               avgRounds: s.roundsSum / s.games,
             },
           ];
@@ -358,7 +382,7 @@ const outPath = writeResults('adversarial_turtle_dominance', results);
 
 console.log(
   `turtle-dominance exploit hunt — base seed ${BASE_SEED}, ` +
-    `A=${N_A} all-turtle, B=${N_B}x5x2 lone-turtle, C=${N_C}x2x3 trade-max, ${(elapsedMs / 1000).toFixed(1)}s`,
+    `A=${N_A} all-turtle, B=${N_B}x5x2 lone-turtle, C=${N_C}x2x4 trade/monopoly-max, ${(elapsedMs / 1000).toFixed(1)}s`,
 );
 
 console.log('\n[A] all-turtle mirror:');
@@ -393,10 +417,10 @@ for (const arm of B_ARMS) {
   console.log(`  overall: ${o.wins}/${o.games} = ${pct(o.rate)}`);
 }
 
-console.log('\n[C] trade-max turtle vs controls (same seeds):');
+console.log('\n[C] trade-max / monopoly-max turtle vs controls (same seeds):');
 console.log(
   table(
-    ['arm', 'faction', 'wins', 'games', 'rate', 'thr/cap/SD', 'elim%', 'avgPrestige', 'gwP', 'tradeP'],
+    ['arm', 'faction', 'wins', 'games', 'rate', 'thr/cap/SD', 'elim%', 'avgPrestige', 'gwP', 'tradeP', 'keyP', 'capP', 'conqP', 'objP'],
     C_ARMS.flatMap((arm) =>
       C_FACTIONS.map((f) => {
         const s = cStats[arm][f];
@@ -411,6 +435,10 @@ console.log(
           (s.prestigeSum / s.games).toFixed(1),
           (s.greatWorkPrestigeSum / s.games).toFixed(1),
           (s.tradePrestigeSum / s.games).toFixed(1),
+          (s.keyCityPrestigeSum / s.games).toFixed(1),
+          (s.capitalPrestigeSum / s.games).toFixed(1),
+          (s.conquestPrestigeSum / s.games).toFixed(1),
+          (s.objectivePrestigeSum / s.games).toFixed(1),
         ];
       }),
     ),

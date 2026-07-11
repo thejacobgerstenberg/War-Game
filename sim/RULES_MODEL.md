@@ -26,7 +26,12 @@ omen, and the canon §13.1 prestige table.
    **`great-bombard-forged`** (EVENT_CARDS #34) resolves — see "Great
    Bombard" below. *AI-knowledge simplification*: the 4–5-player face-up
    "gathering omen" preview (§12) is unmodeled — scripted agents gain no
-   information from omens either way.
+   information from omens either way. **Unit-loss guardrail**: a negative
+   units omen never empties a garrison (leaves ≥ 1 combatant), and leaves
+   **≥ 3 combatants in a walled capital or any besieged walled city** — a
+   one-card plague must not convert a round-1 siege of Constantinople into
+   a round-2 escalade + sudden death (adversarial fix round; artifact of
+   the one-card event abstraction, see GUARDRAILS).
 2. **Income & upkeep** — each faction collects province yields (+ market
    buildings, + trade routes × faction trade multiplier, + capital bonus),
    then pays upkeep from its per-faction unit tables: **grain per unit**
@@ -37,7 +42,15 @@ omen, and the canon §13.1 prestige table.
    negative (`goldFloor`). **Skeleton-garrison rule (rules-visible)**:
    peacetime desertion (and negative unit events) never removes the LAST
    combatant of a walled province's garrison — an insolvent power cannot
-   lose a fortress to a walk-in occupation. Siege starvation is unaffected.
+   lose a fortress to a walk-in occupation. **Besieged walled garrisons
+   are exempt from insolvency desertion entirely** (adversarial fix
+   round): canon §8.2.3 makes the siege's stores/hunger clock the sole
+   source of garrison hunger — a sea-resupplied city is fed by the supply
+   ships, and a blockaded one already starves 1 unit/round. Without the
+   exemption, the owner's treasury shortfall (worsened by the siege
+   freezing the city's own income) deserted the garrison out from behind
+   intact Theodosian walls, a back-door starvation the blockade rules
+   forbid. Siege starvation is unaffected.
    Each faction also **draws 1 tactic card** in this window (§7.7).
 3. **Actions** — exactly **4 actions** per player (§10.0), any mix and
    order (not phase-gated): recruit / move-attack / build / trade / pass.
@@ -48,7 +61,11 @@ omen, and the canon §13.1 prestige table.
 4. **Battles resolve**, then sieges advance, then **Cleanup**: prestige
    scoring, war-quiet peace checks, and **ALL victory checks** (threshold
    crossing, sudden-death hold counting, round-16 scoring) happen at
-   Cleanup only (§13.2, §10 phase 5).
+   Cleanup only (§13.2, §10 phase 5). Cleanup then **re-sorts turn order
+   so the lowest-prestige power acts first** next round (canon §13.4
+   catch-up lever; tiebreak: fewer provinces, then previous order) —
+   modeled since the adversarial fix round (previously a fixed rotating
+   seat order, a documented divergence).
 
 ## Units (5-slot roster ← canon GD §6.1 + FACTIONS unique-unit mapping)
 
@@ -209,13 +226,27 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
      rounds (Granary +2 unmodeled); at 0 stores the garrison loses 1
      unit/round, weakest first. **Sea resupply (§8.2.3)**: a besieged
      COASTAL city depletes stores ONLY while under naval blockade =
-     hostile fleet control of EVERY adjacent sea zone; otherwise stores
-     refill and hunger never begins. In the full game, zone control =
-     attacker galleys (owned ports coasting the zone + siege-camp fleets)
-     strictly exceeding the defender's, per zone. Landlocked cities are
-     always fully invested. Blockade-then-starve is the intended
-     naval-siege interplay — Venetian/Genoese/Ottoman fleets (and the
-     naval CV overrides) are the key to Constantinople.
+     hostile fleet control of EVERY adjacent sea zone. In the full game a
+     zone is enemy-controlled per **canon §8.2.3 RAW: an enemy war fleet
+     PRESENT and UNCONTESTED by a friendly war fleet** — any friendly
+     galley near the zone (the city's own harbor fleet, or a squadron in
+     a friendly port coasting the zone) contests it and keeps the supply
+     lane open (adversarial fix round; the previous strict-superiority
+     gap-fill let 2 siege-camp galleys "defeat" a defending harbor galley
+     without the §7.6 naval battle canon requires, handing navy-poor land
+     powers a full blockade of Constantinople from the camp itself).
+     Consequence of the no-fleet-battles simplification: starving a
+     defended harbor first requires eliminating its fleet through assault
+     or the hunger clock (galleys die last, §4.4 order) — the sim
+     under-produces blockades against fleet-holding ports; the siege
+     module (results/siege.json) still measures the fully-blockaded case
+     directly. Landlocked cities are always fully invested.
+     **Harbor reinforcement (§8.2.3 corollary, `Game.harborOpen`)**: while
+     a besieged coastal walled city is NOT under full blockade, its owner
+     may still RECRUIT inside it and FERRY troops in by a sea move (the
+     historical Giustiniani relief); only a full blockade (or a landlocked
+     siege) seals the city — this makes the navy the real contest for
+     Constantinople, per the §8.2.3 design-intent note.
   3. Besieger loses 3% per round to disease (sim divergence; kept as the
      anti-infinite-siege pressure).
   4. The attacker may **assault** at any time: full wall bonus to the
@@ -260,11 +291,16 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   at +5..+10 and gates behind multi-round builds; multi-round investment
   unmodeled).
 - Trade routes are authored port-pairs in `map.ts` with a gold income and a
-  sea-zone path; an enemy fleet in any zone on the path cuts the route
-  (`blockadeCancels`). A faction profits from at most `maxRoutesPerFaction`
+  sea-zone path. **Blockade = canon §5.2 (adversarial fix round)**: an
+  at-war enemy war fleet on any route zone HALVES the route's income
+  (`trade.blockadeIncomeMult` 0.5); only a SEVERED route (neither endpoint
+  owned) yields 0. Monopoly prestige (§13.1) follows endpoint ownership,
+  not the blockade. (The pre-fix sim cancelled blockaded routes outright —
+  a single 5g picket galley deleted a trader faction, 49.8% → 0.1% win;
+  see TUNING_LOG.) A faction profits from at most `maxRoutesPerFaction`
   (3); **Venice and Genoa ×1.5** (canon §5.2 merchant bonus). The full §5.2
-  route-income formula (port tiers, per-hop control) stays unmodeled
-  (divergence appendix).
+  route-income formula (port tiers, per-hop control) and §5.3 escort-severs
+  stay unmodeled (divergence appendix).
 - **Overland caravan routes** (rules-visible, Hungary-floor option A —
   ADOPTED, R9): routes marked `overland: true` connect land provinces,
   cross no sea zones, and can never be blockaded by fleets. Canon R9 makes
@@ -307,14 +343,21 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   they count for the round-16 highest-prestige comparison and can never
   trigger an early threshold win. Sim objective = hold 3 seeded nearby
   provinces at game end. The pacing model applies the same end-scoring.
+- **Turn-order-by-prestige catch-up (§13.4) IS modeled** (adversarial fix
+  round): turn order re-sorts at every Cleanup, lowest prestige first
+  (tiebreak: fewer provinces, then previous order).
 - NOT modeled: royal marriage (+2/round to both — worth up to ~+24-32 over
   a game; re-sweep the threshold when diplomacy lands), betrayal penalties,
-  spy prestige losses, ±1 morale effects, turn-order-by-prestige catch-up
-  (§13.4 — fixed rotating seat order instead).
+  spy prestige losses, ±1 morale effects.
 - Win at `victoryThreshold` prestige **checked at Cleanup only**, else
-  highest prestige after round 16. **The threshold number is owned by the
-  TUNING_REPORT** (canon §13.2's 35 is a pre-tuning placeholder; the
-  current 70 predates the canon-source re-derivation and WILL move).
+  highest prestige after round 16 with the **canon §13.3 tiebreak: most
+  key cities, then most gold** (modeled since the adversarial fix round).
+  **The threshold number is owned by the TUNING_REPORT** (canon §13.2's 35
+  is a pre-tuning placeholder; current value 84 — see TUNING_LOG
+  adversarial fix round). Victory-check ordering: sudden death is tested
+  BEFORE threshold at the same Cleanup (canon §13.3 "wins immediately,
+  regardless of prestige" — flagged for design confirmation, see
+  NEEDS-RULES-CHANGE).
 - **Sudden death**: a non-Byzantine power holding Constantinople through 2
   consecutive Cleanups wins immediately (§13.3).
 
@@ -325,12 +368,96 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
 - Diplomacy: no alliances/NAPs/marriage/tribute; wars are implicit.
 - Movement is 1 province (or 1 sea hop between ports) per move action; sea
   transport needs 1 galley per 2 land units (assumption).
-- No standing at-sea fleets: sea-zone control is computed from galleys in
+- No standing at-sea fleets: sea-zone presence is computed from galleys in
   ports coasting the zone (+ siege-camp fleets). Canon's blockade/escort
-  duels (§5.3, §7.6) reduce to this superiority count; there are no pure
-  fleet battles (hence Pilot of the Narrows / Greek Fire are dead cards).
+  duels (§5.3, §7.6) reduce to: siege blockade = enemy fleet present AND
+  no friendly fleet near the zone (canon §8.2.3 RAW contest); route
+  blockade = any at-war enemy port/camp galley on a route zone, halving
+  income (§5.2). There are no pure fleet battles (hence Pilot of the
+  Narrows / Greek Fire are dead cards).
 - Secret objectives modeled as "hold 3 specific provinces at game end".
 - Scripted agents refuse to besiege an intact T5 fortress until they own
   the Great Bombard, matching the siege-module capture curves; rushers
   garrison threatened core provinces before attacking and open trade
-  routes with idle actions.
+  routes with idle actions. Agents reinforce besieged sea-resupplied
+  cities (recruit inside + ferry via `harborOpen`), and apply
+  **leader pressure as a FEASIBILITY relaxation** (odds gates ×0.85 vs
+  provinces of the prestige leader once anyone crosses 0.4× threshold) —
+  the earlier ordering-only +5 target bonus was measured inert
+  (runaway-leader hunt: 0.2% decision changes).
+
+## GUARDRAILS (abstraction-artifact floors) & magnitude bounds
+
+These are sim-only clamps that keep one-card/one-number abstractions from
+manufacturing outcomes the full rules would not allow. The engine team
+should NOT ship these as rules; they mark places where the sim is coarser
+than the game.
+
+- **Omen magnitudes** (`CONFIG.events`): gold ±6, grain ±4, units ±3,
+  prestige ±2. Max gold swing = 0.20-0.35× a faction's mean round income
+  (0.38-0.55× p10) — measured under the 1.5× "economy-warping" bar
+  (adversarial economy hunt, results/adversarial_economy_exploit.json).
+- **Tactic-card magnitudes** are the 23 RATIFIED designs verbatim (§7.7
+  table at 2b42386) — magnitudes are fixed inputs to tuning. Measured
+  combat impact: +1 die ≈ +8-11pp attacker win, +2 dice ≈ +14-16pp
+  (results/combat.json attVeterans/attCondottieri vs openField).
+- **Unit-loss omen floor**: ≥1 combatant in any garrison; ≥3 in a walled
+  capital or besieged walled city (no plague-opens-the-gates artifacts).
+- **Insolvency-desertion floor**: ≥1 combatant in walled provinces;
+  besieged walled garrisons fully exempt (siege clock is the sole hunger
+  source, canon §8.2.3).
+- **Blockade counterplay (by construction)**: a trade blockade only halves
+  route income (canon §5.2) and requires an at-war enemy fleet — income
+  recovers the moment the war quiets; a siege blockade is broken by ONE
+  friendly galley near either city zone (canon §8.2.3 contest), so a
+  defended harbor cannot be starved without first destroying its fleet.
+
+## NEEDS-RULES-CHANGE register (design decisions, not tunable numbers)
+
+Findings the adversarial suite proved un-fixable with owned CONFIG/map
+numbers; each needs a canon/design change and a re-verify:
+
+1. **Treason at the Gate vs garrisoned capitals** (cple-beeline, HIGH
+   residual): with every other capture path closed (noTreason arms 0.0%
+   SD), the ratified rare alone still buys Constantinople in a round-1
+   siege: SD 18.7-23.8% (one beeliner) and ≤r8 completions 11-17% vs the
+   ≤20%/≤10% bars — 100% of remaining SD wins hold the card
+   (results/adversarial_cple_beeline.json). Fix must touch card TEXT
+   (ratified): gate on garrison ≤4 (or price 4g + 2g/garrison unit),
+   and/or count its 2 siege rounds only from game round 6.
+2. **Flat passive monopoly prestige** (turtle-dominance + faction-floor
+   ceiling, HIGH): +2/round per owned-both-ends route (canon §13.1) with
+   zero risk gives monopolyMax Venice 66.2% / Genoa 61.7%, shipping-trader
+   Genoa 60-64% in-seat; every owned scalar cut breaks T1/T3 (hunter
+   fix-check). Needs diminishing returns (+2 first, +1 further) and/or an
+   escort requirement, plus a competing gold→prestige sink; then re-tune
+   victoryThreshold.
+3. **All-turtle near-tie endings** (faction-floor/turtle): a 5-turtler
+   table ends 45-56% of games with winner margin <2 at the cap. The canon
+   §13.3 exact-tie tiebreak (key cities → gold, now modeled) cannot
+   separate margin-1 finishes; follows from the same flat passive accrual
+   as (2).
+4. **Runaway-leader brakes** (MEDIUM residual): canon §13.4 turn order is
+   now modeled and agent leader-pressure now changes feasibility, yet the
+   r8 unique-leader still wins 72.8% (line 70%; STRONG 0.75× probe 72.1%)
+   because leads are passive-prestige-driven — same design root as (2).
+   Canon's remaining catch-up levers (diplomacy gang-ups, betrayal costs,
+   late-era crisis weighting) are unmodeled.
+5. **Free perpetual war pokes** (economy-exploit, residual wart): a 2-unit
+   self-lifting siege keeps a war (and route halving) alive indefinitely
+   at ~0 cost because canon §11's aggression/betrayal prestige penalties
+   and tribute peace are unmodeled; the §5.2 halving fix caps the damage
+   (blockade attribution now ~0.5pp) but pokes remain free harassment.
+6. **Victory-check ordering**: sudden death currently outranks a
+   same-Cleanup threshold win (canon §13.3 "immediately" — confirm intent).
+7. **Unpaid-merc desertion is free** (merc-rush, LOW wart): hire-for-one-
+   battle-then-stiff beats honest upkeep by +0.6pp inside a 4.9%-win line
+   (z=1.81 at final config — not significant, but the gradient exists).
+   Canon §13.1 reserves betrayal penalties; a -1 prestige on unfed-merc
+   desertion (or deserters-turn-brigand) would close it. Documented wart;
+   pure-CONFIG mitigations punish honest merc use.
+8. **Secret objectives are dead weight** (runaway-leader, LOW): 0.3%
+   completion, 0 end-reveal flips with ONE 3-province objective modeled;
+   canon grants THREE per faction (+12 hidden swing) — re-run the
+   kingmaker/flip measurement when 3-objective play is wired before
+   quoting the no-flip result at canon scale.

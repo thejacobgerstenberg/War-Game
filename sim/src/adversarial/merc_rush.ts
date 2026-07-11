@@ -1,5 +1,12 @@
 /**
  * ADVERSARIAL policy "merc-rush" (exploit hunter, not a shipping agent).
+ * Updated for the FINAL canon-rules config (commit 3d9ff32 retune):
+ * mercenaries are CV 3/2 cavalry hired at x1.5 gold (9g; Genoa surcharge
+ * WAIVED -> 6g), 0 grain to raise, INSTANT muster, x2 grain upkeep (4/round),
+ * goldUpkeep 0. Desertion is grain-driven: at upkeep the engine force-buys
+ * missing grain at 2g/grain from whatever gold is left, then unfed units
+ * desert (mercenaries FIRST, 1 merc per 4 grain of shortfall — i.e. every
+ * unfed merc walks).
  *
  * Degenerate all-in mercenary opening:
  *  - Rounds 1-3: every action recruits maximum mercenaries (instant muster)
@@ -10,15 +17,17 @@
  *    target is adjacent, and the Great Bombard when available.
  *
  * Two variants answer the merc-cycling question:
- *  - 'cycle'  : spends EVERY gold coin on new mercenaries each round. Wages
- *               come due at next round's upkeep before actions; whatever the
- *               treasury cannot cover deserts unpaid (100%). This is the
- *               "hire for one battle, stiff them, repeat" abuse — the engine
- *               cannot refuse payment while gold exists, so the only way to
- *               cycle is to be broke at upkeep, which this variant guarantees.
- *  - 'honest' : identical, but before hiring it reserves next round's full
- *               mercenary wage bill (net of estimated gold income) so hired
- *               mercs are actually paid and retained.
+ *  - 'cycle'  : spends EVERY gold coin on new mercenaries each round. The
+ *               engine cannot be stiffed while solvent (it force-buys grain
+ *               at upkeep before letting anyone starve), so the only way to
+ *               cycle is to be broke at upkeep — this variant guarantees it:
+ *               hire for one battle, let the surplus starve out unpaid,
+ *               rehire from fresh income. Mercs raised this way cost ~9g
+ *               (6g Genoa) per round of service instead of 9g + 4 grain/rnd.
+ *  - 'honest' : identical, but before hiring it reserves enough resources
+ *               (grain on hand + grain income + gold at the 2g/grain forced-
+ *               market rate) to actually FEED the whole merc roster next
+ *               upkeep, so hired mercs are retained.
  *
  * Everything here goes through the public Game action/read API. Helper
  * heuristics (tryAttack / tryRelief / consolidation) are copied from
@@ -28,7 +37,7 @@
 
 import type { FactionId } from '../types';
 import { FACTION_IDS } from '../types';
-import { CONFIG } from '../rules';
+import { CONFIG, statsFor } from '../rules';
 import { combatants } from '../combat';
 import { PROVINCE_BY_ID, PROVINCES } from '../map';
 import {
@@ -41,6 +50,16 @@ import {
 } from '../game';
 
 export type MercVariant = 'cycle' | 'honest';
+
+/** Per-game telemetry the runner can inspect (reset each game). */
+export interface MercCounters {
+  hired: number; // mercenaries recruited over the game
+  peakMercs: number; // max merc roster observed at any of our turn starts
+}
+
+export function newMercCounters(): MercCounters {
+  return { hired: 0, peakMercs: 0 };
+}
 
 // Aggressive siege behavior (same numbers as the shipping rusher policy).
 const MERC_SIEGE_PREFS: SiegePrefs = {
@@ -274,7 +293,7 @@ function stagingProvince(g: Game, f: FactionId): string | null {
   return where;
 }
 
-/** Total mercenaries this faction currently pays (garrisons + siege camps). */
+/** Mercenaries this faction currently feeds (garrisons + siege camps). */
 function totalMercs(g: Game, f: FactionId): number {
   let n = 0;
   for (const pid of g.ownedProvinces(f)) n += g.province(pid).garrison.mercenary;
@@ -285,33 +304,59 @@ function totalMercs(g: Game, f: FactionId): number {
   return n;
 }
 
+/** Grain the NON-merc part of the roster eats per round (faction tables). */
+function nonMercGrainNeed(g: Game, f: FactionId): number {
+  let need = 0;
+  const add = (a: { levy: number; professional: number; siegeEngine: number; galley: number }) => {
+    need +=
+      a.levy * statsFor(f, 'levy').grainUpkeep +
+      a.professional * statsFor(f, 'professional').grainUpkeep +
+      a.siegeEngine * statsFor(f, 'siegeEngine').grainUpkeep +
+      a.galley * statsFor(f, 'galley').grainUpkeep;
+  };
+  for (const pid of g.ownedProvinces(f)) add(g.province(pid).garrison);
+  for (const p of PROVINCES) {
+    const s = g.siegeAt(p.id);
+    if (s && s.attacker === f) add(s.army);
+  }
+  return need;
+}
+
 /**
  * Hire mercenaries at the staging province.
- * cycle : hire as many as gold allows (up to per-action cap) — leaves the
- *         treasury empty by design so surplus mercs desert unpaid next upkeep.
- * honest: hire only what next round's wage bill (net of estimated income)
- *         still lets us pay.
+ * cycle : hire as many as gold allows (up to the per-action cap of 3) — the
+ *         treasury is left empty by design, so at next upkeep the engine's
+ *         forced grain-buy runs out and the surplus mercs desert unfed.
+ * honest: hire only what next round's grain bill can still cover, counting
+ *         grain on hand, grain income, and gold convertible at the forced
+ *         market rate (buyGoldPerGrain).
  */
-function tryRecruitMercs(g: Game, f: FactionId, honest: boolean): boolean {
+function tryRecruitMercs(g: Game, f: FactionId, honest: boolean, counters?: MercCounters): boolean {
   const fs = g.faction(f);
   const cost = unitGoldCost(f, 'mercenary');
   const cap = CONFIG.recruit.perAction.mercenary;
   let n = Math.min(cap, Math.floor(fs.gold / cost));
   if (n <= 0) return false;
   if (honest) {
-    const wage = CONFIG.units.mercenary.goldUpkeep;
-    const income = g.estGoldIncome(f);
+    const mercGrainEach = statsFor(f, 'mercenary').grainUpkeep;
+    const buyRate = CONFIG.economy.grainMarket.buyGoldPerGrain;
     const mercs = totalMercs(g, f);
+    const grainAvail = fs.grain + g.estGrainIncome(f) - nonMercGrainNeed(g, f);
+    const goldIncome = g.estGoldIncome(f);
     while (n > 0) {
-      const reserveNeeded = Math.max(0, wage * (mercs + n) - income);
-      if (fs.gold - n * cost >= reserveNeeded) break;
+      const grainBill = mercGrainEach * (mercs + n);
+      const deficit = Math.max(0, grainBill - grainAvail);
+      const goldReserve = Math.max(0, deficit * buyRate - goldIncome);
+      if (fs.gold - n * cost >= goldReserve) break;
       n--;
     }
     if (n <= 0) return false;
   }
   const where = stagingProvince(g, f);
   if (!where) return false;
-  return g.actRecruit(f, where, 'mercenary', n);
+  const ok = g.actRecruit(f, where, 'mercenary', n);
+  if (ok && counters) counters.hired += n;
+  return ok;
 }
 
 /** One siege engine when a defended walled target is adjacent (round 4+). */
@@ -337,18 +382,19 @@ function tryRecruitEngine(g: Game, f: FactionId): boolean {
 
 const ATTACK_OPTS: AttackOpts = { minRatio: 1.3, walledRatio: 1.8, players: 'any' };
 
-function mercRushTurn(g: Game, f: FactionId, honest: boolean): void {
+function mercRushTurn(g: Game, f: FactionId, honest: boolean, counters?: MercCounters): void {
+  if (counters) counters.peakMercs = Math.max(counters.peakMercs, totalMercs(g, f));
   while (g.actionsLeft > 0) {
     if (tryRelief(g, f)) continue;
     if (tryBuyBombard(g, f, 5)) continue;
     if (g.round <= 3) {
       // all-in opening: hire first (instant), strike with whatever action is left
-      if (tryRecruitMercs(g, f, honest)) continue;
+      if (tryRecruitMercs(g, f, honest, counters)) continue;
       if (tryAttack(g, f, ATTACK_OPTS)) continue;
     } else {
       if (tryAttack(g, f, ATTACK_OPTS)) continue;
       if (tryRecruitEngine(g, f)) continue;
-      if (tryRecruitMercs(g, f, honest)) continue;
+      if (tryRecruitMercs(g, f, honest, counters)) continue;
     }
     if (tryConsolidate(g, f)) continue;
     if (tryMoveToFront(g, f)) continue;
@@ -357,12 +403,12 @@ function mercRushTurn(g: Game, f: FactionId, honest: boolean): void {
   }
 }
 
-export function makeMercRushAgent(variant: MercVariant): Agent {
+export function makeMercRushAgent(variant: MercVariant, counters?: MercCounters): Agent {
   return {
     // the engine only reads .siege from the agent besides takeTurn; the name
     // field is typed as PolicyName, so reuse 'rusher' (closest shipping label)
     name: 'rusher',
     siege: MERC_SIEGE_PREFS,
-    takeTurn: (game, faction) => mercRushTurn(game, faction, variant === 'honest'),
+    takeTurn: (game, faction) => mercRushTurn(game, faction, variant === 'honest', counters),
   };
 }

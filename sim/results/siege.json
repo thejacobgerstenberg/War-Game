@@ -3,7 +3,7 @@
     "seed": 20260711,
     "iterationsPerCell": 20000,
     "smoke": false,
-    "elapsedMs": 12826,
+    "elapsedMs": 12903,
     "gridAttacker": "12 professionals + <engines> siege engines (landlocked city)",
     "cpleAttacker": {
       "professional": 12,
