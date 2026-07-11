@@ -278,14 +278,17 @@ export const FACTION_STARTS: Record<Faction, FactionStart> = {
         prestige: OBJECTIVE_PRESTIGE,
       },
       {
-        // FL-08 (FACTIONS Byz #3 / §13.1): holding constantinople is necessary but
-        // NOT sufficient — also gate on Hagia Sophia intact, ≥15 faith banked, and
-        // Church Union refused.
+        // FL-08 (FACTIONS Byz #3 / §13.1) + CANON CLARIFICATION (coordinator ruling 1):
+        // holding constantinople is necessary but NOT sufficient. "Hagia Sophia intact"
+        // is a STANDING-building condition, no longer the completed HAGIA_SOPHIA great
+        // work — it means constantinople was never SACKED (assault-captured). Also gate
+        // on ≥15 faith banked and Church Union refused. The requiresHagiaSophia flag is
+        // kept as the switch; prestige.ts now reads it as "constantinople not sacked".
         id: "byz-faith-of-the-fathers",
         description:
-          "Faith of the Fathers: hold constantinople (Hagia Sophia intact), finish with >= 15 " +
-          "faith banked, having refused Church Union (never resolved Council of Florence in the " +
-          "Union's favor).",
+          "Faith of the Fathers: hold constantinople at game end with the city never sacked " +
+          "(never taken by assault), finish with >= 15 faith banked, having refused Church Union " +
+          "(never resolved Council of Florence in the Union's favor).",
         provinceRefs: ["constantinople"],
         requiresHagiaSophia: true,
         minFaith: 15,

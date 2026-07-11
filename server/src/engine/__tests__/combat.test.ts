@@ -1084,3 +1084,101 @@ describe("high-value city sack counter (§13.1 / FACTIONS Ottoman #3, FL-07)", (
     expect(capLog).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Coordinator ratification (§8.2 / §13.1 / FACTIONS Ottoman #3): a city is
+// SACKED (Province.sacked=true, +sackedHighValueCities if high-value) ONLY when
+// captured by ASSAULT — a breach/escalade storm or a field-assault that carries
+// the city. A starvation-SURRENDER transfers ownership WITHOUT sacking or ticking
+// the counter. Reconciles FL-07, which incremented the counter on ANY capture.
+// ---------------------------------------------------------------------------
+
+describe("sack only on ASSAULT capture (§8.2 / §13.1 ratification)", () => {
+  it("an ASSAULT storm of Constantinople sets province.sacked and increments sackedHighValueCities", () => {
+    const state = makeState({
+      provinces: [
+        province("constantinople", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          // Theodosian wall breached (HP=0) → the storm resolves on field odds.
+          walls: { tier: 5, hp: 0 },
+          garrison: 1,
+          highValue: 5,
+        }),
+      ],
+      armies: [army("s1", "p1", "constantinople", { [UnitType.INFANTRY]: 20 })],
+      siegeStates: [siegeState({ provinceId: "constantinople" })],
+    });
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.captured).toBe(true);
+    // ASSAULT capture → the city is SACKED.
+    expect(res.state.provinces[0].sacked).toBe(true);
+    expect(res.state.provinces[0].ownerId).toBe("p1");
+    // a high-value sack ticks the capturer's Ghazi Empire counter.
+    expect(res.state.players.find((p) => p.id === "p1")?.sackedHighValueCities).toBe(1);
+    expect(res.state.players.find((p) => p.id === "p2")?.sackedHighValueCities ?? 0).toBe(0);
+    // the storm log flags the sack.
+    const capLog = res.state.log.find((l) => l.type === "siege" && l.data?.sacked === true);
+    expect(capLog).toBeDefined();
+    // purity: the caller's input province is untouched.
+    expect(state.provinces[0].sacked ?? false).toBe(false);
+  });
+
+  it("a won FIELD-assault that carries the city sets province.sacked", () => {
+    const state = makeState({
+      provinces: [
+        province("constantinople", { ownerId: "p2", terrain: TerrainType.CITY, highValue: 5 }),
+      ],
+      armies: [
+        army("a1", "p1", "constantinople", { [UnitType.INFANTRY]: 20 }),
+        army("d1", "p2", "constantinople", { [UnitType.LEVY]: 1 }),
+      ],
+    });
+    const battle: PendingBattle = {
+      id: "b1",
+      provinceId: "constantinople",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+    };
+    const res = resolveBattle(state, battle, makeRng(SEED, 0));
+    expect(res.winnerId).toBe("p1");
+    expect(res.state.provinces[0].sacked).toBe(true);
+    expect(res.state.players.find((p) => p.id === "p1")?.sackedHighValueCities).toBe(1);
+  });
+
+  it("a STARVATION-surrender captures WITHOUT sacking or ticking the counter", () => {
+    // SIEGE-only besieger (0 assault troops) + empty grain stores: the garrison can
+    // only STARVE, so the city falls by surrender — never by storm.
+    let state = makeState({
+      provinces: [
+        province("constantinople", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 0, hp: 0 },
+          garrison: 1,
+          highValue: 5, // even a HIGH-VALUE city must NOT tick on a surrender
+        }),
+      ],
+      armies: [army("s1", "p1", "constantinople", { [UnitType.SIEGE]: 30 })],
+      siegeStates: [siegeState({ provinceId: "constantinople", grainStores: 0 })],
+    });
+    let res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
+    let guard = 0;
+    while (!res.captured && guard < 10) {
+      state = res.state;
+      res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
+      guard += 1;
+    }
+    expect(res.captured).toBe(true);
+    // SURRENDER → ownership flips but the city is NOT sacked.
+    expect(res.state.provinces[0].ownerId).toBe("p1");
+    expect(res.state.provinces[0].sacked ?? false).toBe(false);
+    // the Ghazi Empire counter is NOT ticked by a starvation-surrender (FL-07 fix).
+    expect(res.state.players.find((p) => p.id === "p1")?.sackedHighValueCities ?? 0).toBe(0);
+    // and the capture log does NOT flag a sack.
+    const capLog = res.state.log.find((l) => l.type === "siege" && l.data?.sacked === true);
+    expect(capLog).toBeUndefined();
+  });
+});

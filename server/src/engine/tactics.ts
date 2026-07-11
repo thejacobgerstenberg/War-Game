@@ -427,6 +427,18 @@ export function resolveTacticEffect(
         target: { provinceId },
         data: { wallBonusZero: true, attackerFaction: faction },
       });
+      // RULING 4 — master-founders-hired: the ratified mechanic is
+      // bribed-gatekeeper's wall-bonus cancel PLUS a +1 assault die (per
+      // lore/tactics/cards.md, PR #8 ## Rare). When the card carries
+      // `assaultDice`, also post the attacker combat_mod so the assault gets the
+      // extra die (modelled as a +N attacker CV, as veterans-of-the-border does).
+      if (data.assaultDice) {
+        next = postModifier(next, cardId, "combat_mod", {
+          value: data.assaultDice,
+          target: battleTarget,
+          data: { dice: true, side: ctx.side },
+        });
+      }
       break;
     case "siege_bombard":
       // §7.7 Master Founders Hired: +N wall-damage dice this siege round.

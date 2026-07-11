@@ -36,6 +36,31 @@ describe("tactic deck composition (§7.7)", () => {
     expect(TACTIC_CARD_BY_ID["the-guns-of-orban"]).toBeUndefined();
   });
 
+  it("aligns master-founders-hired to the authoritative lore/tactics/cards.md effect (RULING 4)", () => {
+    const mfh = TACTIC_CARD_BY_ID["master-founders-hired"];
+    // Effect string is byte-identical to lore/tactics/cards.md (## Rare entry).
+    expect(mfh?.effect).toBe(
+      "In one siege, cancel the wall bonus for one full round and add 1 die to your assault.",
+    );
+    // Mechanic: the ratified bribed-gatekeeper wall-bonus cancel PLUS a +1 assault die.
+    const data = mfh?.data as {
+      effect?: string;
+      domain?: string;
+      side?: string;
+      assaultDice?: number;
+      value?: number;
+    };
+    expect(data?.effect).toBe("wall_bonus_zero"); // same tag as bribed-gatekeeper
+    expect(TACTIC_CARD_BY_ID["bribed-gatekeeper"]?.data).toMatchObject({ effect: "wall_bonus_zero" });
+    expect(data?.domain).toBe("siege");
+    expect(data?.side).toBe("attacker");
+    expect(data?.assaultDice).toBe(1);
+    // The previously-invented "+2 wall-HP damage dice" mechanic is gone.
+    expect(data?.effect).not.toBe("siege_bombard");
+    expect(data?.value).toBeUndefined();
+    expect(mfh?.effect).not.toMatch(/Wall-HP damage dice/i);
+  });
+
   it("flags greek-fire and treason-at-the-gate as removed-from-game", () => {
     expect(TACTIC_CARD_BY_ID["greek-fire"]?.removedFromGameOnPlay).toBe(true);
     expect(TACTIC_CARD_BY_ID["treason-at-the-gate"]?.removedFromGameOnPlay).toBe(true);

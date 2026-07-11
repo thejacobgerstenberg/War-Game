@@ -637,17 +637,26 @@ function writeBack(
 }
 
 /**
- * §13.1 / FACTIONS Ottoman Secret Objective #3 "Ghazi Empire" (FL-07): sacking an
- * ENEMY high-value city (`province.highValue` truthy — on the canonical map every
- * HV node is authored HV(3)+, so truthy ≡ the doc's "HV(3)+ nodes") by a won
- * battle or storm increments the capturing player's `sackedHighValueCities`
- * counter. The prestige subsystem reads that counter for the "sack three
- * high-value cities" clause (CONTRACT2 FIX-PREP2). MUST be called BEFORE
- * {@link captureProvince} flips ownership, so the pre-capture owner still reads as
- * the enemy. Returns true when a sack was counted (drives the log's `data.sacked`).
+ * §8.2 / §13.1 / FACTIONS Ottoman Secret Objective #3 "Ghazi Empire" — apply a
+ * SACK to a city captured by ASSAULT (a breach/escalade storm or a field-assault
+ * that carries the city). Per the coordinator ratification (RULING: only ASSAULT
+ * captures sack — a starvation-SURRENDER never does), this:
+ *   1. marks the province `sacked = true` (read by prestige for the Byzantine
+ *      "Hagia Sophia intact" objective and by economy to stop the standing Hagia
+ *      Sophia faith once Constantinople is no longer intact); and
+ *   2. when the city is an ENEMY high-value node (`province.highValue` truthy — on
+ *      the canonical map every HV node is authored HV(3)+, so truthy ≡ the doc's
+ *      "HV(3)+ nodes"), increments the capturing player's `sackedHighValueCities`
+ *      counter (the Ghazi Empire clause, CONTRACT2 FIX-PREP2).
+ * Reconciles the earlier FL-07 behaviour, which incremented the HV counter on ANY
+ * capture: it is now restricted to sacks (assault captures) only. MUST be called
+ * BEFORE {@link captureProvince} flips ownership, so the pre-capture owner still
+ * reads as the enemy. Returns true when a HIGH-VALUE sack was counted (drives the
+ * log's `data.sacked` / Ghazi Empire counter).
  */
-function sackHighValueCity(state: GameState, prov: Province, capturerId: string): boolean {
-  if (!prov.highValue) return false; // not a high-value node
+function applySack(state: GameState, prov: Province, capturerId: string): boolean {
+  prov.sacked = true; // §8.2: an assault capture always sacks the city
+  if (!prov.highValue) return false; // not a high-value node → no counter tick
   if (prov.ownerId === capturerId) return false; // never a sack of your own city
   const cap = state.players.find((pl) => pl.id === capturerId);
   if (!cap) return false;
@@ -891,9 +900,13 @@ export function resolveBattle(
   let sacked = false;
   const capturedTier = provPost?.walls.tier ?? 0;
   if (winnerId === battle.attackerId && !outcome.attackerRouted && provPost) {
-    // §13.1 / FACTIONS Ottoman #3 (FL-07): sacking an enemy high-value city feeds
-    // the Ghazi Empire objective. Count it BEFORE the ownership flip.
-    sacked = sackHighValueCity(post, provPost, battle.attackerId);
+    // §8.2 / §13.1 / FACTIONS Ottoman #3: a won field battle that carries the
+    // city IS a field-ASSAULT capture → it SACKS the city (RULING: assault
+    // captures sack; only starvation-surrender does not). applySack marks
+    // provPost.sacked and, if high-value, feeds the Ghazi Empire counter. Called
+    // BEFORE the ownership flip so the pre-capture owner still reads as the enemy.
+    // (An uncontested occupation, handled above, never reaches here → never sacks.)
+    sacked = applySack(post, provPost, battle.attackerId);
     captureProvince(post, provPost, battle.attackerId);
     captured = true;
   }
@@ -1301,6 +1314,10 @@ export function resolveSiege(
 
   // 4. Assault (§8.2.4): besieger storms the garrison, walls + escalade if standing.
   let captured = false;
+  // RULING: a city is SACKED only when captured by ASSAULT (a breach/escalade
+  // storm), NOT when its garrison is starved into surrender. This flag records
+  // WHICH path took the city so only assault captures apply {@link applySack}.
+  let capturedByAssault = false;
   let assaultRounds = 0;
   let defRouted = false;
   let defRetreat: string | undefined;
@@ -1313,7 +1330,9 @@ export function resolveSiege(
     for (const v of w.variants) if (v.base !== UnitType.SIEGE) assaultTroops += v.count;
   }
   if (sideTotal(defenders) === 0) {
-    // Starved / bombarded into submission before the assault.
+    // Starvation-SURRENDER: the garrison was starved (§8.2 step 3) to nothing
+    // before any assault this round. The city falls WITHOUT a storm, so it is
+    // captured but NOT sacked (capturedByAssault stays false).
     captured = true;
   } else if (assaultTroops === 0) {
     // No storming troops: no assault this round (walls/garrison untouched by combat).
@@ -1362,7 +1381,9 @@ export function resolveSiege(
       !outcome.attackerRouted &&
       (sideTotal(defenders) === 0 || outcome.defenderRouted)
     ) {
+      // Carried by STORM: this is an ASSAULT capture → it sacks the city.
       captured = true;
+      capturedByAssault = true;
     }
   }
   // Persist garrison casualties (starvation and/or assault) and besieger losses.
@@ -1372,10 +1393,14 @@ export function resolveSiege(
   const capturedTier = prov.walls.tier;
   let sacked = false;
   if (captured) {
-    // §13.1 / FACTIONS Ottoman #3 (FL-07): storming an enemy high-value city is a
-    // sack — count it BEFORE the ownership flip so the pre-capture owner reads as
-    // the enemy.
-    sacked = sackHighValueCity(next, prov, siege.besiegerId);
+    // §8.2 / §13.1 / FACTIONS Ottoman #3: STORMING an enemy high-value city is a
+    // sack; a starvation-SURRENDER (capturedByAssault === false) transfers
+    // ownership WITHOUT sacking and WITHOUT ticking the Ghazi counter (RULING).
+    // When it is a sack, apply it BEFORE the ownership flip so the pre-capture
+    // owner still reads as the enemy.
+    if (capturedByAssault) {
+      sacked = applySack(next, prov, siege.besiegerId);
+    }
     captureProvince(next, prov, siege.besiegerId);
   } else {
     // Mirror updated siege progress back onto state.

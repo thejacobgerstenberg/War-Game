@@ -370,10 +370,13 @@ describe("scorePrestige — FL-06/07/08 secret-objective predicates", () => {
     expect(completed(out, "p1")).toBeFalsy();
   });
 
-  // ---- FL-08 Faith of the Fathers (constantinople + HS + faith + refusal) -
+  // ---- FL-08 Faith of the Fathers (constantinople held + never sacked +
+  //      faith + refusal) — coordinator ruling 1: NO Hagia Sophia great work -
   it("FL-08 Faith of the Fathers: constantinople ownership ALONE no longer scores", () => {
     const s = fresh();
     const faith = seededObj(s, "p1", "byz-faith-of-the-fathers");
+    // Seed keeps requiresHagiaSophia as the switch, but its meaning is now
+    // "constantinople not sacked" — NOT a completed great work (ruling 1).
     expect(faith.requiresHagiaSophia).toBe(true);
     expect(faith.minFaith).toBe(15);
     expect(faith.refusedChurchUnion).toBe(true);
@@ -381,26 +384,42 @@ describe("scorePrestige — FL-06/07/08 secret-objective predicates", () => {
     setObjective(s, "p1", faith);
     s.round = 16;
     own(s, "constantinople", "p1");
-    s.players.find((p) => p.id === "p1")!.treasury.faith = 4; // < 15, no Hagia Sophia
+    s.players.find((p) => p.id === "p1")!.treasury.faith = 4; // < 15
     const out = scorePrestige(s);
-    // Phantom +4 removed: ownership without the gate no longer completes it.
+    // Phantom +4 removed: ownership without the faith/refusal gate no longer completes it.
     expect(completed(out, "p1")).toBeFalsy();
   });
 
-  it("FL-08 Faith of the Fathers: full gate (HS intact + faith≥15 + Union refused) → completed", () => {
+  it("FL-08 Faith of the Fathers: held + never sacked + faith≥15 + Union refused → completed (no Hagia Sophia great work needed)", () => {
     const s = fresh();
     const faith = seededObj(s, "p1", "byz-faith-of-the-fathers");
     blank(s);
     setObjective(s, "p1", faith);
     s.round = 16;
     own(s, "constantinople", "p1");
-    s.provinces.find((p) => p.id === "constantinople")!.greatWorks = [
-      { type: GreatWorkType.HAGIA_SOPHIA, progress: 3 }, // complete = intact
-    ];
+    // Ruling 1: the HAGIA_SOPHIA great work is a standing building, NOT required —
+    // deliberately do NOT seed any greatWorks on the City.
+    const cple = s.provinces.find((p) => p.id === "constantinople")!;
+    expect(cple.greatWorks.some((gw) => gw.type === GreatWorkType.HAGIA_SOPHIA)).toBe(false);
+    cple.sacked = false; // never taken by assault
     s.players.find((p) => p.id === "p1")!.treasury.faith = 15;
     // acceptedChurchUnion undefined ⇒ "refused" (Prep4/FIX-PREP2 default).
     const out = scorePrestige(s);
     expect(completed(out, "p1")).toBe(true);
+  });
+
+  it("FL-08 Faith of the Fathers: a SACKED constantinople fails it (assault-captured, faith/refusal met)", () => {
+    const s = fresh();
+    const faith = seededObj(s, "p1", "byz-faith-of-the-fathers");
+    blank(s);
+    setObjective(s, "p1", faith);
+    s.round = 16;
+    own(s, "constantinople", "p1"); // held at game end (e.g. retaken)
+    s.provinces.find((p) => p.id === "constantinople")!.sacked = true; // stormed at some point
+    s.players.find((p) => p.id === "p1")!.treasury.faith = 20; // faith + refusal both met
+    const out = scorePrestige(s);
+    // "Hagia Sophia intact" broken by the sack ⇒ objective fails despite the other gates.
+    expect(completed(out, "p1")).toBeFalsy();
   });
 
   it("FL-08 Faith of the Fathers: faith below 15 → not completed", () => {
@@ -410,9 +429,7 @@ describe("scorePrestige — FL-06/07/08 secret-objective predicates", () => {
     setObjective(s, "p1", faith);
     s.round = 16;
     own(s, "constantinople", "p1");
-    s.provinces.find((p) => p.id === "constantinople")!.greatWorks = [
-      { type: GreatWorkType.HAGIA_SOPHIA, progress: 3 },
-    ];
+    s.provinces.find((p) => p.id === "constantinople")!.sacked = false;
     s.players.find((p) => p.id === "p1")!.treasury.faith = 14; // one short
     const out = scorePrestige(s);
     expect(completed(out, "p1")).toBeFalsy();
@@ -425,9 +442,7 @@ describe("scorePrestige — FL-06/07/08 secret-objective predicates", () => {
     setObjective(s, "p1", faith);
     s.round = 16;
     own(s, "constantinople", "p1");
-    s.provinces.find((p) => p.id === "constantinople")!.greatWorks = [
-      { type: GreatWorkType.HAGIA_SOPHIA, progress: 3 },
-    ];
+    s.provinces.find((p) => p.id === "constantinople")!.sacked = false;
     s.players.find((p) => p.id === "p1")!.treasury.faith = 20;
     // Prep4 canonical field: the player accepted the Union ⇒ predicate blocked.
     s.players.find((p) => p.id === "p1")!.acceptedChurchUnion = true;

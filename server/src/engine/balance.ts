@@ -351,7 +351,10 @@ export const GREAT_WORK_COSTS: Record<GreatWorkType, GreatWorkDef> = {
     cost: { gold: 20, marble: 10, faith: 8 },
     rounds: 3,
     prestige: 10,
-    effects: ["+2-faith-per-round", "unlock-byzantine-cards"],
+    // RULING 1: the great work is a PRESTIGE-ONLY restoration/endowment. The
+    // historic +2 faith/round is NOT sourced here — it is a STANDING yield of the
+    // intact Hagia Sophia at Constantinople from round 1 (see economy.ts §9.2).
+    effects: ["unlock-byzantine-cards"],
   },
   [GreatWorkType.THEODOSIAN_WALLS]: {
     cost: { gold: 15, marble: 12 },
