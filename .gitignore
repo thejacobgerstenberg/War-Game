@@ -45,3 +45,6 @@ Thumbs.db
 sim/out/
 sim/results/
 *.tmp
+
+# --- TypeScript build info ---
+*.tsbuildinfo
