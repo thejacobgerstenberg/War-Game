@@ -164,7 +164,6 @@ jobs:
                   continue
                 fi
                 size=$(stat -c%s "$f")
-                ext_lc=$(echo "${f##*.}" | tr '[:upper:]' '[:lower:]')
                 case "$f" in
                   audio/music/*|*/music/*) is_music=1 ;;
                   *) is_music=0 ;;
