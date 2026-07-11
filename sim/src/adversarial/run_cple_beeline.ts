@@ -320,18 +320,19 @@ const results = {
     exploit: breaches.length > 0,
     breaches,
     decomposition:
-      'POST-ERRATA decomposition (ratified errata round, 2026-07-11; see TUNING_LOG). TREASON-AT-THE-GATE now carries BOTH ' +
-      'ratified E1 gates: playable only vs a garrison of <= 4 units, AND its 2-consecutive-siege-round clock counts only ' +
-      'siege rounds in game round >= 6. The GREAT BOMBARD (E3) is now a per-game seeded omen draw uniform over rounds 11-16 ' +
-      'with a 1-siege-round emplacement before it fires. Consequences vs the pre-errata grid (was SD 18.8-23.8% one beeliner, ' +
-      '<=r8 11-17%): all brief bars now PASS — solo_ottoman 16.2%/8.3%, solo_genoa 13.2%/5.9%, solo_venice 6.2%/0.6%, ' +
-      'duo 17.7%/8.2% vs the <=20%/<=10% bars. Treason still supplies most SD wins in undefended-Byzantium arms (the 4-unit ' +
-      'start garrison satisfies the <=4 gate when Byzantium never reinforces), but the r6 clock gate pushes captures to r7+ ' +
-      'and the guard counterfactual collapses to 7.3%/0.0% (was 23.8%/16.6%) — a garrison kept above 4 units turns the card ' +
-      'off entirely (guard_genoa 0.0%). The noTreason counterfactual arms are no longer 0.0% (2.8-7.0%): that residue is the ' +
-      'E3 Bombard draw landing r11-13 and opening the walls legitimately — the same late-game Bombard SD the fullgame T4 band ' +
-      '(measured 11.9-13.7%, all completions r12+) prices in. The four pre-errata engine fixes (RAW blockade contest, harbor ' +
-      'reinforcement, besieged-garrison insolvency exemption, omen unit-loss floor 3) remain in force.',
+      'STACKING-ROUND decomposition (canon §6.4 caps + §7.5 rout-surrender enforced, 2026-07-11; see TUNING_LOG). The ' +
+      'beeline camp is now §6.4-LEGAL (<= 12 land units co-located on Constantinople for the besieger); TREASON-AT-THE-GATE ' +
+      'keeps both E1 gates (garrison <= 4, clock counts only game rounds >= 6) and the GREAT BOMBARD keeps the E3 draw model ' +
+      '(uniform r11-16, 1-round emplacement). All brief bars PASS at the stacking config: solo_ottoman 18.9%/10.0%, ' +
+      'solo_genoa 13.8%/7.4%, solo_venice 6.2% (3.4% by beeliner)/0.4%, duo 18.5%/9.4% vs the <=20%/<=10% bars — ' +
+      'solo_ottoman sits AT the <=r8 bar (10.0%, up from 8.4% at the reconciliation config: the caps thin the passive ' +
+      'Byzantine reinforcement lanes more than the 12-unit camp, so the r7 treason window closes less often). The designed ' +
+      'counterplay is unchanged and decisive: a defended city turns the card off entirely (guard_ottoman 0.2%/0.0%, ' +
+      'guard_genoa 0.0% — the guard garrisons to the 12-unit CITY cap, above the treason gate). The noTreason counterfactual ' +
+      'arms (2.4%/0.3%, earliest r15) are the E3 Bombard draw opening the walls legitimately with a legal 12-unit camp — the ' +
+      'same late-game Bombard SD the fullgame T4 band (4.8-4.9% at the stacking config, all completions r12+) prices in. The ' +
+      'four pre-errata engine fixes (RAW blockade contest, harbor reinforcement, besieged-garrison insolvency exemption, ' +
+      'omen unit-loss floor 3) remain in force.',
   },
   scenarios: all,
 };

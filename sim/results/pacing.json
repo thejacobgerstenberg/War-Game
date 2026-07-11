@@ -5,7 +5,7 @@
     "playersPerGame": 5,
     "rounds": 16,
     "smoke": false,
-    "elapsedMs": 665,
+    "elapsedMs": 628,
     "thresholdRange": [
       15,
       85

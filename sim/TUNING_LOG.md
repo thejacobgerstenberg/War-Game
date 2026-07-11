@@ -1178,3 +1178,115 @@ catch-all renumbered to 11, §6.4 pulled out of it) and RULES_MODEL.md
 untouched — probe is observation-only and bit-identical trajectories were
 preserved. Follow-up flagged for the engine era: re-verify T5 capture
 curves and beeline <= r8 under real stacking caps.
+
+## Stacking round (2026-07-11) — canon §6.4 caps + §7.5 rout-surrender ENFORCED; siege evidence re-derived on legal stacks
+
+The parity-check round above measured heavy exposure (8.11% of attack
+stacks / 35.47% of siege camps over cap; the T5 evidence stack itself —
+12 prof + 4 merc + 3 engines = 19 — illegal at a 12-cap) and the engine
+enforces the caps, so sim numbers were not parity-safe. This round models
+§6.4 RAW and re-derives.
+
+**Reading (ENGINE-MATCHED, feature/engine-core @ c79a453, coordinator
+ruling this round):** caps bind per (owner, province) — besieger and
+garrison never sum; a besieger camp CO-LOCATES on the invested province
+and counts against ITS cap for the besieger (no separate camp tile);
+CITY cap 12 applies to isCityProvince = CITY terrain OR any capital,
+proxied in-sim as authored wallTier >= 1 or a capital (no CITY terrain is
+authored; the probe round's proxy, now load-bearing). Max legal besieger
+at Constantinople: **12 land units total, engines included**; the unique
+Great Bombard is a flag, not a unit — no headroom consumed.
+
+**Mechanics shipped (commit "sim: enforce §6.4 stacking + §7
+rout-surrender"):**
+
+1. `CONFIG.stacking` — landPerProvince 8, cityCap 12, navalPerZone 6
+   (declared; unexercised — no at-sea stacks), routOverflowSurrenders.
+2. "Excess cannot enter" clamps at every entry: `actRecruit` (non-galley),
+   `actMove` (incl. harbor ferries), `actAttack`/`planForce` (attack
+   assembly + siege reinforcement), volunteers omen; pending recruits +
+   pending attacks count against headroom at action time so battle-phase
+   merges can never overfill. Agents assemble legal stacks via new
+   `Game.stackHeadroom` (engines reserved first, best fighters fill;
+   feasibility gates price the stack that can LEGALLY enter).
+3. §7.5 rout/withdrawal retreat pathing (`Game.retreatCapped`, replaces
+   `returnHome`): one adjacent friendly province — origin first, else the
+   land-adjacent owned province (first that fits, else roomiest) — up to
+   remaining headroom; **overflow SURRENDERS** (lowest-value first), no
+   destination = full surrender. Applies to routed DEFENDERS (previously
+   harsher outright dispersal), routed/withdrawn attackers, beaten camps,
+   lifted sieges. "Empty non-owned province" retreats are out of scope
+   (documented conservative divergence).
+4. Canon-RAW re-readings, load-bearing for legal 12-unit camps (both
+   CONFIG-switchable): `combat.siegeEnginesFightAtBreach: true` — §7.2
+   RAW "in sieges, SIEGE roll" is unscoped by wall HP, so engines keep
+   rolling their +3-vs-walls dice in BREACH assaults (previous
+   idle-at-breach reading was a sim gap-fill); and
+   `greatBombard.assaultDice: 1` — §8.4 Assault row RAW ("adds the
+   standard SIEGE +3 vs walls"), the emplaced Bombard's own assault die.
+
+**Siege evidence re-derived on LEGAL stacks (sim:siege, seed 20260711,
+20k/cell).** Grid attacker: (12 − engines) prof + engines. Constantinople
+attacker: strongest legal 12-stack = **11 mercenaries + 1 engine**
+(+ Bombard flag per scenario); derivation: at legal 12-unit compositions
+T5d collapsed (worst case at garrison 10: 9p+3e 4.1%, best fixed-3-engine
+mix 9m+3e 16.0% before the re-readings; 31.6% with breach dice alone;
+37.0% with both; 48.9% at 10m+2e; 55.0-55.9% at the 11m+1e evidence mix);
+the re-readings + the 11m+1e mix restore it without touching any tuned
+number (besiegerAttrition 0.03, Bombard damage dice 2, masonry cap 1 all
+unchanged). T5 before → after
+(before = committed 19-unit evidence):
+
+- T5a intact-wall assault worst: 0.31% → **0.31%** (unchanged; < 2%) MET
+- T5b no-Bombard + open sea, ≤ 12 rounds: 0.0% → **0.0%** (< 10%) MET
+- T5c blockade starve-out: minCap 99.9% → **92.2%**, medians 7/9/11 →
+  **7/9/11** (≥ 6) MET
+- T5d with Bombard, ≤ 4 rounds after first fire (k ≤ 5): 91.7–100% →
+  **55.9–98.4%** (> 50%) MET — the capped camp storms a 10-strong
+  garrison through the breach with its train's dice, not with mass.
+
+**Full-suite re-derivation (no threshold/lever retune needed at 5p):**
+fullgame 3,000g SEED=24681357: byz 14.8 / ott 14.3 / ven 17.6 / gen 25.8 /
+hun 27.5 (was 14.0/15.7/16.8/24.8/28.7); policies 14.3/29.6/12.4/23.7;
+threshold/cap/SD 60.8/34.4/**4.8**% (was 56.1/33.4/10.5 — the caps + legal
+camps halve sudden death; still in the 1–15% band); median 15, pre-r11
+0.7%, eliminations 0. Verify 5,000g SEED=987654321: 14.3/15.8/17.7/25.4/
+26.8, thr/SD 59.4/4.9%, pre-r11 0.4% — seed-robust; all six targets green
+at threshold 78. Combat MC: 0 sanity violations (kernel unchanged in the
+field). Economy: bit-identical to the reconciliation run (module doesn't
+stack armies); pacing window 78–84 unchanged.
+
+**Per-count thresholds re-swept** (same protocol, auto-derived grids,
+sweeps seed 14530000, confirms 74530002–74530005):
+`VICTORY_THRESHOLD_BY_PLAYER_COUNT` 71/74/76/78 → **72/75/80/78**
+(2p 72: 53.8% thr-decided; 3p 75: 60.0%; 4p 80: 48.2% — 76 also passes at
+62.8%, tie-break picks 80; 5p re-confirms 78 at 57.3% paired / 61.2%
+confirm, accrual 5.267/rd → 14.8×).
+
+**Adversarial re-run (same seeds):** cple_beeline — worst one-beeliner SD
+18.9% (solo_ottoman; bar ≤ 20%), ≤ r8 worst **10.0% — AT the ≤ 10% bar**
+(up from 8.4%: caps thin Byzantium's passive reinforcement lanes more than
+the attacker's legal camp), duo 18.5%/9.4%, guard arms 0.2%/0.0% and
+0.0% — the defended-city counterplay (garrison to the 12-cap, above the
+treason ≤ 4 gate) still turns the exploit off; Byzantium eliminations 0;
+verdict flag false. Turtle/floor: same flag classes as the reconciliation
+baseline (monopolyMax venice 61.3 / genoa 55.2, tradeMax genoa 55.8,
+genoa+trader ceiling 68.3% vs mixed, all-turtle margin<2 57.8–58.0%) — §5
+open items 1/2 unchanged. Economy exploit: dead (griefed trader-genoa
+53.5% vs 59.3% control; blockade-mechanism attribution ~1.0pp; passive
+picket 0.0%). Merc rush: absolute bars pass (cycle 7.2% vs honest 6.5%,
+both ≈ half the 14.5% no-merc control), but the paired stiffing gradient
+re-emerged: z = 3.35 (was 1.58) — re-filed as LOW register note (E5b
+pillage price unchanged; canon-owned). Runaway leader: P(r8 leader wins)
+**70.8%**, 0.8pp over its 70% line (was 67.5%) — §5 open item 3 sharpened,
+not newly filed; objective flips 8.6%, completion 5.6%.
+
+**Verification probe** (`stacking_probe.ts`, now a post-enforcement
+invariant check, 1,000g seed 24681357): **0 over-cap stacks** across
+attack commits / owned garrisons / siege camps; §7.5 surrender rule is
+live (rout-overflow surrenders observed; see results/stacking_probe.json).
+
+No CONFIG number moved besides the additions above; `victoryThreshold`
+stays 78. TUNING_REPORT §6 row 10 moved unmodeled → modeled (§2 rows
+STACKING_*, ROUT_RETREAT_OVERFLOW_SURRENDERS, SIEGE_ENGINES_FIGHT_AT_BREACH,
+GREAT_BOMBARD_ASSAULT_DICE).

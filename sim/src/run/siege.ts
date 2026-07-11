@@ -1,24 +1,33 @@
 /**
- * Monte-Carlo siege sweep (npm run sim:siege) — FINAL canon rules (2b42386).
+ * Monte-Carlo siege sweep (npm run sim:siege) — FINAL canon rules (2b42386),
+ * re-derived under canon §6.4 STACKING (stacking round, 2026-07-11): every
+ * besieger stack is §6.4-LEGAL — at most 12 land units total (incl. siege
+ * engines) in a CITY/capital province, the cap the camp itself occupies
+ * (engine-matched co-location reading). The unique Great Bombard is a flag,
+ * not an Army unit, and consumes no headroom (canon §8.4: never recruited).
  *
- * 1. Grid: wall tier T1-T5 x garrison size 2-12 x siege engines 0-6, a fixed
- *    strong attacker stack of 12 professionals, LANDLOCKED city (starvation
+ * 1. Grid: wall tier T1-T5 x garrison size 2-12 x siege engines 0-6, the
+ *    attacker fixed at the LEGAL city-cap total of 12 land units —
+ *    (12 - engines) professionals + engines — LANDLOCKED city (starvation
  *    proceeds: 3 grain stores, then 1 unit/round). Per cell: capture
  *    probability, expected rounds-to-capture, capture-reason split, mean
  *    attacker losses. (T5 landlocked shows the canon §8.3 masonry cap:
  *    engines tick 1 HP/round; capture comes by starvation.)
  *
  * 2. Direct-assault sweep (T5a evidence): attacker stacks 1-12 professionals
- *    assault the INTACT T5 Theodosian Walls (defender +4, attacker escalade
- *    -1) — single battles, no siege. Target: win prob < 2% everywhere.
+ *    (all legal at the city cap) assault the INTACT T5 Theodosian Walls
+ *    (defender +4, attacker escalade -1) — single battles, no siege.
+ *    Target: win prob < 2% everywhere.
  *
  * 3. Constantinople scenarios (T5b-T5d): T5 Theodosian Walls (16 HP, +4),
- *    garrison 6-10 professionals, attacker 12 professionals + 4 mercenaries
- *    + 3 siege engines, all four combinations of Great Bombard x naval
- *    blockade. The city is COASTAL: unblockaded => sea-resupplied, no
- *    starvation (canon §8.2.3); vs intact T5 an ordinary train deals at most
- *    1 wall HP/round (canon §8.3) — only the Great Bombard (2 wall-damage
- *    dice, cap lifted for the train; canon §8.4) breaches them in time.
+ *    garrison 6-10 professionals, attacker = the strongest §6.4-LEGAL
+ *    grand-assault stack — 11 mercenaries (free-company shock troops at
+ *    CAVALRY grade) + 1 siege engine = 12 land units — in all four
+ *    combinations of Great Bombard x naval blockade. The city is COASTAL:
+ *    unblockaded => sea-resupplied, no starvation (canon §8.2.3); vs intact
+ *    T5 an ordinary train deals at most 1 wall HP/round (canon §8.3) — only
+ *    the Great Bombard (2 wall-damage dice, cap lifted for the train, its
+ *    own §8.4 assault die; canon §8.4) breaches them in time.
  *    P(capture within k siege rounds) for k = 1..12.
  *
  * Targets (T5):
@@ -47,15 +56,21 @@ import { fmt, isSmoke, pct, table, writeResults } from '../util';
 const SEED = 20260711;
 const ITERS = isSmoke() ? 500 : 20000;
 
-const ATTACKER_PROFESSIONALS = 12;
+// Canon §6.4: a besieger camp co-locates on the invested CITY/capital
+// province and may hold at most the CITY cap of land units TOTAL
+// (engines included). Grid stacks hold the cap exactly: fighters trade
+// off against engines.
+const LEGAL_STACK = CONFIG.stacking.cityCap; // 12
 const TIERS = [1, 2, 3, 4, 5] as const;
 const GARRISONS = [2, 4, 6, 8, 10, 12] as const;
 const ENGINES = [0, 1, 2, 3, 4, 5, 6] as const;
 const CPLE_GARRISONS = [6, 8, 10] as const;
 const CPLE_MAX_K = DEFAULT_SIEGE_POLICY.maxSiegeRounds; // 12
-// Grand assault army for the Constantinople scenarios: line infantry,
-// free-company shock troops, and a full siege train.
-const CPLE_ATTACKER = { professional: 12, mercenary: 4, siegeEngine: 3 } as const;
+// Grand assault army for the Constantinople scenarios: the strongest
+// §6.4-LEGAL 12-unit stack — free-company shock troops (CAVALRY-grade,
+// CV atk 3) around a single engine; the Great Bombard (scenario flag)
+// supplies the train's real breaching power and its §8.4 assault die.
+const CPLE_ATTACKER = { mercenary: 11, siegeEngine: 1 } as const;
 
 interface CellStats {
   tier: number;
@@ -136,7 +151,7 @@ for (const tier of TIERS) {
     for (const engines of ENGINES) {
       cellSeed++;
       const setup: SiegeSetup = {
-        attacker: armyOf({ professional: ATTACKER_PROFESSIONALS, siegeEngine: engines }),
+        attacker: armyOf({ professional: LEGAL_STACK - engines, siegeEngine: engines }), // §6.4-legal: 12 land units total
         defender: armyOf({ professional: garrison }),
         wallTier: tier, // T5 row: canon §8.3 masonry cap applies
         theodosian: false,
@@ -268,7 +283,7 @@ const cell = (tier: number, engines: number) =>
   grid.find((c) => c.tier === tier && c.garrison === REP_GARRISON && c.engines === engines)!;
 
 console.log(`SIEGE MONTE CARLO  seed=${SEED}  iters/cell=${ITERS}${isSmoke() ? ' (SMOKE)' : ''}`);
-console.log(`grid attacker = ${ATTACKER_PROFESSIONALS} professionals (+engines), garrison = professionals, plains, landlocked`);
+console.log(`grid attacker = ${LEGAL_STACK} land units total ((12-engines) professionals + engines; canon §6.4 city cap), garrison = professionals, plains, landlocked`);
 console.log(`policy: assault when wall bonus <= ${DEFAULT_SIEGE_POLICY.assaultWallThreshold} (breach) or garrison <= ${DEFAULT_SIEGE_POLICY.assaultGarrisonMax}; give up after ${DEFAULT_SIEGE_POLICY.maxSiegeRounds} rounds`);
 console.log();
 
@@ -306,7 +321,7 @@ console.log(
 console.log();
 
 console.log(`CONSTANTINOPLE (T5 Theodosian Walls, ${wallHitpoints(5, true)} hp, coastal): P(capture within k siege rounds)`);
-console.log(`attacker = ${CPLE_ATTACKER.professional} professionals + ${CPLE_ATTACKER.mercenary} mercenaries + ${CPLE_ATTACKER.siegeEngine} siege engines`);
+console.log(`attacker = ${CPLE_ATTACKER.mercenary} mercenaries + ${CPLE_ATTACKER.siegeEngine} siege engine (= ${CPLE_ATTACKER.mercenary + CPLE_ATTACKER.siegeEngine} land units, §6.4-legal at the city cap)`);
 console.log(
   table(
     ['scenario', ...[1, 2, 3, 4, 6, 8, 10, 12].map((k) => `k=${k}`), 'P(cap)', 'median'],
@@ -333,13 +348,13 @@ const path = writeResults('siege', {
     iterationsPerCell: ITERS,
     smoke: isSmoke(),
     elapsedMs,
-    gridAttacker: `${ATTACKER_PROFESSIONALS} professionals + <engines> siege engines (landlocked city)`,
+    gridAttacker: `(${LEGAL_STACK} - engines) professionals + <engines> siege engines = ${LEGAL_STACK} land units total (canon §6.4 city cap; landlocked city)`,
     cpleAttacker: CPLE_ATTACKER,
     garrisonComposition: 'professionals',
     terrain: 'plains',
     policy: DEFAULT_SIEGE_POLICY,
     config: { walls: CONFIG.walls, siege: CONFIG.siege, combat: CONFIG.combat },
-    note: 'FINAL canon (2b42386) + ratified errata E3 (2026-07-11): walls T1-T5, binary wall bonus, escalade -1, stores-then-starve, sea resupply (blockade = every adjacent zone enemy-held), T5 masonry cap 1 HP/round lifted by the Great Bombard (2 wall-damage dice) AFTER a 1-siege-round emplacement (no Bombard wall damage in siege round 1). Bombard scenarios assume the great-bombard-forged omen has been drawn (per-game seeded draw round, uniform over rounds 11-16 in the full game).',
+    note: 'FINAL canon (2b42386) + ratified errata E3 (2026-07-11) + canon §6.4 STACKING RAW (stacking round, 2026-07-11): every attacker stack is legal at the 12-unit CITY cap (engines included; the camp co-locates on the invested province, engine-matched reading). Walls T1-T5, binary wall bonus, escalade -1, stores-then-starve, sea resupply (blockade = every adjacent zone enemy-held), T5 masonry cap 1 HP/round lifted by the Great Bombard (2 wall-damage dice) AFTER a 1-siege-round emplacement (no Bombard wall damage in siege round 1). Stacking-round canon-RAW re-readings: siege engines keep rolling their +3-vs-walls dice in BREACH assaults (canon §7.2 "in sieges, SIEGE roll"; combat.siegeEnginesFightAtBreach) and the emplaced Bombard adds its own §8.4 assault die (greatBombard.assaultDice 1). Bombard scenarios assume the great-bombard-forged omen has been drawn (per-game seeded draw round, uniform over rounds 11-16 in the full game).',
   },
   grid,
   directAssaultIntactTheodosian: {

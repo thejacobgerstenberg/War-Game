@@ -66,7 +66,12 @@ npm install
 Each sim writes `results/<name>.json` and prints a human-readable summary.
 The adversarial hunters are run directly
 (`npx tsx src/adversarial/run_<hunt>.ts`) and write
-`results/adversarial_<hunt>.json`.
+`results/adversarial_<hunt>.json`. The canon §6.4 stacking invariant
+(caps ENFORCED since the stacking round) is machine-checked by
+`npx tsx src/run/stacking_probe.ts` (env `GAMES`/`SEED`; 1,000 games,
+seed 24681357 by default) → `results/stacking_probe.json` — expect
+**0 over-cap stacks**; the same probe reports live §7.5
+rout-overflow-surrender counts.
 
 ### SMOKE / GAMES / SEED / PLAYERS
 
@@ -97,12 +102,13 @@ npm run sim:combat && npm run sim:siege && npm run sim:economy && npm run sim:pa
 GAMES=3000 SEED=24681357 npm run sim:fullgame      # committed results/fullgame.json
 GAMES=5000 SEED=987654321 npm run sim:fullgame     # the independent 5,000-game verify quoted in TUNING_REPORT §1
 GAMES=1000 npx tsx src/adversarial/run_cple_beeline.ts   # and the other five run_*.ts hunters (committed beeline JSON is 1,000 games/arm)
+npx tsx src/run/stacking_probe.ts                  # §6.4 invariant probe (results/stacking_probe.json)
 npm run sim:report
 ```
 
 The committed `results/thresholds.json` (per-player-count victory
-thresholds, TUNING_REPORT §2.13; re-derived at the engine-reconciliation
-config) was produced by exactly:
+thresholds, TUNING_REPORT §2.13; re-swept at the stacking config →
+2p 72 / 3p 75 / 4p 80 / 5p 78) was produced by exactly:
 
 ```bash
 PLAYERS=2 npm run sim:thresholds
@@ -113,8 +119,8 @@ PLAYERS=5 npm run sim:thresholds
 
 (each run merges its count into the JSON; without a `THRESHOLDS` list the
 candidates are auto-derived from that count's explore-batch leader-accrual
-quantiles — the reconciliation-round grids were 2p 59–82 / 3p 63–85 /
-4p 65–87 / 5p 68–88).
+quantiles — the stacking-round grids were 2p 60–83 / 3p 64–86 /
+4p 65–87 / 5p 69–87).
 
 The per-unique economy A/B (TUNING_REPORT §2.3;
 `results/unique_economy_ab.json`) was produced by:
