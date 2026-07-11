@@ -1,7 +1,7 @@
 {
   "meta": {
     "smoke": false,
-    "generated": "2026-07-11T06:51:08.833Z",
+    "generated": "2026-07-11T06:56:07.645Z",
     "options": {
       "rushConquestEveryRounds": 2,
       "rushConquestStartRound": 3,
