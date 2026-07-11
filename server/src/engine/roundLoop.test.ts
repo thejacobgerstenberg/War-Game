@@ -12,17 +12,40 @@
  *    (tiebreak: fewer provinces). No first-player token / action bonus; just the
  *    initiative reshuffle, settled AT cleanup on the freshly-scored prestige.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   BuildingType,
   Faction,
   GamePhase,
   UnitType,
+  asTacticCardId,
   type Army,
   type GameState,
+  type PendingBattle,
+  type SiegeState,
 } from "@imperium/shared";
 import { createInitialState, type SeatInput } from "./gameState.js";
 import { advancePhase } from "./roundLoop.js";
+import { WALL_TIERS, WALL_REPAIR_PER_ROUND } from "./balance.js";
+import type { Rng } from "./rng.js";
+
+// COMBAT-containment injection: pass-through mock of the combat subsystem that
+// throws ONLY for the sentinel id "inject-throw" (no real fixture uses it), so
+// every other test in this file exercises the REAL resolvers unchanged.
+vi.mock("./combat.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./combat.js")>();
+  return {
+    ...actual,
+    resolveBattle: (state: GameState, battle: PendingBattle, rng: Rng) => {
+      if (battle.id === "inject-throw") throw new Error("injected battle failure");
+      return actual.resolveBattle(state, battle, rng);
+    },
+    resolveSiege: (state: GameState, siege: SiegeState, rng: Rng) => {
+      if (siege.id === "inject-throw") throw new Error("injected siege failure");
+      return actual.resolveSiege(state, siege, rng);
+    },
+  };
+});
 
 const seats: SeatInput[] = [
   { id: "p1", name: "Basil", faction: Faction.BYZANTIUM, isHost: true },
@@ -237,5 +260,198 @@ describe("§13.4 — turn-order catch-up reshuffle", () => {
     expect(p1.prestige).toBe(0);
     // No first-player token field is introduced; the whole mechanic is the order.
     expect(after.turnOrder).toEqual(["p1", "p2"]);
+  });
+});
+
+/** A minimal valid SiegeState for fixtures (spread-override what a test needs). */
+function siegeEntry(provinceId: string, over: Partial<SiegeState> = {}): SiegeState {
+  return {
+    provinceId,
+    besiegerId: "p2",
+    besiegingArmyIds: ["bes-1"],
+    roundsElapsed: 1,
+    grainStores: 3,
+    breached: false,
+    circumvallated: true,
+    ...over,
+  };
+}
+
+/** fresh() with the Omen sub-phase neutralised (no card to perturb walls/state). */
+function freshNoOmen(): GameState {
+  const s = fresh();
+  return { ...s, omenDeck: [], omenDiscard: [], eraDecksRemaining: {} };
+}
+
+describe("§8.1/§8.2.5 — per-round wall repair (marshal major: not only on siege-lift)", () => {
+  it("a damaged, un-besieged wall regains +1 HP each round at INCOME, clamped to tier max", () => {
+    const s = freshNoOmen();
+    const prov = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    prov.walls = { tier: 2, hp: WALL_TIERS[2].hp - 2 }; // 4 of 6
+    const hpOf = (st: GameState): number => st.provinces.find((p) => p.id === prov.id)!.walls.hp;
+
+    // Round 1 INCOME: +WALL_REPAIR_PER_ROUND (no siege anywhere near it).
+    let next = advancePhase(s);
+    expect(next.phase).toBe(GamePhase.RECRUITMENT);
+    expect(hpOf(next)).toBe(WALL_TIERS[2].hp - 2 + WALL_REPAIR_PER_ROUND); // 5
+
+    // Next round's INCOME: back to tier max.
+    next = advancePhase({ ...next, phase: GamePhase.INCOME });
+    expect(hpOf(next)).toBe(WALL_TIERS[2].hp); // 6 — fully healed
+
+    // And a healthy wall is CLAMPED at max, never over-repaired.
+    next = advancePhase({ ...next, phase: GamePhase.INCOME });
+    expect(hpOf(next)).toBe(WALL_TIERS[2].hp);
+  });
+
+  it("a wall under an ACTIVE siege does NOT repair", () => {
+    const s = freshNoOmen();
+    const prov = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    prov.ownerId = "p1";
+    prov.walls = { tier: 2, hp: 3 };
+    s.armies.push(army("bes-1", "p2", prov.id, 5));
+    s.siegeStates = [siegeEntry(prov.id)];
+    prov.siege = { ...s.siegeStates[0] };
+
+    const next = advancePhase(s); // INCOME work runs
+    const after = next.provinces.find((p) => p.id === prov.id)!;
+    expect(after.walls.hp).toBe(3); // besieged → §8.2.5 repair suppressed
+  });
+
+  it("repair resumes once the siege lifts (besiegers marched away)", () => {
+    const s = freshNoOmen();
+    const prov = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    prov.ownerId = "p1";
+    prov.walls = { tier: 2, hp: 3 };
+    // The besieging army is NOT in the province (marched away): §8.2 step-1 siege
+    // lock recomputation inside resolveSiege finds no besiegers → the siege LIFTS.
+    s.siegeStates = [siegeEntry(prov.id, { besiegingArmyIds: ["ghost-army"] })];
+    prov.siege = { ...s.siegeStates[0] };
+
+    const afterCombat = advancePhase({ ...s, phase: GamePhase.COMBAT });
+    expect(afterCombat.phase).toBe(GamePhase.END);
+    expect(afterCombat.siegeStates).toHaveLength(0); // siege lifted
+    const lifted = afterCombat.provinces.find((p) => p.id === prov.id)!;
+    expect(lifted.walls.hp).toBe(3 + WALL_REPAIR_PER_ROUND); // §8.2.5 lift tick (combat)
+
+    // The following round's INCOME: per-round repair has RESUMED.
+    const afterIncome = advancePhase({ ...afterCombat, phase: GamePhase.INCOME });
+    const healed = afterIncome.provinces.find((p) => p.id === prov.id)!;
+    expect(healed.walls.hp).toBe(3 + 2 * WALL_REPAIR_PER_ROUND);
+  });
+});
+
+describe("§8.2 step 4 — COMBAT fights an assault ONLY when declared (SIEGE_ASSAULT)", () => {
+  /**
+   * Same seed, one bit flipped: a breached (Wall HP 0) inland city held by a
+   * 1-unit garrison, besieged by 40 p2 infantry with NO siege engines — so an
+   * undeclared round rolls ZERO dice (nothing to bombard with, no assault).
+   */
+  function besiegedFixture(assaultDeclared: boolean): GameState {
+    const s = freshNoOmen();
+    const prov = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    prov.ownerId = "p1";
+    prov.walls = { tier: 2, hp: 0 };
+    prov.garrison = 1;
+    s.armies = s.armies.filter((a) => a.locationId !== prov.id);
+    s.armies.push(army("bes-1", "p2", prov.id, 40));
+    s.siegeStates = [
+      siegeEntry(prov.id, { breached: true, ...(assaultDeclared ? { assaultDeclared } : {}) }),
+    ];
+    prov.siege = { ...s.siegeStates[0] };
+    return { ...s, phase: GamePhase.COMBAT };
+  }
+  const provId = (s: GameState): string => s.siegeStates[0].provinceId;
+
+  it("an UNDECLARED siege round is passive: no assault dice, no storm — stores still deplete", () => {
+    const before = besiegedFixture(false);
+    const id = provId(before);
+    const next = advancePhase(before);
+    const prov = next.provinces.find((p) => p.id === id)!;
+    expect(prov.ownerId).toBe("p1"); // city did NOT fall
+    expect(prov.garrison).toBe(1); // garrison untouched — no storm was fought
+    // Dice-outcome delta: NOTHING was rolled (no guns, no declared assault) —
+    // the phase's rng cursor is byte-identical to the input state's.
+    expect(next.rngCursor).toBe(before.rngCursor);
+    // …but the siege still pressed passively: one grain store depleted (§8.2.3).
+    expect(next.siegeStates[0]?.grainStores).toBe(2);
+  });
+
+  it("same seed WITH assaultDeclared: assault dice are rolled and the breach is stormed", () => {
+    const undeclared = advancePhase(besiegedFixture(false));
+    const before = besiegedFixture(true);
+    const id = provId(before);
+    const declared = advancePhase(before);
+    // CONSUMPTION delta vs the undeclared twin: the assault actually consumed
+    // dice from the one COMBAT rng stream…
+    expect(declared.rngCursor).toBeGreaterThan(undeclared.rngCursor);
+    // …and 40 infantry through a breach vs 1 garrison unit take the city (§8.2.4:
+    // Wall HP 0 → field odds): ownership flips, the siege ends.
+    const prov = declared.provinces.find((p) => p.id === id)!;
+    expect(prov.ownerId).toBe("p2");
+    expect(declared.siegeStates).toHaveLength(0);
+    // The undeclared twin left ownership untouched (assault only when declared).
+    expect(undeclared.provinces.find((p) => p.id === id)!.ownerId).toBe("p1");
+  });
+});
+
+describe("COMBAT containment — a throwing resolution never blocks advancePhase (marshal major)", () => {
+  it("a throwing battle is skipped+logged; other engagements still resolve; queued tactics are swept to the discard", () => {
+    const s = freshNoOmen();
+    // Battle that will throw (sentinel id intercepted by the pass-through mock).
+    const battleProv = s.provinces[1].id;
+    const boom: PendingBattle = {
+      id: "inject-throw",
+      provinceId: battleProv,
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: [],
+      defenderStackIds: [],
+      attackerTactics: [asTacticCardId("feigned-retreat")],
+    };
+    s.pendingBattles = [boom];
+    // A REAL siege alongside it that must still resolve (ghost besiegers → lift).
+    const siegedProv = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    siegedProv.ownerId = "p1";
+    siegedProv.walls = { tier: 2, hp: 3 };
+    s.siegeStates = [siegeEntry(siegedProv.id, { besiegingArmyIds: ["ghost-army"] })];
+
+    const next = advancePhase({ ...s, phase: GamePhase.COMBAT });
+    // The phase ADVANCED despite the throw; the battle queue is cleared.
+    expect(next.phase).toBe(GamePhase.END);
+    expect(next.pendingBattles).toHaveLength(0);
+    // The failure was contained with a chronicle entry naming the engagement.
+    const contained = next.log.find((l) => l.data?.contained === true);
+    expect(contained).toBeDefined();
+    expect(contained?.data?.id).toBe("inject-throw");
+    expect(contained?.type).toBe("battle");
+    // The sibling siege STILL resolved (lifted, §8.2.5 repair tick applied).
+    expect(next.siegeStates).toHaveLength(0);
+    expect(next.provinces.find((p) => p.id === siegedProv.id)!.walls.hp).toBe(4);
+    // §7.7 48-card conservation: the queued-but-unresolved tactic card was swept
+    // into tacticDiscard rather than vanishing with the cleared battle.
+    expect(next.tacticDiscard).toContain(asTacticCardId("feigned-retreat"));
+  });
+
+  it("a throwing SIEGE is skipped+logged and its stale assault declaration is cleared by the round loop", () => {
+    const s = freshNoOmen();
+    const prov = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    prov.ownerId = "p1";
+    prov.walls = { tier: 2, hp: 6 };
+    s.armies.push(army("bes-1", "p2", prov.id, 5));
+    s.siegeStates = [siegeEntry(prov.id, { id: "inject-throw", assaultDeclared: true })];
+    prov.siege = { ...s.siegeStates[0] };
+
+    const next = advancePhase({ ...s, phase: GamePhase.COMBAT });
+    expect(next.phase).toBe(GamePhase.END); // contained → phase still advanced
+    const contained = next.log.find((l) => l.data?.contained === true);
+    expect(contained?.type).toBe("siege");
+    expect(contained?.data?.id).toBe("inject-throw");
+    // Belt and braces (§8.2 step 4): combat NEVER consumed the declaration (it
+    // threw), yet the round loop clears it — on the siege entry AND the mirror —
+    // so a stale declaration cannot auto-assault next round.
+    expect(next.siegeStates).toHaveLength(1);
+    expect(next.siegeStates[0].assaultDeclared).toBe(false);
+    expect(next.provinces.find((p) => p.id === prov.id)!.siege?.assaultDeclared).toBe(false);
   });
 });

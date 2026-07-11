@@ -27,6 +27,7 @@ import {
   BUILDING_EFFECTS,
   DESERTION_ORDER,
   FACTION_LEVY_ECONOMY,
+  GREAT_BOMBARD,
   GREAT_WORK_COSTS,
   MARKET_RATIOS,
   MAX_BUILDABLE_WALL_TIER,
@@ -508,6 +509,16 @@ function grainDue(state: GameState, playerId: string): number {
       due += regular * per + mercs * per * MERC_UPKEEP_MULTIPLIER; // §4.4 merc double
     }
     for (const v of stack.variants ?? []) {
+      // §8.4 Upkeep row (marshal major "GB grain upkeep 1 not 3"): the
+      // GREAT_BOMBARD variant head is EXEMPT from this ledger — billing it here
+      // charged the base SIEGE row (1 grain, via variantGrainUpkeep's UnitType
+      // fallthrough; the gun has no UNIQUE_UNIT_OVERRIDES entry). Its true
+      // charge is GREAT_BOMBARD.grainUpkeep (3), settled in a dedicated
+      // all-or-nothing pass in {@link upkeep} keyed on the canonical
+      // `GameState.greatBombard` tracker, so EXACTLY the constant is charged
+      // once — and non-payment SILENCES the gun instead of feeding this
+      // desertion ledger (the piece never deserts, §8.4).
+      if (v.variant === GREAT_BOMBARD.variant) continue;
       // §2.3 per-unique override: a variant whose UNIQUE_UNIT_OVERRIDES entry
       // carries `grainUpkeep` is charged THAT amount, not the base UnitType
       // upkeep (e.g. Janissary / Black Army = 0 grain — they draw a gold
@@ -713,7 +724,9 @@ export function applyIncomePhase(state: GameState): GameState {
  * Pay grain upkeep for all armies/fleets and resolve starvation desertion. Grain
  * stores are spent first; on shortfall units desert in DESERTION_ORDER
  * (LEVY→ARCHER→INFANTRY→CAVALRY→SIEGE), with mercenaries deserting first and at
- * double rate (§4.4). Pure; does not consume the RNG (deterministic order).
+ * double rate (§4.4). The Great Bombard's 3-grain crew charge (§8.4) settles in
+ * its own pass after the host: unpaid, the gun falls SILENT (never deserts).
+ * Pure; does not consume the RNG (deterministic order).
  */
 export function upkeep(state: GameState): GameState {
   let next = structuredClone(state) as GameState;
@@ -855,6 +868,57 @@ export function upkeep(state: GameState): GameState {
         message: `Deserting mercenaries pillage ${prov.name}, stripping ${stripped} gold from ${victim.name}.`,
         data: { pillageGold: stripped, province: prov.id, victim: victim.id },
       });
+    }
+  }
+
+  // --- Great Bombard upkeep (§8.4 Upkeep row; marshal major "GB grain upkeep
+  // 1 not 3 + no silence-when-unpaid") ----------------------------------------
+  // The great gun's crew charge is `GREAT_BOMBARD.grainUpkeep` (3 grain/round)
+  // — NEVER the base SIEGE row (grainDue exempts the GREAT_BOMBARD variant
+  // head, so exactly the constant is billed, once). It settles AFTER the §4.4
+  // host settlement above, which never sees the gun's bill: the gun's
+  // non-payment consequence is SILENCE, never desertion — an unpaid Bombard is
+  // never destroyed and its deficit never converts into culled regular units
+  // (§8.4: "If unpaid it never deserts — it falls **silent** instead"). Payment
+  // is ALL-OR-NOTHING (no partial drain; the grain floor is respected):
+  //   • paid   → deduct 3; if the gun was silenced, CLEAR the flag (it may
+  //              fire again next COMBAT) and chronicle the un-silencing;
+  //   • unpaid → SET `greatBombard.silenced` (combat.ts rolls NO bombardment
+  //              and NO assault dice for it while true, and it does not lift
+  //              the §8.3 masonry cap), chronicled on the transition only.
+  // Keyed on the canonical `GameState.greatBombard` singleton tracker (delta 3);
+  // a gun not in play (incl. a `pendingForge` deferred placement) owes nothing.
+  const gb = next.greatBombard;
+  if (gb?.inPlay && gb.ownerId) {
+    const gunner = playerById(next, gb.ownerId);
+    if (gunner) {
+      const gunDue = GREAT_BOMBARD.grainUpkeep;
+      if (gunner.treasury.grain >= gunDue) {
+        gunner.treasury.grain -= gunDue; // §8.4 pay the crews from stores
+        if (gb.silenced) {
+          gb.silenced = false; // §8.4: cleared the next round upkeep is paid
+          next = appendLog(next, {
+            round: next.round,
+            phase: next.phase,
+            type: "siege",
+            actors: [gunner.id],
+            targets: gb.provinceId ? [gb.provinceId] : undefined,
+            message: `${gunner.name} pays the Great Bombard's crews (${gunDue} grain); the great gun may fire again.`,
+            data: { greatBombard: true, silenced: false, upkeep: gunDue },
+          });
+        }
+      } else if (!gb.silenced) {
+        gb.silenced = true; // §8.4: unpaid — silent, not deserted/destroyed
+        next = appendLog(next, {
+          round: next.round,
+          phase: next.phase,
+          type: "siege",
+          actors: [gunner.id],
+          targets: gb.provinceId ? [gb.provinceId] : undefined,
+          message: `${gunner.name} cannot feed the Great Bombard's crews (${gunDue} grain owed): the great gun falls silent.`,
+          data: { greatBombard: true, silenced: true, upkeep: gunDue },
+        });
+      }
     }
   }
 

@@ -166,17 +166,66 @@ export interface PassAction {
 }
 
 /**
- * Play a tactic card (§7.7) into a battle already on `state.pendingBattles`. Free
- * (not action-budgeted); any printed resource cost is still paid. At most one per
- * side per battle round is enforced by the tactic subsystem.
+ * Play a tactic card (§7.7). Free (not action-budgeted); any printed resource
+ * cost is still paid. At most one per side per battle round is enforced by the
+ * tactic subsystem (*The Intercepted Letter* is a reaction and exempt).
+ *
+ * TARGET MODES (marshal B3) — exactly ONE of the three modes applies per play;
+ * the reducer rejects a payload that sets both `battleId` and `siegeProvinceId`:
+ *
+ * 1. **Battle** — `battleId` set: the card is played into a {@link PendingBattle}
+ *    on `state.pendingBattles` (field battles, fleet battles, declared assaults).
+ * 2. **Siege** — `siegeProvinceId` set (no `battleId`): the card is played
+ *    against/into the active {@link SiegeState} for that province (ongoing-siege
+ *    cards with no PendingBattle, e.g. `night-sortie`, `treason-at-the-gate`,
+ *    `sails-from-the-west`, `master-founders-hired`).
+ * 3. **Global / immediate** — neither `battleId` nor `siegeProvinceId` set: the
+ *    card resolves immediately with no engagement scope (economy/global cards,
+ *    e.g. `papal-indulgence`, `the-counting-house`, `ears-in-the-bazaar`,
+ *    `the-pay-chest-taken`, `a-death-in-the-palace`). `targetPlayerId` /
+ *    `targetProvinceId` narrow the effect where the card text names a rival or
+ *    a province (e.g. `chain-across-the-horn`); they are refinements of any
+ *    mode, not a mode of their own.
  */
 export interface PlayTacticAction {
   type: "PLAY_TACTIC";
   player: string;
-  /** Id of the {@link PendingBattle} this card is played into. */
-  battleId: string;
+  /**
+   * Id of the {@link PendingBattle} this card is played into (target mode 1).
+   * OPTIONAL since marshal B3: omit for siege-scoped or global/immediate cards.
+   * Mutually exclusive with `siegeProvinceId`.
+   */
+  battleId?: string;
+  /**
+   * Province id of an ACTIVE {@link SiegeState} this card is played against
+   * (target mode 2). Mutually exclusive with `battleId`.
+   */
+  siegeProvinceId?: string;
+  /** Rival named by the card text (e.g. `ears-in-the-bazaar`, `the-pay-chest-taken`). */
+  targetPlayerId?: string;
+  /** Province named by the card text (e.g. `chain-across-the-horn`, `forced-march`). */
+  targetProvinceId?: string;
   /** The tactic card being played (namespaced tactic keyspace). */
   cardId: TacticCardId;
+}
+
+/**
+ * Declare an ASSAULT on a city the player is besieging (§8.2 step 4; marshal
+ * major "sieges auto-assault every round"). Assaulting is a CHOICE, not an
+ * automatic consequence of the siege: the besieger declares it here as a
+ * budgeted action during the action window (it is a "Move/Attack action" per
+ * §8.2.4 and spends from the action budget like MOVE), which sets
+ * `SiegeState.assaultDeclared` on the matching siege. The COMBAT phase then
+ * resolves an assault battle ONLY for sieges with the flag set — walls up
+ * (full wall bonus + escalade −1) while Wall HP > 0, field odds at a breach —
+ * and the round loop clears the flag after COMBAT each round. A siege with no
+ * declared assault just continues bombardment/starvation that round.
+ */
+export interface SiegeAssaultAction {
+  type: "SIEGE_ASSAULT";
+  player: string;
+  /** Province under an active {@link SiegeState} whose besieger is `player`. */
+  provinceId: string;
 }
 
 /** Declare war on a rival faction (opens a casus belli / {@link WarState}; §11). */
@@ -222,6 +271,7 @@ export type GameAction =
   | VassalizeAction
   | PlayCardAction
   | PlayTacticAction
+  | SiegeAssaultAction
   | DeclareWarAction
   | LevyCallAction
   | SpyAction

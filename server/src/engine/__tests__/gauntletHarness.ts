@@ -246,6 +246,44 @@ function declareWarCandidates(state: GameState, player: Player): GameAction[] {
 }
 
 /**
+ * SIEGE_ASSAULT candidates (marshal Stage B "chosen assault"): sieges no longer
+ * auto-assault every round — combat storms the walls ONLY for sieges whose
+ * besieger DECLARED an assault this round via the budgeted SIEGE_ASSAULT action.
+ * Without these candidates a besieging bot would only ever starve cities out
+ * (the SIEGE_ASSAULT reducer path would go unexercised). Heuristic:
+ *   - aggressive bots storm on a BREACH (walls down / `breached`) or with
+ *     favorable odds (physically-present besiegers >= defenders inside);
+ *   - every other strategy storms EVENTUALLY — once the siege has dragged two
+ *     rounds, or immediately at a breach.
+ * Deterministic: reads only `state` + `strat`. A declaration already made this
+ * round is skipped (the flag clears after COMBAT, so bots re-declare next round).
+ */
+function assaultCandidates(state: GameState, player: Player, strat: Strategy): GameAction[] {
+  const out: GameAction[] = [];
+  for (const siege of state.siegeStates) {
+    if (siege.besiegerId !== player.id || siege.assaultDeclared === true) continue;
+    const prov = provinceById(state, siege.provinceId);
+    if (!prov) continue;
+    const breached = siege.breached || prov.walls.hp <= 0;
+    // Strengths from PHYSICAL unit locations (mirrors the engine's siege lock).
+    let besiegers = 0;
+    let defenders = prov.garrison ?? 0;
+    for (const a of state.armies) {
+      if (a.locationId !== siege.provinceId) continue;
+      if (a.ownerId === player.id) besiegers += realCount(a);
+      else if (a.ownerId === prov.ownerId) defenders += realCount(a);
+    }
+    if (besiegers === 0) continue; // marched away — the siege lock will lift it
+    const wants =
+      strat === "aggressive"
+        ? breached || besiegers >= defenders
+        : breached || siege.roundsElapsed >= 2;
+    if (wants) out.push({ type: "SIEGE_ASSAULT", player: player.id, provinceId: siege.provinceId });
+  }
+  return out;
+}
+
+/**
  * Produce an ordered list of budgeted-action candidates for one "turn", weighted
  * by strategy. The driver tries them in order; the first that the engine accepts
  * is applied. If every candidate is rejected (EngineError), the player is treated
@@ -260,11 +298,16 @@ function pickActions(state: GameState, player: Player, strat: Strategy, rng: Rng
   const vass = vassalizeCandidates(state, player);
   const spy = spyCandidates(state, player);
   const war = declareWarCandidates(state, player);
+  // Chosen assaults (Stage B): declared FIRST for every strategy whose heuristic
+  // fires — a declaration costs 1 of 4 actions and is the only way a besieging
+  // bot ever storms (undeclared sieges resolve by bombardment/starvation only).
+  const assaults = assaultCandidates(state, player, strat);
 
   let ordered: GameAction[];
   switch (strat) {
     case "aggressive":
       ordered = [
+        ...shuffled(rng, assaults),
         ...shuffled(rng, recruits),
         ...shuffled(rng, moves),
         ...shuffled(rng, war),
@@ -275,6 +318,7 @@ function pickActions(state: GameState, player: Player, strat: Strategy, rng: Rng
       break;
     case "trader":
       ordered = [
+        ...shuffled(rng, assaults),
         ...shuffled(rng, trades),
         ...shuffled(rng, builds),
         ...shuffled(rng, recruits),
@@ -284,6 +328,7 @@ function pickActions(state: GameState, player: Player, strat: Strategy, rng: Rng
       break;
     case "turtle":
       ordered = [
+        ...shuffled(rng, assaults),
         ...shuffled(rng, builds),
         ...shuffled(rng, recruits),
         ...shuffled(rng, diplo),
@@ -293,16 +338,19 @@ function pickActions(state: GameState, player: Player, strat: Strategy, rng: Rng
       break;
     case "random":
     default:
-      ordered = shuffled(rng, [
-        ...moves,
-        ...recruits,
-        ...builds,
-        ...trades,
-        ...diplo,
-        ...vass,
-        ...spy,
-        ...war,
-      ]);
+      ordered = [
+        ...shuffled(rng, assaults),
+        ...shuffled(rng, [
+          ...moves,
+          ...recruits,
+          ...builds,
+          ...trades,
+          ...diplo,
+          ...vass,
+          ...spy,
+          ...war,
+        ]),
+      ];
       break;
   }
   return ordered;

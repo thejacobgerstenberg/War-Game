@@ -30,7 +30,7 @@ import {
 } from "../economy.js";
 import { EngineError } from "../actions.js";
 import { makeRng } from "../rng.js";
-import { MERC_REVOLT_PILLAGE } from "../balance.js";
+import { GREAT_BOMBARD, MERC_REVOLT_PILLAGE } from "../balance.js";
 
 /** Tag an army's units as mercenaries (§6.2/§4.4). */
 function tagMercs(stack: Army, mercs: Partial<Record<UnitType, number>>): Army {
@@ -1325,5 +1325,143 @@ describe("computeIncome — Hagia Sophia standing +2 faith (RULING 1, ratified r
     expect(out.perPlayer.p2.faith).toBe(p2Before + 4 + 2);
     // p1 loses the whole Constantinople faith stream.
     expect(out.perPlayer.p1.faith).toBe(9 - 4 - 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §8.4 Great Bombard upkeep + silence (marshal major "GB grain upkeep 1 not 3
+// + no silence-when-unpaid"). CONSUMPTION lens: every test asserts a STATE
+// DELTA (grain drained, silenced flag combat.ts consumes, unit survival) —
+// never merely that something was posted.
+// ---------------------------------------------------------------------------
+
+/** The singleton Great Bombard piece, as events/cards.ts emplaces it (§8.4). */
+function bombardArmy(ownerId: string, locationId: string): Army {
+  return {
+    id: "army-great-bombard", // fixed id — exactly one exists per game
+    ownerId,
+    locationId,
+    units: { ...emptyUnits() },
+    variants: [{ base: UnitType.SIEGE, variant: GREAT_BOMBARD.variant, count: 1 }],
+  };
+}
+
+/** Point the canonical `GameState.greatBombard` tracker at an in-play gun. */
+function trackBombard(state: GameState, ownerId: string, provinceId: string): void {
+  state.greatBombard = { inPlay: true, ownerId, provinceId, emplacedRound: state.round };
+}
+
+/** The gun's silence-transition chronicle entries (data.greatBombard). */
+function bombardLogs(state: GameState, silenced: boolean) {
+  return state.log.filter((l) => {
+    const d = l.data as { greatBombard?: boolean; silenced?: boolean } | undefined;
+    return d?.greatBombard === true && d.silenced === silenced;
+  });
+}
+
+describe("upkeep — §8.4 Great Bombard upkeep + silence (marshal major)", () => {
+  it("charges the owner EXACTLY GREAT_BOMBARD.grainUpkeep (3) — never the base SIEGE 1, never twice", () => {
+    const state = fresh();
+    state.armies = [bombardArmy("p2", "edirne")];
+    state.fleets = [];
+    trackBombard(state, "p2", "edirne");
+    state.players[1].treasury.grain = 10;
+    const out = upkeep(state);
+    // DELTA: 10 − 3 = 7. The pre-fix consumer billed the base SIEGE row (1 →
+    // would leave 9); a double-charge (variant ledger + dedicated pass) would
+    // take 4 (→ 6). Only the reconciled single 3-grain charge leaves 7.
+    expect(out.players[1].treasury.grain).toBe(7);
+    // Paid → the gun stays LIVE (no silence flag for combat to consume)...
+    expect(out.greatBombard?.silenced ?? false).toBe(false);
+    // ...and the unique piece is untouched.
+    expect(out.armies[0].variants).toEqual([
+      { base: UnitType.SIEGE, variant: GREAT_BOMBARD.variant, count: 1 },
+    ]);
+  });
+
+  it("bills the gun ONLY via the tracker: variant head alone (not in play) owes nothing (no base-SIEGE leak)", () => {
+    const state = fresh();
+    state.armies = [bombardArmy("p2", "edirne")];
+    state.fleets = [];
+    // Tracker stays the createInitialState default: NOT in play. The old code
+    // still billed this variant head 1 grain through the §4.4 variant ledger.
+    expect(state.greatBombard?.inPlay).toBe(false);
+    state.players[1].treasury.grain = 10;
+    const out = upkeep(state);
+    expect(out.players[1].treasury.grain).toBe(10); // DELTA: zero, not −1
+  });
+
+  it("SILENCES (never destroys) the gun when the owner cannot pay: all-or-nothing, grain floor respected", () => {
+    const state = fresh();
+    state.armies = [bombardArmy("p2", "edirne")];
+    state.fleets = [];
+    trackBombard(state, "p2", "edirne");
+    state.players[1].treasury.grain = 2; // < 3: cannot pay this round
+    const out = upkeep(state);
+    // The flag combat.ts CONSUMES (rolls no bombardment/assault dice) is set.
+    expect(out.greatBombard?.silenced).toBe(true);
+    // All-or-nothing: no partial drain — grain stays 2 (and never negative).
+    expect(out.players[1].treasury.grain).toBe(2);
+    // §8.4 "never deserts": the piece survives intact — no destruction, no cull.
+    expect(out.armies).toHaveLength(1);
+    expect(out.armies[0].variants).toEqual([
+      { base: UnitType.SIEGE, variant: GREAT_BOMBARD.variant, count: 1 },
+    ]);
+    // The silencing is chronicled.
+    expect(bombardLogs(out, true)).toHaveLength(1);
+  });
+
+  it("paying in a LATER round clears silenced (the gun may fire again)", () => {
+    const state = fresh();
+    state.armies = [bombardArmy("p2", "edirne")];
+    state.fleets = [];
+    trackBombard(state, "p2", "edirne");
+    state.players[1].treasury.grain = 0;
+    const starved = upkeep(state);
+    expect(starved.greatBombard?.silenced).toBe(true); // round N: unpaid → silent
+    // Round N+1: the owner banks grain and the upkeep is paid.
+    starved.players[1].treasury.grain = 5;
+    const paid = upkeep(starved);
+    expect(paid.greatBombard?.silenced).toBe(false); // DELTA: flag cleared...
+    expect(paid.players[1].treasury.grain).toBe(2); // ...for exactly 3 grain
+    // The gun is still the same single intact piece.
+    expect(paid.armies[0].variants?.[0]?.count).toBe(1);
+    // The un-silencing is chronicled.
+    expect(bombardLogs(paid, false)).toHaveLength(1);
+  });
+
+  it("stays silenced while STILL unpaid — one silencing chronicle, no flip-flop", () => {
+    const state = fresh();
+    state.armies = [bombardArmy("p2", "edirne")];
+    state.fleets = [];
+    trackBombard(state, "p2", "edirne");
+    state.players[1].treasury.grain = 0;
+    const r1 = upkeep(state);
+    const r2 = upkeep(r1); // second round, still no grain
+    expect(r2.greatBombard?.silenced).toBe(true);
+    expect(bombardLogs(r2, true)).toHaveLength(1); // transition logged ONCE
+    expect(bombardLogs(r2, false)).toHaveLength(0); // never un-silenced
+    expect(r2.armies[0].variants?.[0]?.count).toBe(1); // still never destroyed
+  });
+
+  it("the gun's unpaid bill NEVER converts into unit desertion (host settles first, gun silences)", () => {
+    const state = fresh();
+    state.armies = [
+      bombardArmy("p2", "edirne"),
+      army("p2", "edirne", { [UnitType.INFANTRY]: 2 }),
+    ];
+    state.fleets = [];
+    trackBombard(state, "p2", "edirne");
+    // Host owes 2 (2 INF × 1); gun owes 3. Grain 4 covers the host but not the
+    // gun: the §4.4 settlement pays 2, the residual 2 < 3 silences the gun.
+    state.players[1].treasury.grain = 4;
+    const out = upkeep(state);
+    // DELTA: NO desertion — both infantrymen survive (a ledger that folded the
+    // gun's 3 into grainDue would have starved a unit to cover the deficit).
+    const host = out.armies.find((a) => a.id === "a-p2")!;
+    expect(host.units[UnitType.INFANTRY]).toBe(2);
+    expect(out.players[1].treasury.grain).toBe(2); // host paid, gun unpaid
+    expect(out.greatBombard?.silenced).toBe(true); // silence, not starvation
+    expect(out.armies.find((a) => a.id === "army-great-bombard")?.variants?.[0]?.count).toBe(1);
   });
 });

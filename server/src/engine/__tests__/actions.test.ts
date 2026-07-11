@@ -1271,3 +1271,353 @@ describe("typed land/sea move gating (marshal map major, BAD_DESTINATION)", () =
     ).toThrowError(expect.objectContaining({ code: "BAD_DESTINATION" }));
   });
 });
+
+// ---------------------------------------------------------------------------
+// SIEGE_ASSAULT (§8.2 step 4 — marshal Stage-B "sieges auto-assault every round")
+// ---------------------------------------------------------------------------
+
+/**
+ * Seed an active siege: `provinceId` becomes a p2-owned walled CITY (T2/6 HP)
+ * defended only by its 1-unit garrison, besieged by a 6-INFANTRY p1 army
+ * standing in the province. `grainStores: 9` keeps starvation out of the frame.
+ */
+function seedSiege(s: GameState, provinceId = "bithynia"): void {
+  const prov = s.provinces.find((p) => p.id === provinceId)!;
+  prov.ownerId = "p2";
+  prov.terrain = TerrainType.CITY;
+  prov.walls = { tier: 2, hp: 6 };
+  prov.garrison = 1;
+  s.armies = s.armies.filter(
+    (a) => !(a.locationId === provinceId && a.ownerId === "p2"),
+  );
+  s.armies.push(makeArmy("besieger-1", "p1", provinceId, { [UnitType.INFANTRY]: 6 }));
+  s.siegeStates.push({
+    provinceId,
+    besiegerId: "p1",
+    besiegingArmyIds: ["besieger-1"],
+    roundsElapsed: 1,
+    grainStores: 9,
+    breached: false,
+    circumvallated: true,
+  });
+}
+
+describe("SIEGE_ASSAULT (§8.2 step 4, STAGE-B-PREP §2)", () => {
+  it("§8.2.4 the besieger's declaration sets assaultDeclared AND spends 1 action (budgeted like MOVE)", () => {
+    const s = fresh();
+    seedSiege(s);
+    s.phase = GamePhase.MOVEMENT; // inside the action window; p1 active
+    const next = applyAction(s, { type: "SIEGE_ASSAULT", player: "p1", provinceId: "bithynia" });
+    expect(next.siegeStates.find((x) => x.provinceId === "bithynia")!.assaultDeclared).toBe(true);
+    expect(next.players.find((p) => p.id === "p1")!.actionsRemaining).toBe(3); // 4 − 1
+  });
+
+  it("§8.2.4 rejects a declaration by anyone but the besieger (NOT_BESIEGER)", () => {
+    const s = fresh();
+    seedSiege(s); // besieger is p1
+    s.phase = GamePhase.MOVEMENT;
+    s.activePlayerIndex = 1; // make p2 the active player so only NOT_BESIEGER can reject
+    expect(() =>
+      applyAction(s, { type: "SIEGE_ASSAULT", player: "p2", provinceId: "bithynia" }),
+    ).toThrowError(expect.objectContaining({ code: "NOT_BESIEGER" }));
+    // A thrown EngineError never mutates: the flag stays unset.
+    expect(s.siegeStates[0].assaultDeclared).toBeUndefined();
+  });
+
+  it("§8.2.4 rejects a declaration where no siege exists (NO_SUCH_SIEGE)", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    expect(() =>
+      applyAction(s, { type: "SIEGE_ASSAULT", player: "p1", provinceId: "selymbria" }),
+    ).toThrowError(expect.objectContaining({ code: "NO_SUCH_SIEGE" }));
+  });
+
+  it("§10.0 SIEGE_ASSAULT is turn-gated + phase-gated like every budgeted action", () => {
+    const s = fresh();
+    seedSiege(s);
+    // Outside the window (INCOME) → WRONG_PHASE.
+    expect(() =>
+      applyAction(s, { type: "SIEGE_ASSAULT", player: "p1", provinceId: "bithynia" }),
+    ).toThrowError(expect.objectContaining({ code: "WRONG_PHASE" }));
+    // Inside the window but out of budget → NO_ACTIONS.
+    s.phase = GamePhase.MOVEMENT;
+    s.players.find((p) => p.id === "p1")!.actionsRemaining = 0;
+    expect(() =>
+      applyAction(s, { type: "SIEGE_ASSAULT", player: "p1", provinceId: "bithynia" }),
+    ).toThrowError(expect.objectContaining({ code: "NO_ACTIONS" }));
+  });
+
+  it("CONSUMPTION §8.2.4: same seed — COMBAT storms ONLY the declared siege (undeclared round is bombardment/starvation only)", () => {
+    // Same-seed comparison. The DECLARED branch differs from the UNDECLARED one
+    // only by the SIEGE_ASSAULT action; both then resolve COMBAT via the
+    // roundLoop from an identical rngCursor. Declared → the 6-INF besieger
+    // storms the 1-unit garrison and takes the city (ownerId flips at capture).
+    // Undeclared → NO storm is fought: owner, garrison and the besieging army
+    // are all byte-identical to the pre-COMBAT state.
+    const base = fresh(777);
+    seedSiege(base);
+    base.phase = GamePhase.MOVEMENT;
+
+    const declared = applyAction(base, {
+      type: "SIEGE_ASSAULT",
+      player: "p1",
+      provinceId: "bithynia",
+    });
+    const declaredCombat = advancePhase({ ...structuredClone(declared), phase: GamePhase.COMBAT });
+    expect(declaredCombat.provinces.find((p) => p.id === "bithynia")!.ownerId).toBe("p1");
+
+    const undeclaredCombat = advancePhase({ ...structuredClone(base), phase: GamePhase.COMBAT });
+    const prov = undeclaredCombat.provinces.find((p) => p.id === "bithynia")!;
+    expect(prov.ownerId).toBe("p2"); // no storm, no capture
+    expect(prov.garrison).toBe(1); // garrison untouched by combat
+    const besieger = undeclaredCombat.armies.find((a) => a.id === "besieger-1")!;
+    expect(besieger.units[UnitType.INFANTRY]).toBe(6); // besieger untouched
+    expect(undeclaredCombat.siegeStates).toHaveLength(1); // the siege persists
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PLAY_TACTIC target modes (marshal B3 / STAGE-B-PREP §1)
+// ---------------------------------------------------------------------------
+
+const NIGHT_SORTIE = asTacticCardId("night-sortie");
+const INDULGENCE = asTacticCardId("papal-indulgence");
+const PAY_CHEST = asTacticCardId("the-pay-chest-taken");
+
+describe("PLAY_TACTIC target modes (marshal B3)", () => {
+  it("rejects an AMBIGUOUS play carrying battleId AND siegeProvinceId (TACTIC_TARGET_CONFLICT)", () => {
+    const s = fresh();
+    const battleId = seedBattle(s);
+    seedSiege(s);
+    s.players.find((p) => p.id === "p1")!.tacticHand = [VETERANS];
+    expect(() =>
+      applyAction(s, {
+        type: "PLAY_TACTIC",
+        player: "p1",
+        battleId,
+        siegeProvinceId: "bithynia",
+        cardId: VETERANS,
+      }),
+    ).toThrowError(expect.objectContaining({ code: "TACTIC_TARGET_CONFLICT" }));
+  });
+
+  // ---- mode 2: SIEGE (siegeProvinceId) --------------------------------------
+
+  it("CONSUMPTION mode 2 (night-sortie): same seed — with the card the besieger LOSES a unit and stores hold; without it stores deplete", () => {
+    // B3 headline: night-sortie is an ongoing-siege card with NO PendingBattle —
+    // pre-fix PLAY_TACTIC could not play it at all. Now p2 (the besieged owner)
+    // plays it against the active SiegeState and the effect must be CONSUMED by
+    // resolveSiege, not merely posted: with-card vs without-card from the same
+    // seed, the DICE-FREE state deltas are (a) the besieging army drops 6 → 5
+    // (\"the besieger loses 1 unit\") and (b) grainStores hold at 9 instead of
+    // depleting to 8. Sofia is inland, so no sea-resupply masks the depletion.
+    const base = fresh(2024);
+    seedSiege(base, "sofia");
+    base.phase = GamePhase.MOVEMENT; // p1 active — the play is turn/budget-exempt
+    base.players.find((p) => p.id === "p2")!.tacticHand = [NIGHT_SORTIE];
+
+    const played = applyAction(base, {
+      type: "PLAY_TACTIC",
+      player: "p2",
+      siegeProvinceId: "sofia",
+      cardId: NIGHT_SORTIE,
+    });
+    // Dispatch bookkeeping: card left the hand, went to the discard, cost no action.
+    expect(played.players.find((p) => p.id === "p2")!.tacticHand).toHaveLength(0);
+    expect(played.tacticDiscard).toContain(NIGHT_SORTIE);
+    expect(played.players.find((p) => p.id === "p2")!.actionsRemaining).toBe(4);
+
+    const withCard = advancePhase({ ...structuredClone(played), phase: GamePhase.COMBAT });
+    const withoutCard = advancePhase({ ...structuredClone(base), phase: GamePhase.COMBAT });
+
+    const armyWith = withCard.armies.find((a) => a.id === "besieger-1")!;
+    const armyWithout = withoutCard.armies.find((a) => a.id === "besieger-1")!;
+    expect(armyWith.units[UnitType.INFANTRY]).toBe(5); // sortie killed one besieger
+    expect(armyWithout.units[UnitType.INFANTRY]).toBe(6); // no card → no loss
+    expect(withCard.siegeStates[0].grainStores).toBe(9); // no depletion this round
+    expect(withoutCard.siegeStates[0].grainStores).toBe(8); // normal depletion
+  });
+
+  it("mode 2 rejects a play against a province with no active siege (NO_SUCH_SIEGE)", () => {
+    const s = fresh();
+    s.players.find((p) => p.id === "p2")!.tacticHand = [NIGHT_SORTIE];
+    expect(() =>
+      applyAction(s, {
+        type: "PLAY_TACTIC",
+        player: "p2",
+        siegeProvinceId: "selymbria",
+        cardId: NIGHT_SORTIE,
+      }),
+    ).toThrowError(expect.objectContaining({ code: "NO_SUCH_SIEGE" }));
+  });
+
+  it("mode 2 rejects a NON-siege-scoped card played at a siege (TACTIC_WRONG_TARGET)", () => {
+    const s = fresh();
+    seedSiege(s);
+    s.players.find((p) => p.id === "p1")!.tacticHand = [VETERANS]; // battle-scoped
+    expect(() =>
+      applyAction(s, {
+        type: "PLAY_TACTIC",
+        player: "p1",
+        siegeProvinceId: "bithynia",
+        cardId: VETERANS,
+      }),
+    ).toThrowError(expect.objectContaining({ code: "TACTIC_WRONG_TARGET" }));
+  });
+
+  it("mode 2 rejects a third party who is neither besieger nor besieged (NOT_BELLIGERENT)", () => {
+    const s = fresh();
+    seedSiege(s);
+    // Make the besieged city ownerless (a neutral garrison): p2 is now neither
+    // the besieger (p1) nor the owner, so p2 has no standing at this siege.
+    s.provinces.find((p) => p.id === "bithynia")!.ownerId = null;
+    s.players.find((p) => p.id === "p2")!.tacticHand = [NIGHT_SORTIE];
+    expect(() =>
+      applyAction(s, {
+        type: "PLAY_TACTIC",
+        player: "p2",
+        siegeProvinceId: "bithynia",
+        cardId: NIGHT_SORTIE,
+      }),
+    ).toThrowError(expect.objectContaining({ code: "NOT_BELLIGERENT" }));
+  });
+
+  // ---- mode 3: GLOBAL / IMMEDIATE (neither target) ---------------------------
+
+  it("CONSUMPTION mode 3 (papal-indulgence): pays 2 gold, GAINS 3 faith immediately, free, card discarded", () => {
+    // B3 headline: papal-indulgence — \"the sole sanctioned gold→faith
+    // conversion\" — had NO play path (it never targets a battle). Mode 3 must
+    // resolve the printed effect as a DIRECT treasury delta, not a posted
+    // modifier: gold −2, faith +3, the exact §7.7 print.
+    const s = fresh();
+    const p1 = s.players.find((p) => p.id === "p1")!;
+    p1.tacticHand = [INDULGENCE];
+    const { gold, faith } = p1.treasury;
+    const actions = p1.actionsRemaining;
+
+    const next = applyAction(s, { type: "PLAY_TACTIC", player: "p1", cardId: INDULGENCE });
+
+    const after = next.players.find((p) => p.id === "p1")!;
+    expect(after.treasury.gold).toBe(gold - 2); // printed cost still paid (§10.6)
+    expect(after.treasury.faith).toBe(faith + 3); // the effect is CONSUMED at once
+    expect(after.tacticHand).toHaveLength(0);
+    expect(next.tacticDiscard).toContain(INDULGENCE);
+    expect(after.actionsRemaining).toBe(actions); // §7.7: no action cost
+  });
+
+  it("CONSUMPTION mode 3 (the-pay-chest-taken): targetPlayerId threads through — gold moves rival → player", () => {
+    const s = fresh();
+    const p1 = s.players.find((p) => p.id === "p1")!;
+    const p2 = s.players.find((p) => p.id === "p2")!;
+    p1.tacticHand = [PAY_CHEST];
+    const p1Gold = p1.treasury.gold;
+    const p2Gold = p2.treasury.gold;
+    const taken = Math.min(3, p2Gold); // never more than the rival holds (§7.7)
+
+    const next = applyAction(s, {
+      type: "PLAY_TACTIC",
+      player: "p1",
+      cardId: PAY_CHEST,
+      targetPlayerId: "p2",
+    });
+
+    expect(next.players.find((p) => p.id === "p1")!.treasury.gold).toBe(p1Gold + taken);
+    expect(next.players.find((p) => p.id === "p2")!.treasury.gold).toBe(p2Gold - taken);
+  });
+
+  it("mode 3 rejects a battle-scoped card played with NO target (TACTIC_WRONG_TARGET)", () => {
+    const s = fresh();
+    s.players.find((p) => p.id === "p1")!.tacticHand = [VETERANS];
+    expect(() =>
+      applyAction(s, { type: "PLAY_TACTIC", player: "p1", cardId: VETERANS }),
+    ).toThrowError(expect.objectContaining({ code: "TACTIC_WRONG_TARGET" }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MOVE ↔ Great Bombard emplacement (§8.4; marshal major "MOVE doesn't update
+// greatBombard emplacement")
+// ---------------------------------------------------------------------------
+
+describe("MOVE drags the Great Bombard tracker + re-emplaces (§8.4)", () => {
+  /** Put the GB piece in BYZ_ARMY and point the singleton tracker at the City. */
+  function armGreatBombard(s: GameState): void {
+    const army = s.armies.find((a) => a.id === BYZ_ARMY)!;
+    army.variants = [...(army.variants ?? []), { ...GREAT_BOMBARD_VARIANT }];
+    s.greatBombard = {
+      inPlay: true,
+      ownerId: "p1",
+      provinceId: "constantinople",
+      emplacedRound: 0, // emplaced long ago — WOULD fire if it stayed put
+    };
+  }
+
+  it("§8.4 a MOVE of the carrying stack updates greatBombard.provinceId AND resets emplacedRound to the current round", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    armGreatBombard(s);
+    const next = applyAction(s, move({ toId: "selymbria" }));
+    expect(next.greatBombard!.provinceId).toBe("selymbria"); // tracker follows the gun
+    expect(next.greatBombard!.emplacedRound).toBe(next.round); // must re-emplace (§8.4)
+  });
+
+  it("§8.4 a MOVE of a stack NOT carrying the gun leaves the tracker untouched", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    armGreatBombard(s);
+    // Move a second, gun-less army instead.
+    s.armies.push(makeArmy("plain-1", "p1", "constantinople", { [UnitType.CAVALRY]: 1 }));
+    const next = applyAction(s, { type: "MOVE", player: "p1", stackId: "plain-1", toId: "selymbria" });
+    expect(next.greatBombard!.provinceId).toBe("constantinople");
+    expect(next.greatBombard!.emplacedRound).toBe(0);
+  });
+
+  it("CONSUMPTION §8.4: same seed — the freshly-moved Bombard rolls NO wall dice next COMBAT; had it not moved, the walls crumble", () => {
+    // The gun advances with its escort onto a walled p2 city (queues the siege
+    // battle) — the MOVE resets emplacedRound to the current round, so combat's
+    // fire-gate (emplacedRound + GREAT_BOMBARD.emplacementRounds) must hold it
+    // silent this round. Same-seed control: an identical siege where the tracker
+    // says the gun was ALREADY emplaced (as if it never moved) fires its two
+    // wall-damage dice (≥ 2 HP). Delta: walls 6 → 6 (moved) vs 6 → <6 (emplaced).
+    const s = fresh(31337);
+    s.phase = GamePhase.MOVEMENT;
+    armGreatBombard(s);
+    const prov = s.provinces.find((p) => p.id === "selymbria")!;
+    prov.ownerId = "p2";
+    prov.terrain = TerrainType.CITY;
+    prov.walls = { tier: 2, hp: 6 };
+    prov.garrison = 2;
+
+    const moved = applyAction(s, move({ toId: "selymbria" }));
+    expect(moved.greatBombard!.provinceId).toBe("selymbria");
+    expect(moved.greatBombard!.emplacedRound).toBe(moved.round);
+
+    // Isolate the siege bombardment: swap the queued assault battle for an
+    // active (undeclared) SiegeState and resolve COMBAT via the roundLoop.
+    const besieged = structuredClone(moved) as GameState;
+    besieged.phase = GamePhase.COMBAT;
+    besieged.pendingBattles = [];
+    besieged.siegeStates = [
+      {
+        provinceId: "selymbria",
+        besiegerId: "p1",
+        besiegingArmyIds: [BYZ_ARMY],
+        roundsElapsed: 0,
+        grainStores: 9,
+        breached: false,
+        circumvallated: true,
+      },
+    ];
+
+    const stillEmplacing = advancePhase(structuredClone(besieged) as GameState);
+    // Just arrived → not emplaced → rolls NO wall-damage dice: walls untouched.
+    expect(stillEmplacing.provinces.find((p) => p.id === "selymbria")!.walls.hp).toBe(6);
+
+    // Control (same seed/cursor): the tracker says the gun never moved this
+    // round — the fire-gate opens and the two wall-damage dice land (≥ 2 HP).
+    const emplaced = structuredClone(besieged) as GameState;
+    emplaced.greatBombard!.emplacedRound = besieged.round - 1;
+    const fired = advancePhase(emplaced);
+    expect(fired.provinces.find((p) => p.id === "selymbria")!.walls.hp).toBeLessThan(6);
+  });
+});

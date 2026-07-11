@@ -9,7 +9,13 @@
  */
 import { describe, it, expect } from "vitest";
 import { makeRng } from "../rng.js";
-import { TACTIC_CARDS, TACTIC_CARD_BY_ID, buildTacticDeck } from "./cards.js";
+import {
+  TACTIC_CARDS,
+  TACTIC_CARD_BY_ID,
+  TACTIC_PLAY_PATH,
+  buildTacticDeck,
+  tacticPlayPath,
+} from "./cards.js";
 
 describe("tactic deck composition (§7.7)", () => {
   it("has 24 unique designs", () => {
@@ -73,6 +79,59 @@ describe("tactic deck composition (§7.7)", () => {
     expect((TACTIC_CARD_BY_ID["papal-indulgence"]?.data as { costGold?: number })?.costGold).toBe(2);
     expect((TACTIC_CARD_BY_ID["holy-war-proclaimed"]?.data as { costFaith?: number })?.costFaith).toBe(2);
     expect((TACTIC_CARD_BY_ID["treason-at-the-gate"]?.data as { costGold?: number })?.costGold).toBe(4);
+  });
+});
+
+describe("play-path classification (marshal-review B3)", () => {
+  const BATTLE = [
+    "veterans-of-the-border",
+    "pilot-of-the-narrows",
+    "locked-shields",
+    "feigned-retreat",
+    "condottieri-contract",
+    "the-intercepted-letter",
+    "the-hexamilion-manned",
+    "greek-fire",
+    "the-white-knights-stroke",
+  ];
+  const SIEGE = [
+    "ladders-and-fascines",
+    "night-sortie",
+    "bribed-gatekeeper",
+    "treason-at-the-gate",
+    "sails-from-the-west",
+    "master-founders-hired",
+  ];
+  const GLOBAL = [
+    "forced-march",
+    "the-counting-house",
+    "grain-barges-of-the-danube",
+    "ears-in-the-bazaar",
+    "chain-across-the-horn",
+    "papal-indulgence",
+    "the-pay-chest-taken",
+    "holy-war-proclaimed",
+    "a-death-in-the-palace",
+  ];
+
+  it("every one of the 24 designs has exactly one play path (B3: no dead cards)", () => {
+    expect(Object.keys(TACTIC_PLAY_PATH)).toHaveLength(24);
+    for (const c of TACTIC_CARDS) {
+      expect(["battle", "siege", "global"]).toContain(TACTIC_PLAY_PATH[c.id]);
+    }
+  });
+
+  it("classifies 9 battle / 6 siege / 9 global designs per each card's §7.7 printed timing", () => {
+    for (const slug of BATTLE) expect(TACTIC_PLAY_PATH[slug]).toBe("battle");
+    for (const slug of SIEGE) expect(TACTIC_PLAY_PATH[slug]).toBe("siege");
+    for (const slug of GLOBAL) expect(TACTIC_PLAY_PATH[slug]).toBe("global");
+    expect(BATTLE.length + SIEGE.length + GLOBAL.length).toBe(24);
+  });
+
+  it("tacticPlayPath resolves designs and returns undefined for unknown slugs", () => {
+    expect(tacticPlayPath(TACTIC_CARD_BY_ID["papal-indulgence"]!.id)).toBe("global");
+    expect(tacticPlayPath(TACTIC_CARD_BY_ID["night-sortie"]!.id)).toBe("siege");
+    expect(TACTIC_PLAY_PATH["the-guns-of-orban"]).toBeUndefined();
   });
 });
 

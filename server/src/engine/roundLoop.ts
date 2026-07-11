@@ -17,8 +17,15 @@ import {
   type UnitType,
   type UnitVariantStack,
 } from "@imperium/shared";
-import { ACTIONS_PER_ROUND, ERA_BOUNDARIES, ROUNDS } from "./balance.js";
+import {
+  ACTIONS_PER_ROUND,
+  ERA_BOUNDARIES,
+  ROUNDS,
+  WALL_REPAIR_PER_ROUND,
+  WALL_TIERS,
+} from "./balance.js";
 import { makeRng } from "./rng.js";
+import { appendLog } from "./logEntry.js";
 import { drawOmen } from "./events/index.js";
 import { applyIncomePhase } from "./economy.js";
 import { resolveBattle, resolveNaval, resolveSiege } from "./combat.js";
@@ -133,22 +140,164 @@ function flipPendingOccupations(state: GameState): GameState {
   return { ...state, provinces, pendingOccupations: [] };
 }
 
+/**
+ * §8.1 / §8.2.5 PER-ROUND WALL REPAIR (marshal major "walls only repair on
+ * siege-lift, not per round"): every province whose walls are damaged AND not
+ * under an ACTIVE siege (no live `siegeStates` entry) regains
+ * {@link WALL_REPAIR_PER_ROUND} (+1) Wall HP, clamped to its tier maximum
+ * ({@link WALL_TIERS}). §8.1: "HP damage *within* a tier heals at +1 HP/round
+ * out of siege (§8.2.5)" — a standing per-round rule, not a lift-moment event.
+ * Applied at the head of INCOME (§10 phase 1-2 upkeep bookkeeping): repair for
+ * a round happens once, before that round's action window can declare new
+ * sieges, and it never double-counts the combat subsystem's §8.2.5 lift tick
+ * ("walls begin to repair"), which fires inside COMBAT when the siege breaks.
+ */
+function repairWalls(state: GameState): GameState {
+  let changed = false;
+  const provinces = state.provinces.map((prov) => {
+    if (prov.walls.tier === 0) return prov;
+    const maxHp = WALL_TIERS[prov.walls.tier]?.hp ?? prov.walls.hp;
+    if (prov.walls.hp >= maxHp) return prov;
+    // §8.2.5: no repair while a live siege invests the city.
+    if (state.siegeStates.some((s) => s.provinceId === prov.id)) return prov;
+    changed = true;
+    return {
+      ...prov,
+      walls: {
+        ...prov.walls,
+        hp: Math.min(maxHp, prov.walls.hp + WALL_REPAIR_PER_ROUND),
+      },
+    };
+  });
+  return changed ? { ...state, provinces } : state;
+}
+
+/**
+ * COMBAT-phase ERROR CONTAINMENT (marshal major "a failing queued tactic throws
+ * inside auto-COMBAT and crashes phase advance" — roundLoop belt-and-braces over
+ * combat.ts's per-tactic containment): an unexpected throw from ONE battle/siege
+ * resolution is logged and that engagement skipped; the phase still advances and
+ * the remaining engagements still resolve. This guards ONLY the automatic
+ * COMBAT resolution path — EngineError validation in the ACTION (reducer) path
+ * is never masked here.
+ */
+function containResolutionFailure(
+  state: GameState,
+  kind: "battle" | "siege",
+  id: string,
+  actors: string[],
+  target: string | undefined,
+  err: unknown,
+): GameState {
+  const message = err instanceof Error ? err.message : String(err);
+  return appendLog(state, {
+    round: state.round,
+    phase: state.phase,
+    type: kind,
+    actors,
+    targets: target ? [target] : [],
+    message: `A ${kind} resolution failed and was skipped (${id}): ${message}`,
+    data: { contained: true, kind, id, error: message },
+  });
+}
+
 /** Resolve every pending battle, naval engagement and siege for the round. */
 function resolveCombatPhase(state: GameState): GameState {
+  // ONE rng stream for the whole phase; the advanced cursor is persisted below
+  // so every die (battles, sieges, rerolls) is a pure function of (seed, cursor).
   const rng = makeRng(state.rngSeed, state.rngCursor);
   let next = state;
 
   for (const battle of state.pendingBattles) {
-    const result = battle.seaZoneId
-      ? resolveNaval(next, battle, rng)
-      : resolveBattle(next, battle, rng);
-    next = result.state;
+    try {
+      const result = battle.seaZoneId
+        ? resolveNaval(next, battle, rng)
+        : resolveBattle(next, battle, rng);
+      next = result.state;
+    } catch (err) {
+      next = containResolutionFailure(
+        next,
+        "battle",
+        battle.id,
+        [battle.attackerId, ...(battle.defenderId ? [battle.defenderId] : [])],
+        battle.provinceId ?? battle.seaZoneId,
+        err,
+      );
+    }
   }
-  for (const siege of state.siegeStates) {
-    next = resolveSiege(next, siege, rng).state;
+  // §8.2 step 1: iterate the POST-battle siege list — combat.ts::resolveSiege
+  // opens with the siege-lock recomputation (besiegers counted from physical
+  // unit locations; a relief battle above may have just destroyed them), so the
+  // lock is re-derived immediately before each siege resolves.
+  for (const siege of [...next.siegeStates]) {
+    try {
+      next = resolveSiege(next, siege, rng).state;
+    } catch (err) {
+      next = containResolutionFailure(
+        next,
+        "siege",
+        siege.id ?? siege.provinceId,
+        [siege.besiegerId],
+        siege.provinceId,
+        err,
+      );
+    }
   }
 
   return { ...next, rngCursor: rng.cursor };
+}
+
+/**
+ * §8.2 step 4 / STAGE-B-PREP §2.3: assault declarations are strictly per-round.
+ * combat.ts consumes+clears the flag when it resolves a siege; the round loop
+ * clears it here for EVERY surviving siege after COMBAT (belt and braces — a
+ * contained/skipped resolution must not leave a stale declaration that would
+ * auto-assault next round). Both the `siegeStates` entry and its per-province
+ * `siege` mirror are cleared.
+ */
+function clearAssaultDeclarations(state: GameState): GameState {
+  const staleSiege = state.siegeStates.some((s) => s.assaultDeclared === true);
+  const staleMirror = state.provinces.some((p) => p.siege?.assaultDeclared === true);
+  if (!staleSiege && !staleMirror) return state;
+  return {
+    ...state,
+    siegeStates: state.siegeStates.map((s) =>
+      s.assaultDeclared === true ? { ...s, assaultDeclared: false } : s,
+    ),
+    provinces: state.provinces.map((p) =>
+      p.siege?.assaultDeclared === true
+        ? { ...p, siege: { ...p.siege, assaultDeclared: false } }
+        : p,
+    ),
+  };
+}
+
+/**
+ * §7.7 48-card tactic-deck conservation (marshal minor, roundLoop:210): cards
+ * still QUEUED on a pending battle when COMBAT ends were paid for at PLAY_TACTIC
+ * but never resolved (the battle ended in fewer rounds than cards queued, or a
+ * contained failure skipped the engagement). Clearing `pendingBattles` without
+ * sweeping them would leak them out of the 48-card economy — so they are swept
+ * into `tacticDiscard` (unresolved ⇒ never "remove from game") with a log line.
+ */
+function sweepUnresolvedTactics(state: GameState): GameState {
+  const leaked = state.pendingBattles.flatMap((pb) => [
+    ...(pb.attackerTactics ?? []),
+    ...(pb.defenderTactics ?? []),
+  ]);
+  if (leaked.length === 0) return state;
+  const swept: GameState = {
+    ...state,
+    tacticDiscard: [...(state.tacticDiscard ?? []), ...leaked],
+  };
+  return appendLog(swept, {
+    round: swept.round,
+    phase: swept.phase,
+    type: "event_card",
+    actors: [],
+    data: { deck: "tactic", action: "sweep_unresolved", cards: leaked },
+    message: `${leaked.length} queued tactic card(s) left unresolved at COMBAT end are discarded.`,
+  });
 }
 
 /**
@@ -184,6 +333,9 @@ export function advancePhase(state: GameState): GameState {
       //    already runs upkeep + starvation internally (§4.4), so upkeep is not
       //    invoked again here (that would double-charge grain).
       next = applyIncomePhase(next);
+      // 3b) §8.1/§8.2.5 per-round wall repair (marshal major): every damaged,
+      //     un-besieged wall regains WALL_REPAIR_PER_ROUND HP up to its tier max.
+      next = repairWalls(next);
       // §13.4 catch-up: re-apply the underdog-first order at the head of the round.
       // The CANONICAL §13.4 reshuffle is settled at CLEANUP (see the END case) on
       // the final scored prestige; this INCOME re-sort (a) seeds ROUND 1, which has
@@ -206,7 +358,14 @@ export function advancePhase(state: GameState): GameState {
       return { ...state, phase: GamePhase.COMBAT };
 
     case GamePhase.COMBAT: {
-      const next = resolveCombatPhase(state);
+      // Resolution order: battles (incl. relief) → siege-lock recompute + siege
+      // resolution (inside resolveSiege) — then the per-round bookkeeping below.
+      let next = resolveCombatPhase(state);
+      // §7.7 sweep queued-but-unresolved tactic cards BEFORE pendingBattles is
+      // cleared (48-card conservation, marshal minor roundLoop:210).
+      next = sweepUnresolvedTactics(next);
+      // §8.2 step 4: assault declarations never carry over — clear after COMBAT.
+      next = clearAssaultDeclarations(next);
       return { ...next, phase: GamePhase.END, pendingBattles: [] };
     }
 

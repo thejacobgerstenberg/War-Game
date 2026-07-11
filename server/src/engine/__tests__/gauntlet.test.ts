@@ -111,6 +111,31 @@ describe("Integration Gauntlet — determinism (same seed → byte-identical fin
   }
 });
 
+describe("Integration Gauntlet — Stage B chosen assault (bots exercise SIEGE_ASSAULT)", () => {
+  it("besieging bots DECLARE assaults — sieges are not left to starvation alone", () => {
+    // Marshal Stage B: sieges no longer auto-assault; combat storms only for
+    // sieges whose besieger issued the budgeted SIEGE_ASSAULT declaration. The
+    // harness bots must therefore declare (aggressive on breach/favorable odds,
+    // others eventually) or the whole reducer/combat assault path would go
+    // unexercised by the gauntlet. Aggregate across a small deterministic batch
+    // (any single seed may see few sieges).
+    let declarations = 0;
+    let invested = 0;
+    for (const strat of ["aggressive", "trader", "random"] as Strategy[]) {
+      for (const np of [3, 4, 5]) {
+        const r = runGame({ numPlayers: np, seed: 11000 + np * 17 + strat.length, strategy: strat });
+        expect(["winner", "round16"], `seed ${r.seed} ended ${r.endedReason}`).toContain(r.endedReason);
+        for (const e of r.finalState.log) {
+          if (e.data?.assaultDeclared === true) declarations += 1;
+          if (e.data?.invested === true) invested += 1;
+        }
+      }
+    }
+    expect(invested).toBeGreaterThan(0); // bots do lay sieges…
+    expect(declarations).toBeGreaterThan(0); // …and DECLARE assaults on them
+  });
+});
+
 describe("Integration Gauntlet — FL-02 regression guard (vassal-levy stacking fixed)", () => {
   it("the §6.4 land-stacking limit holds on the seeds that used to breach it", () => {
     // Seeds previously observed to vassalise & hold Serbia long enough for levies

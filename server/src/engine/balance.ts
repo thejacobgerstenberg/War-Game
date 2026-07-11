@@ -569,6 +569,17 @@ export const SIEGE = {
   wallRepairPerRound: 1,
 } as const;
 
+/**
+ * §8.2.5 / §8.1 (marshal-review major — walls only repaired on siege-lift, not
+ * per round): Wall HP a damaged wall regains **each round the province is NOT
+ * under an active siege** (no live {@link GameState.siegeStates} entry for it),
+ * clamped to the province's wall-tier maximum ({@link WALL_TIERS}). Applied by
+ * the round loop / economy cleanup every round, not just at the moment a siege
+ * is lifted. Canonical name for the Stage-B contract; keep in lockstep with
+ * {@link SIEGE.wallRepairPerRound} (same rule, legacy field).
+ */
+export const WALL_REPAIR_PER_ROUND = SIEGE.wallRepairPerRound;
+
 // ---------------------------------------------------------------------------
 // §8.4 The Great Bombard — standalone siege engine (the 11th unit), unlock-gated
 // ---------------------------------------------------------------------------
@@ -593,7 +604,14 @@ export const GREAT_BOMBARD = {
   base: UnitType.SIEGE,
   /** Free entry — no recruit cost (spawned by the Omen only). */
   cost: {} as Partial<ResourceBundle>,
-  /** Grain upkeep/round; if unpaid it falls SILENT (no bombard) — it never deserts. */
+  /**
+   * §8.4 Upkeep row (marshal-review major): **3 grain** per round — NOT the base
+   * SIEGE unit's 1; economy.ts must charge THIS value for the Bombard, never
+   * `UNIT_STATS[SIEGE].grainUpkeep`. If unpaid it never deserts — it falls
+   * **SILENT** instead (economy.ts sets `GameState.greatBombard.silenced`;
+   * combat.ts rolls no bombardment dice for it while silenced; the flag clears
+   * the next round the upkeep is paid).
+   */
   grainUpkeep: 3,
   /** Wall-damage dice rolled per siege round (§8.2 step 2); each uses SIEGE.bombardDamage. */
   bombardDice: 2,

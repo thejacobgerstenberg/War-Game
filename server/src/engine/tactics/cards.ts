@@ -25,6 +25,21 @@ import type { Rng } from "../rng.js";
 /** Rarity tier → physical copies in the shuffled deck (§7.7 distribution). */
 const COPIES = { common: 3, uncommon: 2, rare: 1 } as const;
 
+/**
+ * Marshal-review B3 — the play path of a tactic design (§7.7 "Playing"):
+ * - `"battle"`  — played into a `PendingBattle` (field/fleet battle or a declared
+ *   assault battle) via `PLAY_TACTIC.battleId`; queued on
+ *   `PendingBattle.{attacker,defender}Tactics` and resolved by combat.
+ * - `"siege"`   — played against an ACTIVE `SiegeState` (ongoing-siege / assault
+ *   cards with no PendingBattle) via `PLAY_TACTIC.siegeProvinceId`; resolves at
+ *   once into round-scoped siege/wall modifiers that `resolveSiege` consumes.
+ * - `"global"`  — no engagement at all (§10.6 Play-card / Move-rider cards);
+ *   `PLAY_TACTIC` with neither target resolves the effect IMMEDIATELY.
+ * Every one of the 24 designs carries exactly one path in its `data.playPath`;
+ * actions.ts / combat.ts validate target modes against this classification.
+ */
+export type TacticPlayPath = "battle" | "siege" | "global";
+
 /** The structured effect tag the resolver switches on (see `../tactics.ts`). */
 export type TacticEffectTag =
   | "melee_dice" // +N melee dice to a side (combat_mod)
@@ -50,6 +65,13 @@ export type TacticEffectTag =
 export interface TacticEffectData {
   tier: "common" | "uncommon" | "rare";
   effect: TacticEffectTag;
+  /**
+   * Marshal B3 — which of the three target modes this design is played through
+   * (see {@link TacticPlayPath}). REQUIRED on every design so all 24 have a
+   * play path; validated at declaration (`queueTactic`) and play
+   * (`playSiegeTactic` / `playGlobalTactic`).
+   */
+  playPath: TacticPlayPath;
   /** Battle domain the card is legal in ("land" | "fleet" | "any" | "siege"). */
   domain?: "land" | "fleet" | "any" | "siege";
   /** Which side of the battle the effect benefits (default: the player's side). */
@@ -106,49 +128,49 @@ export const TACTIC_CARDS: TacticCard[] = [
     "forced-march",
     "Forced March",
     "Rider on one of your Move actions: that army moves +1 province; it may not Besiege or Assault this round.",
-    { tier: "common", effect: "forced_march", value: 1 },
+    { tier: "common", effect: "forced_march", playPath: "global", value: 1 },
     { timing: "move" },
   ),
   card(
     "veterans-of-the-border",
     "Veterans of the Border",
     "One land battle: your side rolls +1 die in each melee step.",
-    { tier: "common", effect: "melee_dice", domain: "land", value: 1 },
+    { tier: "common", effect: "melee_dice", playPath: "battle", domain: "land", value: 1 },
     { timing: "battle" },
   ),
   card(
     "pilot-of-the-narrows",
     "The Pilot of the Narrows",
     "One fleet battle: your side rolls +1 die in each melee step.",
-    { tier: "common", effect: "melee_dice", domain: "fleet", value: 1 },
+    { tier: "common", effect: "melee_dice", playPath: "battle", domain: "fleet", value: 1 },
     { timing: "battle" },
   ),
   card(
     "ladders-and-fascines",
     "Ladders and Fascines",
     "In one round of a siege assault, reroll one of your dice.",
-    { tier: "common", effect: "reroll", domain: "siege", rerollMode: "one", value: 1 },
+    { tier: "common", effect: "reroll", playPath: "siege", domain: "siege", rerollMode: "one", value: 1 },
     { timing: "assault" },
   ),
   card(
     "the-counting-house",
     "A Good Season at the Counting-House",
     "Gain 2 gold.",
-    { tier: "common", effect: "gain_resource", resource: "gold", value: 2 },
+    { tier: "common", effect: "gain_resource", playPath: "global", resource: "gold", value: 2 },
     { timing: "play-card" },
   ),
   card(
     "grain-barges-of-the-danube",
     "Grain Barges of the Danube",
     "Gain 2 grain.",
-    { tier: "common", effect: "gain_resource", resource: "grain", value: 2 },
+    { tier: "common", effect: "gain_resource", playPath: "global", resource: "grain", value: 2 },
     { timing: "play-card" },
   ),
   card(
     "ears-in-the-bazaar",
     "Ears in the Bazaar",
     "Look at all tactic cards held by one rival.",
-    { tier: "common", effect: "peek_hand" },
+    { tier: "common", effect: "peek_hand", playPath: "global" },
     { timing: "play-card" },
   ),
   card(
@@ -158,6 +180,7 @@ export const TACTIC_CARDS: TacticCard[] = [
     {
       tier: "common",
       effect: "reroll",
+      playPath: "battle",
       domain: "land",
       side: "defender",
       rerollMode: "lowest",
@@ -170,35 +193,35 @@ export const TACTIC_CARDS: TacticCard[] = [
     "feigned-retreat",
     "Feigned Retreat",
     "At the start of any battle round, before dice: withdraw your whole stack to an adjacent friendly or empty province. The battle ends; no pursuit.",
-    { tier: "uncommon", effect: "feigned_retreat", domain: "land" },
+    { tier: "uncommon", effect: "feigned_retreat", playPath: "battle", domain: "land" },
     { timing: "battle" },
   ),
   card(
     "night-sortie",
     "Night Sortie",
     "One round of a siege against your city: the garrison suffers no store depletion or hunger loss; instead the besieger loses 1 unit (weakest first).",
-    { tier: "uncommon", effect: "night_sortie", domain: "siege", side: "defender" },
+    { tier: "uncommon", effect: "night_sortie", playPath: "siege", domain: "siege", side: "defender" },
     { timing: "siege" },
   ),
   card(
     "bribed-gatekeeper",
     "The Bribed Gatekeeper",
     "One assault you launch this round: the defender's wall bonus is 0 (Wall HP unchanged; escalade -1 still applies).",
-    { tier: "uncommon", effect: "wall_bonus_zero", domain: "siege", side: "attacker" },
+    { tier: "uncommon", effect: "wall_bonus_zero", playPath: "siege", domain: "siege", side: "attacker" },
     { timing: "assault" },
   ),
   card(
     "chain-across-the-horn",
     "The Chain Across the Horn",
     "One coastal province you hold cannot be the target of an amphibious assault until the start of your next turn.",
-    { tier: "uncommon", effect: "amphibious_immune" },
+    { tier: "uncommon", effect: "amphibious_immune", playPath: "global" },
     { timing: "play-card" },
   ),
   card(
     "condottieri-contract",
     "Condottieri Contract",
     "Pay 2 gold: one land battle — your side rolls +2 dice in each melee step.",
-    { tier: "uncommon", effect: "melee_dice", domain: "land", value: 2, costGold: 2 },
+    { tier: "uncommon", effect: "melee_dice", playPath: "battle", domain: "land", value: 2, costGold: 2 },
     { timing: "battle" },
   ),
   card(
@@ -208,6 +231,7 @@ export const TACTIC_CARDS: TacticCard[] = [
     {
       tier: "uncommon",
       effect: "gain_resource",
+      playPath: "global",
       resource: "faith",
       value: 3,
       costGold: 2,
@@ -218,14 +242,14 @@ export const TACTIC_CARDS: TacticCard[] = [
     "the-intercepted-letter",
     "The Intercepted Letter",
     "Reaction — play as a rival plays a tactic card: cancel it. Both cards are discarded.",
-    { tier: "uncommon", effect: "intercept" },
+    { tier: "uncommon", effect: "intercept", playPath: "battle" },
     { timing: "reaction" },
   ),
   card(
     "the-hexamilion-manned",
     "The Hexamilion Manned",
     "One land battle you defend in an unwalled province: gain defender +2 (a temporary T2-grade wall bonus; creates no Wall HP; does not stack with real walls).",
-    { tier: "uncommon", effect: "temp_wall", domain: "land", side: "defender", value: 2 },
+    { tier: "uncommon", effect: "temp_wall", playPath: "battle", domain: "land", side: "defender", value: 2 },
     { timing: "battle" },
   ),
   // ---- 8 Rare (×1 = 8 copies) -----------------------------------------------
@@ -233,21 +257,21 @@ export const TACTIC_CARDS: TacticCard[] = [
     "greek-fire",
     "Greek Fire",
     "Before dice in a fleet battle you are fighting: win it outright — all enemy naval units in the zone are destroyed. Then discard one other tactic card from your hand and remove this card from the game.",
-    { tier: "rare", effect: "greek_fire", domain: "fleet" },
+    { tier: "rare", effect: "greek_fire", playPath: "battle", domain: "fleet" },
     { timing: "battle", removedFromGameOnPlay: true },
   ),
   card(
     "treason-at-the-gate",
     "Treason at the Gate",
     "Pay 4 gold. Play on a walled city you have besieged for 2+ consecutive rounds: the city falls without an assault — its garrison surrenders and you occupy it, walls at current HP. Remove this card from the game.",
-    { tier: "rare", effect: "treason", domain: "siege", side: "attacker", costGold: 4 },
+    { tier: "rare", effect: "treason", playPath: "siege", domain: "siege", side: "attacker", costGold: 4 },
     { timing: "siege", removedFromGameOnPlay: true },
   ),
   card(
     "the-pay-chest-taken",
     "The Pay Chest Taken",
     "Take up to 3 gold from one rival's treasury (never more than they hold).",
-    { tier: "rare", effect: "steal_gold", value: 3 },
+    { tier: "rare", effect: "steal_gold", playPath: "global", value: 3 },
     { timing: "play-card" },
   ),
   card(
@@ -257,6 +281,7 @@ export const TACTIC_CARDS: TacticCard[] = [
     {
       tier: "rare",
       effect: "holy_war",
+      playPath: "global",
       domain: "any",
       value: 1,
       costFaith: 2,
@@ -268,21 +293,21 @@ export const TACTIC_CARDS: TacticCard[] = [
     "sails-from-the-west",
     "Sails from the West",
     "Play while a coastal city you hold is besieged: this round its stores do not deplete and it takes no hunger loss — even under full naval blockade — and restore 2 depleted grain stores.",
-    { tier: "rare", effect: "sails_relief", domain: "siege", side: "defender", value: 2 },
+    { tier: "rare", effect: "sails_relief", playPath: "siege", domain: "siege", side: "defender", value: 2 },
     { timing: "siege" },
   ),
   card(
     "a-death-in-the-palace",
     "A Death in the Palace",
     "Name one rival: a truce binds you both until the start of your next turn — neither may declare a new battle, assault, or siege against the other.",
-    { tier: "rare", effect: "truce" },
+    { tier: "rare", effect: "truce", playPath: "global" },
     { timing: "play-card" },
   ),
   card(
     "the-white-knights-stroke",
     "The White Knight's Stroke",
     "In one round of a land battle, reroll any of your dice once (keep the second results).",
-    { tier: "rare", effect: "reroll", domain: "land", rerollMode: "any", value: 1 },
+    { tier: "rare", effect: "reroll", playPath: "battle", domain: "land", rerollMode: "any", value: 1 },
     { timing: "battle" },
   ),
   // 8th rare — CANON clarification 2: `the-guns-of-orban` re-flavored IN PLACE as
@@ -298,7 +323,7 @@ export const TACTIC_CARDS: TacticCard[] = [
     "master-founders-hired",
     "Master Founders Hired",
     "In one siege, cancel the wall bonus for one full round and add 1 die to your assault.",
-    { tier: "rare", effect: "wall_bonus_zero", domain: "siege", side: "attacker", assaultDice: 1 },
+    { tier: "rare", effect: "wall_bonus_zero", playPath: "siege", domain: "siege", side: "attacker", assaultDice: 1 },
     { timing: "assault" },
   ),
 ];
@@ -307,6 +332,20 @@ export const TACTIC_CARDS: TacticCard[] = [
 export const TACTIC_CARD_BY_ID: Record<string, TacticCard> = Object.fromEntries(
   TACTIC_CARDS.map((c) => [c.id, c]),
 );
+
+/**
+ * Marshal B3 — slug → play path for all 24 designs (derived from each design's
+ * `data.playPath`, so the classification is published as data actions/combat can
+ * validate against consistently).
+ */
+export const TACTIC_PLAY_PATH: Record<string, TacticPlayPath> = Object.fromEntries(
+  TACTIC_CARDS.map((c) => [c.id, (c.data as unknown as TacticEffectData).playPath]),
+);
+
+/** The play path of one tactic design; `undefined` for an unknown slug. */
+export function tacticPlayPath(cardId: TacticCardId): TacticPlayPath | undefined {
+  return TACTIC_PLAY_PATH[cardId];
+}
 
 /**
  * Build the tactic draw deck: expand each design into `copies` physical cards and

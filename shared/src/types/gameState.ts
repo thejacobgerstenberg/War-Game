@@ -452,6 +452,14 @@ export interface SiegeState {
   circumvallated: boolean;
   /** Free-form siege phase tag (e.g. "invest" | "bombard" | "assault"). */
   phase?: string;
+  /**
+   * §8.2.4 (marshal major — sieges must NOT auto-assault every round): set when
+   * the besieger declares an assault this round via the budgeted
+   * `SIEGE_ASSAULT` action in the action window. The COMBAT phase resolves an
+   * assault battle for this siege ONLY when this flag is true; the round loop
+   * CLEARS it after COMBAT each round (declarations never carry over).
+   */
+  assaultDeclared?: boolean;
 }
 
 /** A battle declared this round, resolved during the COMBAT phase. */
@@ -743,6 +751,15 @@ export interface GameState {
     ownerId: string | null;
     provinceId: string | null;
     emplacedRound: number;
+    /**
+     * §8.4 Upkeep row (marshal major): the Bombard eats
+     * `balance.GREAT_BOMBARD.grainUpkeep` (3 grain)/round and NEVER deserts
+     * when unpaid — it falls SILENT instead. Set by economy.ts when the
+     * owner's upkeep goes unpaid; while true the gun rolls NO bombardment
+     * dice (combat.ts skips its wall-damage dice that round). Cleared by
+     * economy.ts the next round its upkeep is paid.
+     */
+    silenced?: boolean;
     /**
      * §6.4/§8.4 deferred-forge marker: set (with `inPlay:false`) when Omen #34
      * forges the gun but the recipient's whole territory is at the stacking cap,

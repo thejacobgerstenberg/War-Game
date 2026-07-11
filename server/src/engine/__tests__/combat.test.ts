@@ -8,7 +8,7 @@
  * whole battle. Field modifiers/rout/pursuit are exercised through overwhelming
  * or forced setups plus a determinism re-run.
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   BuildingType,
   Faction,
@@ -29,16 +29,35 @@ import {
 } from "@imperium/shared";
 import { emptyUnits } from "../gameState.js";
 import { makeRng } from "../rng.js";
-import { CONQUEST_PRESTIGE, GREAT_BOMBARD, SIEGE } from "../balance.js";
+import { CONQUEST_PRESTIGE, GREAT_BOMBARD, SIEGE, TREASON_GATE } from "../balance.js";
 import { resolveBattle, resolveNaval, resolveSiege } from "../combat.js";
 import { playTactic } from "../tactics/index.js";
+// The REAL resolver, imported from the flat module ("../tactics.js" — a different
+// specifier than the mocked barrel), for the Stage-B CONSUMPTION tests: those must
+// exercise the full card → modifier → dice/state-delta chain, not a stub.
+import { playTactic as realPlayTactic } from "../tactics.js";
 
-// The tactic subsystem is a sibling module; mock its combat entry-point so the
+// The tactic subsystem is a sibling module; mock its barrel entry-point so the
 // §7.7 tactic HOOK inside combat can be unit-tested in isolation (order, ≤1/side,
-// consumption, state threading) without depending on the real card resolver.
+// consumption, state threading). The default implementation is a no-op identity;
+// the Stage-B consumption suites swap in `realPlayTactic` per test via
+// `useRealTactics()`. (combat.ts reads card DATA from ../tactics/cards.js, which
+// is intentionally NOT mocked.)
 vi.mock("../tactics/index.js", () => ({
   playTactic: vi.fn((state: GameState) => state),
 }));
+
+/** Route the combat tactic hook to the REAL §7.7 resolver for this test. */
+function useRealTactics(): void {
+  vi.mocked(playTactic).mockImplementation(realPlayTactic);
+}
+
+beforeEach(() => {
+  // Every test starts from the no-op stub; consumption tests opt into the real
+  // resolver explicitly. Keeps the suites order-independent.
+  vi.mocked(playTactic).mockReset();
+  vi.mocked(playTactic).mockImplementation((state: GameState) => state);
+});
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -373,6 +392,10 @@ function siegeState(overrides: Partial<SiegeState> = {}): SiegeState {
     grainStores: 99,
     breached: false,
     circumvallated: false,
+    // §8.2 step 4 CHOSEN ASSAULT (Stage B): sieges no longer auto-assault; the
+    // fixture defaults to a declared assault so the storm-path tests exercise
+    // the assault branch. Undeclared-round tests override this to false.
+    assaultDeclared: true,
     ...overrides,
   };
 }
@@ -990,9 +1013,15 @@ describe("Great Bombard capture-passes-intact (§8.4, delta 3)", () => {
 // CANON sea-resupply (GD §8.2)
 // ---------------------------------------------------------------------------
 
-describe("sea-resupply siege rule (GD §8.2, CANON)", () => {
-  // constantinople is coastal and adjacent to "sea-of-marmara" in the canonical map.
-  const runSiege = (seaOwner: string | null, rounds: number): number => {
+describe("sea-resupply siege rule (GD §8.2, CANON — FRESH fleet presence, Stage B)", () => {
+  // constantinople is coastal and adjacent to "sea-of-marmara" in the canonical
+  // map. Stage-B marshal fix: enemy control of the lane is computed from the war
+  // fleets ACTUALLY PRESENT in the zone at resolution time, never from the stale
+  // `SeaZone.blockadedBy` bookkeeping field.
+  const runSiege = (
+    opts: { staleBlockade?: string | null; fleets?: Fleet[] },
+    rounds: number,
+  ): number => {
     let state = makeState({
       provinces: [
         province("constantinople", {
@@ -1004,7 +1033,15 @@ describe("sea-resupply siege rule (GD §8.2, CANON)", () => {
       ],
       // SIEGE-only besieger: no assault troops, so the garrison can only starve.
       armies: [army("s1", "p1", "constantinople", { [UnitType.SIEGE]: 30 })],
-      seaZones: [{ id: "sea-of-marmara", name: "sea-of-marmara", position: { x: 0, y: 0 }, blockadedBy: seaOwner }],
+      fleets: opts.fleets ?? [],
+      seaZones: [
+        {
+          id: "sea-of-marmara",
+          name: "sea-of-marmara",
+          position: { x: 0, y: 0 },
+          blockadedBy: opts.staleBlockade ?? null,
+        },
+      ],
       // FL-12: initial stores = baseHoldoutRounds; an open lane preserves them.
       siegeStates: [siegeState({ provinceId: "constantinople", grainStores: SIEGE.baseHoldoutRounds })],
     });
@@ -1016,13 +1053,31 @@ describe("sea-resupply siege rule (GD §8.2, CANON)", () => {
   };
 
   it("a friendly/neutral adjacent sea keeps a coastal city fed (no starvation)", () => {
-    // sea-of-marmara uncontrolled → open lane → garrison never starves.
-    expect(runSiege(null, SIEGE.baseHoldoutRounds + 3)).toBe(5);
+    // no war fleet anywhere near → open lane → garrison never starves.
+    expect(runSiege({}, SIEGE.baseHoldoutRounds + 3)).toBe(5);
   });
 
-  it("an ENEMY-controlled adjacent sea allows the coastal city to starve", () => {
-    // sea-of-marmara blockaded by the besieger (p1) → lane cut → starvation resumes.
-    expect(runSiege("p1", SIEGE.baseHoldoutRounds + 1)).toBeLessThan(5);
+  it("an enemy war fleet PRESENT in the only adjacent sea starves the port — even with blockadedBy stale-null", () => {
+    // The freshness delta: the bookkeeping field says NOTHING (blockadedBy null),
+    // but a real enemy war fleet sits in the lane → the port hungers.
+    const enemyFleet = fleet("bf", "p1", "sea-of-marmara", { [UnitType.WARSHIP]: 2 });
+    expect(
+      runSiege({ staleBlockade: null, fleets: [enemyFleet] }, SIEGE.baseHoldoutRounds + 1),
+    ).toBeLessThan(5);
+  });
+
+  it("a PHANTOM stale blockade (blockadedBy set, no fleet present) no longer starves the port", () => {
+    // Marshal major: the old reader keyed off blockadedBy and would starve this
+    // port. The fleet that set the flag has sailed away → the lane is open.
+    expect(runSiege({ staleBlockade: "p1", fleets: [] }, SIEGE.baseHoldoutRounds + 3)).toBe(5);
+  });
+
+  it("an enemy fleet CONTESTED by a defender war fleet leaves the lane open (§5.3 uncontested rule)", () => {
+    const fleets = [
+      fleet("bf", "p1", "sea-of-marmara", { [UnitType.WARSHIP]: 2 }),
+      fleet("hf", "p2", "sea-of-marmara", { [UnitType.GALLEY]: 1 }),
+    ];
+    expect(runSiege({ fleets }, SIEGE.baseHoldoutRounds + 3)).toBe(5);
   });
 });
 
@@ -1042,7 +1097,11 @@ describe("sea-resupply does not freeze naval/harbor action (§8.2.3, CANON)", ()
     blockadedBy,
   });
 
-  const besiegedPort = (seaOwner: string | null, grainStores: number): GameState =>
+  const besiegedPort = (
+    seaOwner: string | null,
+    grainStores: number,
+    fleets?: Fleet[],
+  ): GameState =>
     makeState({
       provinces: [
         province("constantinople", {
@@ -1055,7 +1114,7 @@ describe("sea-resupply does not freeze naval/harbor action (§8.2.3, CANON)", ()
       // SIEGE-only land besieger (0 assault troops → the garrison can only starve),
       // plus a war fleet each so the sea lane can actually be contested.
       armies: [army("s1", "p1", "constantinople", { [UnitType.SIEGE]: 30 })],
-      fleets: [
+      fleets: fleets ?? [
         fleet("f1", "p1", "sea-of-marmara", { [UnitType.WARSHIP]: 6 }), // besieger's fleet
         fleet("f2", "p2", "sea-of-marmara", { [UnitType.GALLEY]: 1 }), // defender's harbor fleet
       ],
@@ -1087,10 +1146,14 @@ describe("sea-resupply does not freeze naval/harbor action (§8.2.3, CANON)", ()
   });
 
   it("once the contest closes the only lane, the port starves next round (resupply gated starvation only)", () => {
-    // Lane already lost to the besieger (blockadedBy p1) and stores empty → the port
-    // now hungers exactly like an inland city, proving the resupply gate governs ONLY
-    // starvation and the naval closure took effect.
-    const state = besiegedPort("p1", 0);
+    // The defender's harbor fleet was destroyed in the contest: only the
+    // besieger's war fleet remains PHYSICALLY in the lane (fresh Stage-B rule —
+    // the blockadedBy field mirrors it but is no longer what is read) and stores
+    // are empty → the port now hungers exactly like an inland city, proving the
+    // resupply gate governs ONLY starvation and the naval closure took effect.
+    const state = besiegedPort("p1", 0, [
+      fleet("f1", "p1", "sea-of-marmara", { [UnitType.WARSHIP]: 6 }), // victor holds the lane
+    ]);
     const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
     expect(res.state.provinces[0].garrison).toBeLessThan(5);
   });
@@ -1617,5 +1680,847 @@ describe("sack only on ASSAULT capture (§8.2 / §13.1 ratification)", () => {
     // and the capture log does NOT flag a sack.
     const capLog = res.state.log.find((l) => l.type === "siege" && l.data?.sacked === true);
     expect(capLog).toBeUndefined();
+  });
+});
+
+// ===========================================================================
+// STAGE B — §7.7 tactic CONSUMPTION (marshal-review combat cluster). Every test
+// below asserts CONSUMPTION via dice-outcome / state DELTAS: the same seed is
+// resolved with and without the card, and the card must CHANGE the dice or the
+// state — never merely post a modifier. These suites route the combat hook to
+// the REAL tactic resolver (useRealTactics), so the full chain
+// card → playTactic → modifier → combat consumer is exercised end-to-end.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// §7.7 "+N dice" cards are N actual EXTRA DICE, not a to-hit shift
+// ---------------------------------------------------------------------------
+
+describe("§7.7 '+N dice' consumption — extra dice, not a to-hit shift (marshal fix)", () => {
+  // 4 CAVALRY on PLAINS: threshold = clamp(7−3(atk)−1(charge)−1(outnumber), 2, 6)
+  // = 2 — ALREADY at the clamp floor. Under the old flat-+N model condottieri's
+  // +2 could not change anything (threshold stays 2 and no extra draws happen).
+  // Under the correct model the side rolls 2 actual EXTRA DICE from the stream.
+  const build = (withCard: boolean): [GameState, PendingBattle] => {
+    const battle: PendingBattle = {
+      id: "b1",
+      provinceId: "field",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+      attackerTactics: withCard ? [asTacticCardId("condottieri-contract")] : [],
+    };
+    const p1 = player("p1", Faction.OTTOMAN);
+    p1.treasury = { ...p1.treasury, gold: 2 }; // the card's printed 2-gold cost
+    const state = makeState({
+      players: [p1, player("p2", Faction.BYZANTIUM)],
+      provinces: [province("field", { ownerId: "p2", terrain: TerrainType.PLAINS })],
+      armies: [
+        army("a1", "p1", "field", { [UnitType.CAVALRY]: 4 }),
+        army("d1", "p2", "field", { [UnitType.LEVY]: 2 }),
+      ],
+      pendingBattles: [battle],
+    });
+    return [state, battle];
+  };
+
+  it("condottieri-contract (+2 dice) consumes exactly 2 extra draws and pays its cost", () => {
+    useRealTactics();
+    // Guard: the seed wipes both LEVY in round 1 in both runs (>=2 hits at 2+
+    // among the attacker's 4 normal dice), so the battle is a single round and
+    // the cursor delta is EXACTLY the extra dice.
+    const predict = makeRng(SEED, 0);
+    const normal = predict.rollDice(4);
+    expect(normal.filter((r) => r >= 2).length).toBeGreaterThanOrEqual(2);
+
+    const [sBase, bBase] = build(false);
+    const base = resolveBattle(sBase, bBase, makeRng(SEED, 0));
+    const [sCard, bCard] = build(true);
+    const withCard = resolveBattle(sCard, bCard, makeRng(SEED, 0));
+
+    // Both runs wipe the 2-LEVY defender in one round…
+    expect(base.winnerId).toBe("p1");
+    expect(withCard.winnerId).toBe("p1");
+    expect(Object.values(base.defender.losses).reduce((a, b) => a + b, 0)).toBe(2);
+    expect(Object.values(withCard.defender.losses).reduce((a, b) => a + b, 0)).toBe(2);
+    // …but the card run drew EXACTLY 2 more dice from the same stream. A flat
+    // +2 to-hit (the old model) would have left the cursor identical, because
+    // the threshold was already clamped at 2.
+    expect(withCard.state.rngCursor).toBe(base.state.rngCursor + 2);
+    // The printed 2-gold cost was charged on play (§10.6).
+    expect(withCard.state.players.find((p) => p.id === "p1")?.treasury.gold).toBe(0);
+    // The card was consumed to the discard pile.
+    expect(withCard.state.tacticDiscard).toContain(asTacticCardId("condottieri-contract"));
+    // Dice delta is observable in state too: the defender's 2 dice shifted 2
+    // stream positions, changing the attacker's casualties deterministically.
+    const cavLeft = (s: GameState): number =>
+      s.armies.find((a) => a.id === "a1")?.units[UnitType.CAVALRY] ?? 0;
+    expect(cavLeft(base.state)).not.toBe(cavLeft(withCard.state));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §7.7 reroll cards actually REROLL (deterministically, from the same stream)
+// ---------------------------------------------------------------------------
+
+describe("§7.7 reroll consumption — the roll RESULT changes (marshal fix)", () => {
+  it("the-white-knights-stroke rerolls the attacker's missed die and FLIPS the battle (seed 5)", () => {
+    useRealTactics();
+    // 1 INFANTRY (thr 5) vs 1 LEVY (thr 6). Hand-computed stream for seed 5:
+    // draw1 misses, its REROLL hits, draw3 (the defender, shifted) misses — so
+    // WITH the card the attacker wins in round 1 on the rerolled die. WITHOUT
+    // it, draw2 becomes the defender's die and kills the attacker instead.
+    const p = makeRng(5, 0);
+    const first = p.rollD6();
+    const reroll = p.rollD6();
+    const defDie = p.rollD6();
+    expect(first).toBeLessThan(5); // initial miss
+    expect(reroll).toBeGreaterThanOrEqual(5); // the reroll hits
+    expect(defDie).toBeLessThan(6); // shifted defender die misses
+
+    const build = (withCard: boolean): [GameState, PendingBattle] => {
+      const battle: PendingBattle = {
+        id: "b1",
+        provinceId: "field",
+        attackerId: "p1",
+        defenderId: "p2",
+        attackerStackIds: ["a1"],
+        defenderStackIds: ["d1"],
+        attackerTactics: withCard ? [asTacticCardId("the-white-knights-stroke")] : [],
+      };
+      const state = makeState({
+        provinces: [province("field", { ownerId: "p2", terrain: TerrainType.PLAINS })],
+        armies: [
+          army("a1", "p1", "field", { [UnitType.INFANTRY]: 1 }),
+          army("d1", "p2", "field", { [UnitType.LEVY]: 1 }),
+        ],
+        pendingBattles: [battle],
+      });
+      return [state, battle];
+    };
+
+    const [sCard, bCard] = build(true);
+    const withCard = resolveBattle(sCard, bCard, makeRng(5, 0));
+    expect(withCard.winnerId).toBe("p1"); // the reroll won the battle
+    expect(withCard.rounds).toBe(1);
+    expect(withCard.state.rngCursor).toBe(3); // die + reroll + defender die
+    // one-round grant: CONSUMED on use (removed from activeModifiers).
+    expect(
+      withCard.state.activeModifiers.filter((m) => typeof m.data?.reroll === "string"),
+    ).toHaveLength(0);
+    expect(withCard.state.tacticDiscard).toContain(asTacticCardId("the-white-knights-stroke"));
+
+    const [sBase, bBase] = build(false);
+    const base = resolveBattle(sBase, bBase, makeRng(5, 0));
+    expect(base.winnerId).toBe("p2"); // same seed, no card: the attacker dies
+    expect(base.state.rngCursor).toBe(2);
+  });
+
+  it("locked-shields rerolls the defender's lowest die each melee step and persists (seed 1)", () => {
+    useRealTactics();
+    // Attacker 1 LEVY (thr 6) vs defender 1 INFANTRY (thr 4). Seed 1 stream:
+    // a1 misses, d1 misses, the lowest-die REROLL hits → with the card the
+    // defender kills the attacker in round 1; without it the fight takes a
+    // second round (draws 3+4) before the defender lands the same kill.
+    const p = makeRng(1, 0);
+    const a1 = p.rollD6();
+    const d1 = p.rollD6();
+    const r = p.rollD6();
+    expect(a1).toBeLessThan(6);
+    expect(d1).toBeLessThan(4);
+    expect(r).toBeGreaterThanOrEqual(4); // the reroll hits
+
+    const build = (withCard: boolean): [GameState, PendingBattle] => {
+      const battle: PendingBattle = {
+        id: "b1",
+        provinceId: "field",
+        attackerId: "p1",
+        defenderId: "p2",
+        attackerStackIds: ["a1"],
+        defenderStackIds: ["d1"],
+        defenderTactics: withCard ? [asTacticCardId("locked-shields")] : [],
+      };
+      const state = makeState({
+        provinces: [province("field", { ownerId: "p2", terrain: TerrainType.PLAINS })],
+        armies: [
+          army("a1", "p1", "field", { [UnitType.LEVY]: 1 }),
+          army("d1", "p2", "field", { [UnitType.INFANTRY]: 1 }),
+        ],
+        pendingBattles: [battle],
+      });
+      return [state, battle];
+    };
+
+    const [sCard, bCard] = build(true);
+    const withCard = resolveBattle(sCard, bCard, makeRng(1, 0));
+    expect(withCard.winnerId).toBe("p2");
+    expect(withCard.rounds).toBe(1); // the reroll ended it a round early
+    expect(withCard.state.rngCursor).toBe(3);
+    // "in EACH melee step": the grant persists for the battle (round-scoped —
+    // it lapses at cleanup, not on first use).
+    expect(
+      withCard.state.activeModifiers.filter((m) => m.data?.reroll === "lowest"),
+    ).toHaveLength(1);
+
+    const [sBase, bBase] = build(false);
+    const base = resolveBattle(sBase, bBase, makeRng(1, 0));
+    expect(base.winnerId).toBe("p2");
+    expect(base.rounds).toBe(2); // same kill, one round later
+    expect(base.state.rngCursor).toBe(4);
+  });
+
+  it("ladders-and-fascines rerolls one assault die in a siege round and takes the wall (seed 44)", () => {
+    // Siege-mode play (PLAY_TACTIC siegeProvinceId) posts this siege_mod; combat
+    // must CONSUME it inside the declared assault. 1 INFANTRY storms a T1 wall
+    // (thr 6 with escalade) vs a 1-strong garrison (thr 3 behind the wall).
+    // Seed 44 stream: storm die misses, its REROLL hits (a 6), the garrison die
+    // misses → the reroll captures the city; without it the same stream kills
+    // the storming party instead.
+    const p = makeRng(44, 0);
+    const a1 = p.rollD6();
+    const r = p.rollD6();
+    const d = p.rollD6();
+    expect(a1).toBeLessThan(6);
+    expect(r).toBeGreaterThanOrEqual(6);
+    expect(d).toBeLessThan(3);
+
+    const build = (withMod: boolean): GameState =>
+      makeState({
+        provinces: [
+          province("keep", {
+            ownerId: "p2",
+            terrain: TerrainType.CITY,
+            walls: { tier: 1, hp: 3 },
+            garrison: 1,
+          }),
+        ],
+        armies: [army("a1", "p1", "keep", { [UnitType.INFANTRY]: 1 })],
+        siegeStates: [siegeState({ besiegingArmyIds: ["a1"] })],
+        activeModifiers: withMod
+          ? [
+              {
+                id: "tac-ladders",
+                scope: "round",
+                kind: "siege_mod",
+                target: { faction: Faction.OTTOMAN, provinceId: "keep" },
+                value: 0,
+                data: { reroll: "one", dice: 1, side: "attacker", tactic: "ladders-and-fascines" },
+              },
+            ]
+          : [],
+      });
+
+    const withMod = resolveSiege(build(true), build(true).siegeStates[0], makeRng(44, 0));
+    expect(withMod.captured).toBe(true); // the rerolled die carried the wall
+    expect(withMod.state.provinces[0].ownerId).toBe("p1");
+    expect(withMod.state.rngCursor).toBe(3); // storm die + reroll + garrison die
+    // one-round grant: consumed.
+    expect(
+      withMod.state.activeModifiers.filter((m) => typeof m.data?.reroll === "string"),
+    ).toHaveLength(0);
+
+    const base = resolveSiege(build(false), build(false).siegeStates[0], makeRng(44, 0));
+    expect(base.captured).toBe(false); // same stream, no reroll: the storm dies
+    expect(base.state.provinces[0].ownerId).toBe("p2");
+    expect(base.state.rngCursor).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §7.7 the-intercepted-letter — REACTION that cancels the rival's played card
+// ---------------------------------------------------------------------------
+
+describe("§7.7 intercepted-letter consumption — the rival's card has NO effect (marshal fix)", () => {
+  // 12 INFANTRY (thr 4 with outnumber) vs 1 LEVY (thr 6): the battle ends in
+  // round 1 on this seed, so cursor arithmetic isolates the card effects.
+  const build = (
+    attackerTactics: string[],
+    defenderTactics: string[],
+  ): [GameState, PendingBattle] => {
+    const battle: PendingBattle = {
+      id: "b1",
+      provinceId: "field",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+      attackerTactics: attackerTactics.map(asTacticCardId),
+      defenderTactics: defenderTactics.map(asTacticCardId),
+    };
+    const state = makeState({
+      provinces: [province("field", { ownerId: "p2", terrain: TerrainType.PLAINS })],
+      armies: [
+        army("a1", "p1", "field", { [UnitType.INFANTRY]: 12 }),
+        army("d1", "p2", "field", { [UnitType.LEVY]: 1 }),
+      ],
+      pendingBattles: [battle],
+    });
+    return [state, battle];
+  };
+
+  it("the letter nullifies the opponent's +1-die card: dice identical to the no-card baseline", () => {
+    useRealTactics();
+    // Guard: >=1 hit among the attacker's 12 normal dice at 4+ (round-1 kill).
+    const predict = makeRng(SEED, 0);
+    expect(predict.rollDice(12).filter((r) => r >= 4).length).toBeGreaterThanOrEqual(1);
+
+    const [s0, b0] = build([], []);
+    const baseline = resolveBattle(s0, b0, makeRng(SEED, 0));
+    const [s1, b1] = build(["veterans-of-the-border"], []);
+    const withCard = resolveBattle(s1, b1, makeRng(SEED, 0));
+    const [s2, b2] = build(["veterans-of-the-border"], ["the-intercepted-letter"]);
+    const intercepted = resolveBattle(s2, b2, makeRng(SEED, 0));
+
+    // Un-intercepted, the +1-die card consumes exactly one extra draw…
+    expect(withCard.state.rngCursor).toBe(baseline.state.rngCursor + 1);
+    // …but INTERCEPTED it has NO effect: the dice stream is byte-identical to
+    // the no-card baseline (the extra die was never rolled).
+    expect(intercepted.state.rngCursor).toBe(baseline.state.rngCursor);
+    expect(intercepted.winnerId).toBe("p1");
+    // No +N-dice modifier survives — the effect never registered.
+    expect(
+      intercepted.state.activeModifiers.filter((m) => m.data?.dice === true),
+    ).toHaveLength(0);
+    // §7.7 "both cards are discarded": the cancelled card AND the letter.
+    expect(intercepted.state.tacticDiscard).toContain(asTacticCardId("veterans-of-the-border"));
+    expect(intercepted.state.tacticDiscard).toContain(asTacticCardId("the-intercepted-letter"));
+    // The live battle queues were emptied (nothing left to leak).
+    expect(intercepted.state.pendingBattles[0].attackerTactics).toHaveLength(0);
+    expect(intercepted.state.pendingBattles[0].defenderTactics).toHaveLength(0);
+  });
+
+  it("a letter with nothing to intercept stays queued (reaction, never played proactively)", () => {
+    useRealTactics();
+    const [s, b] = build(["the-intercepted-letter"], []);
+    const res = resolveBattle(s, b, makeRng(SEED, 0));
+    // The reaction never fired: still queued on the live battle, not discarded.
+    expect(res.state.pendingBattles[0].attackerTactics).toContain(
+      asTacticCardId("the-intercepted-letter"),
+    );
+    expect(res.state.tacticDiscard ?? []).not.toContain(asTacticCardId("the-intercepted-letter"));
+    // And the battle itself resolved exactly like the baseline.
+    expect(res.state.rngCursor).toBe(13);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §7.7 greek-fire — naval AUTO-WIN, card removed from game
+// ---------------------------------------------------------------------------
+
+describe("§7.7 greek-fire consumption — instant naval win (marshal fix)", () => {
+  const build = (withCard: boolean): [GameState, PendingBattle] => {
+    const battle: PendingBattle = {
+      id: "n1",
+      seaZoneId: "aegean",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["f1"],
+      defenderStackIds: ["f2"],
+      isNaval: true,
+      attackerTactics: withCard ? [asTacticCardId("greek-fire")] : [],
+    };
+    const p1 = player("p1", Faction.OTTOMAN);
+    // §7.7: "then discard one OTHER tactic card from your hand".
+    p1.tacticHand = [asTacticCardId("the-counting-house")];
+    const state = makeState({
+      players: [p1, player("p2", Faction.BYZANTIUM)],
+      seaZones: [seaZone("aegean")],
+      fleets: [
+        fleet("f1", "p1", "aegean", { [UnitType.WARSHIP]: 1 }), // hopeless without the card
+        fleet("f2", "p2", "aegean", { [UnitType.WARSHIP]: 6 }),
+      ],
+      pendingBattles: [battle],
+    });
+    return [state, battle];
+  };
+
+  it("a hopeless 1-v-6 fleet WINS OUTRIGHT with greek-fire: no dice, enemy destroyed, card removed", () => {
+    useRealTactics();
+    const [sCard, bCard] = build(true);
+    const res = resolveNaval(sCard, bCard, makeRng(SEED, 0));
+    expect(res.winnerId).toBe("p1"); // the outnumbered side wins outright
+    expect(res.state.rngCursor).toBe(0); // "before dice" — no draw at all
+    // All enemy naval units in the zone are destroyed.
+    expect(res.state.fleets.find((f) => f.id === "f2")).toBeUndefined();
+    expect(res.state.fleets.find((f) => f.id === "f1")).toBeDefined();
+    // Winner controls the zone (§7.6).
+    expect(res.state.seaZones[0].blockadedBy).toBe("p1");
+    // The card is REMOVED FROM THE GAME; the forced extra discard hit the hand.
+    expect(res.state.tacticRemoved).toContain(asTacticCardId("greek-fire"));
+    expect(res.state.tacticDiscard).toContain(asTacticCardId("the-counting-house"));
+    expect(res.state.players.find((p) => p.id === "p1")?.tacticHand).toHaveLength(0);
+    // The auto-win grant was CONSUMED (no lingering modifier).
+    expect(
+      res.state.activeModifiers.filter((m) => m.data?.autoWinNaval === true),
+    ).toHaveLength(0);
+  });
+
+  it("without the card the same seed resolves by normal dice and the 1-v-6 side loses", () => {
+    const [sBase, bBase] = build(false);
+    const res = resolveNaval(sBase, bBase, makeRng(SEED, 0));
+    expect(res.winnerId).toBe("p2");
+    expect(res.state.rngCursor).toBeGreaterThan(0); // dice were actually rolled
+    expect(res.state.seaZones[0].blockadedBy).toBe("p2");
+    expect(res.state.fleets.find((f) => f.id === "f1")).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §7.7 feigned-retreat — withdraw before dice; battle ends; NO pursuit
+// ---------------------------------------------------------------------------
+
+describe("§7.7 feigned-retreat consumption — withdrawal before dice (marshal fix)", () => {
+  // philippopolis ↔ edirne are adjacent in the canonical map graph; edirne is
+  // p2-owned, so the defender has a legal withdrawal destination.
+  const build = (withCard: boolean): [GameState, PendingBattle] => {
+    const battle: PendingBattle = {
+      id: "b1",
+      provinceId: "philippopolis",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+      defenderTactics: withCard ? [asTacticCardId("feigned-retreat")] : [],
+    };
+    const state = makeState({
+      provinces: [
+        province("philippopolis", { ownerId: "p2", terrain: TerrainType.PLAINS }),
+        province("edirne", { ownerId: "p2" }),
+      ],
+      armies: [
+        // 8 CAVALRY: if this were a ROUT, pursuit would hit the fleeing stack.
+        army("a1", "p1", "philippopolis", { [UnitType.CAVALRY]: 8 }),
+        army("d1", "p2", "philippopolis", { [UnitType.INFANTRY]: 5 }),
+      ],
+      pendingBattles: [battle],
+    });
+    return [state, battle];
+  };
+
+  it("the whole stack withdraws intact (no dice, no pursuit), the battle ends, the attacker holds the field", () => {
+    useRealTactics();
+    const [s, b] = build(true);
+    const res = resolveBattle(s, b, makeRng(SEED, 0));
+    // "Before dice" — the battle ended with ZERO draws.
+    expect(res.state.rngCursor).toBe(0);
+    expect(res.rounds).toBe(1);
+    // The withdrawing stack relocated INTACT: all 5 units, no pursuit casualties
+    // despite the attacker's 8 CAVALRY (a rout would have taken pursuit hits).
+    const d1 = res.state.armies.find((a) => a.id === "d1");
+    expect(d1?.locationId).toBe("edirne");
+    expect(Object.values(d1!.units).reduce((x, y) => x + y, 0)).toBe(5);
+    // Not a rout: the casualty report carries no routed stacks.
+    expect(res.defender.routed).toHaveLength(0);
+    // The attacker holds the ceded field…
+    expect(res.winnerId).toBe("p1");
+    expect(res.state.provinces.find((p) => p.id === "philippopolis")?.ownerId).toBe("p1");
+    // …but a cession is NOT won by arms: no sack, no conquest prestige.
+    expect(res.state.provinces.find((p) => p.id === "philippopolis")?.sacked ?? false).toBe(false);
+    expect(
+      res.state.activeModifiers.filter((m) => m.kind === "prestige_pending"),
+    ).toHaveLength(0);
+    // The card resolved (discarded) and its retreat grant was CONSUMED.
+    expect(res.state.tacticDiscard).toContain(asTacticCardId("feigned-retreat"));
+    expect(
+      res.state.activeModifiers.filter((m) => m.data?.retreat === true),
+    ).toHaveLength(0);
+  });
+
+  it("without the card the same seed fights a real battle (dice are rolled)", () => {
+    const [s, b] = build(false);
+    const res = resolveBattle(s, b, makeRng(SEED, 0));
+    expect(res.state.rngCursor).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §7.7 treason-at-the-gate — the besieged city FALLS when the grant is consumed
+// ---------------------------------------------------------------------------
+
+describe("§7.7 treason-at-the-gate consumption — autoCapture executes (marshal fix)", () => {
+  // A gates-passing siege: round 9, siege laid round 6 (roundsElapsed 3 ⇒ started
+  // at 9−3=6 ≥ TREASON_GATE.minGameRound), garrison 3 ≤ TREASON_GATE.maxGarrison.
+  const build = (withMod: boolean): GameState =>
+    makeState({
+      round: 9,
+      turn: 9,
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 2, hp: 6 },
+          garrison: 3,
+        }),
+      ],
+      armies: [
+        army("a1", "p1", "keep", { [UnitType.INFANTRY]: 6 }),
+        army("d1", "p2", "keep", { [UnitType.INFANTRY]: 2 }), // defender stack inside the walls
+      ],
+      siegeStates: [
+        siegeState({
+          besiegingArmyIds: ["a1"],
+          roundsElapsed: 3,
+          grainStores: 2,
+          assaultDeclared: false,
+        }),
+      ],
+      activeModifiers: withMod
+        ? [
+            {
+              id: "tac-treason",
+              scope: "round",
+              kind: "siege_mod",
+              target: { faction: Faction.OTTOMAN, provinceId: "keep" },
+              data: { autoCapture: true, tactic: "treason-at-the-gate" },
+            },
+          ]
+        : [],
+    });
+
+  it("gates passed + grant consumed → the city changes owner THIS round, without an assault", () => {
+    const state = build(true);
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    // The city FELL — no assault was declared, no dice were rolled.
+    expect(res.captured).toBe(true);
+    expect(res.state.provinces[0].ownerId).toBe("p1");
+    expect(res.state.rngCursor).toBe(0);
+    // "its garrison surrenders (removed)": province garrison AND the defender
+    // stack inside the walls are gone; the besieger survives.
+    expect(res.state.provinces[0].garrison).toBe(0);
+    expect(res.state.armies.find((a) => a.id === "d1")).toBeUndefined();
+    expect(res.state.armies.find((a) => a.id === "a1")).toBeDefined();
+    // "walls at their current HP": untouched.
+    expect(res.state.provinces[0].walls.hp).toBe(6);
+    expect(res.wallHpRemaining).toBe(6);
+    // NOT a sack (the city fell without a storm).
+    expect(res.state.provinces[0].sacked ?? false).toBe(false);
+    // The grant was CONSUMED.
+    expect(
+      res.state.activeModifiers.filter((m) => m.data?.autoCapture === true),
+    ).toHaveLength(0);
+    // Taking a walled city by siege still posts the §13.1 conquest award.
+    const city = res.state.activeModifiers.find(
+      (m) => m.kind === "prestige_pending" && m.data?.reason === "take_walled_city",
+    );
+    expect(city?.value).toBe(CONQUEST_PRESTIGE.takeWalledCity);
+    // The siege itself is over.
+    expect(res.state.siegeStates).toHaveLength(0);
+  });
+
+  it("without the grant the same seed does NOT capture (bombard/starve only)", () => {
+    const state = build(false);
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.captured).toBe(false);
+    expect(res.state.provinces[0].ownerId).toBe("p2");
+    expect(res.state.armies.find((a) => a.id === "d1")).toBeDefined();
+  });
+
+  it("gates FAIL → the play itself is rejected (double brake, delta 1) and nothing is captured", () => {
+    // Gate (a): garrison too large.
+    const bigGarrison = makeState({
+      round: 9,
+      turn: 9,
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 2, hp: 6 },
+          garrison: TREASON_GATE.maxGarrison + 1,
+        }),
+      ],
+      armies: [army("a1", "p1", "keep", { [UnitType.INFANTRY]: 6 })],
+      siegeStates: [siegeState({ besiegingArmyIds: ["a1"], roundsElapsed: 3 })],
+    });
+    const treason = asTacticCardId("treason-at-the-gate");
+    const battleA: PendingBattle = {
+      id: "b1",
+      provinceId: "keep",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: [],
+      attackerTactics: [treason],
+    };
+    const sA = { ...bigGarrison, pendingBattles: [battleA] };
+    sA.players = sA.players.map((p) =>
+      p.id === "p1" ? { ...p, treasury: { ...p.treasury, gold: 4 } } : p,
+    );
+    expect(() => realPlayTactic(sA, battleA, "attacker", treason, makeRng(1, 0))).toThrowError(
+      /garrison/,
+    );
+
+    // Gate (b): the siege clock started before TREASON_GATE.minGameRound.
+    const earlySiege = makeState({
+      round: 5,
+      turn: 5,
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 2, hp: 6 },
+          garrison: 2,
+        }),
+      ],
+      armies: [army("a1", "p1", "keep", { [UnitType.INFANTRY]: 6 })],
+      // No declared assault: isolates "no capture without the treason grant".
+      siegeStates: [
+        siegeState({ besiegingArmyIds: ["a1"], roundsElapsed: 2, assaultDeclared: false }),
+      ],
+    });
+    const sB = { ...earlySiege, pendingBattles: [battleA] };
+    sB.players = sB.players.map((p) =>
+      p.id === "p1" ? { ...p, treasury: { ...p.treasury, gold: 4 } } : p,
+    );
+    expect(() => realPlayTactic(sB, battleA, "attacker", treason, makeRng(1, 0))).toThrowError(
+      /earliest permitted round/,
+    );
+    // And with no consumed grant, resolving the siege captures nothing.
+    const res = resolveSiege(sB, sB.siegeStates[0], makeRng(SEED, 0));
+    expect(res.captured).toBe(false);
+    expect(res.state.provinces[0].ownerId).toBe("p2");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §8.2 step 4 — CHOSEN assault: no SIEGE_ASSAULT declaration → no storm
+// ---------------------------------------------------------------------------
+
+describe("chosen assault (§8.2 step 4, SIEGE_ASSAULT declaration)", () => {
+  const build = (declared: boolean): GameState =>
+    makeState({
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 3, hp: 10 },
+          garrison: 12,
+        }),
+      ],
+      // Troops-only besieger (no guns): an UNDECLARED round rolls ZERO dice.
+      armies: [army("a1", "p1", "keep", { [UnitType.INFANTRY]: 2 })],
+      siegeStates: [
+        siegeState({ besiegingArmyIds: ["a1"], grainStores: 5, assaultDeclared: declared }),
+      ],
+    });
+
+  it("an UNDECLARED siege round does bombardment + starvation only: walls/stores tick, NO storm casualties", () => {
+    const state = build(false);
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.captured).toBe(false);
+    // No storm: zero dice were drawn, the garrison is untouched.
+    expect(res.state.rngCursor).toBe(0);
+    expect(res.state.provinces[0].garrison).toBe(12);
+    // But the siege still progressed: a grain store depleted.
+    expect(res.state.siegeStates[0].grainStores).toBe(4);
+    expect(res.state.siegeStates[0].roundsElapsed).toBe(1);
+    const log = res.state.log.find((l) => l.type === "siege");
+    expect(log?.data?.assaultRounds).toBe(0);
+  });
+
+  it("a DECLARED assault resolves the storm — and the declaration is cleared after resolving", () => {
+    const state = build(true);
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    // The storm was fought: dice were drawn and the garrison took casualties.
+    expect(res.state.rngCursor).toBeGreaterThan(0);
+    expect(res.state.provinces[0].garrison).toBeLessThan(12);
+    expect(res.captured).toBe(false); // 2 INF cannot carry a T3 wall + 12 garrison
+    const log = res.state.log.find((l) => l.type === "siege");
+    expect((log?.data?.assaultRounds as number) ?? 0).toBeGreaterThanOrEqual(1);
+    // CONSUMED: declarations never carry over.
+    expect(res.state.siegeStates[0].assaultDeclared).toBe(false);
+  });
+
+  it("the with/without delta on the same seed is exactly the assault", () => {
+    const undeclared = resolveSiege(build(false), build(false).siegeStates[0], makeRng(SEED, 0));
+    const declared = resolveSiege(build(true), build(true).siegeStates[0], makeRng(SEED, 0));
+    expect(undeclared.state.provinces[0].garrison).toBe(12);
+    expect(declared.state.provinces[0].garrison).toBeLessThan(12);
+    // Same non-assault bookkeeping either way.
+    expect(undeclared.state.siegeStates[0].grainStores).toBe(
+      declared.state.siegeStates[0].grainStores,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §8.2 step 1 — SIEGE LOCK: only stacks physically in the province besiege
+// ---------------------------------------------------------------------------
+
+describe("siege lock (§8.2 step 1) — no remote besieging", () => {
+  const build = (besiegerLocation: string): GameState =>
+    makeState({
+      provinces: [
+        province("keep", { ownerId: "p2", walls: { tier: 2, hp: 5 }, garrison: 2 }),
+        province("elsewhere", { ownerId: "p1" }),
+      ],
+      armies: [
+        army("s1", "p1", besiegerLocation, { [UnitType.SIEGE]: 2, [UnitType.INFANTRY]: 2 }),
+      ],
+      // Undeclared round: isolates the LOCK (bombardment-only, no storm).
+      siegeStates: [siegeState({ besiegingArmyIds: ["s1"], assaultDeclared: false })],
+    });
+
+  it("a besieger that MARCHED AWAY no longer besieges: the siege lifts and walls begin repair", () => {
+    const state = build("elsewhere"); // still listed in besiegingArmyIds, but gone
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.captured).toBe(false);
+    // Lifted: no live siege, province cleared, walls repaired +1 (5 → 6).
+    expect(res.state.siegeStates).toHaveLength(0);
+    expect(res.state.provinces.find((p) => p.id === "keep")?.siege).toBeUndefined();
+    expect(res.wallHpRemaining).toBe(5 + SIEGE.wallRepairPerRound);
+    // No remote bombardment happened: zero dice drawn.
+    expect(res.state.rngCursor).toBe(0);
+    const log = res.state.log.find((l) => l.type === "siege");
+    expect(log?.data?.lifted).toBe(true);
+  });
+
+  it("the same stack physically AT the province keeps the siege alive (control)", () => {
+    const state = build("keep");
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.state.siegeStates).toHaveLength(1);
+    expect(res.state.siegeStates[0].roundsElapsed).toBe(1);
+    // The 2 guns bombarded (>=1 HP each per the §8.2.2 table).
+    expect(res.wallHpRemaining).toBeLessThan(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §8.4 Great Bombard SILENCE (unpaid upkeep) — no bombard dice, no assault dice
+// ---------------------------------------------------------------------------
+
+describe("Great Bombard silence (§8.4 upkeep row; economy sets, combat consumes)", () => {
+  const bombardSiege = (silenced: boolean): GameState =>
+    makeState({
+      round: 4,
+      turn: 4,
+      players: [player("p1", Faction.OTTOMAN), player("p2", Faction.BYZANTIUM)],
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 3, hp: 10 },
+          garrison: 1,
+        }),
+      ],
+      armies: [bombardArmy("gb", "p1", "keep")],
+      // Emplaced since round 2 → past the 1-round emplacement gate; only the
+      // silence flag separates the two runs.
+      greatBombard: { inPlay: true, ownerId: "p1", provinceId: "keep", emplacedRound: 2, silenced },
+      siegeStates: [siegeState({ besiegingArmyIds: ["gb"], grainStores: 99 })],
+    });
+
+  it("a SILENCED emplaced Bombard rolls NO bombardment dice: walls untouched, zero draws", () => {
+    const state = bombardSiege(true);
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.wallHpRemaining).toBe(10);
+    expect(res.state.rngCursor).toBe(0);
+  });
+
+  it("the same gun un-silenced fires its full two-die bombardment (same seed delta)", () => {
+    const state = bombardSiege(false);
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.wallHpRemaining).toBeLessThan(10);
+    expect(res.state.rngCursor).toBeGreaterThan(0);
+  });
+
+  it("a SILENCED Bombard adds NO assault die either: identical to a no-gun storm", () => {
+    // Breached-wall declared assault; the ONLY difference between the two runs
+    // is the silenced gun, which must contribute nothing (same rng stream).
+    const storm = (withSilencedGun: boolean): GameState => {
+      const a1: Army = withSilencedGun
+        ? {
+            ...army("a1", "p1", "keep", { [UnitType.INFANTRY]: 6 }),
+            variants: [{ base: UnitType.SIEGE, variant: GREAT_BOMBARD.variant, count: 1 }],
+          }
+        : army("a1", "p1", "keep", { [UnitType.INFANTRY]: 6 });
+      return makeState({
+        provinces: [
+          province("keep", { ownerId: "p2", terrain: TerrainType.PLAINS, walls: { tier: 0, hp: 0 }, garrison: 0 }),
+        ],
+        armies: [a1, army("d1", "p2", "keep", { [UnitType.INFANTRY]: 14 })],
+        siegeStates: [siegeState({ besiegingArmyIds: ["a1"], breached: true })],
+        ...(withSilencedGun
+          ? {
+              greatBombard: {
+                inPlay: true,
+                ownerId: "p1",
+                provinceId: "keep",
+                emplacedRound: 2, // emplaced — ONLY the silence stops it
+                silenced: true,
+              },
+            }
+          : {}),
+      });
+    };
+    const dLeft = (st: GameState): number => {
+      const res = resolveSiege(st, st.siegeStates[0], makeRng(SEED, 0));
+      return res.state.armies
+        .filter((a) => a.ownerId === "p2")
+        .reduce((n, a) => n + Object.values(a.units).reduce((x, y) => x + y, 0), 0);
+    };
+    expect(dLeft(storm(true))).toBe(dLeft(storm(false)));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ERROR CONTAINMENT — a throwing queued tactic must not crash the COMBAT phase
+// ---------------------------------------------------------------------------
+
+describe("tactic error containment (marshal major — COMBAT phase must not crash)", () => {
+  const build = (attackerTactics: string[], gold = 0): [GameState, PendingBattle] => {
+    const battle: PendingBattle = {
+      id: "b1",
+      provinceId: "field",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+      attackerTactics: attackerTactics.map(asTacticCardId),
+    };
+    const p1 = player("p1", Faction.OTTOMAN);
+    p1.treasury = { ...p1.treasury, gold };
+    const state = makeState({
+      players: [p1, player("p2", Faction.BYZANTIUM)],
+      provinces: [province("field", { ownerId: "p2", terrain: TerrainType.PLAINS })],
+      armies: [
+        army("a1", "p1", "field", { [UnitType.INFANTRY]: 12 }),
+        army("d1", "p2", "field", { [UnitType.LEVY]: 1 }),
+      ],
+      pendingBattles: [battle],
+    });
+    return [state, battle];
+  };
+
+  it("an UNKNOWN queued card is contained: skipped, discarded, logged — the battle resolves as if card-free", () => {
+    useRealTactics();
+    const [s0, b0] = build([]);
+    const baseline = resolveBattle(s0, b0, makeRng(SEED, 0));
+    const [s1, b1] = build(["no-such-card"]);
+    const res = resolveBattle(s1, b1, makeRng(SEED, 0)); // must NOT throw
+    expect(res.winnerId).toBe("p1");
+    // Deterministic continuation: the failed card consumed no rng — the dice
+    // stream is byte-identical to the card-free baseline.
+    expect(res.state.rngCursor).toBe(baseline.state.rngCursor);
+    // The card was skipped out of the queue and discarded…
+    expect(res.state.pendingBattles[0].attackerTactics).toHaveLength(0);
+    expect(res.state.tacticDiscard).toContain(asTacticCardId("no-such-card"));
+    // …and the failure was chronicled.
+    expect(
+      res.state.log.some((l) => l.data?.action === "discard_unresolved"),
+    ).toBe(true);
+  });
+
+  it("an unpayable printed cost is contained the same way (no crash, effect skipped)", () => {
+    useRealTactics();
+    const [s0, b0] = build([], 0);
+    const baseline = resolveBattle(s0, b0, makeRng(SEED, 0));
+    // condottieri costs 2 gold; the player has 0 → resolution throws → contained.
+    const [s1, b1] = build(["condottieri-contract"], 0);
+    const res = resolveBattle(s1, b1, makeRng(SEED, 0));
+    expect(res.winnerId).toBe("p1");
+    expect(res.state.rngCursor).toBe(baseline.state.rngCursor); // no +2 dice happened
+    expect(res.state.tacticDiscard).toContain(asTacticCardId("condottieri-contract"));
+    expect(res.state.players.find((p) => p.id === "p1")?.treasury.gold).toBe(0);
   });
 });

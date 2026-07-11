@@ -53,7 +53,12 @@ import { applyDiplomacy, applyVassalize } from "./diplomacy.js";
 import { applySpy } from "./spy.js";
 import { applyMercBid } from "./mercenaries.js";
 import { resolveCard } from "./events/index.js";
-import { queueTactic, type BattleSide } from "./tactics.js";
+import {
+  playGlobalTactic,
+  playSiegeTactic,
+  queueTactic,
+  type BattleSide,
+} from "./tactics.js";
 import { advancePhase } from "./roundLoop.js";
 
 /** A typed, rejectable engine error (see the module-level error convention). */
@@ -245,6 +250,30 @@ function ownUnitsAt(
 // recruited, so the actions layer no longer reads or mirrors the deprecated
 // `Player.greatBombardUnlocked` flag. Combat still reads the flag OR the Omen #34
 // `kind:"unlock"` modifier via its own helper (out of this file's scope).
+
+/**
+ * §8.4 Emplacement (marshal combat-cluster major "MOVE doesn't update
+ * greatBombard emplacement"; DELTA-PREP `GameState.greatBombard` consumer map:
+ * "actions (on move/re-emplace)"): when a MOVE relocates a stack that CARRIES
+ * the GREAT_BOMBARD variant piece, the singleton tracker must follow the gun —
+ * `provinceId` moves to the destination and `emplacedRound` resets to the
+ * CURRENT round, so the gun "rolls no wall-damage dice the round it arrives, and
+ * counts as emplaced from the following round" (§8.4 Emplacement row; combat's
+ * `greatBombardEmplaced` fire-gate reads `emplacedRound +
+ * GREAT_BOMBARD.emplacementRounds`). Applies to BOTH move outcomes — a plain
+ * relocation and an advance-into-battle — and to the §8.4 naval carriage
+ * (a fleet hauling the gun re-emplaces it on arrival all the same). Mutates the
+ * already-cloned `next` in place (callers own the clone).
+ */
+function syncGreatBombardMove(next: GameState, stack: Army | Fleet, toId: string): void {
+  const gb = next.greatBombard;
+  if (!gb || !gb.inPlay) return;
+  const carries = (stack.variants ?? []).some(
+    (v) => v.variant === GREAT_BOMBARD.variant && v.count > 0,
+  );
+  if (!carries) return;
+  next.greatBombard = { ...gb, provinceId: toId, emplacedRound: next.round };
+}
 
 // ---------------------------------------------------------------------------
 // RECRUIT (§6.2)
@@ -678,6 +707,8 @@ function relocate(
   const list: (Army | Fleet)[] = isNaval ? next.fleets : next.armies;
   const stack = list.find((s) => s.id === action.stackId)!;
   stack.locationId = action.toId;
+  // §8.4: a moved Great Bombard drags the singleton tracker along and re-emplaces.
+  syncGreatBombardMove(next, stack, action.toId);
 
   const prov = next.provinces.find((p) => p.id === action.toId);
   let occupied = false;
@@ -728,6 +759,9 @@ function queueBattle(
   const stack = list.find((s) => s.id === action.stackId)!;
   // The attacker advances to the contested tile; COMBAT resolves the clash.
   stack.locationId = action.toId;
+  // §8.4: the gun advances with its escort — tracker follows + re-emplaces (it
+  // cannot fire the round it arrives at the new siege).
+  syncGreatBombardMove(next, stack, action.toId);
 
   const battle: PendingBattle = {
     id: `pb-${next.round}-${next.pendingBattles.length}-${action.stackId}`,
@@ -976,6 +1010,62 @@ function applyLevyCall(state: GameState, action: GameAction): GameState {
 }
 
 // ---------------------------------------------------------------------------
+// SIEGE_ASSAULT (§8.2 step 4 — the CHOSEN assault)
+// ---------------------------------------------------------------------------
+
+/**
+ * Declare an assault on a besieged city (§8.2 step 4; marshal combat-cluster
+ * major "sieges auto-assault every round — should be a chosen ASSAULT action";
+ * STAGE-B-PREP §2). Assaulting is a deliberate CHOICE, not an automatic
+ * consequence of the siege: the besieger spends a budgeted action-window action
+ * (the reducer routes this through `spendAction`, so phase/budget/turn gating
+ * matches MOVE) to set `SiegeState.assaultDeclared = true`. The COMBAT phase
+ * (`combat.resolveSiege`) storms the walls ONLY for sieges carrying the flag —
+ * Wall HP > 0 keeps the full wall bonus + escalade −1, a breach fights at field
+ * odds — and consumes/clears the declaration with the round (it never carries
+ * over). An undeclared siege round is bombardment + starvation only.
+ *
+ * Validates: an ACTIVE SiegeState exists at `provinceId` (`NO_SUCH_SIEGE`) and
+ * the actor is its besieger (`NOT_BESIEGER`). Assumes the reducer has spent the
+ * action.
+ */
+function applySiegeAssault(state: GameState, action: GameAction): GameState {
+  if (action.type !== "SIEGE_ASSAULT") {
+    throw new EngineError("UNKNOWN_ACTION", "applySiegeAssault requires SIEGE_ASSAULT.");
+  }
+  const player = requirePlayer(state, action.player);
+  const siege = state.siegeStates.find((s) => s.provinceId === action.provinceId);
+  if (!siege) {
+    throw new EngineError(
+      "NO_SUCH_SIEGE",
+      `No active siege at ${action.provinceId} to assault.`,
+    );
+  }
+  if (siege.besiegerId !== player.id) {
+    throw new EngineError(
+      "NOT_BESIEGER",
+      `${player.name} is not the besieger of ${action.provinceId}.`,
+    );
+  }
+
+  const next: GameState = {
+    ...state,
+    siegeStates: state.siegeStates.map((s) =>
+      s.provinceId === action.provinceId ? { ...s, assaultDeclared: true } : s,
+    ),
+  };
+  return appendLog(next, {
+    round: next.round,
+    phase: next.phase,
+    type: "siege",
+    actors: [player.id],
+    targets: [action.provinceId],
+    message: `${player.name} declares an assault on ${action.provinceId} — the storm comes with the battle phase.`,
+    data: { provinceId: action.provinceId, assaultDeclared: true },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // applyAction — the dispatch table
 // ---------------------------------------------------------------------------
 
@@ -1177,6 +1267,51 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       // declaration — EITHER belligerent (e.g. the non-active defender) may
       // queue a tactic; the window pointer never gates it.
       const player = requirePlayer(state, action.player);
+      // Marshal B3 / STAGE-B-PREP §1 target-mode dispatch: exactly ONE mode per
+      // play — `battleId` XOR `siegeProvinceId` XOR neither (global/immediate).
+      // Setting both is ambiguous and rejected up front (TACTIC_TARGET_CONFLICT,
+      // the STAGE-B-PREP reducer-contract code). Each mode routes to its tactic
+      // subsystem path; a card played through the WRONG mode for its printed
+      // play path is rejected inside that path (TACTIC_WRONG_TARGET).
+      if (action.battleId && action.siegeProvinceId) {
+        throw new EngineError(
+          "TACTIC_TARGET_CONFLICT",
+          "PLAY_TACTIC takes battleId XOR siegeProvinceId, not both.",
+        );
+      }
+      if (!action.battleId) {
+        // Mode 2 (SIEGE): an ongoing-siege card (night-sortie, treason-at-the-
+        // gate, sails-from-the-west, bribed-gatekeeper, ladders-and-fascines,
+        // master-founders-hired) played against the ACTIVE SiegeState — no
+        // PendingBattle exists for an undeclared siege (B3's dead-card root
+        // cause). playSiegeTactic validates siege existence (NO_SUCH_SIEGE),
+        // party (NOT_BELLIGERENT), path/side legality and the DELTA-1 treason
+        // brake, then resolves at once into the round-scoped siege/wall
+        // modifiers combat's resolveSiege consumes THIS round.
+        if (action.siegeProvinceId) {
+          return playSiegeTactic(
+            state,
+            action.player,
+            action.siegeProvinceId,
+            action.cardId,
+            {
+              targetPlayerId: action.targetPlayerId,
+              targetProvinceId: action.targetProvinceId,
+            },
+          );
+        }
+        // Mode 3 (GLOBAL/IMMEDIATE): a card with no engagement scope
+        // (papal-indulgence, the-counting-house, grain-barges, ears-in-the-
+        // bazaar, the-pay-chest-taken, holy-war-proclaimed, a-death-in-the-
+        // palace, chain-across-the-horn, forced-march) resolves immediately —
+        // direct state delta or faction-wide modifier. Battle-/siege-scoped
+        // cards are rejected there (TACTIC_WRONG_TARGET — they need a target).
+        return playGlobalTactic(state, action.player, action.cardId, {
+          targetPlayerId: action.targetPlayerId,
+          targetProvinceId: action.targetProvinceId,
+        });
+      }
+      // Mode 1 (BATTLE): queue onto the PendingBattle; combat resolves it.
       const battle = state.pendingBattles.find((b) => b.id === action.battleId);
       if (!battle) {
         throw new EngineError("NO_SUCH_BATTLE", `No pending battle ${action.battleId}.`);
@@ -1210,6 +1345,16 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       // §11.5 Calling up a vassal's levy is a Diplomacy-window action (costs 1).
       const next = spendAction(state, action.player);
       return advanceTurnPointer(applyLevyCall(next, action));
+    }
+
+    case "SIEGE_ASSAULT": {
+      // §8.2 step 4 (marshal major "sieges auto-assault every round"): a
+      // BUDGETED action-window declaration — spendAction gives it the same
+      // phase (WRONG_PHASE) / budget (NO_ACTIONS) / turn (OUT_OF_TURN) gates
+      // as MOVE. Sets SiegeState.assaultDeclared; combat resolves ONLY
+      // declared assaults and the declaration is consumed with the round.
+      const next = spendAction(state, action.player);
+      return advanceTurnPointer(applySiegeAssault(next, action));
     }
 
     default: {

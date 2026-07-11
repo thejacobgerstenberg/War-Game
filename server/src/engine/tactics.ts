@@ -4,11 +4,24 @@
  * The tactic deck is the card layer of combat (GAME_DESIGN §7.7). Players draw
  * one tactic card during the Income phase (Universities add draws), hold a hidden
  * hand pruned to `TACTIC_HAND_LIMIT` at Cleanup, and play at most one card per
- * side per battle round. Battle-scoped cards register their printed effect as a
- * battle-scoped {@link ActiveModifier} (kind per CONTRACT2 §12.10) that combat.ts
- * reads; non-battle cards apply a direct economy/diplomacy effect. Cards that read
- * "remove from game" (`greek-fire`, `treason-at-the-gate`) go to `tacticRemoved`;
- * all others go to `tacticDiscard`, reshuffled when the draw pile empties.
+ * side per battle ROUND (§7.7 "Playing" — the limit is per battle round, not per
+ * battle: combat's tactic step consumes at most one queued card per side each
+ * round). Cards that read "remove from game" (`greek-fire`,
+ * `treason-at-the-gate`) go to `tacticRemoved`; all others go to `tacticDiscard`,
+ * reshuffled when the draw pile empties.
+ *
+ * Marshal-review B3 — every one of the 24 designs has exactly one PLAY PATH
+ * (published as `TacticEffectData.playPath` / {@link TACTIC_PLAY_PATH}):
+ * - `"battle"` — queued into a `PendingBattle` by {@link queueTactic}
+ *   (PLAY_TACTIC.battleId) and resolved by combat via {@link playTactic};
+ *   the printed effect is a battle-scoped {@link ActiveModifier} combat reads.
+ * - `"siege"`  — played against an ACTIVE `SiegeState` by
+ *   {@link playSiegeTactic} (PLAY_TACTIC.siegeProvinceId); resolves at once into
+ *   round-scoped siege/wall modifiers that `resolveSiege` consumes THIS round
+ *   (the modifiers themselves are the queue — SiegeState carries no tactics
+ *   array, and none is needed).
+ * - `"global"` — no engagement: {@link playGlobalTactic} resolves the printed
+ *   effect IMMEDIATELY (direct state delta or a faction-wide modifier).
  *
  * PURITY: no wall-clock / Math.random. Determinism: draw/reshuffle build an RNG
  * from `(state.rngSeed, state.rngCursor)` and write the advanced cursor back;
@@ -38,7 +51,14 @@ import {
   type TacticEffectTag,
 } from "./tactics/cards.js";
 
-export { TACTIC_CARDS, TACTIC_CARD_BY_ID, buildTacticDeck } from "./tactics/cards.js";
+export {
+  TACTIC_CARDS,
+  TACTIC_CARD_BY_ID,
+  TACTIC_PLAY_PATH,
+  buildTacticDeck,
+  tacticPlayPath,
+  type TacticPlayPath,
+} from "./tactics/cards.js";
 
 /** The side of a battle a tactic is played for. */
 export type BattleSide = "attacker" | "defender";
@@ -56,6 +76,12 @@ export interface TacticEffectContext {
   battle?: PendingBattle;
   /** Which side of `battle` the player is on. */
   side?: BattleSide;
+  /**
+   * B3 siege target mode: the province of the ACTIVE `SiegeState` this card is
+   * played against (no `PendingBattle` exists). Scopes the posted siege/wall
+   * modifiers when `battle` is absent.
+   */
+  siegeProvinceId?: string;
   /** RNG the caller owns (combat cursor / phase cursor). */
   rng: Rng;
   /** Rival targeted by `steal_gold` / `truce`. */
@@ -112,12 +138,11 @@ function isTreasonCard(cardId: TacticCardId): boolean {
  *       The start round is `state.round - siege.roundsElapsed` (roundsElapsed
  *       counts consecutive siege rounds since the siege was laid); a siege that
  *       started earlier cannot host treason.
- * Enforced at BOTH declaration ({@link queueTactic}) and resolution
- * ({@link playTactic}), where the target battle + current round are known. Throws
- * `EngineError("TREASON_GATE", …)` when either gate fails.
+ * Enforced at BOTH declaration ({@link queueTactic} / {@link playSiegeTactic})
+ * and resolution ({@link playTactic}), where the target province + current round
+ * are known. Throws `EngineError("TREASON_GATE", …)` when either gate fails.
  */
-function assertTreasonGate(state: GameState, battle: PendingBattle): void {
-  const provinceId = battle.provinceId;
+function assertTreasonGate(state: GameState, provinceId: string | undefined): void {
   const prov = provinceId ? state.provinces.find((p) => p.id === provinceId) : undefined;
 
   // Gate (a): garrison brake.
@@ -262,11 +287,75 @@ export function discardToHandLimit(state: GameState, playerId: string): GameStat
 // ---------------------------------------------------------------------------
 
 /**
- * PLAY_TACTIC reducer target (§7.7 / CONTRACT2 §12.9): validate `cardId` is in the
- * side player's hand and the side has not exceeded `maxPlaysPerBattleRound` (the
- * `the-intercepted-letter` reaction is exempt), then move the card from hand onto
+ * Marshal B3 + SS7 (tactics minor): declaration-time legality of a tactic played
+ * into a BATTLE engagement (`PendingBattle`). Checks, in order:
+ * - play path: `"global"` cards never target an engagement, `"siege"` cards only
+ *   a declared siege-assault battle (`isSiege`) → `TACTIC_WRONG_TARGET`;
+ * - domain legality (SS7): fleet cards need a sea-zone battle, land/siege cards
+ *   a province battle → `TACTIC_WRONG_DOMAIN`;
+ * - printed side restriction (e.g. `locked-shields` defender-only) →
+ *   `TACTIC_WRONG_SIDE`;
+ * - `temp_wall` (the-hexamilion-manned) only defends an UNWALLED province — §7.7
+ *   "does not stack with real walls" → `TACTIC_PRECONDITION`;
+ * - DELTA 1 treason double-brake ({@link assertTreasonGate}).
+ */
+function assertBattleLegality(
+  state: GameState,
+  battle: PendingBattle,
+  side: BattleSide,
+  cardId: TacticCardId,
+): void {
+  const data = cardData(cardId);
+  if (data.playPath === "global") {
+    throw new EngineError(
+      "TACTIC_WRONG_TARGET",
+      `${cardId} has no battle scope — play it with the Play-card path (§7.7/§10.6)`,
+    );
+  }
+  if (data.playPath === "siege" && !battle.isSiege) {
+    throw new EngineError(
+      "TACTIC_WRONG_TARGET",
+      `${cardId} is siege-scoped — play it against an active siege, not a field battle`,
+    );
+  }
+  if (data.domain === "fleet" && !battle.seaZoneId) {
+    throw new EngineError("TACTIC_WRONG_DOMAIN", `${cardId} is legal only in a fleet battle`);
+  }
+  if ((data.domain === "land" || data.domain === "siege") && !battle.provinceId) {
+    throw new EngineError("TACTIC_WRONG_DOMAIN", `${cardId} is legal only in a land engagement`);
+  }
+  if (data.side && data.side !== side) {
+    throw new EngineError(
+      "TACTIC_WRONG_SIDE",
+      `${cardId} may only be played by the ${data.side}`,
+    );
+  }
+  if (data.effect === "temp_wall" && battle.provinceId) {
+    const prov = state.provinces.find((p) => p.id === battle.provinceId);
+    if (prov && prov.walls.tier > 0) {
+      throw new EngineError(
+        "TACTIC_PRECONDITION",
+        `the-hexamilion-manned defends only an UNWALLED province (§7.7); ${prov.id} has T${prov.walls.tier} walls`,
+      );
+    }
+  }
+  // DELTA 1 (GD §7.7 + ratification): treason double-brake at declaration time.
+  if (isTreasonCard(cardId)) assertTreasonGate(state, battle.provinceId);
+}
+
+/**
+ * PLAY_TACTIC reducer target, battle mode (§7.7 / CONTRACT2 §12.9 / marshal B3):
+ * validate `cardId` is in the side player's hand and legal for this battle
+ * ({@link assertBattleLegality}), then move the card from hand onto
  * `PendingBattle.{attacker,defender}Tactics`. The card is resolved later by
- * {@link playTactic} during combat. Returns a new state.
+ * {@link playTactic} during combat.
+ *
+ * LIMIT (marshal minor, GD §7.7 "Playing"): the printed limit is "at most one
+ * tactic card per battle ROUND" — per ROUND, not per battle. Declaration may
+ * therefore queue several cards; combat's tactic step (`playSideTactic`) consumes
+ * at most `TACTIC.maxPlaysPerBattleRound` (=1) per side each battle round, which
+ * is where the §7.7 cap is enforced. The former whole-battle queue cap is gone.
+ * Returns a new state.
  */
 export function queueTactic(
   state: GameState,
@@ -283,16 +372,8 @@ export function queueTactic(
   }
 
   const card = TACTIC_CARD_BY_ID[cardId];
-  // DELTA 1 (GD §7.7 + ratification): treason double-brake at declaration time.
-  if (isTreasonCard(cardId)) assertTreasonGate(state, battle);
+  assertBattleLegality(state, battle, side, cardId);
   const queued = (side === "attacker" ? battle.attackerTactics : battle.defenderTactics) ?? [];
-  const isReaction = card?.timing === "reaction";
-  if (!isReaction && queued.length >= TACTIC.maxPlaysPerBattleRound) {
-    throw new EngineError(
-      "TACTIC_LIMIT",
-      `${side} already played ${queued.length} tactic(s) this battle round`,
-    );
-  }
 
   // Remove ONE copy from hand and queue it on the battle.
   const idx = hand.indexOf(cardId);
@@ -341,7 +422,7 @@ export function playTactic(
   // DELTA 1 (GD §7.7 + ratification): re-enforce the treason double-brake at
   // resolution time (before charging any printed cost), in case state changed
   // between declaration and combat.
-  if (isTreasonCard(cardId)) assertTreasonGate(state, live);
+  if (isTreasonCard(cardId)) assertTreasonGate(state, live.provinceId);
 
   const queued = (side === "attacker" ? live.attackerTactics : live.defenderTactics) ?? [];
   const inQueue = queued.includes(cardId);
@@ -370,6 +451,139 @@ export function playTactic(
   }
 
   return resolveTacticEffect(next, cardId, { playerId, battle: live, side, rng });
+}
+
+/**
+ * Optional rival/province refinements accompanying a PLAY_TACTIC
+ * (STAGE-B-PREP §1: `targetPlayerId`/`targetProvinceId` may accompany any mode).
+ */
+export interface TacticTargetOpts {
+  /** Rival named by the card (`ears-in-the-bazaar`, `the-pay-chest-taken`, `a-death-in-the-palace`). */
+  targetPlayerId?: string;
+  /** Province named by the card (`chain-across-the-horn`). */
+  targetProvinceId?: string;
+}
+
+/**
+ * Marshal B3, target mode 2 (SIEGE) — PLAY_TACTIC.siegeProvinceId: play a
+ * siege-scoped card (`night-sortie`, `treason-at-the-gate`, `sails-from-the-west`,
+ * `bribed-gatekeeper`, `ladders-and-fascines`, `master-founders-hired`) against
+ * the ACTIVE `SiegeState` for `siegeProvinceId`. Validates: an active siege
+ * exists (`NO_SUCH_SIEGE`); the player is a party to it — besieger plays as
+ * attacker, the besieged owner as defender (`NOT_BELLIGERENT`); the card is
+ * siege-scoped (`TACTIC_WRONG_TARGET`) and side-legal (`TACTIC_WRONG_SIDE`);
+ * the DELTA-1 treason double-brake.
+ *
+ * The card resolves IMMEDIATELY: its printed effect is posted as round-scoped
+ * siege/wall {@link ActiveModifier}s targeted at the besieged province — the
+ * modifiers themselves are the queue that combat's `resolveSiege` consumes in
+ * this round's COMBAT phase (SiegeState needs no tactics array). Deterministic:
+ * derives one RNG from `(rngSeed, rngCursor)` and writes the cursor back.
+ * Returns a new state.
+ */
+export function playSiegeTactic(
+  state: GameState,
+  playerId: string,
+  siegeProvinceId: string,
+  cardId: TacticCardId,
+  opts: TacticTargetOpts = {},
+): GameState {
+  const player = playerOf(state, playerId);
+  const data = cardData(cardId);
+  const siege = state.siegeStates.find((s) => s.provinceId === siegeProvinceId);
+  if (!siege) {
+    throw new EngineError("NO_SUCH_SIEGE", `no active siege of ${siegeProvinceId}`);
+  }
+  if (data.playPath !== "siege") {
+    throw new EngineError(
+      "TACTIC_WRONG_TARGET",
+      `${cardId} is not siege-scoped (play path: ${data.playPath})`,
+    );
+  }
+  const prov = state.provinces.find((p) => p.id === siegeProvinceId);
+  let side: BattleSide;
+  if (siege.besiegerId === playerId) side = "attacker";
+  else if (prov?.ownerId === playerId) side = "defender";
+  else {
+    throw new EngineError(
+      "NOT_BELLIGERENT",
+      `${playerId} is neither besieger nor besieged at ${siegeProvinceId}`,
+    );
+  }
+  if (data.side && data.side !== side) {
+    throw new EngineError("TACTIC_WRONG_SIDE", `${cardId} may only be played by the ${data.side}`);
+  }
+  const hand = player.tacticHand ?? [];
+  if (!hand.includes(cardId)) {
+    throw new EngineError("TACTIC_NOT_IN_HAND", `${playerId} does not hold tactic ${cardId}`);
+  }
+  // DELTA 1 (GD §7.7 + ratification): treason double-brake vs the live siege.
+  if (isTreasonCard(cardId)) assertTreasonGate(state, siegeProvinceId);
+
+  // Remove ONE copy from hand, then resolve at once (cursor convention §4).
+  const idx = hand.indexOf(cardId);
+  let next = withPlayer(state, {
+    ...player,
+    tacticHand: [...hand.slice(0, idx), ...hand.slice(idx + 1)],
+  });
+  const rng = makeRng(next.rngSeed, next.rngCursor);
+  next = resolveTacticEffect(next, cardId, {
+    playerId,
+    side,
+    siegeProvinceId,
+    rng,
+    targetPlayerId: opts.targetPlayerId,
+    targetProvinceId: opts.targetProvinceId,
+  });
+  return { ...next, rngCursor: rng.cursor };
+}
+
+/**
+ * Marshal B3, target mode 3 (GLOBAL/IMMEDIATE) — PLAY_TACTIC with neither
+ * `battleId` nor `siegeProvinceId`: play a card with no battle scope
+ * (`papal-indulgence`, `the-counting-house`, `grain-barges-of-the-danube`,
+ * `ears-in-the-bazaar`, `the-pay-chest-taken`, `holy-war-proclaimed`,
+ * `a-death-in-the-palace`, `chain-across-the-horn`, `forced-march`). The printed
+ * effect resolves IMMEDIATELY — a direct state delta (treasury transfers, hand
+ * reveal) or a faction-wide modifier (`combat_mod` holy-war, `truce`,
+ * `wall_mod` amphibious immunity, `move_mod` forced-march rider) — and the card
+ * goes to discard/removed. Battle-/siege-scoped cards are rejected with
+ * `TACTIC_WRONG_TARGET` (they need an engagement). Deterministic: derives one
+ * RNG from `(rngSeed, rngCursor)` and writes the cursor back. Returns a new state.
+ */
+export function playGlobalTactic(
+  state: GameState,
+  playerId: string,
+  cardId: TacticCardId,
+  opts: TacticTargetOpts = {},
+): GameState {
+  const player = playerOf(state, playerId);
+  const data = cardData(cardId);
+  if (data.playPath !== "global") {
+    throw new EngineError(
+      "TACTIC_WRONG_TARGET",
+      `${cardId} is ${data.playPath}-scoped — play it into that engagement (§7.7)`,
+    );
+  }
+  const hand = player.tacticHand ?? [];
+  if (!hand.includes(cardId)) {
+    throw new EngineError("TACTIC_NOT_IN_HAND", `${playerId} does not hold tactic ${cardId}`);
+  }
+
+  // Remove ONE copy from hand, then resolve at once (cursor convention §4).
+  const idx = hand.indexOf(cardId);
+  let next = withPlayer(state, {
+    ...player,
+    tacticHand: [...hand.slice(0, idx), ...hand.slice(idx + 1)],
+  });
+  const rng = makeRng(next.rngSeed, next.rngCursor);
+  next = resolveTacticEffect(next, cardId, {
+    playerId,
+    rng,
+    targetPlayerId: opts.targetPlayerId,
+    targetProvinceId: opts.targetProvinceId,
+  });
+  return { ...next, rngCursor: rng.cursor };
 }
 
 // ---------------------------------------------------------------------------
@@ -449,10 +663,13 @@ export function resolveTacticEffect(
   let next = payCost(state, ctx.playerId, data);
 
   // Where the effect is scoped: a fleet card keys off the sea zone, otherwise the
-  // province — narrowing the modifier to exactly this battle.
+  // province — narrowing the modifier to exactly this battle / siege (B3: siege
+  // mode carries no PendingBattle, the SiegeState's province scopes it instead).
   const battle = ctx.battle;
-  const provinceId = battle?.provinceId;
+  const provinceId = battle?.provinceId ?? ctx.siegeProvinceId;
   const seaZoneId = battle?.seaZoneId;
+  // B3 global cards: extra card-specific log payload (e.g. the peeked hand).
+  let extraLogData: Record<string, unknown> = {};
   const battleTarget: ActiveModifier["target"] =
     data.domain === "fleet"
       ? { faction, seaZoneId }
@@ -556,13 +773,25 @@ export function resolveTacticEffect(
         data: { dice: true, allBattles: true },
       });
       break;
-    case "amphibious_immune":
-      // §7.7 Chain Across the Horn: a coastal province cannot be amphibiously assaulted.
+    case "amphibious_immune": {
+      // §7.7 Chain Across the Horn: "one coastal province YOU HOLD cannot be the
+      // target of an amphibious assault". B3: validate the named province.
+      if (!ctx.targetProvinceId) {
+        throw new EngineError("NO_TARGET", "chain-across-the-horn needs a target province");
+      }
+      const chained = next.provinces.find((p) => p.id === ctx.targetProvinceId);
+      if (!chained || chained.ownerId !== ctx.playerId || !chained.coastal) {
+        throw new EngineError(
+          "BAD_TARGET",
+          "chain-across-the-horn targets a coastal province the player holds",
+        );
+      }
       next = postModifier(next, cardId, "wall_mod", {
         target: { faction, provinceId: ctx.targetProvinceId },
         data: { amphibiousImmune: true },
       });
       break;
+    }
     case "forced_march":
       // §7.7 Forced March: rider on a Move — +1 province, no besiege/assault.
       next = postModifier(next, cardId, "move_mod", {
@@ -572,12 +801,17 @@ export function resolveTacticEffect(
       });
       break;
     case "truce":
-      // §7.7 A Death in the Palace: a truce binds both players until next turn.
+      // §7.7 A Death in the Palace: "NAME ONE RIVAL — a truce binds you both
+      // until the start of your next turn". B3: the rival target is mandatory.
+      if (!ctx.targetPlayerId) {
+        throw new EngineError("NO_TARGET", "a-death-in-the-palace needs a rival target");
+      }
+      if (ctx.targetPlayerId === ctx.playerId) {
+        throw new EngineError("BAD_TARGET", "cannot declare a truce with yourself");
+      }
+      playerOf(next, ctx.targetPlayerId); // must exist (throws UNKNOWN_PLAYER)
       next = postModifier(next, cardId, "truce", {
-        target: { faction },
-        data: {
-          parties: ctx.targetPlayerId ? [ctx.playerId, ctx.targetPlayerId] : [ctx.playerId],
-        },
+        data: { parties: [ctx.playerId, ctx.targetPlayerId] },
       });
       break;
     case "intercept":
@@ -593,9 +827,20 @@ export function resolveTacticEffect(
     case "steal_gold":
       next = stealGold(next, ctx.playerId, ctx.targetPlayerId, data.value ?? 0);
       break;
-    case "peek_hand":
-      // Pure information (hidden hand reveal); no state effect beyond the log.
+    case "peek_hand": {
+      // §7.7 Ears in the Bazaar: "look at all tactic cards held by ONE RIVAL".
+      // B3 consumable form: the revealed hand rides in the log entry's data
+      // (visible to the playing seat; transport redaction is the socket layer's).
+      if (!ctx.targetPlayerId) {
+        throw new EngineError("NO_TARGET", "ears-in-the-bazaar needs a rival target");
+      }
+      if (ctx.targetPlayerId === ctx.playerId) {
+        throw new EngineError("BAD_TARGET", "cannot peek at your own hand");
+      }
+      const rival = playerOf(next, ctx.targetPlayerId);
+      extraLogData = { revealedHand: [...(rival.tacticHand ?? [])], revealedTo: ctx.playerId };
       break;
+    }
     default: {
       const _never: never = effect;
       throw new EngineError("UNKNOWN_TACTIC", `unhandled tactic effect ${_never as string}`);
@@ -619,6 +864,7 @@ export function resolveTacticEffect(
       card: cardId,
       effect,
       removed: card?.removedFromGameOnPlay ?? false,
+      ...extraLogData,
     },
     message: `${beneficiary.name} plays "${card?.name ?? cardId}"`,
   });
