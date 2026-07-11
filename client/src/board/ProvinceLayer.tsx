@@ -69,12 +69,23 @@ export function ProvinceLayer(props: ProvinceLayerProps): JSX.Element {
       if (pristine === undefined) {
         pristine = el.getAttribute("class") ?? "";
         pristineRef.current.set(el, pristine);
+        // One-time keyboard/AT affordances: every shape is a focusable
+        // toggle button named by its display name (id when no data).
+        el.setAttribute("tabindex", "0");
+        el.setAttribute("role", "button");
+        el.setAttribute("aria-label", current.labelById.get(el.id) ?? el.id);
+        el.setAttribute("aria-pressed", "false");
       }
+      const selected = el.id === current.selection;
       let next = pristine;
       const owner = current.ownerClassById.get(el.id);
       if (owner != null) next += ` ${owner}`;
-      if (el.id === current.selection) next += " is-selected";
+      if (selected) next += " is-selected";
       if (targets.has(el.id)) next += " is-move-target";
+      const pressed = selected ? "true" : "false";
+      if (el.getAttribute("aria-pressed") !== pressed) {
+        el.setAttribute("aria-pressed", pressed);
+      }
       if (lastAppliedRef.current.get(el) === next) continue;
       lastAppliedRef.current.set(el, next);
       // is-hovered is owned by the pointer handlers; preserve a live token.
@@ -157,10 +168,23 @@ export function ProvinceLayer(props: ProvinceLayerProps): JSX.Element {
         propsRef.current.onSelect(hit.id === propsRef.current.selection ? null : hit.id);
       };
 
+      // Keyboard activation for the role="button" shapes: Enter/Space
+      // toggles selection exactly like a click on the focused shape.
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const hit = shapeFromEvent(e);
+        if (hit === null) return;
+        e.preventDefault(); // Space must not scroll the page
+        propsRef.current.onSelect(
+          hit.id === propsRef.current.selection ? null : hit.id,
+        );
+      };
+
       svg.addEventListener("pointerover", onPointerOver);
       svg.addEventListener("pointerout", onPointerOut);
       svg.addEventListener("pointermove", onPointerMove);
       svg.addEventListener("click", onClick);
+      svg.addEventListener("keydown", onKeyDown);
 
       // The class-sync/colorblind effects may have already run against a
       // null svg (async fetch path) — bring the fresh mount up to date.

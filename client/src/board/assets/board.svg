@@ -3,11 +3,11 @@
 
   <style>
     svg#board {
-      --faction-byzantium: #4B1F3F;
-      --faction-ottomans: #7A1F2B;
-      --faction-venice: #1F4E79;
-      --faction-genoa: #C9A227;
-      --faction-hungary: #4A5D3A;
+      --faction-byzantium: #7A2E2E;
+      --faction-ottoman: #1F6B4C;
+      --faction-venice: #B4472A;
+      --faction-genoa: #C9CBD0;
+      --faction-hungary: #2F5B8C;
     }
     .province {
       fill: #F0E6D2;
@@ -18,7 +18,7 @@
     }
     .province.shaded { fill: #E2D3B3; }
     .province.owner-byzantium { fill: var(--faction-byzantium); fill-opacity: .55; }
-    .province.owner-ottomans  { fill: var(--faction-ottomans);  fill-opacity: .55; }
+    .province.owner-ottoman   { fill: var(--faction-ottoman);   fill-opacity: .55; }
     .province.owner-venice    { fill: var(--faction-venice);    fill-opacity: .55; }
     .province.owner-genoa     { fill: var(--faction-genoa);     fill-opacity: .55; }
     .province.owner-hungary   { fill: var(--faction-hungary);   fill-opacity: .55; }

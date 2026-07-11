@@ -3,7 +3,7 @@
  * All dev controls live here — the Board itself stays a controlled component.
  * Never imports ../socket or anything from screens/ (no socket connect).
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Board } from "./Board";
 import { BOARD_MAP, legalMoveTargets } from "./mapData";
@@ -25,6 +25,7 @@ export function DemoPage(): JSX.Element {
   const [colorblind, setColorblind] = useState(false);
   const [idDiff, setIdDiff] = useState<BoardIdDiff | null>(null);
   const onIdDiff = useCallback((diff: BoardIdDiff) => setIdDiff(diff), []);
+  const resetViewRef = useRef<(() => void) | null>(null);
 
   // Test hook: /board-demo?svgUrl=<path> mounts an alternate board SVG
   // (e.g. the canon-id e2e fixture) instead of the vendored board.svg.
@@ -102,6 +103,7 @@ export function DemoPage(): JSX.Element {
           className="demo-board"
           svgUrl={svgUrl}
           onIdDiff={onIdDiff}
+          resetViewRef={resetViewRef}
         />
       </div>
       <aside
@@ -219,6 +221,12 @@ export function DemoPage(): JSX.Element {
         </div>
 
         <div style={rowStyle}>
+          <button
+            data-testid="reset-view"
+            onClick={() => resetViewRef.current?.()}
+          >
+            Reset view
+          </button>
           <button data-testid="reset-demo" onClick={resetDemo}>
             Reset demo
           </button>

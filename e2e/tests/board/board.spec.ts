@@ -412,19 +412,21 @@ test.describe("board demo — canon-id fixture SVG", () => {
 
     // MAP.md §4 starts: constantinople Byzantine, venice Venetian,
     // pera/edirne per their factions; rome starts Independent.
+    // Canon UI_DESIGN §2.1 heraldry: byzantium #7A2E2E.
     await expect(page.locator("#constantinople")).toHaveClass(/\bowner-byzantium\b/);
-    await expect.poll(() => fill("constantinople")).toBe("rgb(75, 31, 63)");
+    await expect.poll(() => fill("constantinople")).toBe("rgb(122, 46, 46)");
     await expect(page.locator("#venice")).toHaveClass(/\bowner-venice\b/);
     await expect(page.locator("#pera")).toHaveClass(/\bowner-genoa\b/);
-    await expect(page.locator("#edirne")).toHaveClass(/\bowner-ottomans\b/);
+    await expect(page.locator("#edirne")).toHaveClass(/\bowner-ottoman\b/);
     await expect(page.locator("#rome")).not.toHaveClass(/owner-/);
 
     // Dev-control reassignment: hand rome to Venice, then back.
     await page.locator("[data-testid=owner-province-select]").selectOption("rome");
     await page.locator("[data-testid=owner-faction-select]").selectOption("p-venice");
     await page.locator("[data-testid=owner-apply]").click();
+    // Canon UI_DESIGN §2.1 heraldry: venice #B4472A.
     await expect(page.locator("#rome")).toHaveClass(/\bowner-venice\b/);
-    await expect.poll(() => fill("rome")).toBe("rgb(31, 78, 121)");
+    await expect.poll(() => fill("rome")).toBe("rgb(180, 71, 42)");
 
     await page.locator("[data-testid=owner-faction-select]").selectOption("");
     await page.locator("[data-testid=owner-apply]").click();
@@ -436,7 +438,7 @@ test.describe("board demo — canon-id fixture SVG", () => {
     await page.locator("[data-testid=colorblind-toggle]").check();
 
     await expect(page.locator("svg#board")).toHaveClass(/\bcolorblind\b/);
-    for (const slug of ["byzantium", "ottomans", "venice", "genoa", "hungary"]) {
+    for (const slug of ["byzantium", "ottoman", "venice", "genoa", "hungary"]) {
       await expect(page.locator(`#facPattern-${slug}`)).toHaveCount(1);
     }
     // Owned provinces now paint the pattern, not the flat wash.
@@ -479,6 +481,13 @@ test.describe("board demo — canon-id fixture SVG", () => {
     await page.locator("[data-testid=select-constantinople]").click();
     await expect(page.locator("#constantinople")).toHaveClass(/\bis-selected\b/);
 
+    // Escape is scoped to the board container: with focus still on the
+    // aside's dev button, it must NOT clear the selection...
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#constantinople")).toHaveClass(/\bis-selected\b/);
+
+    // ...but with focus on a board shape (they are tabbable buttons), it does.
+    await page.locator("#constantinople").focus();
     await page.keyboard.press("Escape");
     await expect(page.locator(".is-selected")).toHaveCount(0);
     await expect(page.locator(".is-move-target")).toHaveCount(0);

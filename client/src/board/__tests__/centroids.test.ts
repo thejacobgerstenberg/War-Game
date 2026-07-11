@@ -22,6 +22,13 @@ describe("pathBoundsCenter", () => {
   it("handles space-separated pairs as well as comma-separated", () => {
     expect(pathBoundsCenter("M0 0 L4 0 L4 4 Z")).toEqual({ x: 2, y: 2 });
   });
+
+  it("bails to null on relative (lowercase) commands instead of mis-parsing", () => {
+    expect(pathBoundsCenter("m10,10 l5,0 l0,5 z")).toBeNull();
+    expect(pathBoundsCenter("M0,0 l10,10 Z")).toBeNull();
+    // lowercase z alone is a closepath with no coordinates — still fine.
+    expect(pathBoundsCenter("M0,0 L4,0 L4,4 z")).toEqual({ x: 2, y: 2 });
+  });
 });
 
 describe("computeCentroids", () => {

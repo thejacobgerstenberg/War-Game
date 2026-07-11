@@ -47,6 +47,22 @@ export function usePanZoom(options?: PanZoomOptions): PanZoomApi {
 
     const pointers = pointersRef.current;
 
+    /**
+     * Clamp the translation so the scaled content always overlaps the
+     * viewport — the board can never be panned fully off-screen. With the
+     * default minScale of 1 (content covers the viewport) this keeps the
+     * viewport entirely inside the content: x ∈ [w − w·scale, 0]. If a
+     * caller allows scale < 1 the bounds invert, hence the min/max guards.
+     */
+    const clampPan = (t: { x: number; y: number; scale: number }) => {
+      const w = viewport.clientWidth;
+      const h = viewport.clientHeight;
+      const xEdge = w - w * t.scale;
+      const yEdge = h - h * t.scale;
+      t.x = clamp(t.x, Math.min(0, xEdge), Math.max(0, xEdge));
+      t.y = clamp(t.y, Math.min(0, yEdge), Math.max(0, yEdge));
+    };
+
     /** Zoom toward a client-space anchor, clamped; keeps the anchor fixed. */
     const applyZoom = (clientX: number, clientY: number, targetScale: number) => {
       const t = transformRef.current;
@@ -60,6 +76,7 @@ export function usePanZoom(options?: PanZoomOptions): PanZoomApi {
       t.x = px - (px - t.x) * ratio;
       t.y = py - (py - t.y) * ratio;
       t.scale = next;
+      clampPan(t);
       scheduleWrite();
     };
 
@@ -123,6 +140,7 @@ export function usePanZoom(options?: PanZoomOptions): PanZoomApi {
         }
         t.x += dx;
         t.y += dy;
+        clampPan(t);
         scheduleWrite();
       } else if (pointers.size === 2) {
         draggedRef.current = true;
@@ -142,6 +160,7 @@ export function usePanZoom(options?: PanZoomOptions): PanZoomApi {
         }
         t.x += curMidX - prevMidX;
         t.y += curMidY - prevMidY;
+        clampPan(t);
         scheduleWrite();
       }
     };

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { BoardProps, Point } from "./types";
 import { ownerClass } from "./types";
 import { factionByPlayer, legalMoveTargets, provinceOwnerFaction } from "./mapData";
@@ -24,11 +24,22 @@ export function Board(props: BoardProps): JSX.Element {
     overlays,
     svgUrl,
     onIdDiff,
+    resetViewRef,
   } = props;
 
+  const rootRef = useRef<HTMLDivElement>(null);
   const [svgRoot, setSvgRoot] = useState<SVGSVGElement | null>(null);
   const hoverStore = useMemo(createHoverStore, []);
   const panZoom = usePanZoom();
+
+  // Expose the pan/zoom reset to the parent (demo panel "reset view").
+  useEffect(() => {
+    if (!resetViewRef) return;
+    resetViewRef.current = panZoom.reset;
+    return () => {
+      resetViewRef.current = null;
+    };
+  }, [resetViewRef, panZoom.reset]);
 
   // Memo deps below are pinned by spec §3.3 (narrower than gameState itself
   // so pan/zoom-irrelevant state changes don't recompute derived maps).
@@ -41,6 +52,15 @@ export function Board(props: BoardProps): JSX.Element {
     () => provinceOwnerFaction(gameState),
     [gameState.provinces, gameState.players],
   );
+
+  // Display names for the shapes' aria-labels; ids without data fall back
+  // to the id inside ProvinceLayer.
+  const labelById = useMemo(() => {
+    const byId = new Map<string, string>();
+    for (const p of mapData.provinces) byId.set(p.id, p.name);
+    for (const s of mapData.seaZones) byId.set(s.id, s.name);
+    return byId;
+  }, [mapData]);
 
   const ownerClassById = useMemo(() => {
     const byId = new Map<string, string | null>();
@@ -74,21 +94,27 @@ export function Board(props: BoardProps): JSX.Element {
     onIdDiff?.({ provinces, seaZones });
   }, [svgRoot, mapData, onIdDiff]);
 
+  // Escape clears the selection — but only while focus is within the board
+  // container (the listener lives on the container, not window, so a global
+  // Escape in an unrelated dialog/panel never clobbers board state).
   useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && selection !== null) onSelect(null);
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    root.addEventListener("keydown", onKeyDown);
+    return () => root.removeEventListener("keydown", onKeyDown);
   }, [selection, onSelect]);
 
   return (
-    <div className={`board-root${className ? ` ${className}` : ""}`}>
+    <div ref={rootRef} className={`board-root${className ? ` ${className}` : ""}`}>
       <div ref={panZoom.viewportRef} className="board-viewport">
         <div ref={panZoom.contentRef} className="board-content">
           <ProvinceLayer
             svgUrl={svgUrl}
             ownerClassById={ownerClassById}
+            labelById={labelById}
             selection={selection}
             moveTargets={moveTargets}
             colorblind={colorblind ?? false}

@@ -63,6 +63,14 @@ svg#board .province.is-move-target {
   stroke-dasharray: 6 4;
 }
 
+/* Keyboard focus (shapes are tabbable role="button" elements). Only
+   :focus-visible — pointer interactions keep the hover/selected styling. */
+svg#board .province:focus-visible,
+svg#board .sea-zone:focus-visible {
+  outline: 3px solid var(--imp-gold-soft, #e2c766);
+  outline-offset: 2px;
+}
+
 svg#board .sea-zone.is-move-target {
   stroke: #40826d;
   stroke-width: 3;
@@ -91,8 +99,8 @@ svg#board.colorblind .province.owner-byzantium {
   fill: url(#facPattern-byzantium);
 }
 
-svg#board.colorblind .province.owner-ottomans {
-  fill: url(#facPattern-ottomans);
+svg#board.colorblind .province.owner-ottoman {
+  fill: url(#facPattern-ottoman);
 }
 
 svg#board.colorblind .province.owner-venice {

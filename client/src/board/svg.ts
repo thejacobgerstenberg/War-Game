@@ -97,7 +97,7 @@ function motifNodes(doc: Document, slug: string): Element[] {
         make(doc, "path", { d: "M0,0 L12,12", ...MOTIF_STROKE }),
         make(doc, "path", { d: "M12,0 L0,12", ...MOTIF_STROKE }),
       ];
-    case "ottomans": // crescent-dot
+    case "ottoman": // crescent-dot
       return [
         make(doc, "circle", { cx: "6", cy: "6", r: "2.5", ...MOTIF_STROKE }),
         make(doc, "circle", { cx: "9", cy: "3", r: "1", fill: INK, opacity: ".8" }),

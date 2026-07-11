@@ -7,7 +7,7 @@
  */
 import { Faction } from "@imperium/shared";
 import type { GameState, ResourceBundle, TerrainType } from "@imperium/shared";
-import type { RefObject } from "react";
+import type { MutableRefObject, RefObject } from "react";
 
 /** A point in board.svg user space (viewBox "0 0 1600 1000"). */
 export interface Point {
@@ -87,6 +87,12 @@ export interface BoardProps {
   svgUrl?: string;
   /** Fired whenever the SVG-vs-mapData id diff is (re)computed. */
   onIdDiff?: (diff: { provinces: IdDiff; seaZones: IdDiff }) => void;
+  /**
+   * Optional imperative escape hatch: Board writes its pan/zoom reset
+   * function into this ref so a parent (e.g. the demo panel) can offer a
+   * "reset view" control without owning the transform.
+   */
+  resetViewRef?: MutableRefObject<(() => void) | null>;
 }
 
 export interface PanZoomOptions {
@@ -111,6 +117,8 @@ export interface ProvinceLayerProps {
   svgUrl?: string;
   /** province id -> "owner-<slug>" class, or null for unowned. */
   ownerClassById: ReadonlyMap<string, string | null>;
+  /** id -> display name for aria-labels; shapes without data fall back to their id. */
+  labelById: ReadonlyMap<string, string>;
   selection: string | null;
   moveTargets: readonly string[];
   colorblind: boolean;
@@ -177,12 +185,12 @@ export interface DemoSetup {
 
 /**
  * Faction -> slug used by BOTH the owner-* CSS classes and the
- * facPattern-* pattern ids. NOTE plural "ottomans" — this is the PR #6
- * board.svg contract and intentionally differs from Faction.OTTOMAN.
+ * facPattern-* pattern ids. Singular "ottoman", matching Faction.OTTOMAN
+ * and the docs/UI_DESIGN.md §2.1 `--fac-*` token names.
  */
 export const FACTION_SLUG: Record<Faction, string> = {
   [Faction.BYZANTIUM]: "byzantium",
-  [Faction.OTTOMAN]: "ottomans",
+  [Faction.OTTOMAN]: "ottoman",
   [Faction.VENICE]: "venice",
   [Faction.GENOA]: "genoa",
   [Faction.HUNGARY]: "hungary",
@@ -196,11 +204,15 @@ export function factionPatternId(faction: Faction): string {
   return `facPattern-${FACTION_SLUG[faction]}`;
 }
 
-/** Faction fill colors as defined on svg#board (kept for HTML UI chips only). */
+/**
+ * Canonical faction heraldic colors — docs/UI_DESIGN.md §2.1 (`--fac-*`).
+ * Byzantium imperial red, Ottoman islamic green, Venice vermilion,
+ * Genoa silver-white, Hungary blue.
+ */
 export const FACTION_COLOR: Record<Faction, string> = {
-  [Faction.BYZANTIUM]: "#4B1F3F",
-  [Faction.OTTOMAN]: "#7A1F2B",
-  [Faction.VENICE]: "#1F4E79",
-  [Faction.GENOA]: "#C9A227",
-  [Faction.HUNGARY]: "#4A5D3A",
+  [Faction.BYZANTIUM]: "#7A2E2E",
+  [Faction.OTTOMAN]: "#1F6B4C",
+  [Faction.VENICE]: "#B4472A",
+  [Faction.GENOA]: "#C9CBD0",
+  [Faction.HUNGARY]: "#2F5B8C",
 };

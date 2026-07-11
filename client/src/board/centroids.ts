@@ -1,13 +1,22 @@
 import type { Point } from "./types";
 
+/** Lowercase (relative) path commands the pair-scan below cannot evaluate. */
+const RELATIVE_COMMAND_RE = /[mlhvcsqta]/;
+
 /**
  * Pure fallback for environments without SVG layout (jsdom in unit tests,
  * detached SVG roots): scan every absolute coordinate pair in a path's `d`
  * and return the center of their bounding box. board.svg paths are plain
  * absolute `M/L … Z` pair sequences, so this matches getBBox closely.
+ *
+ * Relative commands (lowercase m/l/…) encode deltas, not coordinates —
+ * treating their pairs as absolute would silently mis-place the center, so
+ * such paths bail to null instead (documented fallback: the element simply
+ * gets no centroid and overlay tokens skip it).
  * Returns null when no coordinate pair is found.
  */
 export function pathBoundsCenter(d: string): Point | null {
+  if (RELATIVE_COMMAND_RE.test(d)) return null;
   const pairRe = /(-?\d+(?:\.\d+)?)[ ,](-?\d+(?:\.\d+)?)/g;
   let minX = Infinity;
   let minY = Infinity;
