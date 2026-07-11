@@ -10,7 +10,7 @@ both harnesses boot the actual code paths.
 
 ### Playwright E2E suite (`e2e/tests/lobby.spec.ts`)
 
-Five scenarios, driven through the real client UI (home → create/join →
+Six scenarios, driven through the real client UI (home → create/join →
 faction pick → lobby → game board), against the real server:
 
 | # | Scenario | Status |
@@ -19,30 +19,35 @@ faction pick → lobby → game board), against the real server:
 | (b) | Second player joins by code; both browser contexts see both names in the roster | active |
 | (c) | Faction exclusivity: second player's BYZANTIUM button is disabled ("Taken by …") once claimed | active |
 | (d) | Host starts the game; both clients leave the lobby for the game board ("Theatre of War · Turn 1") | active |
-| (e) | Rejoin: a disconnected player reclaims their seat with the same name and code | `test.fixme` |
+| (e) | Rejoin: reloading a player's tab auto-rejoins the same seat via the stored session token | active |
+| (e2) | Rejoin after start: reloading mid-game resumes on the game board | active |
 
-**Why (e) is a fixme:** the scaffold has no wired rejoin path.
-`LobbyManager.reconnect(playerId)` exists and is unit-tested, but no socket
-event ever invokes it; there are no session tokens (the client holds
-`playerId` only in React state); a bare disconnect just flips a server-side
-`connected` flag and holds the seat forever; and re-joining with the same
-name pushes a brand-new player, producing a ghost duplicate seat. The fixme
-body encodes the behavior a real rejoin should have, so it can be flipped on
-once the server grows a reclaim mechanism (session token or name-based
-reclaim wired to `reconnect`, plus join-after-start for reclaims). Full
-details in the comment block above the test.
+**How rejoin works (and how (e)/(e2) exercise it):** the server acks
+create/join with a per-player crypto-random `sessionToken`; the client
+persists `{roomCode, playerId, sessionToken}` in sessionStorage (key
+`imperium.session`, `client/src/session.ts`) and on every socket connect
+auto-emits `rejoin_game {roomCode, sessionToken}` (`App.tsx` attemptRejoin).
+`page.reload()` in the same tab keeps sessionStorage, so the fresh page
+reclaims the same seat — same playerId, faction retained, no ghost
+duplicate; other clients see the seat flip through `(disconnected)` and
+back (`LobbyPlayer.connected` is on the wire). Post-start, the server
+replays `game_started` + `state_update` to the rejoining socket, which is
+what (e2) asserts. Same-name `join_game` is deliberately NOT a reclaim — it
+is a clean "name taken" rejection.
 
-Suite-wide notes: external Google Fonts requests are aborted at the browser
-context level (the client's `theme.css` `@import` otherwise stalls page load
-by ~13s in offline CI). Tests run serially (`workers: 1`) against one shared
-in-memory server; each test creates its own room.
+Suite-wide notes: fonts are self-hosted (`client/public/fonts`), so no
+network-blocking fixture is needed. Tests run serially (`workers: 1`)
+against one shared in-memory server; each test creates its own room.
 
 ### Socket.IO load test (`e2e/load/socket-load.mjs`)
 
 Plain Node + `socket.io-client` — no Playwright, no browser. It spawns the
 **real server entrypoint** (`node --import tsx server/src/index.ts`) rather
-than an in-process `createApp()`, because the ROOM_TTL reaper interval lives
-in the entrypoint's `isMain` block and would silently not run in-process.
+than an in-process `createApp()`, so env parsing, the ROOM_TTL reaper
+(owned by `createApp` since the scaffold fixes) and graceful shutdown are
+all exercised as deployed. All 5 seats per room (the `MAX_PLAYERS = 5` cap
+exactly) use names unique within the room, so the now-enforced cap and
+"name taken" rejection are never tripped.
 
 Coverage:
 

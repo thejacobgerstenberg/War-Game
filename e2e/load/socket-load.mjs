@@ -5,8 +5,8 @@
  *   1. Builds @imperium/shared, then spawns the REAL server entrypoint
  *      (`node --import tsx server/src/index.ts`) on a dedicated port with a
  *      short ROOM_TTL_SECONDS, so the production room reaper actually runs
- *      (the reaper interval lives in the entrypoint's `isMain` block, NOT in
- *      createApp() — an in-process boot would silently skip it).
+ *      (createApp() owns the reaper since the scaffold fixes, but spawning
+ *      the entrypoint also exercises env parsing and graceful shutdown).
  *   2. Load phase: ROOMS x PLAYERS_PER_ROOM sockets join concurrently.
  *      Measures connect latency (io() -> 'connect') and pick_faction RTT
  *      (emit -> the lobby_update that reflects the pick); reports p50/p95.
@@ -135,9 +135,8 @@ function buildShared() {
 }
 
 function spawnServer() {
-  // Absolute entry path is required: the entrypoint's isMain guard compares
-  // import.meta.url against `file://${process.argv[1]}`, which only matches
-  // when argv[1] is absolute.
+  // The entrypoint's isMain guard now path.resolve()s argv[1], so a relative
+  // entry would also work — keep the absolute path anyway for clarity.
   const entry = path.join(serverDir, "src", "index.ts");
   const child = spawn("node", ["--import", "tsx", entry], {
     cwd: serverDir,

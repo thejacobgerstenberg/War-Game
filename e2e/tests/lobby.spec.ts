@@ -15,9 +15,18 @@
  *     create -> pick faction -> continue.
  *   - Faction exclusivity surfaces in the UI as a disabled faction button
  *     labelled "Taken by <name>" (FactionPick.tsx), driven by lobby_update.
+ *   - Rejoin is TOKEN-based: the `game_created` ack carries a crypto-random
+ *     `sessionToken` which the client persists in sessionStorage (key
+ *     "imperium.session", client/src/session.ts). On every socket connect the
+ *     client auto-emits `rejoin_game {roomCode, sessionToken}` from the stored
+ *     session (App.tsx attemptRejoin), so a page reload in the SAME tab
+ *     reclaims the same seat — including after game start, where the server
+ *     replays `game_started` + `state_update` to route the client back to the
+ *     board. Fonts are self-hosted (client/public/fonts), so no external
+ *     requests need blocking.
  */
 import {
-  test as base,
+  test,
   expect,
   type Browser,
   type BrowserContext,
@@ -25,25 +34,6 @@ import {
 } from "@playwright/test";
 
 const ROOM_CODE_RE = /^[A-Z0-9]{6}$/;
-
-/**
- * client/src/theme.css `@import`s Google Fonts. In sandboxed/offline CI that
- * request hangs until a network timeout (~13s) before the page `load` event
- * fires, adding a flat delay to every fresh browser context. Abort external
- * font requests at the context level — the UI under test doesn't need them.
- */
-const EXTERNAL_FONTS_RE = /fonts\.(googleapis|gstatic)\.com/;
-
-async function blockExternalFonts(context: BrowserContext): Promise<void> {
-  await context.route(EXTERNAL_FONTS_RE, (route) => route.abort());
-}
-
-const test = base.extend({
-  context: async ({ context }, use) => {
-    await blockExternalFonts(context);
-    await use(context);
-  },
-});
 
 /** Drive home -> "Create Game" -> name form; lands on the faction screen. */
 async function createGame(page: Page, playerName: string): Promise<void> {
@@ -97,7 +87,6 @@ async function newPlayer(
   browser: Browser,
 ): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext();
-  await blockExternalFonts(context);
   const page = await context.newPage();
   return { context, page };
 }
@@ -212,38 +201,21 @@ test("(d) host starts the game and both clients leave the lobby for the game boa
 });
 
 /**
- * (e) REJOIN — intentionally test.fixme: the scaffold has NO wired rejoin path.
+ * (e) REJOIN (token-based). The `game_created` ack carries a per-player
+ * crypto-random sessionToken; the client stores {roomCode, playerId,
+ * sessionToken} in sessionStorage (key "imperium.session"). A `page.reload()`
+ * in the SAME tab keeps sessionStorage, so on the fresh page's first socket
+ * connect the client auto-emits `rejoin_game {roomCode, sessionToken}`
+ * (App.tsx attemptRejoin) and the server reattaches the SAME seat — same
+ * playerId, same faction, no ghost duplicate. While Bob's tab is reloading,
+ * his seat shows "(disconnected)" on the host's roster (LobbyPlayer.connected
+ * is now on the wire); after the rejoin it flips back.
  *
- * Discovered behavior (server/src/index.ts + server/src/lobby/lobbyManager.ts
- * at branch head ac73c8a):
- *   - `LobbyManager.reconnect(playerId)` exists (lobbyManager.ts:261) and is
- *     unit-tested, but NO socket event ever invokes it — rejoin is not
- *     reachable over the wire.
- *   - There are no session tokens; the client holds `playerId` only in React
- *     state, so a closed tab/context loses its identity permanently.
- *   - On disconnect the server merely flips the seat's server-side
- *     `connected` flag (index.ts `socket.on("disconnect")` ->
- *     `lobby.markDisconnected`); the seat is held forever, and the wire
- *     `LobbyPlayer` row has no `connected` field so other clients can't even
- *     see the drop.
- *   - Re-joining via the UI join flow with the SAME name does NOT reclaim the
- *     seat: `joinGame()` (lobbyManager.ts:159) unconditionally pushes a brand
- *     new player with a fresh UUID, so the roster ends up with TWO "Bob"
- *     rows — the ghost disconnected seat plus the new one, without the
- *     original faction. Empirically confirmed against the running stack: the
- *     host roster after a same-name re-join reads
- *     ["Alice · host BYZANTIUM", "Bob OTTOMAN", "Bob choosing…"] with no
- *     error surfaced to the re-joiner.
- *   - After the game has started, join_game is rejected outright with
- *     "That game has already started." — so mid-game rejoin is impossible.
- *
- * What the scaffold needs before this test can be enabled: a session token
- * (or name-based reclaim) in JoinGamePayload, a socket event wired to
- *  `LobbyManager.reconnect`, and join-after-start allowed for reclaims.
- *
- * The body below encodes the behavior a sensible rejoin should have.
+ * Note: deliberately reload rather than close-context-and-rejoin-by-name —
+ * sessionStorage is per-tab, and same-name join_game is now a clean
+ * "name taken" rejection, not a reclaim.
  */
-test.fixme("(e) rejoin: a disconnected player can reclaim their seat with the same name and code", async ({
+test("(e) rejoin: reloading a player's tab auto-rejoins the same seat via the stored session token", async ({
   page,
   browser,
 }) => {
@@ -252,30 +224,82 @@ test.fixme("(e) rejoin: a disconnected player can reclaim their seat with the sa
   await continueToLobby(page);
   const code = await readRoomCode(page);
 
-  // Bob joins, picks a faction, then drops (context close = socket disconnect).
   const p2 = await newPlayer(browser);
-  await joinGame(p2.page, "Bob", code);
-  await pickFaction(p2.page, "OTTOMAN");
-  await continueToLobby(p2.page);
-  await p2.context.close();
-
-  // Bob returns in a fresh context and rejoins with the same name + code.
-  const p3 = await newPlayer(browser);
   try {
-    await joinGame(p3.page, "Bob", code);
-    await pickFaction(p3.page, "OTTOMAN"); // should still be his
-    await continueToLobby(p3.page);
+    await joinGame(p2.page, "Bob", code);
+    await pickFaction(p2.page, "OTTOMAN");
+    await continueToLobby(p2.page);
 
-    // Expected on a real rejoin: exactly one Bob row, faction retained,
-    // on both clients — no ghost duplicate seat.
-    for (const p of [page, p3.page]) {
+    // Pre-drop sanity: the host sees Bob seated with his faction.
+    await expect(
+      page.locator(".imp-panel .imp-row", { hasText: "Bob" }),
+    ).toContainText("OTTOMAN");
+
+    // Reload Bob's tab: socket drops, sessionStorage survives, the client
+    // auto-rejoins on connect and (from the fresh "home" screen) resumes
+    // straight into the lobby on the first lobby_update.
+    await p2.page.reload();
+
+    // Bob lands back in the SAME lobby...
+    await expect(
+      p2.page.getByRole("heading", { name: "War Council" }),
+    ).toBeVisible();
+    expect(await readRoomCode(p2.page)).toBe(code);
+
+    // ...with the SAME seat: exactly one Bob row, faction retained, seat
+    // marked connected again — on BOTH clients, with no duplicate ghost.
+    for (const p of [page, p2.page]) {
       const roster = p.locator(".imp-panel");
       await expect(roster.getByText("Bob", { exact: true })).toHaveCount(1);
       await expect(
         roster.locator(".imp-row", { hasText: "Bob" }),
       ).toContainText("OTTOMAN");
+      await expect(roster.getByText("(disconnected)")).toHaveCount(0);
+      await expect(roster.locator(".imp-row")).toHaveCount(2);
     }
   } finally {
-    await p3.context.close();
+    await p2.context.close();
+  }
+});
+
+/**
+ * (e2) REJOIN AFTER START. `rejoin_game` works post-start too: the server
+ * reattaches the seat and replays `game_started` + a `state_update` snapshot
+ * to the rejoining socket, so a reloaded tab routes straight back to the
+ * game board.
+ */
+test("(e2) rejoin after start: reloading a player's tab mid-game resumes on the game board", async ({
+  page,
+  browser,
+}) => {
+  await createGame(page, "Alice");
+  await pickFaction(page, "BYZANTIUM");
+  await continueToLobby(page);
+  const code = await readRoomCode(page);
+
+  const p2 = await newPlayer(browser);
+  try {
+    await joinGame(p2.page, "Bob", code);
+    await pickFaction(p2.page, "OTTOMAN");
+    await continueToLobby(p2.page);
+
+    await page.getByRole("button", { name: "Start Game" }).click();
+    for (const p of [page, p2.page]) {
+      await expect(
+        p.getByRole("heading", { name: /Theatre of War · Turn 1/ }),
+      ).toBeVisible();
+    }
+
+    // Reload Bob mid-game: auto-rejoin reattaches the seat, and the replayed
+    // game_started/state_update land him back on the board (not the lobby).
+    await p2.page.reload();
+    await expect(
+      p2.page.getByRole("heading", { name: /Theatre of War · Turn 1/ }),
+    ).toBeVisible();
+    await expect(
+      p2.page.getByRole("heading", { name: "War Council" }),
+    ).toBeHidden();
+  } finally {
+    await p2.context.close();
   }
 });
