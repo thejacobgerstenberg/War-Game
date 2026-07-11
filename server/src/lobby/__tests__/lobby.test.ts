@@ -1,0 +1,252 @@
+import { describe, it, expect, beforeEach } from "vitest";
+import { Faction } from "@imperium/shared";
+import { LobbyManager, LobbyError, MAX_PLAYERS } from "../lobbyManager.js";
+
+describe("LobbyManager", () => {
+  let lobby: LobbyManager;
+
+  beforeEach(() => {
+    lobby = new LobbyManager();
+  });
+
+  it("creates a game with a 6-char uppercase room code and a host", () => {
+    const { room, player } = lobby.createGame("Basil");
+    expect(room.code).toHaveLength(6);
+    expect(room.code).toMatch(/^[A-Z0-9]{6}$/);
+    expect(player.isHost).toBe(true);
+    expect(player.name).toBe("Basil");
+    expect(room.players).toHaveLength(1);
+  });
+
+  it("rejects creating a game without a name", () => {
+    expect(() => lobby.createGame("   ")).toThrow(LobbyError);
+  });
+
+  it("adds a player on join", () => {
+    const { room } = lobby.createGame("Basil");
+    const { player } = lobby.joinGame(room.code, "Murad");
+    expect(player.isHost).toBe(false);
+    expect(lobby.getRoom(room.code)!.players).toHaveLength(2);
+  });
+
+  it("joins case-insensitively by room code", () => {
+    const { room } = lobby.createGame("Basil");
+    const joined = lobby.joinGame(room.code.toLowerCase(), "Murad");
+    expect(joined.room.code).toBe(room.code);
+  });
+
+  it("throws when joining a non-existent room", () => {
+    expect(() => lobby.joinGame("ZZZZZZ", "Nobody")).toThrow(LobbyError);
+  });
+
+  it("issues a distinct crypto-random sessionToken per player", () => {
+    const { room, player: host } = lobby.createGame("Basil");
+    const { player: guest } = lobby.joinGame(room.code, "Murad");
+    expect(host.sessionToken).toMatch(/^[A-Za-z0-9_-]{16,}$/);
+    expect(guest.sessionToken).toMatch(/^[A-Za-z0-9_-]{16,}$/);
+    expect(host.sessionToken).not.toBe(guest.sessionToken);
+  });
+
+  it("rejects a join whose name is already taken (no ghost duplicate seat)", () => {
+    const { room } = lobby.createGame("Basil");
+    lobby.joinGame(room.code, "Murad");
+
+    // Same name (any casing) is a clean name-taken rejection...
+    expect(() => lobby.joinGame(room.code, "Murad")).toThrow(
+      /name is already taken/i,
+    );
+    expect(() => lobby.joinGame(room.code, "murad")).toThrow(
+      /name is already taken/i,
+    );
+    // ...and no duplicate seat was created.
+    expect(lobby.getRoom(room.code)!.players).toHaveLength(2);
+  });
+
+  it(`rejects the ${MAX_PLAYERS + 1}th join once the room is full`, () => {
+    const { room } = lobby.createGame("P1");
+    for (let i = 2; i <= MAX_PLAYERS; i++) {
+      lobby.joinGame(room.code, `P${i}`);
+    }
+    expect(lobby.getRoom(room.code)!.players).toHaveLength(MAX_PLAYERS);
+    expect(() => lobby.joinGame(room.code, "P6")).toThrow(/full/i);
+    expect(lobby.getRoom(room.code)!.players).toHaveLength(MAX_PLAYERS);
+  });
+
+  it("lets a player pick an open faction", () => {
+    const { room, player } = lobby.createGame("Basil");
+    lobby.pickFaction(room.code, player.id, Faction.BYZANTIUM);
+    expect(lobby.getRoom(room.code)!.players[0].faction).toBe(
+      Faction.BYZANTIUM,
+    );
+  });
+
+  it("rejects a faction already taken by another player", () => {
+    const { room, player: host } = lobby.createGame("Basil");
+    const { player: guest } = lobby.joinGame(room.code, "Murad");
+
+    lobby.pickFaction(room.code, host.id, Faction.BYZANTIUM);
+    expect(() =>
+      lobby.pickFaction(room.code, guest.id, Faction.BYZANTIUM),
+    ).toThrow(/already been chosen/i);
+  });
+
+  it("rejects a faction id that is not a canonical Faction enum value", () => {
+    const { room, player } = lobby.createGame("Basil");
+    expect(() =>
+      lobby.pickFaction(room.code, player.id, "SPARTA" as unknown as Faction),
+    ).toThrow(LobbyError);
+    expect(() =>
+      lobby.pickFaction(room.code, player.id, "SPARTA" as unknown as Faction),
+    ).toThrow(/unknown faction/i);
+    // The seat was never polluted and the wire payload stays enum-or-null.
+    expect(lobby.getRoom(room.code)!.players[0].faction).toBeNull();
+    const allowed = new Set<string | null>([...Object.values(Faction), null]);
+    for (const p of LobbyManager.toLobbyUpdate(lobby.getRoom(room.code)!)
+      .players) {
+      expect(allowed.has(p.faction)).toBe(true);
+    }
+  });
+
+  it("rejects non-string junk faction values (wrong-typed injection)", () => {
+    const { room, player } = lobby.createGame("Basil");
+    for (const junk of [null, undefined, 42, {}, [Faction.BYZANTIUM]]) {
+      expect(() =>
+        lobby.pickFaction(room.code, player.id, junk as unknown as Faction),
+      ).toThrow(/unknown faction/i);
+    }
+    expect(lobby.getRoom(room.code)!.players[0].faction).toBeNull();
+  });
+
+  it("caps player names at 32 chars in createGame and joinGame", () => {
+    expect(() => lobby.createGame("x".repeat(33))).toThrow(/32 characters/);
+    expect(() => lobby.createGame("x".repeat(32))).not.toThrow();
+    const { room } = lobby.createGame("Basil");
+    expect(() => lobby.joinGame(room.code, "y".repeat(33))).toThrow(
+      /32 characters/,
+    );
+    expect(() => lobby.joinGame(room.code, "y".repeat(32))).not.toThrow();
+  });
+
+  it("allows a player to re-select their own faction", () => {
+    const { room, player } = lobby.createGame("Basil");
+    lobby.pickFaction(room.code, player.id, Faction.BYZANTIUM);
+    // Re-picking the same faction must not throw.
+    expect(() =>
+      lobby.pickFaction(room.code, player.id, Faction.BYZANTIUM),
+    ).not.toThrow();
+  });
+
+  it("requires the host to start the game", () => {
+    const { room, player: host } = lobby.createGame("Basil");
+    const { player: guest } = lobby.joinGame(room.code, "Murad");
+    lobby.pickFaction(room.code, host.id, Faction.BYZANTIUM);
+    lobby.pickFaction(room.code, guest.id, Faction.OTTOMAN);
+
+    expect(() => lobby.startGame(room.code, guest.id)).toThrow(
+      /only the host/i,
+    );
+  });
+
+  it("requires at least two players to start", () => {
+    const { room, player } = lobby.createGame("Basil");
+    expect(() => lobby.startGame(room.code, player.id)).toThrow(
+      /at least 2/i,
+    );
+  });
+
+  it("starts a valid game and produces initial state", () => {
+    const { room, player: host } = lobby.createGame("Basil");
+    const { player: guest } = lobby.joinGame(room.code, "Murad");
+    lobby.pickFaction(room.code, host.id, Faction.BYZANTIUM);
+    lobby.pickFaction(room.code, guest.id, Faction.OTTOMAN);
+
+    const { state } = lobby.startGame(room.code, host.id);
+    expect(state.players).toHaveLength(2);
+    expect(state.roomCode).toBe(room.code);
+    expect(lobby.getRoom(room.code)!.startedByHost).toBe(true);
+    // The chronicle is seeded with the opening entry.
+    expect(state.log).toHaveLength(1);
+    expect(state.log[0].type).toBe("game_start");
+  });
+
+  it("reassigns host and drops empty rooms on leave", () => {
+    const { room, player: host } = lobby.createGame("Basil");
+    const { player: guest } = lobby.joinGame(room.code, "Murad");
+
+    lobby.leaveGame(room.code, host.id);
+    // Host left -> guest is promoted.
+    expect(lobby.getRoom(room.code)!.players[0].id).toBe(guest.id);
+    expect(lobby.getRoom(room.code)!.players[0].isHost).toBe(true);
+
+    lobby.leaveGame(room.code, guest.id);
+    // Room is now empty and removed.
+    expect(lobby.getRoom(room.code)).toBeUndefined();
+  });
+
+  it("supports reconnect by player id", () => {
+    const { room, player } = lobby.createGame("Basil");
+    lobby.markDisconnected(player.id);
+    expect(lobby.getRoom(room.code)!.players[0].connected).toBe(false);
+
+    const rec = lobby.reconnect(player.id);
+    expect(rec).not.toBeNull();
+    expect(rec!.player.connected).toBe(true);
+  });
+
+  it("rejoinGame reattaches the same seat by session token", () => {
+    const { room } = lobby.createGame("Basil");
+    const { player: guest } = lobby.joinGame(room.code, "Murad");
+    lobby.pickFaction(room.code, guest.id, Faction.OTTOMAN);
+    lobby.markDisconnected(guest.id);
+
+    const rec = lobby.rejoinGame(room.code, guest.sessionToken);
+    expect(rec.player.id).toBe(guest.id); // same seat, not a new one
+    expect(rec.player.connected).toBe(true);
+    expect(rec.player.faction).toBe(Faction.OTTOMAN); // faction retained
+    expect(lobby.getRoom(room.code)!.players).toHaveLength(2); // no ghost
+  });
+
+  it("rejoinGame works after the game has started (join_game does not)", () => {
+    const { room, player: host } = lobby.createGame("Basil");
+    const { player: guest } = lobby.joinGame(room.code, "Murad");
+    lobby.pickFaction(room.code, host.id, Faction.BYZANTIUM);
+    lobby.pickFaction(room.code, guest.id, Faction.OTTOMAN);
+    lobby.startGame(room.code, host.id);
+    lobby.markDisconnected(guest.id);
+
+    // New players are still locked out post-start...
+    expect(() => lobby.joinGame(room.code, "Latecomer")).toThrow(
+      /already started/i,
+    );
+    // ...but a valid token reclaims the existing seat.
+    const rec = lobby.rejoinGame(room.code, guest.sessionToken);
+    expect(rec.player.id).toBe(guest.id);
+    expect(rec.player.connected).toBe(true);
+    expect(rec.room.state).not.toBeNull();
+  });
+
+  it("rejoinGame rejects a wrong or stale token", () => {
+    const { room } = lobby.createGame("Basil");
+    expect(() => lobby.rejoinGame(room.code, "not-a-real-token")).toThrow(
+      /invalid session token/i,
+    );
+    expect(() => lobby.rejoinGame("ZZZZZZ", "whatever")).toThrow(
+      /no game found/i,
+    );
+  });
+
+  it("projects a room into a lobby_update payload", () => {
+    const { room, player } = lobby.createGame("Basil");
+    lobby.pickFaction(room.code, player.id, Faction.VENICE);
+    const payload = LobbyManager.toLobbyUpdate(lobby.getRoom(room.code)!);
+    expect(payload.roomCode).toBe(room.code);
+    expect(payload.players[0]).toEqual({
+      id: player.id,
+      name: "Basil",
+      faction: Faction.VENICE,
+      isHost: true,
+      connected: true,
+    });
+    expect(payload.startedByHost).toBe(false);
+  });
+});
