@@ -203,10 +203,17 @@ Two options; **pick the single-container path for v1**:
   `TODO(scaffold):` `client/dist` assumes the Vite default `outDir`; verify
   once `client/vite.config.*` lands.
 - **Alternative: nginx in front (what local compose does today).**
-  `deploy/Dockerfile.client` builds the SPA into an nginx image whose config
+  `deploy/Dockerfile.client` builds the SPA into an unprivileged nginx image
+  (non-root, listens on container port **8080**) whose config
   (`deploy/nginx.conf`) serves the static files and reverse-proxies
   `/socket.io/` and `/healthz` to the Node server — still same-origin for the
-  browser, plus gzip/caching control. On Fly this means either two processes
+  browser, plus gzip/caching control. The image takes a **`VITE_SERVER_URL`**
+  build arg: leave it empty (the default) for this same-origin setup; set it
+  to the server's URL only for split deployments where the SPA and server are
+  on different origins, e.g.
+  `docker build -f deploy/Dockerfile.client --build-arg VITE_SERVER_URL=https://api.example.com .`
+  (and add the SPA origin to the server's `CORS_ORIGIN`).
+  On Fly this means either two processes
   in one machine or two apps with internal networking: more moving parts than
   our scale justifies. Keep it for local prod-like testing; revisit only if
   static-asset serving measurably loads the Node process.
@@ -235,8 +242,12 @@ docker compose -f deploy/docker-compose.yml up --build
 
 This starts two services (see `deploy/docker-compose.yml`): the game server
 (internal port 8080, deliberately not published to the host) and an nginx
-client at `http://localhost:3000` that serves the SPA and proxies
-`/socket.io/` and `/healthz` to the server, same-origin. Verify with
+client at `http://localhost:3000` (host 3000 → container 8080 — the
+unprivileged nginx image's internal port) that serves the SPA and proxies
+`/socket.io/` and `/healthz` to the server, same-origin. The compose file
+passes the client image's `VITE_SERVER_URL` build arg as explicitly **empty**,
+which means same-origin — don't set it here unless you're testing a split
+(cross-origin) deployment. Verify with
 
 ```sh
 curl -fsS http://localhost:3000/healthz
@@ -277,8 +288,8 @@ API/socket, not the game UI).
 | `deploy/README.md` | This document. |
 | `deploy/fly.toml` | Committed Fly.io config (region, env defaults, health check, 1-machine scaling, no-sleep policy). |
 | `deploy/Dockerfile.server` | Production server image (builds `shared/` + `server/`); build context = repo root. |
-| `deploy/Dockerfile.client` | SPA build served by nginx — used by local compose and by the "nginx in front" alternative (step 8). |
-| `deploy/nginx.conf` | nginx site config for the client image: serves the SPA, proxies `/socket.io/` + `/healthz` to the server. |
+| `deploy/Dockerfile.client` | SPA build served by unprivileged nginx (container port 8080); `VITE_SERVER_URL` build arg (empty = same-origin, URL = split deploy) — used by local compose and by the "nginx in front" alternative (step 8). |
+| `deploy/nginx.conf` | nginx site config for the client image (listens on 8080): serves the SPA with security headers, proxies `/socket.io/` + `/healthz` to the server. |
 | `deploy/docker-compose.yml` | Local prod-like two-service stack (server + nginx client on `localhost:3000`). |
 | `deploy/dockerignore` | Staged `.dockerignore` — copy to repo root when adopting (root is owned by the scaffold team). |
 

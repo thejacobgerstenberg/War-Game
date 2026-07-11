@@ -20,6 +20,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1: build — install all workspace deps, compile shared then server
 # ---------------------------------------------------------------------------
+# Follow-up: pin base images by digest (node@sha256:...) and adopt Renovate to keep them fresh — deliberately not done in this pass to avoid tag churn.
 FROM node:20-slim AS build
 WORKDIR /app
 

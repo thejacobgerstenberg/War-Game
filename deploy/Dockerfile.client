@@ -6,19 +6,34 @@
 #   docker build -f deploy/Dockerfile.client -t imperium-client .
 #   docker compose -f deploy/docker-compose.yml up --build
 #
-# The client is served SAME-ORIGIN behind nginx, which reverse-proxies
-# /socket.io/ and /healthz to the game server (see deploy/nginx.conf).
-# No VITE_* build args are passed because recon found no env-based server/ws
-# URL resolution in the client spec — the socket.io client can connect to
-# window.location.origin with the default /socket.io/ path.
-# TODO(scaffold): if the client later reads VITE_* vars (e.g. VITE_SERVER_URL) for cross-origin deploys, add matching ARG/ENV lines in the build stage below.
+# Socket URL contract (VITE_SERVER_URL build arg, baked in at Vite build time):
+#   - EMPTY (the default): the client connects SAME-ORIGIN and nginx
+#     reverse-proxies /socket.io/ and /healthz to the game server
+#     (see deploy/nginx.conf). This is what local compose uses.
+#   - NON-EMPTY (e.g. https://api.example.com): the client dials that URL
+#     directly — for split deployments where the SPA and the game server live
+#     on different origins (remember to include the SPA origin in the server's
+#     CORS_ORIGIN).
+# TODO(scaffold): client/src/socket.ts resolves
+#   `import.meta.env.VITE_SERVER_URL ?? "http://localhost:8080"`, so an unset
+#   arg would bake localhost:8080 into the bundle. The empty-string default
+#   below defuses that, but socket.ts still needs `|| undefined` (empty string
+#   is not nullish) so "" falls through to socket.io's same-origin default —
+#   coordinate that fix on the scaffold side before shipping this image.
 # =============================================================================
 
 # ---------------------------------------------------------------------------
 # Stage 1: build — install workspace deps (incl. shared), run the Vite build
 # ---------------------------------------------------------------------------
+# Follow-up: pin base images by digest (node@sha256:..., nginx@sha256:...) and adopt Renovate to keep them fresh — deliberately not done in this pass to avoid tag churn.
 FROM node:20-slim AS build
 WORKDIR /app
+
+# Socket URL contract — see header. Empty default = same-origin via the nginx
+# /socket.io/ proxy; set to a full URL only for split (cross-origin) deploys.
+# Vite only inlines env vars present at build time, hence ARG -> ENV here.
+ARG VITE_SERVER_URL=""
+ENV VITE_SERVER_URL=$VITE_SERVER_URL
 
 # Manifests first so the dependency layer caches across source-only changes.
 # The `package-lock.json*` / `tsconfig*.json` globs tolerate absent files.
@@ -42,13 +57,20 @@ RUN npm run build --workspace=shared \
 # ---------------------------------------------------------------------------
 # Stage 2: serve — static files + WS-aware reverse proxy via nginx
 # ---------------------------------------------------------------------------
-FROM nginx:1.27-alpine AS runtime
+# Unprivileged variant: runs as the non-root "nginx" user (uid 101) out of the
+# box and listens on 8080 by convention (non-root can't bind 80). The image
+# already sets USER nginx, so no USER directive is needed here.
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 
 # TODO(scaffold): outDir assumed to be Vite's default `client/dist` — no vite.config.* exists yet; update this path if the scaffold overrides build.outDir.
 COPY --from=build /app/client/dist /usr/share/nginx/html
 
 # SPA + proxy config (this path is relative to the repo-root build context).
+# The unprivileged image keeps the stock include layout: nginx.conf pulls in
+# /etc/nginx/conf.d/*.conf, so replacing default.conf works the same as in the
+# root image.
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+# 8080 matches `listen 8080` in deploy/nginx.conf (unprivileged convention).
+EXPOSE 8080
 # nginx's stock entrypoint/CMD from the base image is used as-is.

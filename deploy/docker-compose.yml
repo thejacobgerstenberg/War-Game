@@ -56,10 +56,18 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.client
+      args:
+        # Explicitly empty = same-origin: the bundle lets socket.io connect to
+        # window.location.origin and nginx proxies /socket.io/ to the server.
+        # Set to a full URL only for split deployments where the SPA and the
+        # game server live on different origins (see deploy/Dockerfile.client).
+        VITE_SERVER_URL: ""
     ports:
-      # Host 3000 -> nginx :80. Kept off 8080 to avoid confusion with the
-      # server's internal port. If you change this, change CORS_ORIGIN above.
-      - "3000:80"
+      # Host 3000 -> nginx :8080 (the unprivileged nginx image's internal
+      # port; non-root nginx can't bind 80). The container-side 8080 is
+      # unrelated to the server's 8080 — different containers. If you change
+      # the host port, change CORS_ORIGIN above.
+      - "3000:8080"
     depends_on:
       # Startup ordering only. nginx tolerates the upstream briefly resolving
       # before the server accepts connections.
