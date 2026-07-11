@@ -10,15 +10,22 @@ function demoGameState(): GameState {
 describe("legalMoveTargets — armies (province → province)", () => {
   it("returns only land neighbors for a province holding an army", () => {
     const state = demoGameState();
-    // a-byz-1 sits in thrace, which also borders three sea zones.
-    const targets = legalMoveTargets(state, "thrace");
+    // a-byz-1 sits in constantinople, which also borders two sea zones.
+    const targets = legalMoveTargets(state, "constantinople");
     expect(targets.length).toBeGreaterThan(0);
     expect(targets.every((id) => !isSeaZoneId(id))).toBe(true);
   });
 
+  it("crosses the Bosphorus strait: constantinople army can target bithynia", () => {
+    const state = demoGameState();
+    expect(legalMoveTargets(state, "constantinople")).toEqual([
+      "selymbria", "pera", "bithynia",
+    ]);
+  });
+
   it("equals neighborsOf filtered to non-sea ids, preserving adjacency order", () => {
     const state = demoGameState();
-    for (const from of ["thrace", "bithynia", "hungary"]) {
+    for (const from of ["constantinople", "bithynia", "buda"]) {
       expect(legalMoveTargets(state, from)).toEqual(
         neighborsOf(from).filter((n) => !isSeaZoneId(n)),
       );
@@ -27,41 +34,41 @@ describe("legalMoveTargets — armies (province → province)", () => {
 
   it("excludes sea zones even for a coastal province (no embarkation)", () => {
     const state = demoGameState();
-    const seaNeighbors = neighborsOf("thrace").filter(isSeaZoneId);
-    expect(seaNeighbors.length).toBeGreaterThan(0); // sanity: thrace is coastal
-    const targets = legalMoveTargets(state, "thrace");
+    const seaNeighbors = neighborsOf("constantinople").filter(isSeaZoneId);
+    expect(seaNeighbors.length).toBeGreaterThan(0); // sanity: it is coastal
+    const targets = legalMoveTargets(state, "constantinople");
     for (const sea of seaNeighbors) expect(targets).not.toContain(sea);
   });
 
   it("does not filter targets by ownership", () => {
     const state = demoGameState();
-    const targets = legalMoveTargets(state, "thrace");
+    // a-ott-1 sits in bithynia (Ottoman); constantinople is enemy-held
+    // (p-byzantium), bursa is own: both must still be legal targets.
+    const targets = legalMoveTargets(state, "bithynia");
     const ownerOf = (id: string): string | null =>
       state.provinces.find((p) => p.id === id)?.ownerId ?? null;
-    // bulgaria is enemy-held (p-ottoman), macedonia is own (p-byzantium):
-    // both must still be legal targets.
-    expect(ownerOf("bulgaria")).toBe("p-ottoman");
-    expect(ownerOf("macedonia")).toBe("p-byzantium");
-    expect(targets).toContain("bulgaria");
-    expect(targets).toContain("macedonia");
+    expect(ownerOf("constantinople")).toBe("p-byzantium");
+    expect(ownerOf("bursa")).toBe("p-ottoman");
+    expect(targets).toContain("constantinople");
+    expect(targets).toContain("bursa");
   });
 });
 
 describe("legalMoveTargets — fleets (sea → sea)", () => {
   it("returns only sea-zone neighbors for a sea zone holding a fleet", () => {
     const state = demoGameState();
-    // f-ven-1 sits in adriatic-sea, which also borders five land provinces.
-    const targets = legalMoveTargets(state, "adriatic-sea");
-    expect(targets.length).toBeGreaterThan(0);
+    // f-gen-1 sits in the bosphorus, which also touches three provinces.
+    const targets = legalMoveTargets(state, "bosphorus");
+    expect(targets).toEqual(["sea-of-marmara", "black-sea-west"]);
     expect(targets.every(isSeaZoneId)).toBe(true);
-    expect(targets).toEqual(neighborsOf("adriatic-sea").filter(isSeaZoneId));
   });
 
   it("excludes adjacent land provinces (no disembarkation)", () => {
     const state = demoGameState();
-    const landNeighbors = neighborsOf("ligurian-sea").filter((n) => !isSeaZoneId(n));
+    const landNeighbors = neighborsOf("adriatic").filter((n) => !isSeaZoneId(n));
     expect(landNeighbors.length).toBeGreaterThan(0); // sanity: coast exists
-    const targets = legalMoveTargets(state, "ligurian-sea"); // f-gen-1
+    const targets = legalMoveTargets(state, "adriatic"); // f-ven-1
+    expect(targets).toEqual(["ionian"]);
     for (const land of landNeighbors) expect(targets).not.toContain(land);
   });
 });
@@ -69,9 +76,9 @@ describe("legalMoveTargets — fleets (sea → sea)", () => {
 describe("legalMoveTargets — precedence and empty cases", () => {
   it("army rule wins when both an army and a fleet share a location", () => {
     const state = demoGameState();
-    state.armies[0].locationId = "adriatic-sea"; // alongside f-ven-1
-    expect(legalMoveTargets(state, "adriatic-sea")).toEqual(
-      neighborsOf("adriatic-sea").filter((n) => !isSeaZoneId(n)),
+    state.armies[0].locationId = "adriatic"; // alongside f-ven-1
+    expect(legalMoveTargets(state, "adriatic")).toEqual(
+      neighborsOf("adriatic").filter((n) => !isSeaZoneId(n)),
     );
   });
 
@@ -86,6 +93,7 @@ describe("legalMoveTargets — precedence and empty cases", () => {
   it("returns [] for an unknown id", () => {
     const state = demoGameState();
     expect(legalMoveTargets(state, "atlantis")).toEqual([]);
+    expect(legalMoveTargets(state, "thrace")).toEqual([]); // retired SVG id
     expect(legalMoveTargets(state, "")).toEqual([]);
   });
 
@@ -99,7 +107,7 @@ describe("legalMoveTargets — precedence and empty cases", () => {
     const state = demoGameState();
     state.armies = [];
     state.fleets = [];
-    expect(legalMoveTargets(state, "thrace")).toEqual([]);
-    expect(legalMoveTargets(state, "adriatic-sea")).toEqual([]);
+    expect(legalMoveTargets(state, "constantinople")).toEqual([]);
+    expect(legalMoveTargets(state, "adriatic")).toEqual([]);
   });
 });
