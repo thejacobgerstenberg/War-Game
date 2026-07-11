@@ -1,0 +1,159 @@
+<!--
+  IMPERIUM: Twilight of Empires — faction fill patterns
+  Colorblind-safe province ownership overlays: each faction is distinguishable
+  by GEOMETRY alone (lattice / crescents / waves / checker / chevrons), so the
+  map stays readable under any color-vision deficiency or in grayscale print.
+
+  CLIENT USAGE
+    1. Fill the province path with the faction tint custom property
+       (prefix is two ASCII dashes; shown here as Unicode hyphens because
+       XML comments forbid a literal double dash):
+         <path d="..." fill="var(‐‐faction-venice)" fill-opacity="0.16"/>
+       (tint sits over the parchment base coat of the board).
+    2. Add an overlay path with the same geometry, filled with the pattern:
+         <path d="..." fill="url(#pattern-venice)"/>
+    3. Province labels render above the overlay; stroke weights here are kept
+       at 1.5-2 so the texture reads at map zoom without drowning labels.
+
+  Patterns use patternUnits="userSpaceOnUse" with 12-15px tiles and a
+  transparent background — they composite cleanly over any tint.
+  Canonical pattern ids: pattern-byzantium, pattern-ottomans, pattern-venice,
+  pattern-genoa, pattern-hungary. All other ids are prefixed faction-patterns-.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img"
+     aria-labelledby="faction-patterns-title faction-patterns-desc">
+  <title id="faction-patterns-title">Faction Fill Patterns</title>
+  <desc id="faction-patterns-desc">Five colorblind-safe SVG fill patterns for province ownership: Byzantium diagonal cross-hatch, Ottoman crescents, Venetian waves, Genoese checkerboard, Hungarian chevrons; with labeled swatches and a usage demo blob.</desc>
+
+  <!-- ==================== DEFS: THE FIVE FACTION PATTERNS ==================== -->
+  <defs>
+
+    <!-- Byzantium: diagonal cross-hatch (X lattice), porphyry -->
+    <pattern id="pattern-byzantium" patternUnits="userSpaceOnUse" width="12" height="12">
+      <path d="M-1 -1 L13 13 M13 -1 L-1 13" fill="none" stroke="#4B1F3F" stroke-width="1.6"/>
+    </pattern>
+
+    <!-- Ottomans: small crescents, crimson, half-drop repeat -->
+    <pattern id="pattern-ottomans" patternUnits="userSpaceOnUse" width="15" height="15">
+      <path d="M5.1 1.6 A3.1 3.1 0 1 0 5.1 6.4 A2.4 2.4 0 0 1 5.1 1.6 Z" fill="#7A1F2B"/>
+      <path d="M5.1 1.6 A3.1 3.1 0 1 0 5.1 6.4 A2.4 2.4 0 0 1 5.1 1.6 Z" fill="#7A1F2B"
+            transform="translate(7.5 7.5)"/>
+    </pattern>
+
+    <!-- Venice: horizontal wave lines, lapis, alternating phase -->
+    <pattern id="pattern-venice" patternUnits="userSpaceOnUse" width="12" height="12">
+      <path d="M-6 3 Q-3 5.5 0 3 Q3 0.5 6 3 Q9 5.5 12 3 Q15 0.5 18 3"
+            fill="none" stroke="#1F4E79" stroke-width="1.5"/>
+      <path d="M-6 9 Q-3 6.5 0 9 Q3 11.5 6 9 Q9 6.5 12 9 Q15 11.5 18 9"
+            fill="none" stroke="#1F4E79" stroke-width="1.5"/>
+    </pattern>
+
+    <!-- Genoa: small checkerboard squares, gold -->
+    <pattern id="pattern-genoa" patternUnits="userSpaceOnUse" width="12" height="12">
+      <rect x="0" y="0" width="6" height="6" fill="#C9A227"/>
+      <rect x="6" y="6" width="6" height="6" fill="#C9A227"/>
+    </pattern>
+
+    <!-- Hungary: chevrons, laurel, steep single row per tile -->
+    <pattern id="pattern-hungary" patternUnits="userSpaceOnUse" width="12" height="12">
+      <path d="M-2 10.17 L6 3.5 L14 10.17" fill="none" stroke="#4A5D3A"
+            stroke-width="1.8" stroke-linejoin="miter"/>
+    </pattern>
+
+    <!-- Demo province blob, reused for tint coat + pattern overlay -->
+    <path id="faction-patterns-demo-blob"
+          d="M82 196 C96 178 128 170 154 177 C178 183 202 174 224 186
+             C246 198 254 221 245 243 C236 265 208 278 180 274
+             C154 270 130 283 106 271 C83 259 66 237 72 217
+             C75 207 76 204 82 196 Z"/>
+  </defs>
+
+  <!-- ==================== SHEET BASE ==================== -->
+  <rect x="0" y="0" width="400" height="300" fill="#F0E6D2"/>
+  <rect x="4" y="4" width="392" height="292" fill="none" stroke="#2B2118"
+        stroke-width="1" stroke-opacity="0.5"/>
+
+  <!-- ==================== HEADING ==================== -->
+  <text x="200" y="26" text-anchor="middle" font-family="Cinzel, serif"
+        font-size="14" font-weight="700" letter-spacing="2.5"
+        fill="#2B2118">FACTION FILL PATTERNS</text>
+  <text x="200" y="40" text-anchor="middle" font-family="'EB Garamond', serif"
+        font-size="8.5" font-style="italic" fill="#2B2118" fill-opacity="0.8">Province ownership overlays — distinguishable by geometry alone</text>
+
+  <!-- ==================== SWATCH ROW ==================== -->
+  <!-- Byzantium swatch -->
+  <g>
+    <rect x="16" y="52" width="64" height="64" fill="#F0E6D2"/>
+    <rect x="16" y="52" width="64" height="64" fill="url(#pattern-byzantium)"/>
+    <rect x="16" y="52" width="64" height="64" fill="none" stroke="#2B2118"
+          stroke-width="1" stroke-opacity="0.6"/>
+    <text x="48" y="129" text-anchor="middle" font-family="'EB Garamond', serif"
+          font-size="9.5" fill="#2B2118">Byzantium</text>
+  </g>
+
+  <!-- Ottomans swatch -->
+  <g>
+    <rect x="92" y="52" width="64" height="64" fill="#F0E6D2"/>
+    <rect x="92" y="52" width="64" height="64" fill="url(#pattern-ottomans)"/>
+    <rect x="92" y="52" width="64" height="64" fill="none" stroke="#2B2118"
+          stroke-width="1" stroke-opacity="0.6"/>
+    <text x="124" y="129" text-anchor="middle" font-family="'EB Garamond', serif"
+          font-size="9.5" fill="#2B2118">Ottomans</text>
+  </g>
+
+  <!-- Venice swatch -->
+  <g>
+    <rect x="168" y="52" width="64" height="64" fill="#F0E6D2"/>
+    <rect x="168" y="52" width="64" height="64" fill="url(#pattern-venice)"/>
+    <rect x="168" y="52" width="64" height="64" fill="none" stroke="#2B2118"
+          stroke-width="1" stroke-opacity="0.6"/>
+    <text x="200" y="129" text-anchor="middle" font-family="'EB Garamond', serif"
+          font-size="9.5" fill="#2B2118">Venice</text>
+  </g>
+
+  <!-- Genoa swatch -->
+  <g>
+    <rect x="244" y="52" width="64" height="64" fill="#F0E6D2"/>
+    <rect x="244" y="52" width="64" height="64" fill="url(#pattern-genoa)"/>
+    <rect x="244" y="52" width="64" height="64" fill="none" stroke="#2B2118"
+          stroke-width="1" stroke-opacity="0.6"/>
+    <text x="276" y="129" text-anchor="middle" font-family="'EB Garamond', serif"
+          font-size="9.5" fill="#2B2118">Genoa</text>
+  </g>
+
+  <!-- Hungary swatch -->
+  <g>
+    <rect x="320" y="52" width="64" height="64" fill="#F0E6D2"/>
+    <rect x="320" y="52" width="64" height="64" fill="url(#pattern-hungary)"/>
+    <rect x="320" y="52" width="64" height="64" fill="none" stroke="#2B2118"
+          stroke-width="1" stroke-opacity="0.6"/>
+    <text x="352" y="129" text-anchor="middle" font-family="'EB Garamond', serif"
+          font-size="9.5" fill="#2B2118">Hungary</text>
+  </g>
+
+  <!-- ==================== USAGE DEMO: TINT + PATTERN OVERLAY ==================== -->
+  <line x1="16" y1="142" x2="384" y2="142" stroke="#2B2118" stroke-width="0.75"
+        stroke-opacity="0.4"/>
+  <text x="16" y="157" font-family="'EB Garamond', serif" font-size="8.5"
+        font-style="italic" fill="#2B2118" fill-opacity="0.85">Usage demo — province filled with faction tint, pattern overlaid, label above</text>
+
+  <!-- Province blob: parchment base is the sheet; tint coat, then overlay -->
+  <use href="#faction-patterns-demo-blob" fill="#1F4E79" fill-opacity="0.16"/>
+  <use href="#faction-patterns-demo-blob" fill="url(#pattern-venice)"/>
+  <use href="#faction-patterns-demo-blob" fill="none" stroke="#2B2118"
+       stroke-width="1.4" stroke-opacity="0.85"/>
+  <text x="159" y="231" text-anchor="middle" font-family="Cinzel, serif"
+        font-size="12" font-weight="700" letter-spacing="1.5"
+        fill="#2B2118">MOREA</text>
+
+  <!-- Client notes -->
+  <g font-family="'EB Garamond', serif" font-size="8.5" fill="#2B2118">
+    <text x="272" y="196">1. fill province path with</text>
+    <text x="280" y="207" font-style="italic">var(--faction-venice)</text>
+    <text x="280" y="218" font-style="italic">fill-opacity 0.16</text>
+    <text x="272" y="234">2. overlay same path with</text>
+    <text x="280" y="245" font-style="italic">fill="url(#pattern-venice)"</text>
+    <text x="272" y="261">Tiles are transparent; strokes</text>
+    <text x="272" y="272">1.5–2 px keep labels legible.</text>
+  </g>
+</svg>
