@@ -14,6 +14,7 @@ export * from "./balance.js";
 export * from "./rng.js";
 export * from "./logEntry.js";
 export * from "./gameState.js";
+export * from "./modifiers.js";
 export * from "./factions.js";
 export * from "./economy.js";
 export * from "./combat.js";
