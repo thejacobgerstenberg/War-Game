@@ -33,8 +33,10 @@ starts the game once everyone has picked a faction.
   each Income phase — spend them on levies, fleets, walls and great works.
 - Campaigns are fought with armies, fleets and modified dice; the Council is
   where alliances, tribute and betrayal happen.
-- Highest **Prestige** when Round 16 ends wins — unless someone takes
-  Constantinople first, which wins outright.
+- Victory goes to the highest **Prestige** once someone passes the era
+  threshold (scaled ~72/75/80/78 by player count), or the highest Prestige when
+  Round 16 ends — or, in sudden death, to whoever captures Constantinople and
+  holds it through two cleanup rounds.
 - Full rules live in [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) (the master
   rulebook), with the map, factions and event cards in its sibling docs under
   [`docs/`](docs/).
@@ -52,6 +54,8 @@ starts the game once everyone has picked a faction.
 | `audio/`   | Music and SFX, plus the tools that generate them                    |
 | `lore/`    | Narrative text: chronicle entries, events, tutorial, UI copy        |
 | `e2e/`     | Playwright end-to-end tests and a socket load harness               |
+| `sim/`     | Balance simulation harness — adversarial regression gate and reports |
+| `rulebook/`| Illuminated HTML rulebook                                            |
 | `deploy/`  | Dockerfiles, compose file, nginx config, Fly.io config              |
 
 ## Testing
