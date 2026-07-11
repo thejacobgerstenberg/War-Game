@@ -1,7 +1,9 @@
-# deploy/fly.toml — Fly.io app config for the IMPERIUM game server.
+# deploy/fly.toml — Fly.io app config for the IMPERIUM game (single app:
+# the server image also ships the built client, so one machine serves the
+# game UI, the API, and the WebSocket on one origin — see Dockerfile.server).
 #
 # Deploy from the REPO ROOT (the build context must be the repo root so the
-# Dockerfile can see server/, shared/ and the root package.json):
+# Dockerfile can see server/, shared/, client/ and the root package.json):
 #
 #   fly deploy -c deploy/fly.toml --dockerfile deploy/Dockerfile.server
 #
@@ -35,17 +37,20 @@ kill_timeout = "30s"
 [env]
   # Non-secret defaults per the canonical production contract. CORS_ORIGIN
   # is intentionally NOT set here — its value depends on where the client is
-  # served; set it per-app with `fly secrets set CORS_ORIGIN=...`
-  # (see deploy/README.md, runbook step 4).
-  # TODO(scaffold): the server that reads these vars has not merged yet
-  # (origin/main has no server code); confirm the scaffolded server reads
-  # PORT / NODE_ENV / ROOM_TTL_SECONDS / LOG_LEVEL exactly as named here.
+  # served (single-app default: the app's own origin); set it per-app with
+  # `fly secrets set CORS_ORIGIN=...` (see deploy/README.md, runbook step 3).
+  # SERVE_CLIENT is intentionally NOT set here either — the image bakes
+  # SERVE_CLIENT=/app/client/dist via ENV in deploy/Dockerfile.server; only
+  # override it (or set it empty to disable static serving) for unusual
+  # setups.
   PORT = "8080"
   NODE_ENV = "production"
   ROOM_TTL_SECONDS = "3600"
   LOG_LEVEL = "info"
 
 [http_service]
+  # 8080 serves everything: the game UI (static client), the API, and the
+  # socket.io WebSocket — one port, one origin, one app.
   internal_port = 8080
   force_https = true
   # Never auto-stop: an "idle-looking" machine may still hold live WebSocket
