@@ -1,0 +1,65 @@
+<!-- 9-slice insets: 28 28 28 28 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" role="img" aria-labelledby="panel-frame-svg-title panel-frame-svg-desc">
+  <title id="panel-frame-svg-title">Panel frame — Imperium: Twilight of Empires</title>
+  <desc id="panel-frame-svg-desc">Nine-slice-able manuscript panel chrome: parchment field, ink and gold keylines, vellum border band with a gold bead row, and self-contained rosette ornaments in each 28-pixel corner cell.</desc>
+
+  <!-- ==================== DEFS ==================== -->
+  <defs>
+    <!-- gold bead: one 8x8 tile; strips are placed inside translated groups so the
+         pattern origin follows each strip and tiles stay uniform for 9-slicing -->
+    <pattern id="panel-frame-bead-pattern" width="8" height="8" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="1.5" fill="#C9A227"/>
+      <circle cx="4" cy="4" r="1.5" fill="none" stroke="#2B2118" stroke-width="0.4" stroke-opacity="0.55"/>
+    </pattern>
+    <!-- horizontal bead strip (top/bottom edge cells, 264 = 33 tiles of 8) -->
+    <rect id="panel-frame-bead-strip-h" width="264" height="8" fill="url(#panel-frame-bead-pattern)"/>
+    <!-- vertical bead strip (left/right edge cells, 184 = 23 tiles of 8) -->
+    <rect id="panel-frame-bead-strip-v" width="8" height="184" fill="url(#panel-frame-bead-pattern)"/>
+    <!-- rosette petal -->
+    <ellipse id="panel-frame-petal" cx="0" cy="-5.6" rx="2.5" ry="4.4"/>
+    <!-- corner rosette boss: fully contained within a 28x28 corner cell -->
+    <g id="panel-frame-rosette">
+      <circle r="10.2" fill="#E2D3B3" stroke="#2B2118" stroke-width="1.1"/>
+      <circle r="8.6" fill="none" stroke="#C9A227" stroke-width="0.9" stroke-opacity="0.9"/>
+      <g fill="#C9A227" stroke="#2B2118" stroke-width="0.6" stroke-opacity="0.8">
+        <use href="#panel-frame-petal"/>
+        <use href="#panel-frame-petal" transform="rotate(45)"/>
+        <use href="#panel-frame-petal" transform="rotate(90)"/>
+        <use href="#panel-frame-petal" transform="rotate(135)"/>
+        <use href="#panel-frame-petal" transform="rotate(180)"/>
+        <use href="#panel-frame-petal" transform="rotate(225)"/>
+        <use href="#panel-frame-petal" transform="rotate(270)"/>
+        <use href="#panel-frame-petal" transform="rotate(315)"/>
+      </g>
+      <circle r="2.6" fill="#4B1F3F" stroke="#C9A227" stroke-width="0.9"/>
+    </g>
+  </defs>
+
+  <!-- ==================== PARCHMENT FIELD (center kept plain for slicing) ==================== -->
+  <rect x="0" y="0" width="320" height="240" rx="8" fill="#F0E6D2"/>
+
+  <!-- ==================== KEYLINES (run the full perimeter; corners turn inside corner cells) ==================== -->
+  <rect x="2" y="2" width="316" height="236" rx="6.5" fill="none" stroke="#2B2118" stroke-width="1.6"/>
+  <rect x="7" y="7" width="306" height="226" rx="4.5" fill="none" stroke="#C9A227" stroke-width="1.8" stroke-opacity="0.95"/>
+
+  <!-- ==================== VELLUM BORDER BAND (inset 10..21, uniform on all edges) ==================== -->
+  <path d="M10 10 H310 V230 H10 Z M21 21 V219 H299 V21 Z" fill="#E2D3B3" fill-rule="evenodd"/>
+  <rect x="10" y="10" width="300" height="220" fill="none" stroke="#2B2118" stroke-width="0.8" stroke-opacity="0.55"/>
+  <rect x="21" y="21" width="278" height="198" fill="none" stroke="#2B2118" stroke-width="0.8" stroke-opacity="0.55"/>
+
+  <!-- ==================== GOLD BEAD ROWS (edge cells only: uniform repeating bands) ==================== -->
+  <!-- top edge cell: x 28..292 -->
+  <g transform="translate(28 11.5)"><use href="#panel-frame-bead-strip-h"/></g>
+  <!-- bottom edge cell -->
+  <g transform="translate(28 220.5)"><use href="#panel-frame-bead-strip-h"/></g>
+  <!-- left edge cell: y 28..212 -->
+  <g transform="translate(11.5 28)"><use href="#panel-frame-bead-strip-v"/></g>
+  <!-- right edge cell -->
+  <g transform="translate(300.5 28)"><use href="#panel-frame-bead-strip-v"/></g>
+
+  <!-- ==================== CORNER ORNAMENTS (self-contained within 28px insets) ==================== -->
+  <use href="#panel-frame-rosette" transform="translate(14 14)"/>
+  <use href="#panel-frame-rosette" transform="translate(306 14)"/>
+  <use href="#panel-frame-rosette" transform="translate(14 226)"/>
+  <use href="#panel-frame-rosette" transform="translate(306 226)"/>
+</svg>

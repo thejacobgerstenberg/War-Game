@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="dice-3-face" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="dice-3-title dice-3-desc">
+  <title id="dice-3-title">Die face 3 — Imperium: Twilight of Empires</title>
+  <desc id="dice-3-desc">Bone-white rounded die face with an ink keyline, vellum lower-right shading, and three ink pips on the diagonal.</desc>
+
+  <!-- ==================== FACE PLATE (shared geometry across all six dice) ==================== -->
+  <rect id="dice-3-plate" x="3" y="3" width="58" height="58" rx="10" fill="#FFFFFF" stroke="#2B2118" stroke-width="2"/>
+
+  <!-- ==================== DEPTH: vellum lower-right inner shading ==================== -->
+  <g id="dice-3-shade" fill="none" stroke="#E2D3B3" stroke-linecap="round">
+    <path d="M16 55 H44 Q55 55 55 44 V16" stroke-width="6" opacity="0.5"/>
+    <path d="M14 57.2 H46 Q57.2 57.2 57.2 46 V14" stroke-width="2.4" opacity="0.85"/>
+  </g>
+
+  <!-- ==================== DEPTH: silver top-left highlight edge ==================== -->
+  <path id="dice-3-sheen" d="M48 7.4 H19 Q7.4 7.4 7.4 19 V48" fill="none" stroke="#C9CDD4" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- ==================== PIPS (three, top-left to bottom-right) ==================== -->
+  <g id="dice-3-pips" fill="#2B2118">
+    <circle cx="18" cy="18" r="7"/>
+    <circle cx="32" cy="32" r="7"/>
+    <circle cx="46" cy="46" r="7"/>
+  </g>
+</svg>
