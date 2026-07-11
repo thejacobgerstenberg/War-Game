@@ -24,4 +24,5 @@ export * from "./spy.js";
 export * from "./prestige.js";
 export * from "./roundLoop.js";
 export * from "./actions.js";
+export * from "./projection.js";
 export * from "./events/index.js";

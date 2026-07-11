@@ -11,22 +11,70 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cors from "cors";
 import express from "express";
-import { Server } from "socket.io";
+import { Server, type DefaultEventsMap } from "socket.io";
 import {
   SOCKET_EVENTS,
   type ClientToServerEvents,
+  type GameState,
   type ServerToClientEvents,
 } from "@imperium/shared";
+import {
+  applyAction,
+  advancePhase,
+  EngineError,
+  projectStateFor,
+} from "./engine/index.js";
 import { LobbyManager, LobbyError, MAX_PLAYERS } from "./lobby/lobbyManager.js";
 import { log } from "./log.js";
 import {
   parseCreateGamePayload,
+  parseGameActionPayload,
   parseJoinGamePayload,
   parsePickFactionPayload,
   parseRejoinGamePayload,
 } from "./validate.js";
 
-type ImperiumServer = Server<ClientToServerEvents, ServerToClientEvents>;
+/**
+ * Per-socket state the transport tracks so a per-seat projection can be sent to
+ * every connected client in a room (fog of war — the raw state is never
+ * broadcast). `playerId` is the seat this socket is acting as.
+ */
+interface SocketData {
+  playerId: string | null;
+  roomCode: string | null;
+}
+
+type ImperiumServer = Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  DefaultEventsMap,
+  SocketData
+>;
+
+/** Default per-turn action budget in seconds (§10; TURN_SECONDS overrides). */
+const DEFAULT_TURN_SECONDS = 120;
+
+/**
+ * Resolve the per-turn timer budget from `TURN_SECONDS`. Returns null when
+ * timers are disabled (`TURN_SECONDS=off` or `0`, e.g. hot-seat/casual play),
+ * else a positive whole-second budget (default {@link DEFAULT_TURN_SECONDS}).
+ */
+function turnSecondsFromEnv(): number | null {
+  const raw = process.env.TURN_SECONDS;
+  if (raw !== undefined) {
+    const trimmed = raw.trim().toLowerCase();
+    if (trimmed === "off" || trimmed === "0" || trimmed === "false") {
+      return null;
+    }
+  }
+  return envInt("TURN_SECONDS", DEFAULT_TURN_SECONDS);
+}
+
+/** The Server->Client events that carry a per-seat projected {state} payload. */
+type StatePushEvent =
+  | typeof SOCKET_EVENTS.GAME_STARTED
+  | typeof SOCKET_EVENTS.STATE_SNAPSHOT
+  | typeof SOCKET_EVENTS.STATE_UPDATE;
 
 /** Env defaults live in code so a bare `node dist/index.js` boots (§2). */
 const DEFAULT_PORT = 8080;
@@ -75,6 +123,29 @@ export function createApp(options: CreateAppOptions = {}) {
   const corsOrigins = parseCorsOrigins();
   const lobby = new LobbyManager();
 
+  /**
+   * Live per-turn timers, keyed by room code. `deadline` (epoch ms) lets a
+   * mid-game rejoiner be told the CURRENT deadline without resetting it. Defined
+   * ahead of the reaper so a reaped room's timer is torn down with it.
+   */
+  interface TurnTimer {
+    timeout: NodeJS.Timeout;
+    deadline: number;
+    turnSeconds: number;
+  }
+  const turnTimers = new Map<string, TurnTimer>();
+  const clearTurnTimer = (code: string): void => {
+    const timer = turnTimers.get(code);
+    if (timer) {
+      clearTimeout(timer.timeout);
+      turnTimers.delete(code);
+    }
+  };
+  const stopAllTurnTimers = (): void => {
+    for (const timer of turnTimers.values()) clearTimeout(timer.timeout);
+    turnTimers.clear();
+  };
+
   // Periodic empty-room reap (§2 ROOM_TTL_SECONDS). LobbyManager owns the
   // eligibility logic; this sweep just ticks it and logs the results. It is
   // owned by createApp so every boot path (entrypoint, tests, smoke) reaps.
@@ -87,6 +158,7 @@ export function createApp(options: CreateAppOptions = {}) {
     if (reaper) return;
     reaper = setInterval(() => {
       for (const code of lobby.reapEmptyRooms(roomTtlSeconds)) {
+        clearTurnTimer(code);
         log(
           "info",
           "room_reaped",
@@ -121,12 +193,123 @@ export function createApp(options: CreateAppOptions = {}) {
   const httpServer = createServer(app);
   const io: ImperiumServer = new Server<
     ClientToServerEvents,
-    ServerToClientEvents
+    ServerToClientEvents,
+    DefaultEventsMap,
+    SocketData
   >(httpServer, {
     cors: { origin: corsOrigins, methods: ["GET", "POST"] },
   });
 
+  /**
+   * Broadcast an authoritative game state to a room as a PER-SEAT projection:
+   * each connected socket receives `projectStateFor(state, itsOwnSeat)` so no
+   * client ever sees another player's hand/objectives or the deck ordering. A
+   * seatless socket (should not occur in a started room) gets a fully-hidden
+   * view. Single-node, in-memory rooms → the local socket map is authoritative.
+   */
+  const pushState = (
+    code: string,
+    state: GameState,
+    event: StatePushEvent,
+  ): void => {
+    const members = io.sockets.adapter.rooms.get(code);
+    if (!members) return;
+    for (const socketId of members) {
+      const member = io.sockets.sockets.get(socketId);
+      if (!member) continue;
+      const view = projectStateFor(state, member.data.playerId ?? "");
+      const payload = { state: view };
+      // Emit the concrete event so socket.io keeps the payload strongly typed.
+      if (event === SOCKET_EVENTS.GAME_STARTED) {
+        member.emit(SOCKET_EVENTS.GAME_STARTED, payload);
+      } else if (event === SOCKET_EVENTS.STATE_SNAPSHOT) {
+        member.emit(SOCKET_EVENTS.STATE_SNAPSHOT, payload);
+      } else {
+        member.emit(SOCKET_EVENTS.STATE_UPDATE, payload);
+      }
+    }
+  };
+
+  /** Emit the current countdown tick for a room's active player. */
+  const emitTurnTimer = (
+    code: string,
+    state: GameState,
+    deadline: number,
+    turnSeconds: number,
+  ): void => {
+    io.to(code).emit(SOCKET_EVENTS.TURN_TIMER, {
+      roomCode: code,
+      activePlayerId: state.turnOrder[state.activePlayerIndex] ?? null,
+      deadline,
+      turnSeconds,
+    });
+  };
+
+  /**
+   * Fired when the active player's clock expires: auto-advance the phase and
+   * rebroadcast, then arm the next turn. ADVANCE_PHASE is the correct idle
+   * progression here — the engine's action window is RECRUITMENT/MOVEMENT/
+   * DIPLOMACY and advancePhase steps through them and runs the automatic phases;
+   * PASS only zeroes a player's action budget WITHIN a phase and would not move
+   * the game forward on its own. Never throws (a socket/timer callback must not
+   * crash the process).
+   */
+  const onTurnTimeout = (code: string): void => {
+    try {
+      const room = lobby.getRoom(code);
+      if (!room || !room.startedByHost || !room.state) {
+        clearTurnTimer(code);
+        return;
+      }
+      const next = advancePhase(room.state);
+      room.state = next;
+      log(
+        "info",
+        "turn_timeout",
+        "active player's clock expired; phase auto-advanced",
+        { roomCode: code },
+      );
+      pushState(code, next, SOCKET_EVENTS.STATE_UPDATE);
+      if (next.winner) {
+        clearTurnTimer(code);
+        return;
+      }
+      scheduleTurnTimer(code);
+    } catch (err) {
+      clearTurnTimer(code);
+      log(
+        "error",
+        "turn_timer_error",
+        err instanceof Error ? err.message : String(err),
+        { roomCode: code },
+      );
+    }
+  };
+
+  /**
+   * Arm (or re-arm) the per-turn timer for a room and announce it via
+   * `turn_timer`. No-op when timers are disabled, the game has not started, or
+   * the game is over. The timeout is `unref`'d so it never keeps the process
+   * alive on its own.
+   */
+  const scheduleTurnTimer = (code: string): void => {
+    clearTurnTimer(code);
+    const turnSeconds = turnSecondsFromEnv();
+    if (turnSeconds === null) return;
+    const room = lobby.getRoom(code);
+    if (!room || !room.startedByHost || !room.state || room.state.winner) {
+      return;
+    }
+    const deadline = Date.now() + turnSeconds * 1000;
+    const timeout = setTimeout(() => onTurnTimeout(code), turnSeconds * 1000);
+    timeout.unref();
+    turnTimers.set(code, { timeout, deadline, turnSeconds });
+    emitTurnTimer(code, room.state, deadline, turnSeconds);
+  };
+
   io.on("connection", (socket) => {
+    socket.data.playerId = null;
+    socket.data.roomCode = null;
     // Track which player this socket is acting as, for disconnect handling.
     let playerId: string | null = null;
     let roomCode: string | null = null;
@@ -195,6 +378,8 @@ export function createApp(options: CreateAppOptions = {}) {
         const { room, player } = lobby.createGame(parsed.value.playerName);
         playerId = player.id;
         roomCode = room.code;
+        socket.data.playerId = player.id;
+        socket.data.roomCode = room.code;
         socket.join(room.code);
         socket.emit(SOCKET_EVENTS.GAME_CREATED, {
           roomCode: room.code,
@@ -222,6 +407,8 @@ export function createApp(options: CreateAppOptions = {}) {
         );
         playerId = player.id;
         roomCode = room.code;
+        socket.data.playerId = player.id;
+        socket.data.roomCode = room.code;
         socket.join(room.code);
         socket.emit(SOCKET_EVENTS.GAME_CREATED, {
           roomCode: room.code,
@@ -249,15 +436,32 @@ export function createApp(options: CreateAppOptions = {}) {
         );
         playerId = player.id;
         roomCode = room.code;
+        socket.data.playerId = player.id;
+        socket.data.roomCode = room.code;
         socket.join(room.code);
         // Everyone (including the rejoiner) sees the seat flip connected.
         broadcastLobby(room.code);
         if (room.startedByHost && room.state) {
-          // Mid-game resume: replay game_started for screen routing, then
-          // the authoritative snapshot. Per-action state_update broadcasts
-          // arrive with the action engine (engine/actions.ts reducer).
-          socket.emit(SOCKET_EVENTS.GAME_STARTED, { state: room.state });
-          socket.emit(SOCKET_EVENTS.STATE_UPDATE, { state: room.state });
+          // Mid-game resume: replay game_started for screen routing, then the
+          // authoritative snapshot — BOTH fog-of-war projected for THIS seat, so
+          // a rejoiner never receives rivals' secrets or the deck ordering. The
+          // legacy state_update is also re-sent (same projection) to preserve the
+          // established rejoin contract for clients that key resume off it.
+          const view = () => projectStateFor(room.state as GameState, player.id);
+          socket.emit(SOCKET_EVENTS.GAME_STARTED, { state: view() });
+          socket.emit(SOCKET_EVENTS.STATE_SNAPSHOT, { state: view() });
+          socket.emit(SOCKET_EVENTS.STATE_UPDATE, { state: view() });
+          // Hand the rejoiner the CURRENT countdown (do not reset the deadline).
+          const timer = turnTimers.get(room.code);
+          if (timer) {
+            socket.emit(SOCKET_EVENTS.TURN_TIMER, {
+              roomCode: room.code,
+              activePlayerId:
+                room.state.turnOrder[room.state.activePlayerIndex] ?? null,
+              deadline: timer.deadline,
+              turnSeconds: timer.turnSeconds,
+            });
+          }
         }
         log(
           "info",
@@ -290,13 +494,87 @@ export function createApp(options: CreateAppOptions = {}) {
         }
         const { state } = lobby.startGame(roomCode, playerId);
         broadcastLobby(roomCode);
-        io.to(roomCode).emit(SOCKET_EVENTS.GAME_STARTED, { state });
+        // Per-seat projected initial state (never the raw state — it carries
+        // every player's secret objectives, hands and the deck ordering).
+        pushState(roomCode, state, SOCKET_EVENTS.GAME_STARTED);
+        // Arm the first turn's clock (§10).
+        scheduleTurnTimer(roomCode);
         log(
           "info",
           "game_started",
           `game started with ${state.players.length} players`,
           { roomCode },
         );
+      }),
+    );
+
+    socket.on(
+      SOCKET_EVENTS.GAME_ACTION,
+      boundary(SOCKET_EVENTS.GAME_ACTION, (raw) => {
+        const parsed = parseGameActionPayload(raw);
+        if (!parsed.ok) return emitError(parsed.error);
+        const { roomCode: code, sessionToken, action } = parsed.value;
+
+        const room = lobby.getRoom(code);
+        if (!room || !room.startedByHost || !room.state) {
+          socket.emit(SOCKET_EVENTS.ACTION_REJECTED, {
+            reason: "That game is not in progress.",
+            code: "NO_GAME",
+          });
+          return;
+        }
+
+        // Identity: the sessionToken MUST map to a seated player, and (except
+        // for the engine/host-driven ADVANCE_PHASE, whose player is optional)
+        // the action's `player` MUST be that same seat — no seat/identity
+        // spoofing. Never trust the client's claimed player id.
+        const seat = room.players.find((p) => p.sessionToken === sessionToken);
+        if (!seat) {
+          socket.emit(SOCKET_EVENTS.ACTION_REJECTED, {
+            reason: "Invalid session token for this game.",
+            code: "BAD_SESSION",
+          });
+          return;
+        }
+        if (action.player !== undefined && action.player !== seat.id) {
+          socket.emit(SOCKET_EVENTS.ACTION_REJECTED, {
+            reason: "You may only issue actions for your own seat.",
+            code: "SEAT_SPOOF",
+          });
+          return;
+        }
+
+        // Dispatch to the pure engine. ADVANCE_PHASE runs the phase/turn state
+        // machine; everything else is a budgeted/validated reducer action.
+        let nextState: GameState;
+        try {
+          nextState =
+            action.type === "ADVANCE_PHASE"
+              ? advancePhase(room.state)
+              : applyAction(room.state, action);
+        } catch (err) {
+          if (err instanceof EngineError) {
+            // Rejected actions answer the ISSUING socket only, never the room.
+            socket.emit(SOCKET_EVENTS.ACTION_REJECTED, {
+              reason: err.message,
+              code: err.code,
+            });
+            log("warn", "action_rejected", err.message, {
+              roomCode: code,
+              socketEvent: SOCKET_EVENTS.GAME_ACTION,
+            });
+            return;
+          }
+          throw err; // Unexpected: let the boundary answer a generic error.
+        }
+
+        room.state = nextState;
+        // Broadcast each seat its OWN fog-of-war projection (never raw state).
+        pushState(code, nextState, SOCKET_EVENTS.STATE_UPDATE);
+        // Re-arm the clock for the (possibly new) active player, or stop it when
+        // the game has ended.
+        if (nextState.winner) clearTurnTimer(code);
+        else scheduleTurnTimer(code);
       }),
     );
 
@@ -311,11 +589,15 @@ export function createApp(options: CreateAppOptions = {}) {
         lobby.leaveGame(code, playerId);
         socket.leave(code);
         broadcastLobby(code);
+        // If that emptied and dropped the room, tear its timer down with it.
+        if (!lobby.getRoom(code)) clearTurnTimer(code);
         log("info", "player_left", `${name ?? "player"} left`, {
           roomCode: code,
         });
         playerId = null;
         roomCode = null;
+        socket.data.playerId = null;
+        socket.data.roomCode = null;
       }),
     );
 
@@ -340,7 +622,15 @@ export function createApp(options: CreateAppOptions = {}) {
     });
   });
 
-  return { app, httpServer, io, lobby, startReaper, stopReaper };
+  return {
+    app,
+    httpServer,
+    io,
+    lobby,
+    startReaper,
+    stopReaper,
+    stopAllTurnTimers,
+  };
 }
 
 /**
@@ -377,7 +667,7 @@ if (isMain) {
   const PORT = envInt("PORT", DEFAULT_PORT);
 
   // createApp owns the ROOM_TTL_SECONDS reaper lifecycle (started by default).
-  const { httpServer, io, lobby, stopReaper } = createApp();
+  const { httpServer, io, lobby, stopReaper, stopAllTurnTimers } = createApp();
 
   // Bind 0.0.0.0 (§2): loopback binds are invisible to container networking.
   httpServer.listen(PORT, "0.0.0.0", () => {
@@ -390,6 +680,8 @@ if (isMain) {
     if (shuttingDown) return;
     shuttingDown = true;
     stopReaper();
+    // Tear down every per-turn timer so nothing fires mid-drain.
+    stopAllTurnTimers();
 
     // 1. Stop accepting new rooms: create_game now answers with error_msg.
     lobby.beginShutdown();

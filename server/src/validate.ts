@@ -20,6 +20,9 @@
 import {
   Faction,
   type CreateGamePayload,
+  type GameAction,
+  type GameActionPayload,
+  type GameActionType,
   type JoinGamePayload,
   type PickFactionPayload,
   type RejoinGamePayload,
@@ -28,6 +31,31 @@ import {
 export const PLAYER_NAME_MAX_LENGTH = 32;
 export const ROOM_CODE_PATTERN = /^[A-Z0-9]{6}$/;
 export const SESSION_TOKEN_MAX_LENGTH = 128;
+/** Player ids are crypto UUIDs (36 chars); anything past this is garbage. */
+export const PLAYER_ID_MAX_LENGTH = 64;
+
+/**
+ * Every discriminant the engine reducer accepts, mirroring the frozen
+ * {@link GameAction} union (shared/src/types/actions.ts). An action whose
+ * `type` is not in this set is rejected before it can reach the engine.
+ */
+const GAME_ACTION_TYPES: ReadonlySet<GameActionType> = new Set<GameActionType>([
+  "RECRUIT",
+  "MOVE",
+  "BUILD",
+  "TRADE",
+  "DIPLOMACY",
+  "VASSALIZE",
+  "PLAY_CARD",
+  "PLAY_TACTIC",
+  "DECLARE_WAR",
+  "LEVY_CALL",
+  "SPY",
+  "MERC_BID",
+  "SET_TAX",
+  "PASS",
+  "ADVANCE_PHASE",
+]);
 
 /** Result of a payload guard; `error` is safe to relay as `error_msg`. */
 export type ValidationResult<T> =
@@ -130,4 +158,62 @@ export function parsePickFactionPayload(
     return fail("Unknown faction.");
   }
   return pass({ faction: raw.faction });
+}
+
+/** True when `value` is a known {@link GameActionType} discriminant. */
+function isGameActionType(value: unknown): value is GameActionType {
+  return (
+    typeof value === "string" &&
+    GAME_ACTION_TYPES.has(value as GameActionType)
+  );
+}
+
+/** A player id must be a non-empty, length-bounded string. */
+function isValidPlayerId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= PLAYER_ID_MAX_LENGTH
+  );
+}
+
+/**
+ * Guard for the in-game `game_action` envelope, mirroring the lobby guards:
+ * `roomCode` must be a valid code, `sessionToken` a non-empty bounded string,
+ * and `action` an object whose `type` is a known {@link GameAction} discriminant
+ * carrying a `player` id (optional only for the engine/host-driven
+ * `ADVANCE_PHASE`). The per-variant payload (province ids, unit counts, …) is
+ * NOT re-validated here — the pure reducer (`engine/actions.ts::applyAction`) is
+ * the authority on action legality and throws a typed `EngineError`; this guard
+ * exists only to reject a malformed or unknown-type envelope before dispatch.
+ */
+export function parseGameActionPayload(
+  raw: unknown,
+): ValidationResult<GameActionPayload> {
+  if (!isRecord(raw)) return fail("Malformed game_action payload.");
+  const roomCode = validateRoomCode(raw.roomCode);
+  if (!roomCode.ok) return roomCode;
+  const sessionToken = validateSessionToken(raw.sessionToken);
+  if (!sessionToken.ok) return sessionToken;
+  if (!isRecord(raw.action)) return fail("Malformed game action.");
+
+  const action = raw.action;
+  if (!isGameActionType(action.type)) {
+    return fail("Unknown game action type.");
+  }
+  // Every action names its issuing player; only ADVANCE_PHASE may omit it.
+  if (action.type === "ADVANCE_PHASE") {
+    if (action.player !== undefined && !isValidPlayerId(action.player)) {
+      return fail("Invalid action player.");
+    }
+  } else if (!isValidPlayerId(action.player)) {
+    return fail("A game action must name its player.");
+  }
+
+  return pass({
+    roomCode: roomCode.value,
+    sessionToken: sessionToken.value,
+    // The envelope is validated; the reducer validates the variant payload.
+    action: action as unknown as GameAction,
+  });
 }

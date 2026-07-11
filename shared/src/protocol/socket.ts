@@ -29,6 +29,13 @@ export const SOCKET_EVENTS = {
   STATE_SNAPSHOT: "state_snapshot",
   /** A rejected {@link GameAction}, with a human-readable reason. */
   ACTION_REJECTED: "action_rejected",
+  /**
+   * ADDITIVE (not a change to any existing event's meaning): a per-turn
+   * countdown tick. The server owns the authoritative clock (§10) and emits
+   * this whenever the active player's timer (re)starts so clients can render a
+   * countdown. The engine stays pure — timing lives only in the transport.
+   */
+  TURN_TIMER: "turn_timer",
   SERVER_SHUTDOWN: "server_shutdown",
 } as const;
 
@@ -147,6 +154,23 @@ export interface ServerShutdownPayload {
 }
 
 /**
+ * ADDITIVE per-turn countdown tick (§10). Emitted when the active player's
+ * server-side timer (re)starts; the engine stays pure. `deadline` is an epoch
+ * milliseconds timestamp (server clock) at which the turn auto-advances, so a
+ * client renders `deadline - Date.now()` remaining. Absent while timers are
+ * disabled (hot-seat) or between games.
+ */
+export interface TurnTimerPayload {
+  roomCode: string;
+  /** Player id whose turn the clock is counting down, or null if none. */
+  activePlayerId: string | null;
+  /** Epoch-ms deadline at which the server auto-advances the turn. */
+  deadline: number;
+  /** The configured budget for this turn, in whole seconds. */
+  turnSeconds: number;
+}
+
+/**
  * Strongly-typed maps of event name -> payload, usable to parameterise a
  * Socket.IO server/client (`Server<ClientToServerEvents, ServerToClientEvents>`).
  */
@@ -168,5 +192,6 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.STATE_UPDATE]: (payload: StateUpdatePayload) => void;
   [SOCKET_EVENTS.STATE_SNAPSHOT]: (payload: StateSnapshotPayload) => void;
   [SOCKET_EVENTS.ACTION_REJECTED]: (payload: ActionRejectedPayload) => void;
+  [SOCKET_EVENTS.TURN_TIMER]: (payload: TurnTimerPayload) => void;
   [SOCKET_EVENTS.SERVER_SHUTDOWN]: (payload: ServerShutdownPayload) => void;
 }

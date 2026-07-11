@@ -56,6 +56,19 @@ function generateSessionToken(): string {
   return randomBytes(24).toString("base64url");
 }
 
+/**
+ * Crypto-random 32-bit game seed. The seed drives the ENTIRE deck shuffle and
+ * every roll, so it must be UNPREDICTABLE: `createInitialState` otherwise falls
+ * back to `hashSeed(roomCode)`, and the room code is public (shown in the lobby,
+ * shared to join), which would let anyone who knows the code reconstruct the
+ * "hidden" deck ordering — defeating the fog-of-war projection. Randomising it
+ * here (transport layer; the engine stays pure and merely receives the seed)
+ * closes that root cause; the seed is never broadcast (see engine/projection.ts).
+ */
+function generateGameSeed(): number {
+  return randomBytes(4).readUInt32LE(0);
+}
+
 /** Constructor options; the clock is injectable for deterministic tests. */
 export interface LobbyManagerOptions {
   /** Epoch-ms clock; defaults to Date.now. */
@@ -290,7 +303,9 @@ export class LobbyManager {
       isHost: p.isHost,
     }));
 
-    const state = createInitialState(room.code, seats);
+    // Inject an unpredictable seed (NOT the public-room-code default) so the
+    // deck ordering cannot be reconstructed from the room code alone.
+    const state = createInitialState(room.code, seats, generateGameSeed());
     room.state = state;
     room.startedByHost = true;
     return { room, state };
