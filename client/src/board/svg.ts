@@ -38,6 +38,15 @@ const templateByUrl = new Map<string, Promise<SVGSVGElement>>();
  * tests to inject a canon-id fixture). Resolves to a fresh clone per call.
  */
 export async function loadBoardSvgFromUrl(url: string): Promise<SVGSVGElement> {
+  // Same-origin relative paths only. The fetched markup is parsed and
+  // appended to the live DOM, where inline handlers (root onload, SMIL
+  // onbegin, …) execute — a cross-origin or protocol-relative URL here
+  // would be an XSS vector.
+  if (!url.startsWith("/") || url.startsWith("//")) {
+    throw new Error(
+      `board svgUrl must be a same-origin relative path, got "${url}"`,
+    );
+  }
   let template = templateByUrl.get(url);
   if (!template) {
     template = fetch(url).then(async (res) => {

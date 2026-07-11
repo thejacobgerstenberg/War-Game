@@ -26,11 +26,18 @@ export function DemoPage(): JSX.Element {
   const [idDiff, setIdDiff] = useState<BoardIdDiff | null>(null);
   const onIdDiff = useCallback((diff: BoardIdDiff) => setIdDiff(diff), []);
 
-  // Test hook: /board-demo?svgUrl=<url> mounts an alternate board SVG
+  // Test hook: /board-demo?svgUrl=<path> mounts an alternate board SVG
   // (e.g. the canon-id e2e fixture) instead of the vendored board.svg.
-  const [svgUrl] = useState<string | undefined>(
-    () => new URLSearchParams(window.location.search).get("svgUrl") ?? undefined,
-  );
+  // Only same-origin relative paths are accepted: the fetched markup is
+  // parsed and mounted into the live DOM, so an absolute or
+  // protocol-relative URL from the query string would let a crafted link
+  // mount attacker-controlled SVG (script-capable) markup. The route itself
+  // is DEV-only, but this guard stays as defense in depth.
+  const [svgUrl] = useState<string | undefined>(() => {
+    const raw = new URLSearchParams(window.location.search).get("svgUrl");
+    if (raw === null) return undefined;
+    return raw.startsWith("/") && !raw.startsWith("//") ? raw : undefined;
+  });
 
   const [ownerProvince, setOwnerProvince] = useState<string>(
     BOARD_MAP.provinces[0]?.id ?? "",
