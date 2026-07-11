@@ -1,7 +1,8 @@
 /**
  * HTTP + Socket.IO entrypoint. Wires the transport-agnostic {@link LobbyManager}
  * to the shared socket protocol and implements the production ops contract
- * (deploy/OPERATIONS.md): `GET /healthz`, env-var configuration, the
+ * (docs/ARCHITECTURE.md, Operations section; deploy/OPERATIONS.md arrives
+ * with PR #4 and mirrors it): `GET /healthz`, env-var configuration, the
  * empty-room reaper sweep, structured JSON logging, and SIGTERM/SIGINT
  * graceful shutdown.
  */

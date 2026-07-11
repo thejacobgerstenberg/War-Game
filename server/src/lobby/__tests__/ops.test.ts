@@ -1,7 +1,8 @@
 /**
- * Ops-contract tests for LobbyManager (deploy/OPERATIONS.md):
- * the ROOM_TTL_SECONDS empty-room reaper (§2) driven by an injected clock,
- * and shutdown mode refusing new rooms (§3 step 1).
+ * Ops-contract tests for LobbyManager (docs/ARCHITECTURE.md, Operations
+ * section; deploy/OPERATIONS.md arrives with PR #4 and mirrors it):
+ * the ROOM_TTL_SECONDS empty-room reaper driven by an injected clock,
+ * and shutdown mode refusing new rooms ("Graceful shutdown" step 1).
  */
 import { describe, it, expect } from "vitest";
 import { LobbyManager, LobbyError } from "../lobbyManager.js";
@@ -105,7 +106,7 @@ describe("LobbyManager shutdown mode", () => {
     lobby.beginShutdown();
 
     // Joining and starting an existing room still works — only new rooms
-    // are refused (OPERATIONS.md §3: "Existing rooms keep playing").
+    // are refused (ARCHITECTURE.md Operations: existing rooms keep playing).
     const { player: guest } = lobby.joinGame(room.code, "Murad");
     expect(guest.id).toBeTruthy();
     const { state } = lobby.startGame(room.code, host.id);

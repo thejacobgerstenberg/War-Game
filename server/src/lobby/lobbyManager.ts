@@ -39,7 +39,8 @@ export interface Room {
   /**
    * Epoch-ms timestamp of when the room last became empty (0 connected
    * players), or null while at least one player is connected. Drives the
-   * ROOM_TTL_SECONDS reaper (deploy/OPERATIONS.md §2).
+   * ROOM_TTL_SECONDS reaper (docs/ARCHITECTURE.md, Operations — env-var
+   * table; deploy/OPERATIONS.md §2 arrives with PR #4 and mirrors it).
    */
   emptySince: number | null;
 }
@@ -86,8 +87,10 @@ export class LobbyManager {
   }
 
   /**
-   * Enter shutdown mode (SIGTERM/SIGINT, deploy/OPERATIONS.md §3): new rooms
-   * are refused with a LobbyError while existing rooms keep playing.
+   * Enter shutdown mode (SIGTERM/SIGINT — docs/ARCHITECTURE.md, Operations,
+   * "Graceful shutdown"; deploy/OPERATIONS.md §3 arrives with PR #4 and
+   * mirrors it): new rooms are refused with a LobbyError while existing
+   * rooms keep playing.
    */
   beginShutdown(): void {
     this.shuttingDown = true;

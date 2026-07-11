@@ -1,5 +1,6 @@
 /**
- * Minimal structured logger (deploy/OPERATIONS.md §6).
+ * Minimal structured logger (docs/ARCHITECTURE.md, Operations — "Logging";
+ * deploy/OPERATIONS.md §6 arrives with PR #4 and mirrors it).
  *
  * Emits single-line JSON objects to stdout with the canonical shape
  * `{ts, level, roomCode?, event, msg}`; extra context keys are appended after

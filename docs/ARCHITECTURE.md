@@ -522,10 +522,11 @@ disconnected or idle player from stalling the table, the server enforces a
 
 ## Operations
 
-The server implements the production ops contract in `deploy/OPERATIONS.md`
-(that file is canonical; this is the summary). All of it lives in the
-transport layer (`server/src/index.ts` + `server/src/log.ts`) — the engine and
-lobby stay pure.
+This section **is** the production ops contract — canonical as written here.
+(The deploy pipeline's `deploy/OPERATIONS.md`, which arrives with PR #4,
+mirrors this section; until that PR merges, this is the only copy.) All of it
+lives in the transport layer (`server/src/index.ts` + `server/src/log.ts`) —
+the engine and lobby stay pure.
 
 * **Health** — `GET /healthz` → `200`
   `{"status":"ok","rooms":<int>,"uptime":<seconds>}`. Cheap O(1) reads only
