@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>plague of locusts</title>
+  <!-- parchment field -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- laurel ground -->
+  <path d="M0,132 Q65,124 130,130 Q195,136 260,128 L260,160 L0,160 Z" fill="#4A5D3A"/>
+  <!-- crimson sun, half-swallowed by the swarm-cloud -->
+  <circle cx="78" cy="22" r="12" fill="#7A1F2B"/>
+  <!-- the cloud out of the south -->
+  <polygon points="0,0 84,0 74,12 56,18 64,26 40,32 18,30 0,36" fill="#2B2118"/>
+  <!-- outrider specks of the swarm -->
+  <polygon points="94,12 101,16 92,19" fill="#2B2118"/>
+  <polygon points="112,24 119,27 110,31" fill="#2B2118"/>
+  <polygon points="130,10 137,14 128,17" fill="#2B2118"/>
+  <polygon points="148,22 155,25 146,29" fill="#2B2118"/>
+  <polygon points="166,10 173,14 164,17" fill="#2B2118"/>
+  <polygon points="188,26 195,29 186,33" fill="#2B2118"/>
+  <path d="M104,38 q5,-5 10,0" fill="none" stroke="#2B2118" stroke-width="2.5"/>
+  <path d="M126,32 q5,-5 10,0" fill="none" stroke="#2B2118" stroke-width="2.5"/>
+  <path d="M150,40 q5,-5 10,0" fill="none" stroke="#2B2118" stroke-width="2.5"/>
+  <path d="M210,16 q5,-5 10,0" fill="none" stroke="#2B2118" stroke-width="2.5"/>
+  <!-- stragglers settling on the eaten ground -->
+  <polygon points="26,66 33,70 24,73" fill="#2B2118"/>
+  <polygon points="52,56 59,60 50,63" fill="#2B2118"/>
+  <polygon points="16,92 23,96 14,99" fill="#2B2118"/>
+  <!-- stubble where the swarm has passed -->
+  <rect x="16" y="124" width="4" height="9" fill="#C9A227"/>
+  <rect x="34" y="123" width="4" height="9" fill="#C9A227"/>
+  <rect x="52" y="123" width="4" height="9" fill="#C9A227"/>
+  <polygon points="68,123 76,130 73,133 66,126" fill="#C9A227"/>
+  <rect x="88" y="124" width="4" height="9" fill="#C9A227"/>
+  <polygon points="104,126 112,131 110,134 102,129" fill="#C9A227"/>
+  <rect x="122" y="126" width="4" height="8" fill="#C9A227"/>
+  <!-- the last standing wheat, right -->
+  <polygon points="214,138 222,108 226,109 218,139" fill="#C9A227"/>
+  <polygon points="220,100 226,106 218,108" fill="#C9A227"/>
+  <rect x="231" y="92" width="4" height="44" fill="#C9A227"/>
+  <polygon points="233,74 240,86 233,98 226,86" fill="#C9A227"/>
+  <rect x="245" y="100" width="4" height="36" fill="#C9A227"/>
+  <polygon points="247,84 253,94 247,104 241,94" fill="#C9A227"/>
+  <!-- THE LOCUST: abdomen sweeping back to the north-west -->
+  <polygon points="162,86 70,48 64,56 156,104" fill="#2B2118"/>
+  <!-- segment cuts -->
+  <polygon points="140,77 134,97 130,95 136,75" fill="#F0E6D2"/>
+  <polygon points="118,66 112,86 108,84 114,64" fill="#F0E6D2"/>
+  <polygon points="96,56 90,74 86,72 92,54" fill="#F0E6D2"/>
+  <!-- thorax -->
+  <polygon points="162,84 190,94 184,114 156,102" fill="#2B2118"/>
+  <!-- gold wing laid back over the body -->
+  <polygon points="168,80 104,40 44,36 40,44 100,52 158,94" fill="#C9A227"/>
+  <path d="M158,86 L58,42" fill="none" stroke="#2B2118" stroke-width="2"/>
+  <path d="M152,90 L88,56" fill="none" stroke="#2B2118" stroke-width="2"/>
+  <!-- great hind leg -->
+  <polygon points="158,104 120,118 124,128 162,112" fill="#2B2118"/>
+  <polygon points="120,120 98,144 104,147 126,124" fill="#2B2118"/>
+  <!-- mid and fore legs -->
+  <polygon points="168,111 168,142 174,142 175,111" fill="#2B2118"/>
+  <polygon points="190,113 196,140 201,139 196,112" fill="#2B2118"/>
+  <!-- head, facing the standing grain -->
+  <polygon points="186,98 198,90 208,96 210,106 200,116 188,112" fill="#2B2118"/>
+  <polygon points="200,114 208,122 196,120" fill="#2B2118"/>
+  <circle cx="199" cy="102" r="4.5" fill="#7A1F2B"/>
+  <!-- antennae -->
+  <path d="M204,94 q14,-10 26,-8" fill="none" stroke="#2B2118" stroke-width="2.5"/>
+  <path d="M199,91 q8,-16 22,-18" fill="none" stroke="#2B2118" stroke-width="2.5"/>
+</svg>

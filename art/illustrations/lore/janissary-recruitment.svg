@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Janissary Recruitment</title>
+
+  <!-- parchment sky -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- dark road / earth -->
+  <rect x="0" y="138" width="260" height="22" fill="#2B2118"/>
+
+  <!-- crescent over the marching column -->
+  <path d="M 38 12 a 18 18 0 1 0 18 18 a 14 14 0 1 1 -18 -18 Z" fill="#C9A227"/>
+
+  <!-- village left behind, at the right edge -->
+  <rect x="206" y="114" width="24" height="24" fill="#2B2118"/>
+  <polygon points="202,116 232,116 217,98" fill="#7A1F2B"/>
+  <rect x="214" y="124" width="8" height="14" fill="#F0E6D2"/>
+  <rect x="238" y="122" width="16" height="16" fill="#2B2118"/>
+  <polygon points="235,124 258,124 246,108" fill="#7A1F2B"/>
+
+  <!-- janissary: halberd staff and gold blade -->
+  <rect x="78" y="34" width="5" height="106" fill="#2B2118"/>
+  <polygon points="80,14 72,34 89,34" fill="#C9A227"/>
+
+  <!-- boerk cap flap trailing down the back -->
+  <polygon points="114,30 122,76 113,78 108,50" fill="#C9A227"/>
+
+  <!-- janissary robe -->
+  <polygon points="95,64 117,64 122,138 86,138" fill="#1F4E79"/>
+
+  <!-- gold sash -->
+  <rect x="90" y="94" width="31" height="8" fill="#C9A227"/>
+
+  <!-- arm gripping the halberd -->
+  <polygon points="96,72 82,78 82,86 97,82" fill="#1F4E79"/>
+  <circle cx="82" cy="82" r="4" fill="#2B2118"/>
+
+  <!-- arm reaching back to the taken boy -->
+  <polygon points="113,66 149,90 146,100 110,76" fill="#1F4E79"/>
+
+  <!-- head and tall boerk cap -->
+  <circle cx="105" cy="56" r="8" fill="#2B2118"/>
+  <polygon points="96,26 114,26 114,50 96,50" fill="#C9A227"/>
+  <rect x="94" y="46" width="22" height="6" fill="#2B2118"/>
+
+  <!-- first boy, wrist held fast -->
+  <polygon points="146,108 143,97 150,97 152,108" fill="#7A1F2B"/>
+  <circle cx="147" cy="94" r="5" fill="#2B2118"/>
+  <circle cx="153" cy="101" r="6" fill="#2B2118"/>
+  <polygon points="146,107 160,107 162,138 143,138" fill="#7A1F2B"/>
+
+  <!-- rope to the second boy -->
+  <path d="M 160 113 C 165 120 168 120 173 115" fill="none" stroke="#2B2118" stroke-width="3"/>
+
+  <!-- second boy, smaller, trailing -->
+  <circle cx="178" cy="104" r="5.5" fill="#2B2118"/>
+  <polygon points="172,110 184,110 186,138 169,138" fill="#7A1F2B"/>
+</svg>

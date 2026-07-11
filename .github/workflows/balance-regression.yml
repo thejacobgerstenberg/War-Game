@@ -11,9 +11,13 @@ permissions:
 jobs:
   balance:
     runs-on: ubuntu-latest
+    # sim:full ~3 min (sim/README.md) + sim:regression ~2.5 min on 4 cores
+    # (~6 min single-threaded worst case) + npm test ~1 s + sim:report seconds;
+    # 25 min gives >2x headroom over the whole job (checkout + npm ci included).
+    timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check sim present
         id: guard
@@ -26,9 +30,9 @@ jobs:
 
       - name: Setup Node
         if: steps.guard.outputs.present == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
 
       - name: Install sim deps
         if: steps.guard.outputs.present == 'true'
@@ -40,12 +44,19 @@ jobs:
             npm install
           fi
 
+      # sim/package.json defines: test (54 unit assertions, ~1 s), sim:full
+      # (all five sims at full scale, ~3 min), sim:regression (deterministic
+      # 21-check adversarial gate, ~2.5 min on 4 cores), and sim:report
+      # (read-only summary of results/). Invoked without --if-present on
+      # purpose: a script rename should fail this job loudly, not skip silently.
       - name: Run full balance suite
         if: steps.guard.outputs.present == 'true'
         run: |
           cd sim
-          npm run sim:full --if-present && npm run sim:regression --if-present && npm run test --if-present
-          npm run sim:report --if-present
+          npm test
+          npm run sim:full
+          npm run sim:regression
+          npm run sim:report
 
       - name: Collect report artifacts
         if: steps.guard.outputs.present == 'true'
@@ -59,32 +70,20 @@ jobs:
             echo "Run ID: ${GITHUB_RUN_ID:-unknown}"
           } > balance-artifacts/README.txt
 
-          # Top-level tuning report
+          # Tuning report (committed deliverable at sim/TUNING_REPORT.md)
           if [ -f sim/TUNING_REPORT.md ]; then
             cp sim/TUNING_REPORT.md balance-artifacts/ || true
           fi
 
-          # Any nested TUNING_REPORT*.md under sim/
-          find sim -type f -name 'TUNING_REPORT*.md' -print0 2>/dev/null \
-            | xargs -0 -I{} cp --parents {} balance-artifacts/ 2>/dev/null || true
-
-          # sim/reports/ contents
-          if [ -d sim/reports ]; then
-            mkdir -p balance-artifacts/reports
-            cp -r sim/reports/. balance-artifacts/reports/ 2>/dev/null || true
+          # Each sim writes results/<name>.json under sim/ (see sim/README.md)
+          if [ -d sim/results ]; then
+            find sim/results -type f \( -name '*.json' -o -name '*.csv' \) -print0 2>/dev/null \
+              | xargs -0 -I{} cp --parents {} balance-artifacts/ 2>/dev/null || true
           fi
-
-          # JSON/CSV results under sim/out or sim/results
-          for d in sim/out sim/results; do
-            if [ -d "$d" ]; then
-              find "$d" -type f \( -name '*.json' -o -name '*.csv' \) -print0 2>/dev/null \
-                | xargs -0 -I{} cp --parents {} balance-artifacts/ 2>/dev/null || true
-            fi
-          done
 
       - name: Upload artifact
         if: always() && steps.guard.outputs.present == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: balance-report
           path: balance-artifacts/

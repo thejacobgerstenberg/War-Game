@@ -1,0 +1,85 @@
+{
+  "config": {
+    "gamesPerArm": 2000,
+    "baseSeed": 14530000,
+    "smoke": false,
+    "pairedSeeds": true,
+    "armA": "per-unique economy deltas active (sim FACTION_UNIT_OVERRIDES cost/upkeep fields)",
+    "armB": "engine shape: base costs/upkeep for every faction unit; combat CVs unchanged; genoa professional stays 3g (base ARCHER cost)",
+    "strippedInArmB": [
+      "byzantium professional (Varangian) 6g -> 4g",
+      "ottomans levy (devshirme) grain 0 -> 1",
+      "ottomans professional (Janissary) 5g -> 4g, upkeep 1 gold/0 grain -> 0 gold/1 grain",
+      "venice galley (Galeazza) timber 1 -> 2",
+      "genoa mercenary (broker waiver) 6g -> 9g",
+      "hungary levy (strongest levies) 1g -> 2g",
+      "hungary professional (Black Army) 5g -> 4g, upkeep 1 gold/0 grain -> 0 gold/1 grain"
+    ]
+  },
+  "armA": {
+    "wins": {
+      "byzantium": 296,
+      "ottomans": 321,
+      "venice": 321,
+      "genoa": 517,
+      "hungary": 545
+    },
+    "winRate": {
+      "byzantium": 0.148,
+      "ottomans": 0.1605,
+      "venice": 0.1605,
+      "genoa": 0.2585,
+      "hungary": 0.2725
+    },
+    "byPolicyWins": {
+      "rusher": 368,
+      "trader": 687,
+      "turtler": 337,
+      "opportunist": 608
+    },
+    "medianEndRound": 15,
+    "meanEndRound": 14.906,
+    "suddenDeathRate": 0.1065
+  },
+  "armB": {
+    "wins": {
+      "byzantium": 567,
+      "ottomans": 182,
+      "venice": 337,
+      "genoa": 429,
+      "hungary": 485
+    },
+    "winRate": {
+      "byzantium": 0.2835,
+      "ottomans": 0.091,
+      "venice": 0.1685,
+      "genoa": 0.2145,
+      "hungary": 0.2425
+    },
+    "byPolicyWins": {
+      "rusher": 411,
+      "trader": 554,
+      "turtler": 295,
+      "opportunist": 740
+    },
+    "medianEndRound": 15,
+    "meanEndRound": 14.37,
+    "suddenDeathRate": 0.026
+  },
+  "deltaPp": {
+    "byzantium": 13.55,
+    "ottomans": -6.95,
+    "venice": 0.8,
+    "genoa": -4.4,
+    "hungary": -3
+  },
+  "sePerArmPp": {
+    "byzantium": 0.79,
+    "ottomans": 0.82,
+    "venice": 0.82,
+    "genoa": 0.98,
+    "hungary": 1
+  },
+  "noiseFloorPp": 1,
+  "elapsedMs": 12543
+}

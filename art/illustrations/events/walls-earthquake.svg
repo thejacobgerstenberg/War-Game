@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>walls earthquake</title>
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- left curtain wall -->
+  <path d="M0,145 L0,70 L14,70 L14,80 L24,80 L24,70 L38,70 L38,80 L48,80 L48,70 L62,70 L62,80 L72,80 L72,70 L86,70 L86,80 L100,80 L100,145 Z" fill="#E2D3B3"/>
+  <rect x="0" y="95" width="100" height="7" fill="#7A1F2B"/>
+  <rect x="0" y="118" width="100" height="7" fill="#7A1F2B"/>
+
+  <!-- right curtain wall, broken end toward the fallen span -->
+  <path d="M185,145 L180,120 L188,112 L182,100 L190,92 L186,80 L196,80 L196,70 L210,70 L210,80 L220,80 L220,70 L234,70 L234,80 L244,80 L244,70 L258,70 L258,80 L260,80 L260,145 Z" fill="#E2D3B3"/>
+  <rect x="190" y="95" width="70" height="7" fill="#7A1F2B"/>
+  <rect x="190" y="118" width="70" height="7" fill="#7A1F2B"/>
+
+  <!-- secondary quake crack in the left span -->
+  <path d="M40,80 L46,96 L38,112 L48,130 L44,145 L38,145 L42,130 L32,112 L40,96 L34,82 Z" fill="#2B2118"/>
+
+  <!-- central tower, crown broken at the left shoulder -->
+  <path d="M100,145 L100,62 L110,54 L102,46 L112,38 L125,38 L125,28 L139,28 L139,38 L150,38 L150,28 L164,28 L164,145 Z" fill="#E2D3B3"/>
+  <rect x="108" y="56" width="56" height="7" fill="#7A1F2B"/>
+  <rect x="100" y="95" width="64" height="7" fill="#7A1F2B"/>
+  <rect x="100" y="118" width="64" height="7" fill="#7A1F2B"/>
+
+  <!-- the great crack -->
+  <path d="M115,40 L122,56 L110,72 L124,92 L114,110 L126,128 L120,145 L112,145 L118,128 L106,110 L116,92 L102,72 L114,56 L107,42 Z" fill="#2B2118"/>
+
+  <!-- dust of the fallen span -->
+  <circle cx="170" cy="110" r="10" fill="#E2D3B3"/>
+  <circle cx="184" cy="118" r="8" fill="#E2D3B3"/>
+  <circle cx="162" cy="120" r="7" fill="#E2D3B3"/>
+  <circle cx="192" cy="106" r="6" fill="#E2D3B3"/>
+
+  <!-- rubble mound -->
+  <path d="M148,145 L158,126 L170,132 L178,120 L190,128 L198,138 L204,145 Z" fill="#E2D3B3"/>
+  <polygon points="160,132 170,130 172,138 162,140" fill="#2B2118"/>
+  <polygon points="178,128 186,126 188,134 180,136" fill="#7A1F2B"/>
+  <polygon points="168,118 176,116 178,124 170,126" fill="#2B2118"/>
+  <polygon points="154,136 162,134 164,141 156,142" fill="#2B2118"/>
+
+  <!-- the torn merlon, mid-fall -->
+  <polygon points="70,24 86,18 90,28 84,31 88,40 74,45" fill="#E2D3B3"/>
+  <polygon points="94,50 102,48 104,56 96,58" fill="#2B2118"/>
+  <polygon points="90,64 98,62 100,70 92,72" fill="#7A1F2B"/>
+
+  <!-- ground line and fissure -->
+  <rect x="0" y="145" width="260" height="5" fill="#2B2118"/>
+  <path d="M106,160 L114,150 L124,150 L138,160 L126,160 L119,154 L114,160 Z" fill="#2B2118"/>
+</svg>

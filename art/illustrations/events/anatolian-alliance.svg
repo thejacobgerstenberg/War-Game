@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Anatolian Alliance</title>
+  <!-- parchment sky -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- the Anatolian uplands -->
+  <path d="M0 100 Q65 70 130 96 Q195 122 260 90 L260 160 L0 160 Z" fill="#4A5D3A"/>
+  <!-- dark earth of the old beyliks -->
+  <rect x="0" y="148" width="260" height="12" fill="#2B2118"/>
+
+  <!-- distant banners rising from behind the hills -->
+  <polygon points="14,104 40,40 43,41 17,105" fill="#2B2118"/>
+  <polygon points="40,34 64,42 42,48" fill="#7A1F2B"/>
+  <polygon points="246,102 226,48 223,49 243,103" fill="#2B2118"/>
+  <polygon points="226,42 204,50 224,56" fill="#7A1F2B"/>
+
+  <!-- left rider, pennon couched toward the standard -->
+  <polygon points="20,96 12,88 18,102" fill="#2B2118"/>
+  <rect x="18" y="94" width="38" height="12" fill="#2B2118"/>
+  <rect x="22" y="104" width="4" height="13" fill="#2B2118"/>
+  <rect x="30" y="104" width="4" height="13" fill="#2B2118"/>
+  <rect x="42" y="104" width="4" height="13" fill="#2B2118"/>
+  <rect x="50" y="104" width="4" height="13" fill="#2B2118"/>
+  <polygon points="52,96 62,80 68,84 58,100" fill="#2B2118"/>
+  <polygon points="60,78 74,83 72,89 60,88" fill="#2B2118"/>
+  <circle cx="38" cy="78" r="5" fill="#2B2118"/>
+  <polygon points="33,82 43,82 42,96 34,96" fill="#2B2118"/>
+  <polygon points="42,90 110,57 112,60 44,93" fill="#2B2118"/>
+  <polygon points="108,52 130,60 110,66" fill="#7A1F2B"/>
+
+  <!-- right rider, answering the call -->
+  <polygon points="240,96 248,88 242,102" fill="#2B2118"/>
+  <rect x="204" y="94" width="38" height="12" fill="#2B2118"/>
+  <rect x="234" y="104" width="4" height="13" fill="#2B2118"/>
+  <rect x="226" y="104" width="4" height="13" fill="#2B2118"/>
+  <rect x="214" y="104" width="4" height="13" fill="#2B2118"/>
+  <rect x="206" y="104" width="4" height="13" fill="#2B2118"/>
+  <polygon points="208,96 198,80 192,84 202,100" fill="#2B2118"/>
+  <polygon points="200,78 186,83 188,89 200,88" fill="#2B2118"/>
+  <circle cx="222" cy="78" r="5" fill="#2B2118"/>
+  <polygon points="217,82 227,82 226,96 218,96" fill="#2B2118"/>
+  <polygon points="218,90 150,57 148,60 216,93" fill="#2B2118"/>
+  <polygon points="152,52 130,60 150,66" fill="#7A1F2B"/>
+
+  <!-- the great standard the old houses gather to -->
+  <rect x="127" y="14" width="5" height="108" fill="#2B2118"/>
+  <polygon points="132,18 202,22 188,37 202,52 132,56" fill="#7A1F2B"/>
+  <circle cx="156" cy="37" r="10" fill="#C9A227"/>
+  <circle cx="160.5" cy="37" r="8" fill="#7A1F2B"/>
+  <!-- crescent finial -->
+  <circle cx="129.5" cy="9" r="7" fill="#C9A227"/>
+  <circle cx="132.5" cy="7" r="5.5" fill="#F0E6D2"/>
+</svg>

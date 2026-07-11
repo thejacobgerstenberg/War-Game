@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Schism</title>
+
+  <!-- vellum ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#E2D3B3"/>
+
+  <!-- earth line -->
+  <rect x="0" y="146" width="260" height="14" fill="#2B2118"/>
+
+  <!-- left half of the torn mitre, dropped and thrust apart -->
+  <g transform="translate(-14,6)">
+    <polygon points="88,116 92,66 130,14 121,30 133,46 121,62 132,78 122,94 129,116" fill="#C9A227"/>
+    <polygon points="89,100 124,100 129,116 88,116" fill="#7A1F2B"/>
+  </g>
+
+  <!-- right half of the torn mitre -->
+  <g transform="translate(14,0)">
+    <polygon points="130,14 168,66 172,116 129,116 122,94 132,78 121,62 133,46 121,30" fill="#C9A227"/>
+    <polygon points="124,100 171,100 172,116 129,116" fill="#7A1F2B"/>
+  </g>
+
+  <!-- the key of the west, turned away -->
+  <rect x="12" y="132" width="76" height="7" fill="#C9A227"/>
+  <circle cx="95" cy="135.5" r="11" fill="#C9A227"/>
+  <circle cx="95" cy="135.5" r="5" fill="#E2D3B3"/>
+  <rect x="12" y="139" width="7" height="9" fill="#C9A227"/>
+  <rect x="25" y="139" width="7" height="7" fill="#C9A227"/>
+
+  <!-- the key of the east, turned away -->
+  <rect x="172" y="132" width="76" height="7" fill="#1F4E79"/>
+  <circle cx="165" cy="135.5" r="11" fill="#1F4E79"/>
+  <circle cx="165" cy="135.5" r="5" fill="#E2D3B3"/>
+  <rect x="241" y="139" width="7" height="9" fill="#1F4E79"/>
+  <rect x="228" y="139" width="7" height="7" fill="#1F4E79"/>
+</svg>

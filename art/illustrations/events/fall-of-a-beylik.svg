@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Fall of a Beylik</title>
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- dusty earth -->
+  <rect x="0" y="148" width="260" height="12" fill="#2B2118"/>
+  <!-- carrion birds circling the carcass -->
+  <path d="M46 30 q9 -9 18 0 q-9 -4 -18 0 z" fill="#2B2118"/>
+  <path d="M28 48 q7 -7 14 0 q-7 -3 -14 0 z" fill="#2B2118"/>
+  <path d="M198 26 q9 -9 18 0 q-9 -4 -18 0 z" fill="#2B2118"/>
+  <path d="M224 46 q7 -7 14 0 q-7 -3 -14 0 z" fill="#2B2118"/>
+  <!-- the gatehouse of a finished dynasty -->
+  <rect x="92" y="52" width="76" height="96" fill="#7A1F2B"/>
+  <rect x="92" y="38" width="15" height="16" fill="#7A1F2B"/>
+  <rect x="122" y="38" width="15" height="16" fill="#7A1F2B"/>
+  <rect x="153" y="38" width="15" height="16" fill="#7A1F2B"/>
+  <!-- dark empty window: no watch kept -->
+  <rect x="124" y="62" width="12" height="18" fill="#2B2118"/>
+  <!-- the gate stands open: empty arch -->
+  <path d="M114 148 L114 106 Q130 84 146 106 L146 148 Z" fill="#F0E6D2"/>
+  <!-- doors swung wide -->
+  <polygon points="114,104 98,114 98,148 114,148" fill="#2B2118"/>
+  <polygon points="146,104 162,114 162,148 146,148" fill="#2B2118"/>
+  <circle cx="106" cy="126" r="3" fill="#C9A227"/>
+  <circle cx="154" cy="126" r="3" fill="#C9A227"/>
+  <!-- the standard, toppled into the dust -->
+  <polygon points="166,146 220,112 223,117 169,151" fill="#2B2118"/>
+  <polygon points="176,143 204,125 214,141 186,152" fill="#4B1F3F"/>
+  <!-- the fallen crescent -->
+  <circle cx="228" cy="122" r="11" fill="#C9A227"/>
+  <circle cx="224" cy="118" r="9" fill="#F0E6D2"/>
+  <!-- the garrison drifts away -->
+  <circle cx="94" cy="144" r="2.5" fill="#2B2118"/>
+  <circle cx="78" cy="141" r="2.5" fill="#2B2118"/>
+  <circle cx="62" cy="138" r="2.5" fill="#2B2118"/>
+  <circle cx="46" cy="135" r="2.5" fill="#2B2118"/>
+  <circle cx="30" cy="132" r="2.5" fill="#2B2118"/>
+  <!-- a spear left leaning, unclaimed -->
+  <polygon points="84,148 88,148 82,92 79,93" fill="#2B2118"/>
+  <polygon points="78,94 83,80 86,94" fill="#2B2118"/>
+</svg>

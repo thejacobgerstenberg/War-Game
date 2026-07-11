@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>varna crusade</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- the Danube, filling with banners bound south -->
+  <rect x="0" y="132" width="260" height="28" fill="#1F4E79"/>
+  <path d="M0 146 Q10 140 20 146 T40 146 T60 146 T80 146 T100 146 T120 146 T140 146 T160 146 T180 146 T200 146 T220 146 T240 146 T260 146" fill="none" stroke="#F0E6D2" stroke-width="3"/>
+
+  <!-- the massed host on the bank -->
+  <rect x="14" y="108" width="232" height="24" fill="#2B2118"/>
+  <circle cx="26" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="44" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="62" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="80" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="98" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="116" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="134" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="152" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="170" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="188" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="206" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="224" cy="108" r="7" fill="#2B2118"/>
+  <circle cx="242" cy="108" r="7" fill="#2B2118"/>
+
+  <!-- shields along the line -->
+  <circle cx="60" cy="124" r="7" fill="#7A1F2B"/>
+  <circle cx="120" cy="124" r="7" fill="#7A1F2B"/>
+  <circle cx="180" cy="124" r="7" fill="#7A1F2B"/>
+
+  <!-- spears -->
+  <rect x="40" y="60" width="3" height="50" fill="#2B2118"/>
+  <polygon points="41.5,46 46,62 37,62" fill="#2B2118"/>
+  <rect x="70" y="48" width="3" height="62" fill="#2B2118"/>
+  <polygon points="71.5,34 76,50 67,50" fill="#2B2118"/>
+  <rect x="135" y="64" width="3" height="46" fill="#2B2118"/>
+  <polygon points="136.5,50 141,66 132,66" fill="#2B2118"/>
+  <rect x="165" y="46" width="3" height="64" fill="#2B2118"/>
+  <polygon points="166.5,32 171,48 162,48" fill="#2B2118"/>
+  <polygon points="168,50 202,57 168,64" fill="#7A1F2B"/>
+  <rect x="195" y="58" width="3" height="52" fill="#2B2118"/>
+  <polygon points="196.5,44 201,60 192,60" fill="#2B2118"/>
+  <rect x="225" y="70" width="3" height="40" fill="#2B2118"/>
+  <polygon points="226.5,56 231,72 222,72" fill="#2B2118"/>
+
+  <!-- the raised cross-banner: focal subject -->
+  <rect x="108" y="8" width="5" height="112" fill="#2B2118"/>
+  <polygon points="113,10 208,14 192,34 208,54 113,58" fill="#7A1F2B"/>
+  <rect x="144" y="16" width="13" height="36" fill="#C9A227"/>
+  <rect x="128" y="27" width="45" height="13" fill="#C9A227"/>
+</svg>

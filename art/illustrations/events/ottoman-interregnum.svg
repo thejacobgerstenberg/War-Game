@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Ottoman Interregnum (Fetret Devri)</title>
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- scorched floor -->
+  <rect x="0" y="148" width="260" height="12" fill="#2B2118"/>
+  <!-- dais step -->
+  <rect x="84" y="136" width="92" height="12" fill="#2B2118"/>
+  <!-- provinces slipping away: crescents drifting off the field -->
+  <circle cx="28" cy="54" r="9" fill="#C9A227"/>
+  <circle cx="31" cy="51" r="7.5" fill="#F0E6D2"/>
+  <circle cx="232" cy="54" r="9" fill="#C9A227"/>
+  <circle cx="229" cy="51" r="7.5" fill="#F0E6D2"/>
+  <!-- the empty throne -->
+  <path d="M112 44 Q130 18 148 44 L148 112 L112 112 Z" fill="#4B1F3F"/>
+  <rect x="98" y="80" width="10" height="32" fill="#4B1F3F"/>
+  <rect x="152" y="80" width="10" height="32" fill="#4B1F3F"/>
+  <circle cx="103" cy="78" r="6" fill="#C9A227"/>
+  <circle cx="157" cy="78" r="6" fill="#C9A227"/>
+  <rect x="100" y="104" width="60" height="10" fill="#C9A227"/>
+  <rect x="104" y="114" width="52" height="6" fill="#4B1F3F"/>
+  <rect x="106" y="120" width="8" height="16" fill="#4B1F3F"/>
+  <rect x="146" y="120" width="8" height="16" fill="#4B1F3F"/>
+  <!-- the crescent finial, cracked -->
+  <circle cx="130" cy="20" r="12" fill="#C9A227"/>
+  <circle cx="130" cy="15" r="10" fill="#F0E6D2"/>
+  <polygon points="128,22 132,28 127,34 131,42 135,42 130,34 136,28 132,22" fill="#F0E6D2"/>
+  <!-- the brothers' knives, converging on the inheritance -->
+  <path d="M126 58 Q100 88 74 116 L84 122 Q108 96 132 66 Z" fill="#2B2118"/>
+  <path d="M134 58 Q160 88 186 116 L176 122 Q152 96 128 66 Z" fill="#2B2118"/>
+  <polygon points="74,116 84,122 76,134 66,128" fill="#7A1F2B"/>
+  <polygon points="186,116 176,122 184,134 194,128" fill="#7A1F2B"/>
+  <circle cx="79" cy="119" r="5" fill="#C9A227"/>
+  <circle cx="181" cy="119" r="5" fill="#C9A227"/>
+</svg>
