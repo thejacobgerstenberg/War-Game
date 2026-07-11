@@ -386,3 +386,168 @@ describe("applyBuild — §9.2 great works", () => {
     expect(() => applyBuild(r2, build("p1", "selymbria", gw))).toThrow(EngineError);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Modifier readers — event/tactic ActiveModifiers honored by economy
+// (CONTRACT2 §12.10 map; §4/§5)
+// ---------------------------------------------------------------------------
+
+/** Push an ActiveModifier onto the side-channel (mimics an event/tactic card). */
+function addMod(
+  state: GameState,
+  kind: string,
+  extra: {
+    value?: number;
+    target?: { faction?: Faction; provinceId?: string; seaZoneId?: string };
+    data?: Record<string, unknown>;
+    scope?: "round" | "persistent" | "game";
+  } = {},
+): void {
+  state.activeModifiers.push({
+    id: `${kind}-${state.activeModifiers.length}`,
+    scope: extra.scope ?? "round",
+    kind,
+    value: extra.value,
+    target: extra.target,
+    data: extra.data,
+  });
+}
+
+describe("economy modifier readers — §4/§5", () => {
+  it("'no_income' zeroes a suppressed province's yield this Income (§10.7)", () => {
+    const state = fresh();
+    // Byzantium gross gold 13 includes selymbria's +1 gold.
+    addMod(state, "no_income", { target: { provinceId: "selymbria" } });
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(12);
+  });
+
+  it("adds an additive 'faith_income' delta for the targeted faction (§4.1)", () => {
+    const state = fresh();
+    const base = computeIncome(state).perPlayer.p1.faith; // Byzantium base faith
+    addMod(state, "faith_income", { value: 2, target: { faction: Faction.BYZANTIUM } });
+    expect(computeIncome(state).perPlayer.p1.faith).toBe(base + 2);
+  });
+
+  it("zeroes faith income via the multiplicative Interdict path (#28, faith ×0)", () => {
+    const state = fresh();
+    const p2Base = computeIncome(state).perPlayer.p2.faith; // Ottoman, untargeted
+    expect(computeIncome(state).perPlayer.p1.faith).toBeGreaterThan(0);
+    // As events/index.ts case 28 posts it: faith_income value 0 carrying a ×0 multiplier.
+    addMod(state, "faith_income", {
+      value: 0,
+      target: { faction: Faction.BYZANTIUM },
+      data: { multiplier: 0 },
+      scope: "persistent",
+    });
+    const out = computeIncome(state);
+    expect(out.perPlayer.p1.faith).toBe(0); // additive sum could never zero this
+    // Targeting isolation: Ottoman faith income is untouched.
+    expect(out.perPlayer.p2.faith).toBe(p2Base);
+  });
+
+  it("also honors a dedicated 'faith_mult' multiplicative kind", () => {
+    const state = fresh();
+    const base = computeIncome(state).perPlayer.p1.faith;
+    addMod(state, "faith_mult", { value: 0, target: { faction: Faction.BYZANTIUM } });
+    expect(computeIncome(state).perPlayer.p1.faith).toBe(0);
+    expect(base).toBeGreaterThan(0);
+  });
+
+  it("'trade_mod' improves a market conversion ratio (§4.3)", () => {
+    const state = fresh();
+    state.players[0].treasury.gold = 6;
+    // Base ratio 3:1 → give 2 gold for 1 grain would normally be under-paid...
+    expect(() => applyTrade(state, convert("p1", { gold: 2 }, { grain: 1 }))).toThrow(
+      EngineError,
+    );
+    // ...but a +1 trade_mod sharpens it to 2:1, so the same trade now clears.
+    addMod(state, "trade_mod", { value: 1, target: { faction: Faction.BYZANTIUM } });
+    const out = applyTrade(state, convert("p1", { gold: 2 }, { grain: 1 }));
+    expect(out.players[0].treasury.gold).toBe(4);
+  });
+
+  it("'trade_mod' adjusts trade-route gold (§5.2, e.g. #18 Venetian–Genoese War −2)", () => {
+    const state = fresh();
+    addRoute(state, "p1", "constantinople", "selymbria", []); // base route gold 5
+    addMod(state, "trade_mod", { value: -2, target: { faction: Faction.BYZANTIUM } });
+    // 13 province gold + max(0, 5 − 2) = 13 + 3.
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 3);
+  });
+
+  it("'upkeep_mod' changes the grain a faction owes at upkeep (§4.4)", () => {
+    const state = fresh();
+    state.armies = [army("p1", "selymbria", { [UnitType.LEVY]: 1 })]; // due 1 grain
+    state.fleets = [];
+    state.players[0].treasury.grain = 5;
+    addMod(state, "upkeep_mod", { value: 2, target: { faction: Faction.BYZANTIUM } });
+    // due = 1 + 2 = 3; 5 − 3 = 2 remains (vs 4 without the modifier).
+    expect(upkeep(state).players[0].treasury.grain).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §4.3/§5 Specialty 1:1 trade lane (Venice/Genoa & Grand Bazaar)
+// ---------------------------------------------------------------------------
+
+describe("applyTrade CONVERT — §4.3/§5 specialty 1:1 lane", () => {
+  it("Venice trades gold↔the port's specialty good at 1:1", () => {
+    const state = fresh();
+    state.players[0].faction = Faction.VENICE; // maritime merchant republic
+    state.players[0].treasury = { gold: 6, grain: 0, timber: 0, marble: 0, faith: 0 };
+    // Make selymbria's specialty unambiguously timber (a coastal owned port).
+    const port = state.provinces.find((p) => p.id === "selymbria")!;
+    port.yields = { gold: 0, grain: 0, timber: 3, marble: 0, faith: 0 };
+    // gold↔specialty (timber) clears at 1:1 — 1 gold buys 1 timber.
+    const out = applyTrade(state, convert("p1", { gold: 1 }, { timber: 1 }));
+    expect(out.players[0].treasury.gold).toBe(5);
+    expect(out.players[0].treasury.timber).toBe(1);
+  });
+
+  it("does not extend the 1:1 lane to a non-specialty resource (port stays 2:1)", () => {
+    const state = fresh();
+    state.players[0].faction = Faction.VENICE;
+    state.players[0].treasury = { gold: 6, grain: 0, timber: 0, marble: 0, faith: 0 };
+    const port = state.provinces.find((p) => p.id === "selymbria")!;
+    port.yields = { gold: 0, grain: 0, timber: 3, marble: 0, faith: 0 };
+    // marble is no owned port's specialty → Venice's port ratio (2:1) applies,
+    // so paying 1 gold for 1 marble is under-paid and rejected.
+    expect(() => applyTrade(state, convert("p1", { gold: 1 }, { marble: 1 }))).toThrow(
+      EngineError,
+    );
+  });
+
+  it("denies the specialty lane to a non-maritime faction without a Grand Bazaar", () => {
+    const state = fresh();
+    // Byzantium (default) is not a trade-ratio-port faction.
+    const port = state.provinces.find((p) => p.id === "selymbria")!;
+    port.yields = { gold: 0, grain: 0, timber: 3, marble: 0, faith: 0 };
+    state.players[0].treasury.gold = 6;
+    expect(() => applyTrade(state, convert("p1", { gold: 1 }, { timber: 1 }))).toThrow(
+      EngineError,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §4.4 Mercenary double-rate desertion (tightened ledger reading)
+// ---------------------------------------------------------------------------
+
+describe("upkeep — §4.4 mercenary double-rate desertion", () => {
+  it("deserts mercenaries at double rate: each merc relieves its doubled upkeep", () => {
+    const state = fresh();
+    const stack = army("p1", "selymbria", { [UnitType.LEVY]: 3 });
+    (stack as { mercenaries?: Partial<Record<UnitType, number>> }).mercenaries = {
+      [UnitType.LEVY]: 3,
+    };
+    state.armies = [stack];
+    state.fleets = [];
+    // due = 3 merc LEVY × 1 × 2 = 6; treasury 2 → deficit 4.
+    // Each deserting merc relieves 2 grain → 2 mercs desert, 1 remains.
+    state.players[0].treasury.grain = 2;
+    const out = upkeep(state);
+    const a = out.armies[0];
+    expect(a.units[UnitType.LEVY]).toBe(1);
+    expect(a.mercenaries?.[UnitType.LEVY]).toBe(1); // survivor is still merc-tagged
+    expect(out.players[0].treasury.grain).toBe(0);
+  });
+});

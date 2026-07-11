@@ -7,3 +7,15 @@
  * the integrator wires this barrel into `engine/index.ts`.
  */
 export * from "./cards.js";
+// The tactic subsystem (draw/queue/play/resolve) lives in the sibling flat file
+// `../tactics.ts`; surface it through this barrel so combat/roundLoop/actions can
+// import `playTactic`, `drawTactic`, etc. from `./tactics/index.js`.
+export {
+  drawTactic,
+  discardToHandLimit,
+  queueTactic,
+  playTactic,
+  resolveTacticEffect,
+  type BattleSide,
+  type TacticEffectContext,
+} from "../tactics.js";

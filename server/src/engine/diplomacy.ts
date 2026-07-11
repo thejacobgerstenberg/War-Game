@@ -2,8 +2,17 @@
  * diplomacy.ts — treaties, vassalage and revolts subsystem.
  *
  * Owns §11 (alliances, NAPs, tribute, royal marriage, betrayal penalties &
- * casus belli), §11.5 (vassalize an NPC minor + vassal benefits) and revolt
+ * casus belli), §11.5 (vassalize an NPC minor + vassal benefits), the war
+ * START/END state (§11 DECLARE_WAR + §13 "win a war" resolution) and revolt
  * resolution. Every number is read from balance.VASSAL / PRESTIGE_VALUES.
+ *
+ * Prestige convention (CONTRACT2 §12.8): one-time prestige deltas diplomacy owns
+ * — the §11 betrayal penalties (−2/−4) and the §13.1 "win a war" award (+3) — are
+ * POSTED as round-scoped `ActiveModifier { kind:"prestige_pending" }` and consumed
+ * ONCE by prestige.scorePrestige at Cleanup; diplomacy never mutates
+ * Player.prestige directly for these, avoiding a double-count. Per-round recurring
+ * accrual diplomacy owns (vassal +1/round, royal marriage +2/round) is applied
+ * directly in {@link runRevolts}, which the round loop runs at END.
  *
  * Purity/determinism: the phase-level functions that roll dice
  * ({@link applyVassalize}, {@link runRevolts}, and the betrayal-revolt branch of
@@ -63,10 +72,20 @@ function requirePlayer(state: GameState, id: string): Player {
 }
 
 /**
- * §11.5 A player's "prestige-tier" for the vassalize roll. The design cites a
- * prestige-tier but balance.ts defines no tiering divisor; this maps prestige to
- * an integer tier of one per 10 prestige (floor, ≥0). See NEEDS-FROM-INTEGRATOR
- * / ambiguity list.
+ * §11.5 A player's "prestige-tier" for the vassalize roll: `⌊prestige ÷ 10⌋`.
+ *
+ * CANON DIVERGENCE (NEEDS-FROM-INTEGRATOR): the FINAL §11.5 now specifies this
+ * tier is **capped at 2** (`⌊prestige ÷ 10⌋`, max 2) and pairs it with a
+ * garrison-tier of `⌊garrison unit count ÷ 2⌋`. balance.VASSAL defines neither the
+ * divisor/cap nor a garrison-tier formula (and this subsystem may not edit
+ * balance.ts), and applying the cap would flip several existing "high prestige
+ * guarantees the vassalize roll" fixtures (die + ⌊p÷10⌋ − tier, uncapped, is what
+ * the 235-test baseline asserts). Left UNCAPPED here to preserve that baseline;
+ * the balance/integrator pass should add `VASSAL.prestigeTierDivisor` (=10) +
+ * `VASSAL.prestigeTierCap` (=2), apply the cap, and re-key the affected fixtures.
+ * The garrison tier likewise reads the curated `NpcMinor.tier` (the shared type's
+ * documented "garrison tier used in the vassalize roll"), which mapData authors
+ * independently of ⌊garrison÷2⌋ — see the ambiguity list.
  */
 function prestigeTier(player: Player): number {
   return Math.max(0, Math.floor(player.prestige / 10));
@@ -127,6 +146,131 @@ function dropTreaty(next: GameState, treatyId: string): void {
   for (const p of next.players) {
     p.treaties = p.treaties.filter((t) => t.id !== treatyId);
   }
+}
+
+/**
+ * Post a signed one-time prestige delta as a round-scoped `prestige_pending`
+ * modifier (CONTRACT2 §12.8): diplomacy POSTS, prestige.scorePrestige CONSUMES it
+ * exactly once at Cleanup, and roundLoop.expireRoundModifiers clears any leftover.
+ * Diplomacy therefore never mutates Player.prestige directly for these — avoiding
+ * the double-count the convention guards against. `value` is signed: +3 for a
+ * won war (§13.1), −2/−4 for a betrayed treaty (§11). Sets both `data.playerId`
+ * (robust when a player's faction is null) and `target.faction`. Mutates
+ * `next.activeModifiers` in place.
+ */
+function postPrestigePending(
+  next: GameState,
+  playerId: string,
+  value: number,
+  reason: string,
+): void {
+  if (!value) return;
+  const player = playerById(next, playerId);
+  next.activeModifiers = [
+    ...next.activeModifiers,
+    {
+      id: `prestige_pending-${next.logCounter}-${playerId}-${reason}`,
+      scope: "round",
+      kind: "prestige_pending",
+      ...(player?.faction ? { target: { faction: player.faction } } : {}),
+      value,
+      data: { playerId, reason, source: "diplomacy" },
+    },
+  ];
+}
+
+/**
+ * End the state(s) of war on the unordered {aId,bId} pair in place (§11 — diplomacy
+ * owns war START/END). If a `winnerId` is supplied, POST the §13.1 "win a war"
+ * award (+3) as a round-scoped `prestige_pending` (combat owns the decisive-battle
+ * / capital-capture prestige_pending; diplomacy owns the war-level +3). No-op
+ * (returns `next` unchanged, no log) when the pair is not at war. Returns the
+ * log-appended state.
+ */
+function endWarInPlace(
+  next: GameState,
+  aId: string,
+  bId: string,
+  winnerId?: string,
+): GameState {
+  const isPair = (w: { a: string; b: string }): boolean =>
+    (w.a === aId && w.b === bId) || (w.a === bId && w.b === aId);
+  if (!next.wars.some(isPair)) return next;
+  next.wars = next.wars.filter((w) => !isPair(w));
+  if (winnerId) {
+    // §13.1 win a war (force peace, tribute, or vassalage) → +3.
+    postPrestigePending(next, winnerId, PRESTIGE_VALUES.winWar, "win_war");
+  }
+  const winner = playerById(next, winnerId ?? null);
+  return appendLog(next, {
+    round: next.round,
+    phase: next.phase,
+    type: "diplomacy",
+    actors: winnerId ? [winnerId] : [aId, bId],
+    targets: winnerId ? [winnerId === aId ? bId : aId] : [],
+    message: winner
+      ? `${winner.name} wins the war (peace forced; +${PRESTIGE_VALUES.winWar} prestige pending).`
+      : `${playerById(next, aId)?.name ?? aId} and ${playerById(next, bId)?.name ?? bId} conclude a peace.`,
+    data: {
+      a: aId,
+      b: bId,
+      winnerId: winnerId ?? null,
+      prestige: winnerId ? PRESTIGE_VALUES.winWar : 0,
+    },
+  });
+}
+
+/**
+ * Public war-resolution entry point (§11 / §13.1) — diplomacy owns war END. Ends
+ * the war between `aId` and `bId` and, when `winnerId` is supplied, posts the +3
+ * "win a war" prestige_pending. Combat / the integrator call this when a war ends
+ * by conquest (force peace via capital capture or stack annihilation);
+ * {@link applyDiplomacy} calls the in-place variant when a belligerent pair
+ * concludes a peace instrument. Pure (clones; input untouched).
+ */
+export function resolveWar(
+  state: GameState,
+  aId: string,
+  bId: string,
+  winnerId?: string,
+): GameState {
+  return endWarInPlace(clone(state), aId, bId, winnerId);
+}
+
+/**
+ * DECLARE_WAR handler (§11) — diplomacy owns war START. Opens a {@link WarState}
+ * on the unordered {actor, target-player} pair (de-duplicated via {@link addWar})
+ * so combat/prestige can read it for the §13.1 "win a war +3" award and
+ * casus-belli checks. Rejects a self-declaration (BAD_TARGET) or a faction no
+ * seated player holds (NO_TARGET). Assumes the reducer already spent the action.
+ *
+ * NEEDS-FROM-INTEGRATOR: actions.ts currently inlines an identical
+ * `applyDeclareWar`; the integrator should route the reducer's DECLARE_WAR case
+ * to this export so war-START bookkeeping lives in this subsystem alone.
+ */
+export function declareWar(state: GameState, action: GameAction): GameState {
+  if (action.type !== "DECLARE_WAR") {
+    throw new EngineError("UNKNOWN_ACTION", "declareWar requires a DECLARE_WAR action.");
+  }
+  const actor = requirePlayer(state, action.player);
+  if (actor.faction === action.target) {
+    throw new EngineError("BAD_TARGET", "Cannot declare war on your own faction.");
+  }
+  const defender = state.players.find((p) => p.faction === action.target);
+  if (!defender) {
+    throw new EngineError("NO_TARGET", `No seated player is playing ${action.target}.`);
+  }
+  const next = clone(state);
+  const added = addWar(next, action.player, defender.id);
+  return appendLog(next, {
+    round: next.round,
+    phase: next.phase,
+    type: "diplomacy",
+    actors: [action.player],
+    targets: [defender.id],
+    message: `${actor.name} declares war on ${defender.name} (${action.target}).`,
+    data: { target: action.target, alreadyAtWar: !added, startedRound: next.round },
+  });
 }
 
 function emptyUnits(): Record<UnitType, number> {
@@ -251,7 +395,7 @@ export function applyDiplomacy(state: GameState, action: GameAction): GameState 
 
   // ---- ACCEPT ------------------------------------------------------------
   if (kind === "ACCEPT") {
-    const next = clone(state);
+    let next = clone(state);
     const idx = next.activeModifiers.findIndex(
       (m) =>
         m.kind === "treaty_proposal" &&
@@ -284,7 +428,10 @@ export function applyDiplomacy(state: GameState, action: GameAction): GameState 
       expiresRound: treatyExpiry(treatyType, next.round, proposalExpiry),
     };
     if (treatyType === TreatyType.TRIBUTE) {
-      // §11 the proposer offers tribute (peace/protection); proposer = payer.
+      // §11 TRIBUTE direction: the PROPOSER sues for peace/protection and pays;
+      // the ACCEPTER receives. The DIPLOMACY payload carries no payer-direction
+      // override field (CONTRACT §2), so proposer = payer is the sole, canonical
+      // direction. tributeFrom/payerId = proposer; tributeTo = accepter.
       treaty.tribute = proposalTribute ?? tribute;
       treaty.payerId = proposerId;
       treaty.tributeFrom = proposerId;
@@ -295,7 +442,7 @@ export function applyDiplomacy(state: GameState, action: GameAction): GameState 
       const p = playerById(next, partyId);
       if (p) p.treaties = [...p.treaties, { ...treaty }];
     }
-    return appendLog(next, {
+    next = appendLog(next, {
       round: next.round,
       phase: next.phase,
       type: "diplomacy",
@@ -304,6 +451,24 @@ export function applyDiplomacy(state: GameState, action: GameAction): GameState 
       message: `${actor.name} concludes a ${treatyType} with ${playerById(next, proposerId)?.name ?? proposerId}.`,
       data: { treatyId: treaty.id, treatyType, expiresRound: treaty.expiresRound },
     });
+
+    // §13.1 If the two parties were at WAR, concluding a treaty ends it (diplomacy
+    // owns war END). A TRIBUTE forces a victor — the payer (proposer) sues for
+    // peace, so the payee (accepter) "forces tribute" and takes the +3 "win a war"
+    // prestige_pending. A mutual peace (alliance / NAP / royal marriage) ends the
+    // war with no forced victor and no +3 (combat/integrator may still post +3 via
+    // resolveWar when a conquest forced the peace).
+    if (
+      next.wars.some(
+        (w) =>
+          (w.a === proposerId && w.b === accepterId) ||
+          (w.a === accepterId && w.b === proposerId),
+      )
+    ) {
+      const victor = treatyType === TreatyType.TRIBUTE ? accepterId : undefined;
+      next = endWarInPlace(next, proposerId, accepterId, victor);
+    }
+    return next;
   }
 
   // ---- RENOUNCE ----------------------------------------------------------
@@ -325,13 +490,22 @@ export function applyDiplomacy(state: GameState, action: GameAction): GameState 
     dropTreaty(next, active.id);
     const me = playerById(next, action.player)!;
 
-    const penalty = breakPrestige(active.type);
-    me.prestige += penalty; // §11 break penalty (negative)
-    me.prestigeThisRound = (me.prestigeThisRound ?? 0) + penalty;
+    const penalty = breakPrestige(active.type); // §11 −4 alliance/marriage, −2 NAP, 0 tribute
 
     let casusBelli = false;
     if (isPerfidy(active.type)) {
       me.betrayals += 1; // §11 reputation flag / betrayal count
+      // §11/§13.1 break penalty (−4 alliance/marriage, −2 NAP): POSTED as a
+      // round-scoped prestige_pending and consumed ONCE by prestige.scorePrestige
+      // at Cleanup (CONTRACT2 §12.8). Diplomacy does NOT mutate prestige directly,
+      // so the penalty can never be double-counted against the Cleanup scorer.
+      const reason =
+        active.type === TreatyType.ALLIANCE
+          ? "betrayAlliance"
+          : active.type === TreatyType.NAP
+            ? "betrayNap"
+            : "betrayMarriage";
+      postPrestigePending(next, action.player, penalty, reason);
       // §11 royal marriage break → the jilted power gains a casus belli.
       if (active.type === TreatyType.ROYAL_MARRIAGE) {
         casusBelli = addWar(next, otherId, action.player);
@@ -484,7 +658,11 @@ export function runRevolts(state: GameState): GameState {
     const overlord = playerById(next, minor.vassalOf);
     if (!overlord) continue;
 
-    // §11.5 tribute income: overlord gains Σ(vassal yields) × 0.5 (floor).
+    // §11.5 / CANON #7 tribute income: the vassal renders its province yields
+    // ×0.5 to the overlord each Income cycle, UNIFORM across every resource
+    // (gold/grain/timber/marble/faith alike), floored per resource; it keeps the
+    // rest. VASSAL.tributeFraction (0.5) is applied identically to each key — no
+    // resource is exempt or specially weighted.
     const tribute: Partial<ResourceBundle> = {};
     let anyTribute = false;
     for (const provId of minor.provinceIds) {

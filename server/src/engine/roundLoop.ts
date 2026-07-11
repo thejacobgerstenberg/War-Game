@@ -24,6 +24,8 @@ import { resolveBattle, resolveNaval, resolveSiege } from "./combat.js";
 import { runRevolts } from "./diplomacy.js";
 import { refreshMercMarket } from "./mercenaries.js";
 import { scorePrestige, checkVictory } from "./prestige.js";
+import { drawTactic, discardToHandLimit } from "./tactics.js";
+import { expireRoundModifiers } from "./modifiers.js";
 
 /** The era (1|2|3) that a given round belongs to (§10 / EVENT_CARDS). */
 export function eraForRound(round: number): 1 | 2 | 3 {
@@ -118,12 +120,30 @@ export function advancePhase(state: GameState): GameState {
       return { ...state, phase: GamePhase.INCOME };
 
     case GamePhase.INCOME: {
-      // Omen sub-phase sits at the front of INCOME (§10 phase 1), then income.
-      // NB: applyIncomePhase already runs upkeep + starvation internally (§4.4),
-      // so it is not invoked again here (that would double-charge grain).
-      let next = drawOmen(state);
+      // §13 per-round reset (flagged bug): clear the per-round prestige scratch at
+      // the head of every round so it does not accumulate across rounds. The value
+      // accrued during round N (income/diplomacy/END scorePrestige) is read for the
+      // round-N END summary, then wiped here as round N+1 opens.
+      let next: GameState = {
+        ...state,
+        players: state.players.map((p) => ({ ...p, prestigeThisRound: 0 })),
+      };
+      // §10 phase-table ordering: Omen → tactic draw → income → upkeep.
+      // 1) Omen sub-phase sits at the front of INCOME (§10 phase 1): draw+resolve one card.
+      next = drawOmen(next);
+      // 2) §7.7 tactic draw: each player draws 1 tactic card (+University bonuses)
+      //    during Income, BEFORE income/upkeep is credited (CONTRACT2 §12.9). Draw
+      //    order follows the roster; drawTactic derives/persists the rng cursor.
+      for (const id of next.players.map((p) => p.id)) {
+        next = drawTactic(next, id);
+      }
+      // 3) §10 phase 2: credit income then upkeep + starvation. applyIncomePhase
+      //    already runs upkeep + starvation internally (§4.4), so upkeep is not
+      //    invoked again here (that would double-charge grain).
       next = applyIncomePhase(next);
       // §13.4 initiative to the underdog: lowest prestige acts first this round.
+      // (Equivalent to the §13.4 cleanup reshuffle — prestige is unchanged between
+      // END and the next INCOME — and this placement also orders the first round.)
       next = sortTurnOrder(next);
       next = resetActionBudgets(next);
       return { ...next, phase: GamePhase.RECRUITMENT };
@@ -144,21 +164,36 @@ export function advancePhase(state: GameState): GameState {
     }
 
     case GamePhase.END: {
-      // Cleanup: score prestige, resolve revolts, check victory, refresh merc
-      // market, then roll into the next round (or end the game at round 16).
+      // §10 phase 5 cleanup, ordered so `prestige_pending` is CONSUMED before it
+      // EXPIRES (no double-count, CONTRACT2 §12.8): scorePrestige → runRevolts →
+      // checkVictory → expireRoundModifiers. Tactic hands are pruned here too (§7.7).
+      // 1) §13.1 score per-round prestige + consume conquest-track prestige_pending.
       let next = scorePrestige(state);
+      // 2) §11.5 conquered-minor / heavy-tax revolts.
       next = runRevolts(next);
+      // 3) §7.7 cleanup: discard each hand down to TACTIC_HAND_LIMIT.
+      for (const id of next.players.map((p) => p.id)) {
+        next = discardToHandLimit(next, id);
+      }
+      // 4) §13.2 victory is checked ONLY at cleanup (never mid-round).
       const winner = checkVictory(next);
+      // 5) Expire round-scoped modifiers AFTER scorePrestige has consumed the
+      //    prestige_pending awards. scope:'round' modifiers and any whose
+      //    expiresRound<=round lapse; persistent trade-route modifiers survive.
+      next = expireRoundModifiers(next);
       if (winner || next.round >= ROUNDS) {
+        // §13.2 threshold reached, or §13.3 round-16 "1453" endgame: game ends.
         return { ...next, phase: GamePhase.END, winner: winner ?? next.winner };
       }
       const round = next.round + 1;
+      // §6.3 refresh the mercenary market for the new round.
       next = refreshMercMarket(next);
       return {
         ...next,
         phase: GamePhase.INCOME,
         round,
         turn: round,
+        // §10 era boundaries (era 1: r1–5, era 2: r6–10, era 3: r11–16).
         era: eraForRound(round),
       };
     }

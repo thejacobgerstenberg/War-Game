@@ -136,75 +136,104 @@ describe("scorePrestige — §13.1 prestige sources", () => {
     expect(PRESTIGE_VALUES.tradeMonopolyPerRound).toBe(2);
   });
 
-  it("§13.1 complete a secret objective → +4, once", () => {
-    const s = fresh();
-    const plain = plainId(s);
-    isolate(s, { [plain]: "p1" });
-    const obj: SecretObjective = {
-      id: "obj-1",
-      description: "Hold the frontier",
-      provinceRefs: [plain],
-      prestige: PRESTIGE_VALUES.secretObjective,
-    };
-    s.players.find((p) => p.id === "p1")!.objectives = [obj];
-
-    const out = scorePrestige(s);
-    expect(prestigeOf(out, "p1")).toBe(PRESTIGE_VALUES.secretObjective);
-    expect(PRESTIGE_VALUES.secretObjective).toBe(4);
-    expect(out.players.find((p) => p.id === "p1")!.objectives[0].completed).toBe(true);
-
-    // Scoring again must not re-award a completed objective.
-    const again = scorePrestige(out);
-    expect(prestigeOf(again, "p1")).toBe(PRESTIGE_VALUES.secretObjective);
-  });
-
-  it("§13.1 win a decisive battle → +1 (battle winner)", () => {
+  it("§13.1 win a decisive battle → +1 (consumed from prestige_pending)", () => {
+    // CANON/§13 conquest track: combat POSTS the +1 as a prestige_pending
+    // modifier; scorePrestige consumes it (never scans the battle log for it).
     const s = fresh();
     isolate(s, {});
-    pushLog(s, { type: "battle", actors: ["p1", "p2"], data: { winnerId: "p1" } });
+    s.activeModifiers.push({
+      id: "pp-decisive",
+      scope: "round",
+      kind: "prestige_pending",
+      target: { faction: Faction.BYZANTIUM },
+      value: PRESTIGE_VALUES.decisiveBattleWin,
+      data: { reason: "decisive_battle", source: "combat" },
+    });
     const out = scorePrestige(s);
     expect(prestigeOf(out, "p1")).toBe(PRESTIGE_VALUES.decisiveBattleWin);
     expect(PRESTIGE_VALUES.decisiveBattleWin).toBe(1);
+    // Folded into the running conquest total and consumed exactly once.
+    expect(out.players.find((p) => p.id === "p1")!.conquestPrestige).toBe(1);
+    expect(out.activeModifiers.some((m) => m.kind === "prestige_pending")).toBe(false);
   });
 
-  it("§13.1 an indecisive battle (no winner) scores nothing", () => {
+  it("§13 a raw battle log is NOT scored (prestige_pending is the only path)", () => {
+    // Guards against double-counting: scorePrestige must ignore combat logs for
+    // conquest awards, since combat posts prestige_pending instead.
     const s = fresh();
     isolate(s, {});
-    pushLog(s, { type: "battle", actors: ["p1", "p2"], data: { winnerId: null } });
+    pushLog(s, { type: "battle", actors: ["p1", "p2"], data: { winnerId: "p1" } });
     const out = scorePrestige(s);
     expect(prestigeOf(out, "p1")).toBe(0);
     expect(prestigeOf(out, "p2")).toBe(0);
   });
 
-  it("§13.1 a stormed siege counts as a decisive battle for the besieger", () => {
-    const s = fresh();
-    isolate(s, {});
-    pushLog(s, { type: "siege", actors: ["p2"], targets: ["edirne"], data: { captured: true } });
-    const out = scorePrestige(s);
-    expect(prestigeOf(out, "p2")).toBe(PRESTIGE_VALUES.decisiveBattleWin);
-  });
-
-  it("§13.1 win a war → +3 (via posted war_won, one-time)", () => {
+  it("§13 conquest track: take a walled city → +2/+3 (from prestige_pending)", () => {
     const s = fresh();
     isolate(s, {});
     s.activeModifiers.push({
-      id: "m-war",
+      id: "pp-walled",
       scope: "round",
-      kind: "war_won",
-      data: { playerId: "p2" },
+      kind: "prestige_pending",
+      target: { faction: Faction.OTTOMAN },
+      value: 3, // T4–T5 walled city (combat computed the +3)
+      data: { reason: "take_walled_city", source: "combat" },
+    });
+    const out = scorePrestige(s);
+    expect(prestigeOf(out, "p2")).toBe(3);
+    expect(out.players.find((p) => p.id === "p2")!.conquestPrestige).toBe(3);
+  });
+
+  it("§13 prestige_pending is consumed only ONCE across cleanups", () => {
+    const s = fresh();
+    isolate(s, {});
+    s.activeModifiers.push({
+      id: "pp-once",
+      scope: "round",
+      kind: "prestige_pending",
+      target: { faction: Faction.BYZANTIUM },
+      value: PRESTIGE_VALUES.decisiveBattleWin,
+      data: { reason: "decisive_battle" },
+    });
+    const first = scorePrestige(s);
+    expect(prestigeOf(first, "p1")).toBe(1);
+    // The modifier is gone; a second cleanup does not re-award it.
+    const second = scorePrestige(first);
+    expect(prestigeOf(second, "p1")).toBe(1);
+  });
+
+  it("§13.1 win a war → +3 (from prestige_pending posted by diplomacy)", () => {
+    const s = fresh();
+    isolate(s, {});
+    s.activeModifiers.push({
+      id: "pp-war",
+      scope: "round",
+      kind: "prestige_pending",
+      target: { faction: Faction.OTTOMAN },
+      value: PRESTIGE_VALUES.winWar,
+      data: { reason: "win_war", source: "diplomacy" },
     });
     const out = scorePrestige(s);
     expect(prestigeOf(out, "p2")).toBe(PRESTIGE_VALUES.winWar);
     expect(PRESTIGE_VALUES.winWar).toBe(3);
-    // Cleared so it is not re-scored next cleanup.
-    expect(out.activeModifiers.some((m) => m.kind === "war_won")).toBe(false);
+    expect(out.activeModifiers.some((m) => m.kind === "prestige_pending")).toBe(false);
   });
 
   it("§13.1 lose your own capital → −3 (rightful owner dispossessed)", () => {
     const s = fresh();
     isolate(s, { edirne: "p1" }); // p1 has just taken the Ottoman capital
-    // Battle log: attacker p1 beats defender p2 (Ottoman) at edirne.
+    // Battle log: attacker p1 beats defender p2 (Ottoman) at edirne. The −3
+    // lose-capital penalty is log-derived; the captor's +1 decisive award arrives
+    // separately as a prestige_pending (posted by combat).
     pushLog(s, { type: "battle", actors: ["p1", "p2"], targets: ["edirne"], data: { winnerId: "p1" } });
+    s.activeModifiers.push({
+      id: "pp-cap",
+      scope: "round",
+      kind: "prestige_pending",
+      target: { faction: Faction.BYZANTIUM },
+      value: PRESTIGE_VALUES.decisiveBattleWin,
+      data: { reason: "decisive_battle", source: "combat" },
+    });
     const out = scorePrestige(s);
     // p2 (Ottoman) lost its own capital.
     expect(prestigeOf(out, "p2")).toBe(PRESTIGE_VALUES.loseCapital);
@@ -213,6 +242,67 @@ describe("scorePrestige — §13.1 prestige sources", () => {
     expect(prestigeOf(out, "p1")).toBe(
       PRESTIGE_VALUES.holdEnemyCapitalPerRound + PRESTIGE_VALUES.decisiveBattleWin,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §13.1/§13.3 Secret objectives — scored ONLY at game end (CANON #10)
+// ---------------------------------------------------------------------------
+
+describe("scorePrestige — §13.3 secret objectives scored only at game end", () => {
+  function withObjective(state: GameState, playerId: string, provinceId: string): void {
+    const obj: SecretObjective = {
+      id: "obj-1",
+      description: "Hold the frontier",
+      provinceRefs: [provinceId],
+      prestige: PRESTIGE_VALUES.secretObjective,
+    };
+    state.players.find((p) => p.id === playerId)!.objectives = [obj];
+  }
+
+  it("CANON #10: a satisfied objective is NOT scored mid-game", () => {
+    const s = fresh(); // round 1, no threshold-crosser, not sudden death
+    const plain = plainId(s);
+    isolate(s, { [plain]: "p1" });
+    withObjective(s, "p1", plain);
+    const out = scorePrestige(s);
+    // Objective held but game is not ending → not revealed, not scored.
+    expect(prestigeOf(out, "p1")).toBe(0);
+    expect(out.players.find((p) => p.id === "p1")!.objectives[0].completed).toBeFalsy();
+  });
+
+  it("§13.3 a satisfied objective is revealed & scored (+4) at game end (round 16)", () => {
+    const s = fresh();
+    s.round = 16; // the 1453 endgame ends the game this cleanup
+    const plain = plainId(s);
+    isolate(s, { [plain]: "p1" });
+    withObjective(s, "p1", plain);
+    const out = scorePrestige(s);
+    expect(prestigeOf(out, "p1")).toBe(PRESTIGE_VALUES.secretObjective);
+    expect(PRESTIGE_VALUES.secretObjective).toBe(4);
+    expect(out.players.find((p) => p.id === "p1")!.objectives[0].completed).toBe(true);
+  });
+
+  it("§13.3 an UNSATISFIED objective scores nothing at game end", () => {
+    const s = fresh();
+    s.round = 16;
+    const plain = plainId(s);
+    isolate(s, {}); // p1 owns nothing → objective unsatisfied
+    withObjective(s, "p1", plain);
+    const out = scorePrestige(s);
+    expect(prestigeOf(out, "p1")).toBe(0);
+    expect(out.players.find((p) => p.id === "p1")!.objectives[0].completed).toBeFalsy();
+  });
+
+  it("§13.3 objectives are scored when a threshold win ends the game", () => {
+    const s = fresh(seats2); // round 1
+    const plain = plainId(s);
+    isolate(s, { [plain]: "p1" });
+    withObjective(s, "p1", plain);
+    s.players.find((p) => p.id === "p2")!.prestige = 25; // p2 crosses → game ends
+    const out = scorePrestige(s);
+    // p1's objective is revealed at the terminating cleanup.
+    expect(prestigeOf(out, "p1")).toBe(PRESTIGE_VALUES.secretObjective);
   });
 });
 
@@ -332,6 +422,25 @@ describe("checkVictory — §13.2 prestige threshold", () => {
     s.players.find((p) => p.id === "p1")!.prestige = 26;
     s.players.find((p) => p.id === "p2")!.prestige = 30;
     expect(checkVictory(s)).toBe(Faction.OTTOMAN);
+  });
+
+  it("CANON #3 / §13.2: victory is only checked at Cleanup (END phase)", () => {
+    const s = fresh(seats2);
+    s.players.find((p) => p.id === "p1")!.prestige = 30; // over threshold
+    // Mid-round: threshold crossing must NOT win outside Cleanup.
+    for (const phase of [
+      GamePhase.INCOME,
+      GamePhase.RECRUITMENT,
+      GamePhase.MOVEMENT,
+      GamePhase.COMBAT,
+      GamePhase.DIPLOMACY,
+    ]) {
+      s.phase = phase;
+      expect(checkVictory(s)).toBeNull();
+    }
+    // Only at Cleanup does the threshold win land.
+    s.phase = GamePhase.END;
+    expect(checkVictory(s)).toBe(Faction.BYZANTIUM);
   });
 });
 

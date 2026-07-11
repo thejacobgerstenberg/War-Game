@@ -12,13 +12,21 @@ import {
   Faction,
   TreatyType,
   UnitType,
+  type DeclareWarAction,
   type DiplomacyAction,
   type GameState,
   type ResourceBundle,
   type VassalizeAction,
 } from "@imperium/shared";
 import { createInitialState, type SeatInput } from "../gameState.js";
-import { applyDiplomacy, applyVassalize, runRevolts } from "../diplomacy.js";
+import {
+  applyDiplomacy,
+  applyVassalize,
+  declareWar,
+  resolveWar,
+  runRevolts,
+} from "../diplomacy.js";
+import { scorePrestige } from "../prestige.js";
 import { EngineError } from "../actions.js";
 import { PRESTIGE_VALUES, VASSAL } from "../balance.js";
 import { makeRng } from "../rng.js";
@@ -125,44 +133,73 @@ describe("applyDiplomacy — §11 treaty conclusion", () => {
 // §11 Break penalties + betrayal count + casus belli
 // ---------------------------------------------------------------------------
 
-describe("applyDiplomacy — §11 break penalties", () => {
-  it("breaking an ALLIANCE costs −4 prestige and flags a betrayal", () => {
+describe("applyDiplomacy — §11 break penalties (posted as prestige_pending)", () => {
+  /** The prestige_pending posted against `playerId`, if any (CONTRACT2 §12.8). */
+  const pendingFor = (s: GameState, playerId: string) =>
+    s.activeModifiers.find(
+      (m) => m.kind === "prestige_pending" && m.data?.playerId === playerId,
+    );
+
+  it("breaking an ALLIANCE POSTS a −4 prestige_pending and flags a betrayal (§11/§13.1)", () => {
     const s = conclude(fresh(), TreatyType.ALLIANCE);
     const before = s.players[0].prestige;
     const out = applyDiplomacy(s, renounce("p1", TreatyType.ALLIANCE, "p2"));
-    expect(out.players[0].prestige).toBe(before + PRESTIGE_VALUES.betrayAlliance); // −4
+    // CONTRACT2 §12.8: prestige is NOT mutated directly; the penalty rides a
+    // round-scoped prestige_pending that scorePrestige consumes at Cleanup.
+    expect(out.players[0].prestige).toBe(before);
+    const pend = pendingFor(out, "p1");
+    expect(pend?.value).toBe(PRESTIGE_VALUES.betrayAlliance); // −4
+    expect(pend?.scope).toBe("round");
+    expect(pend?.data?.reason).toBe("betrayAlliance");
     expect(out.players[0].betrayals).toBe(1);
     expect(out.players[0].treaties).toHaveLength(0);
     expect(out.players[1].treaties).toHaveLength(0); // removed from both
     expect(out.log.some((l) => l.type === "betrayal")).toBe(true);
   });
 
-  it("breaking a NAP costs −2 prestige", () => {
+  it("breaking a NAP POSTS a −2 prestige_pending", () => {
     const s = conclude(fresh(), TreatyType.NAP);
     const before = s.players[0].prestige;
     const out = applyDiplomacy(s, renounce("p1", TreatyType.NAP, "p2"));
-    expect(out.players[0].prestige).toBe(before + PRESTIGE_VALUES.betrayNap); // −2
+    expect(out.players[0].prestige).toBe(before); // not mutated directly
+    expect(pendingFor(out, "p1")?.value).toBe(PRESTIGE_VALUES.betrayNap); // −2
     expect(out.players[0].betrayals).toBe(1);
   });
 
-  it("§11 breaking a ROYAL_MARRIAGE costs −4 AND grants the jilted power a casus belli (state.wars)", () => {
+  it("§11 breaking a ROYAL_MARRIAGE POSTS −4 pending AND grants the jilted power a casus belli (state.wars)", () => {
     const s = conclude(fresh(), TreatyType.ROYAL_MARRIAGE);
     const before = s.players[0].prestige;
     expect(s.wars).toHaveLength(0);
     const out = applyDiplomacy(s, renounce("p1", TreatyType.ROYAL_MARRIAGE, "p2"));
-    expect(out.players[0].prestige).toBe(before + PRESTIGE_VALUES.betrayMarriage); // −4
+    expect(out.players[0].prestige).toBe(before); // not mutated directly
+    expect(pendingFor(out, "p1")?.value).toBe(PRESTIGE_VALUES.betrayMarriage); // −4
     expect(out.wars).toHaveLength(1);
     // The jilted power (p2) is the aggrieved belligerent.
     expect(out.wars[0]).toMatchObject({ a: "p2", b: "p1" });
   });
 
-  it("§11 TRIBUTE renounce is free (no prestige loss, no betrayal count)", () => {
+  it("§11 TRIBUTE renounce is free (no prestige_pending, no betrayal count)", () => {
     const s = conclude(fresh(), TreatyType.TRIBUTE);
     const before = s.players[0].prestige;
     const out = applyDiplomacy(s, renounce("p1", TreatyType.TRIBUTE, "p2"));
     expect(out.players[0].prestige).toBe(before);
+    expect(pendingFor(out, "p1")).toBeUndefined();
     expect(out.players[0].betrayals).toBe(0);
     expect(out.players[0].treaties).toHaveLength(0);
+  });
+
+  it("§11/§13.1 the posted betrayal penalty is consumed ONCE by scorePrestige at Cleanup", () => {
+    // Isolation: a control cleanup (no renounce) vs. one after the renounce differ
+    // ONLY by the −4 pending — identical capital/key-city scoring in both — so the
+    // gap is exactly the betrayal penalty, proving the round-trip and no double-count.
+    const concluded = conclude(fresh(), TreatyType.ALLIANCE);
+    const control = scorePrestige(concluded).players[0].prestige;
+    const renounced = applyDiplomacy(concluded, renounce("p1", TreatyType.ALLIANCE, "p2"));
+    const scored = scorePrestige(renounced);
+    expect(scored.players[0].prestige).toBe(control + PRESTIGE_VALUES.betrayAlliance); // −4 once
+    expect(scored.activeModifiers.some((m) => m.kind === "prestige_pending")).toBe(false);
+    // A negative penalty is NOT folded into the conquest track.
+    expect(scored.players[0].conquestPrestige ?? 0).toBe(0);
   });
 });
 
@@ -382,5 +419,146 @@ describe("runRevolts — §11.5 revolts", () => {
     ];
     const out = runRevolts(s);
     expect(minorById(out, "ragusa").vassalOf).toBe("p1");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §11.5 / CANON #7: vassal tribute is ×0.5 UNIFORM across all resources
+// ---------------------------------------------------------------------------
+
+describe("runRevolts — §11.5/CANON #7 vassal tribute is ×0.5 UNIFORM", () => {
+  it("renders EVERY resource type at ×0.5 (floored), not gold alone", () => {
+    const s = withVassalRagusa(fresh());
+    // Author a multi-resource yield so uniformity is observable across keys.
+    const prov = s.provinces.find((p) => p.id === "ragusa")!;
+    prov.yields = { gold: 4, grain: 4, timber: 2, marble: 3, faith: 0 };
+    const t0 = { ...s.players[0].treasury };
+    const t1 = runRevolts(s).players[0].treasury;
+    expect(t1.gold - t0.gold).toBe(2); // ⌊4×0.5⌋
+    expect(t1.grain - t0.grain).toBe(2); // ⌊4×0.5⌋
+    expect(t1.timber - t0.timber).toBe(1); // ⌊2×0.5⌋
+    expect(t1.marble - t0.marble).toBe(1); // ⌊3×0.5⌋
+    // tributeFraction is applied identically to every key — no resource is exempt.
+    expect(VASSAL.tributeFraction).toBe(0.5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §11 War START (declareWar) — diplomacy owns the WarState
+// ---------------------------------------------------------------------------
+
+describe("declareWar — §11 war START (diplomacy-owned)", () => {
+  const war = (player: string, target: Faction): DeclareWarAction => ({
+    type: "DECLARE_WAR",
+    player,
+    target,
+  });
+
+  it("opens a WarState against the target faction's player (de-duplicated)", () => {
+    const s = fresh();
+    expect(s.wars).toHaveLength(0);
+    const out = declareWar(s, war("p1", Faction.OTTOMAN));
+    expect(out.wars).toContainEqual({ a: "p1", b: "p2", startedRound: s.round });
+    // A second declaration does not add a duplicate war.
+    const again = declareWar(out, war("p1", Faction.OTTOMAN));
+    expect(again.wars.filter((w) => w.a === "p1" && w.b === "p2")).toHaveLength(1);
+    expect(out.log.some((l) => l.type === "diplomacy")).toBe(true);
+  });
+
+  it("rejects declaring war on your own faction (BAD_TARGET)", () => {
+    expect(() => declareWar(fresh(), war("p1", Faction.BYZANTIUM))).toThrowError(
+      expect.objectContaining({ code: "BAD_TARGET" }),
+    );
+  });
+
+  it("rejects declaring war on an unseated faction (NO_TARGET)", () => {
+    expect(() => declareWar(fresh(), war("p1", Faction.VENICE))).toThrowError(
+      expect.objectContaining({ code: "NO_TARGET" }),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §13.1 War END (resolveWar) — win-war +3 as prestige_pending
+// ---------------------------------------------------------------------------
+
+describe("resolveWar — §13.1 war END + win-war prestige_pending", () => {
+  const declare = (): GameState =>
+    declareWar(fresh(), { type: "DECLARE_WAR", player: "p1", target: Faction.OTTOMAN });
+
+  it("ends the war and POSTS a +3 win-war prestige_pending to the victor (not a direct mutation)", () => {
+    const s = declare();
+    expect(s.wars).toHaveLength(1);
+    const before = s.players[1].prestige;
+    const out = resolveWar(s, "p1", "p2", "p2");
+    expect(out.wars).toHaveLength(0);
+    expect(out.players[1].prestige).toBe(before); // pending, not mutated
+    const pend = out.activeModifiers.find(
+      (m) => m.kind === "prestige_pending" && m.data?.playerId === "p2",
+    );
+    expect(pend?.value).toBe(PRESTIGE_VALUES.winWar); // +3
+    expect(pend?.scope).toBe("round");
+    expect(pend?.data?.reason).toBe("win_war");
+  });
+
+  it("scorePrestige folds the +3 win-war award into prestige AND the conquest track", () => {
+    const s = resolveWar(declare(), "p1", "p2", "p2");
+    const control = scorePrestige(declare()).players[1]; // no war-win award
+    const scored = scorePrestige(s).players[1];
+    expect(scored.prestige).toBe(control.prestige + PRESTIGE_VALUES.winWar);
+    expect(scored.conquestPrestige ?? 0).toBe(PRESTIGE_VALUES.winWar); // conquest-track
+  });
+
+  it("ends a war with no forced victor (mutual peace) and posts no award", () => {
+    const out = resolveWar(declare(), "p1", "p2");
+    expect(out.wars).toHaveLength(0);
+    expect(out.activeModifiers.some((m) => m.kind === "prestige_pending")).toBe(false);
+  });
+
+  it("is a no-op when the pair is not at war", () => {
+    const s = fresh();
+    const out = resolveWar(s, "p1", "p2", "p1");
+    expect(out.wars).toHaveLength(0);
+    expect(out.activeModifiers.some((m) => m.kind === "prestige_pending")).toBe(false);
+    expect(out.log).toEqual(s.log); // no chronicle entry
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §13.1 Tribute forces peace: ACCEPT between belligerents ends the war
+// ---------------------------------------------------------------------------
+
+describe("applyDiplomacy ACCEPT — §13.1 tribute forces peace (war END)", () => {
+  const declare = (): GameState =>
+    declareWar(fresh(), { type: "DECLARE_WAR", player: "p1", target: Faction.OTTOMAN });
+
+  it("concluding a TRIBUTE between belligerents ends the war and awards the PAYEE +3", () => {
+    let s = declare();
+    expect(s.wars).toHaveLength(1);
+    // p1 (payer) sues for peace; p2 (payee) forces tribute → p2 wins the war.
+    s = applyDiplomacy(s, propose("p1", TreatyType.TRIBUTE, "p2", { tribute: { gold: 2 } }));
+    const out = applyDiplomacy(s, accept("p2", TreatyType.TRIBUTE, "p1"));
+    expect(out.wars).toHaveLength(0);
+    const pend = out.activeModifiers.find(
+      (m) => m.kind === "prestige_pending" && m.data?.playerId === "p2",
+    );
+    expect(pend?.value).toBe(PRESTIGE_VALUES.winWar); // +3 to the payee
+    expect(pend?.data?.reason).toBe("win_war");
+  });
+
+  it("concluding a NAP between belligerents ends the war with NO forced victor", () => {
+    let s = declare();
+    s = applyDiplomacy(s, propose("p1", TreatyType.NAP, "p2"));
+    const out = applyDiplomacy(s, accept("p2", TreatyType.NAP, "p1"));
+    expect(out.wars).toHaveLength(0); // peace made
+    expect(out.activeModifiers.some((m) => m.kind === "prestige_pending")).toBe(false);
+  });
+
+  it("concluding an ALLIANCE between belligerents ends the war (allies cannot be at war)", () => {
+    let s = declare();
+    s = applyDiplomacy(s, propose("p1", TreatyType.ALLIANCE, "p2"));
+    const out = applyDiplomacy(s, accept("p2", TreatyType.ALLIANCE, "p1"));
+    expect(out.wars).toHaveLength(0); // §11 alliance ⇒ cannot attack each other
+    expect(out.activeModifiers.some((m) => m.kind === "prestige_pending")).toBe(false);
   });
 });
