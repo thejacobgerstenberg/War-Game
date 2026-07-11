@@ -1,0 +1,269 @@
+/**
+ * events/index.test.ts — EVENTS RESOLUTION subsystem (GAME_DESIGN §12,
+ * EVENT_CARDS.md).
+ *
+ * Covers the Omen-phase plumbing (§12 / EVENT_CARDS "Draw rules"): deterministic
+ * draw from a seeded RNG, era-transition retire/shuffle across the Era I/II/III
+ * boundaries, empty-deck reshuffle, the 4–5 player "gathering omen" reveal
+ * (CONTRACT §9 item 9 / balance.OMEN_DRAW), a spread of representative card
+ * effects (incl. #34 Great Bombard unlock and #46 Fall of Constantinople sudden
+ * death), and that Standing/Persistent cards register an ActiveModifier on the
+ * side-channel. Cited card numbers reference EVENT_CARDS.md.
+ */
+import { describe, it, expect } from "vitest";
+import { Faction, type GameState } from "@imperium/shared";
+import { createInitialState, type SeatInput } from "../gameState.js";
+import { drawOmen, resolveCard } from "./index.js";
+import { omenCardId, OMEN_CARD_BY_ID } from "./cards.js";
+
+const SEED = 777;
+
+const seats4: SeatInput[] = [
+  { id: "p1", name: "Basil", faction: Faction.BYZANTIUM, isHost: true },
+  { id: "p2", name: "Murad", faction: Faction.OTTOMAN, isHost: false },
+  { id: "p3", name: "Foscari", faction: Faction.VENICE, isHost: false },
+  { id: "p4", name: "Adorno", faction: Faction.GENOA, isHost: false },
+];
+
+const seats2: SeatInput[] = [
+  { id: "p1", name: "Basil", faction: Faction.BYZANTIUM, isHost: true },
+  { id: "p2", name: "Murad", faction: Faction.OTTOMAN, isHost: false },
+];
+
+const seats2NoOttoman: SeatInput[] = [
+  { id: "p1", name: "Basil", faction: Faction.BYZANTIUM, isHost: true },
+  { id: "p3", name: "Foscari", faction: Faction.VENICE, isHost: false },
+];
+
+function fresh(seats: SeatInput[]): GameState {
+  return structuredClone(createInitialState("ROOM77", seats, SEED));
+}
+
+function player(state: GameState, id: string) {
+  return state.players.find((p) => p.id === id)!;
+}
+
+// ---------------------------------------------------------------------------
+// §12 / EVENT_CARDS "Draw rules" — deterministic draw
+// ---------------------------------------------------------------------------
+
+describe("drawOmen — deterministic draw (§12, seeded RNG)", () => {
+  it("draws the same card and produces byte-identical state from a fixed seed", () => {
+    const a = drawOmen(fresh(seats2));
+    const b = drawOmen(fresh(seats2));
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+
+  it("moves exactly one card from the deck to the discard and advances the RNG cursor", () => {
+    const before = fresh(seats2);
+    const after = drawOmen(before);
+    expect(after.omenDeck.length).toBe(before.omenDeck.length - 1);
+    // The drawn card is the front of the pre-draw deck, now on top of the discard.
+    expect(after.omenDiscard[after.omenDiscard.length - 1]).toBe(before.omenDeck[0]);
+    expect(after.rngCursor).toBeGreaterThanOrEqual(before.rngCursor);
+  });
+
+  it("draws only from the current era's deck (Era I in round 1)", () => {
+    const after = drawOmen(fresh(seats2));
+    const drawn = after.omenDiscard[after.omenDiscard.length - 1];
+    expect(OMEN_CARD_BY_ID[drawn].era).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EVENT_CARDS "on entering the next era, retire the previous deck" (Era I→II→III)
+// ---------------------------------------------------------------------------
+
+describe("drawOmen — era transition retire + shuffle (EVENT_CARDS deck structure)", () => {
+  it("retires Era I and shuffles in the Era II deck when round 6 begins", () => {
+    const s = fresh(seats2);
+    // Simulate roundLoop having advanced into Era II with Era I leftovers around.
+    s.round = 6;
+    s.turn = 6;
+    s.era = 2;
+    s.omenDiscard = [omenCardId(1)]; // an Era I card that must be retired
+    const after = drawOmen(s);
+
+    // Era II deck is now active (17 cards − 1 drawn) and the key is consumed.
+    expect(after.eraDecksRemaining[2]).toBeUndefined();
+    expect(after.eraDecksRemaining[3]).toBeDefined();
+    // The drawn card is Era II; no Era I card survives in deck or discard.
+    const drawn = after.omenDiscard[after.omenDiscard.length - 1];
+    expect(OMEN_CARD_BY_ID[drawn].era).toBe(2);
+    expect(after.omenDeck).not.toContain(omenCardId(1));
+    expect(after.omenDiscard).not.toContain(omenCardId(1));
+    expect(after.omenDeck.every((id) => OMEN_CARD_BY_ID[id].era === 2)).toBe(true);
+    expect(after.omenDeck.length).toBe(16);
+  });
+
+  it("retires Era II and activates Era III at round 11", () => {
+    const s = fresh(seats2);
+    s.round = 11;
+    s.turn = 11;
+    s.era = 3;
+    // Pretend Era II was the active deck being retired.
+    s.omenDeck = [omenCardId(17), omenCardId(18)];
+    s.omenDiscard = [omenCardId(19)];
+    s.eraDecksRemaining = { 3: [...s.eraDecksRemaining[3]!] };
+    const after = drawOmen(s);
+    expect(after.eraDecksRemaining[3]).toBeUndefined();
+    const drawn = after.omenDiscard[after.omenDiscard.length - 1];
+    expect(OMEN_CARD_BY_ID[drawn].era).toBe(3);
+    expect(after.omenDeck.every((id) => OMEN_CARD_BY_ID[id].era === 3)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EVENT_CARDS "when an era deck empties, reshuffle its discards"
+// ---------------------------------------------------------------------------
+
+describe("drawOmen — empty-deck reshuffle (EVENT_CARDS draw rules)", () => {
+  it("reshuffles the discard pile back into the deck when it empties", () => {
+    const s = fresh(seats2);
+    s.omenDeck = [];
+    s.omenDiscard = [omenCardId(1), omenCardId(2), omenCardId(3), omenCardId(4), omenCardId(5)];
+    const after = drawOmen(s);
+    // Reshuffled 5 discards into the deck, then drew 1: deck 4, discard 1.
+    expect(after.omenDeck.length).toBe(4);
+    expect(after.omenDiscard.length).toBe(1);
+    expect(after.log.some((e) => /reshuffled/i.test(e.message))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CONTRACT §9 item 9 / balance.OMEN_DRAW — 4–5 player "gathering omen"
+// ---------------------------------------------------------------------------
+
+describe("drawOmen — 4–5 player gathering omen (CONTRACT §9 item 9)", () => {
+  it("reveals (peeks) the next card as a gathering omen for a 4-player game", () => {
+    const after = drawOmen(fresh(seats4));
+    const gathering = after.log.find((e) => e.data && "gatheringOmen" in e.data);
+    expect(gathering).toBeDefined();
+    // Peeked, not resolved: the gathering card is still on top of the live deck.
+    expect(after.omenDeck[0]).toBe(gathering!.data!.gatheringOmen);
+  });
+
+  it("does NOT reveal a gathering omen for a 2-player game", () => {
+    const after = drawOmen(fresh(seats2));
+    expect(after.log.some((e) => e.data && "gatheringOmen" in e.data)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Representative card effects (EVENT_CARDS #3, #5, #34, #38, #46)
+// ---------------------------------------------------------------------------
+
+describe("resolveCard — representative card effects", () => {
+  it("#5 Imperial Coronation grants the drawer +2 prestige and +2 gold", () => {
+    const s = fresh(seats4); // drawer = active player p1 (Byzantium)
+    const goldBefore = player(s, "p1").treasury.gold;
+    const after = resolveCard(s, omenCardId(5));
+    expect(player(after, "p1").prestige).toBe(2);
+    expect(player(after, "p1").treasury.gold).toBe(goldBefore + 2);
+  });
+
+  it("#3 Silk Road Caravan grants +3 gold to the holder of Bursa (Ottoman)", () => {
+    const s = fresh(seats4);
+    const before = player(s, "p2").treasury.gold;
+    const after = resolveCard(s, omenCardId(3));
+    expect(player(after, "p2").treasury.gold).toBe(before + 3);
+  });
+
+  it("#38 Pilgrimage / Jubilee Year grants +1 faith to every Christian faction, not the Ottoman", () => {
+    const s = fresh(seats4);
+    const byzFaith = player(s, "p1").treasury.faith;
+    const ottFaith = player(s, "p2").treasury.faith;
+    const venFaith = player(s, "p3").treasury.faith;
+    const after = resolveCard(s, omenCardId(38));
+    expect(player(after, "p1").treasury.faith).toBe(byzFaith + 1); // Byzantium
+    expect(player(after, "p3").treasury.faith).toBe(venFaith + 1); // Venice
+    expect(player(after, "p2").treasury.faith).toBe(ottFaith); // Ottoman unchanged
+  });
+
+  it("#34 The Great Bombard Forged unlocks the Great Bombard for the Ottoman (ActiveModifier)", () => {
+    const s = fresh(seats4);
+    const after = resolveCard(s, omenCardId(34));
+    const unlock = after.activeModifiers.find((m) => m.kind === "unlock");
+    expect(unlock).toBeDefined();
+    expect(unlock!.data!.unlock).toBe("GREAT_BOMBARD");
+    expect(unlock!.target!.faction).toBe(Faction.OTTOMAN);
+    expect(unlock!.scope).toBe("game");
+  });
+
+  it("#34 with no Ottoman in play posts no unlock (auction path, faction-specific no-op)", () => {
+    const s = fresh(seats2NoOttoman);
+    const after = resolveCard(s, omenCardId(34));
+    expect(after.activeModifiers.some((m) => m.kind === "unlock")).toBe(false);
+    // The effect fn still resolves, logging Orban's auction.
+    expect(after.log.some((e) => /auction|highest bidder/i.test(e.message))).toBe(true);
+  });
+
+  it("#46 The Fall of Constantinople awards +5 prestige to the Byzantine holder and arms sudden death", () => {
+    const s = fresh(seats4); // Byzantium (p1) still holds Constantinople
+    const after = resolveCard(s, omenCardId(46));
+    expect(player(after, "p1").prestige).toBe(5);
+    expect(after.constantinopleHold.faction).toBe(Faction.BYZANTIUM);
+    const sd = after.activeModifiers.find((m) => m.kind === "sudden_death");
+    expect(sd).toBeDefined();
+    expect(sd!.scope).toBe("game");
+    expect(sd!.data!.province).toBe("constantinople");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Standing / Persistent cards register ActiveModifiers (EVENT_CARDS #9,#18,#35,#36)
+// ---------------------------------------------------------------------------
+
+describe("resolveCard — durable cards register an ActiveModifier", () => {
+  it("#9 Discovery of Alum posts a standing +2 gold/round income modifier on Chios", () => {
+    const after = resolveCard(fresh(seats4), omenCardId(9));
+    const mod = after.activeModifiers.find((m) => m.sourceCardId === omenCardId(9));
+    expect(mod).toBeDefined();
+    expect(mod!.kind).toBe("income");
+    expect(mod!.value).toBe(2);
+    expect(mod!.scope).toBe("game");
+    expect(mod!.target!.provinceId).toBe("chios");
+  });
+
+  it("#18 Venetian–Genoese War posts a 2-round persistent trade modifier with an expiry", () => {
+    const s = fresh(seats4); // both republics present
+    s.round = 6;
+    const after = resolveCard(s, omenCardId(18));
+    const mod = after.activeModifiers.find((m) => m.sourceCardId === omenCardId(18));
+    expect(mod).toBeDefined();
+    expect(mod!.kind).toBe("trade_mod");
+    expect(mod!.scope).toBe("persistent");
+    // Posted round 6, lasts 2 rounds → active 6..7, lapses at end of round 7.
+    expect(mod!.expiresRound).toBe(7);
+  });
+
+  it("#35 Black Death Returns posts a 2-round persistent plague modifier", () => {
+    const s = fresh(seats4);
+    s.round = 11;
+    const after = resolveCard(s, omenCardId(35));
+    const mod = after.activeModifiers.find((m) => m.sourceCardId === omenCardId(35));
+    expect(mod).toBeDefined();
+    expect(mod!.kind).toBe("plague");
+    expect(mod!.scope).toBe("persistent");
+    expect(mod!.expiresRound).toBe(12);
+  });
+
+  it("#36 Gunpowder Revolution posts standing siege (+1) and wall (−1) modifiers", () => {
+    const after = resolveCard(fresh(seats4), omenCardId(36));
+    const siege = after.activeModifiers.find(
+      (m) => m.sourceCardId === omenCardId(36) && m.kind === "siege_mod",
+    );
+    const wall = after.activeModifiers.find(
+      (m) => m.sourceCardId === omenCardId(36) && m.kind === "wall_mod",
+    );
+    expect(siege?.value).toBe(1);
+    expect(siege?.scope).toBe("game");
+    expect(wall?.value).toBe(-1);
+    expect(wall?.scope).toBe("game");
+  });
+
+  it("an Immediate card (#1 Bumper Harvest) posts no durable modifier", () => {
+    const after = resolveCard(fresh(seats4), omenCardId(1));
+    expect(after.activeModifiers.some((m) => m.sourceCardId === omenCardId(1))).toBe(false);
+  });
+});

@@ -10,8 +10,13 @@
  * Pure: the COMBAT phase owns a single RNG stream (seed+cursor from state) and
  * writes the advanced cursor back into the returned state.
  */
-import { GamePhase, type GameState } from "@imperium/shared";
-import { ACTIONS_PER_ROUND, ERA_BOUNDARIES, ROUNDS } from "./balance.js";
+import { BuildingType, GamePhase, type Faction, type GameState } from "@imperium/shared";
+import {
+  ACTIONS_PER_ROUND,
+  ERA_BOUNDARIES,
+  ROUNDS,
+  UNIVERSITY_ACTION_BONUS,
+} from "./balance.js";
 import { makeRng } from "./rng.js";
 import { drawOmen } from "./events/index.js";
 import { applyIncomePhase } from "./economy.js";
@@ -29,16 +34,58 @@ export function eraForRound(round: number): 1 | 2 | 3 {
   return 3;
 }
 
-/** Reset every player's per-round action budget (§10.0). */
+/**
+ * Reset every player's per-round action budget (§10.0): 4 base, +1 if the player
+ * owns a University province, +1 per card-posted 'action_bonus' modifier.
+ */
 function resetActionBudgets(state: GameState): GameState {
-  // TODO(roundLoop): add University/card bonuses (UNIVERSITY_ACTION_BONUS).
+  const bonusFor = (playerId: string, faction: Faction | null): number => {
+    let bonus = 0;
+    // §10.0 a University raises the budget to 5.
+    const hasUniversity = state.provinces.some(
+      (prov) =>
+        prov.ownerId === playerId &&
+        prov.buildings.includes(BuildingType.UNIVERSITY),
+    );
+    if (hasUniversity) bonus += UNIVERSITY_ACTION_BONUS;
+    // §10.0 certain cards can also grant an extra action (side-channel).
+    for (const mod of state.activeModifiers) {
+      if (mod.kind !== "action_bonus") continue;
+      if (
+        mod.data?.playerId === playerId ||
+        (faction != null && mod.target?.faction === faction)
+      ) {
+        bonus += mod.value ?? 1;
+      }
+    }
+    return bonus;
+  };
   return {
     ...state,
     players: state.players.map((p) => ({
       ...p,
-      actionsRemaining: ACTIONS_PER_ROUND,
+      actionsRemaining: ACTIONS_PER_ROUND + bonusFor(p.id, p.faction),
     })),
   };
+}
+
+/**
+ * §13.4 turn-order reshuffle: re-sort `turnOrder` so the lowest-prestige power
+ * acts first (initiative to the underdog; tiebreak fewer provinces, then id for
+ * determinism) and reset the active-player pointer to the head of the order.
+ */
+function sortTurnOrder(state: GameState): GameState {
+  const provinceCount = (playerId: string): number =>
+    state.provinces.filter((prov) => prov.ownerId === playerId).length;
+  const prestigeOf = (playerId: string): number =>
+    state.players.find((p) => p.id === playerId)?.prestige ?? 0;
+
+  const turnOrder = [...state.turnOrder].sort((a, b) => {
+    if (prestigeOf(a) !== prestigeOf(b)) return prestigeOf(a) - prestigeOf(b);
+    if (provinceCount(a) !== provinceCount(b)) return provinceCount(a) - provinceCount(b);
+    return a < b ? -1 : a > b ? 1 : 0;
+  });
+  return { ...state, turnOrder, activePlayerIndex: 0 };
 }
 
 /** Resolve every pending battle, naval engagement and siege for the round. */
@@ -72,8 +119,12 @@ export function advancePhase(state: GameState): GameState {
 
     case GamePhase.INCOME: {
       // Omen sub-phase sits at the front of INCOME (§10 phase 1), then income.
+      // NB: applyIncomePhase already runs upkeep + starvation internally (§4.4),
+      // so it is not invoked again here (that would double-charge grain).
       let next = drawOmen(state);
       next = applyIncomePhase(next);
+      // §13.4 initiative to the underdog: lowest prestige acts first this round.
+      next = sortTurnOrder(next);
       next = resetActionBudgets(next);
       return { ...next, phase: GamePhase.RECRUITMENT };
     }
