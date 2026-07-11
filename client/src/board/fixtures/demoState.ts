@@ -1,7 +1,7 @@
 /**
- * Demo fixture for the /board-demo route: 5 seated factions with a
- * MAP.md-plausible opening translated onto the board.svg region id scheme
- * (the SVG uses geographic regions, not MAP.md's city-based canon ids).
+ * Demo fixture for the /board-demo route: the five great powers seated with
+ * their docs/MAP.md §4 "Starting Ownership Summary" holdings (MAP.md:157-169),
+ * keyed by the canonical MAP.md province/sea-zone ids.
  * Returns fresh objects on every call — callers and tests mutate freely.
  */
 import { Faction, GamePhase, UnitType } from "@imperium/shared";
@@ -20,10 +20,10 @@ function bundle(
   gold: number,
   grain: number,
   timber: number,
-  stone: number,
+  marble: number,
   faith: number,
 ): ResourceBundle {
-  return { gold, grain, timber, stone, faith };
+  return { gold, grain, timber, marble, faith };
 }
 
 /** Fills all 7 UnitType keys so the Record<UnitType, number> shape is total. */
@@ -41,44 +41,46 @@ function units(partial: Partial<Record<UnitType, number>>): Record<UnitType, num
 }
 
 /**
- * Starting ownership, docs/MAP.md §4 "Starting Ownership Summary"
- * (lines 140–146) mapped to SVG regions:
- * - Byzantium (MAP.md:142): constantinople/selymbria → thrace,
- *   thessalonica → macedonia, morea → morea.
- * - Ottomans (MAP.md:143): bithynia/bursa/nicaea → bithynia,
- *   philippopolis/sofia → bulgaria; phrygia + galatia stand in for the
- *   early Ottoman Anatolian heartland.
- * - Venice (MAP.md:144): venice → venetia, dalmatia → dalmatia,
- *   crete → crete, negroponte → euboea.
- * - Genoa (MAP.md:145): genoa → liguria, kaffa → crimea; corsica was a
- *   Genoese possession in period.
- * - Hungary (MAP.md:146): buda → hungary, croatia → croatia,
- *   transylvania → transylvania; belgrade's march → slavonia.
- * Everything else starts Independent (ownerId null), per MAP.md §5.
+ * Starting ownership, verbatim from docs/MAP.md §4 (lines 159-163):
+ * - Byzantium (MAP.md:159): constantinople, selymbria, lemnos, thessalonica, morea
+ * - Ottomans  (MAP.md:160): edirne, gallipoli, philippopolis, sofia, bithynia, bursa, nicaea
+ * - Venice    (MAP.md:161): venice, dalmatia, corfu, negroponte, crete, modon
+ * - Genoa     (MAP.md:162): genoa, pera, chios, lesbos, kaffa
+ * - Hungary   (MAP.md:163): buda, belgrade, transylvania, croatia
+ * The 28 remaining provinces start Independent (ownerId null), MAP.md:164-169.
  */
 const OWNER_BY_PROVINCE: Readonly<Record<string, string>> = {
-  thrace: "p-byzantium",
-  macedonia: "p-byzantium",
+  constantinople: "p-byzantium",
+  selymbria: "p-byzantium",
+  lemnos: "p-byzantium",
+  thessalonica: "p-byzantium",
   morea: "p-byzantium",
+  edirne: "p-ottoman",
+  gallipoli: "p-ottoman",
+  philippopolis: "p-ottoman",
+  sofia: "p-ottoman",
   bithynia: "p-ottoman",
-  bulgaria: "p-ottoman",
-  phrygia: "p-ottoman",
-  galatia: "p-ottoman",
-  venetia: "p-venice",
+  bursa: "p-ottoman",
+  nicaea: "p-ottoman",
+  venice: "p-venice",
   dalmatia: "p-venice",
+  corfu: "p-venice",
+  negroponte: "p-venice",
   crete: "p-venice",
-  euboea: "p-venice",
-  liguria: "p-genoa",
-  corsica: "p-genoa",
-  crimea: "p-genoa",
-  hungary: "p-hungary",
-  croatia: "p-hungary",
+  modon: "p-venice",
+  genoa: "p-genoa",
+  pera: "p-genoa",
+  chios: "p-genoa",
+  lesbos: "p-genoa",
+  kaffa: "p-genoa",
+  buda: "p-hungary",
+  belgrade: "p-hungary",
   transylvania: "p-hungary",
-  slavonia: "p-hungary",
+  croatia: "p-hungary",
 };
 
 export function createDemoState(): DemoSetup {
-  // Treasuries are the FACTIONS.md starting resources (g/gr/t/s/f).
+  // Treasuries are the FACTIONS.md starting resources (g/gr/t/m/f).
   const players: Player[] = [
     {
       id: "p-byzantium",
@@ -128,7 +130,7 @@ export function createDemoState(): DemoSetup {
   ];
 
   // position is a placeholder: the Board places everything by SVG centroid,
-  // never by Province.position (0–100 space, unused on the board).
+  // never by Province.position (0-100 space, unused on the board).
   const provinces: Province[] = BOARD_PROVINCES.map((p) => ({
     id: p.id,
     name: p.name,
@@ -149,7 +151,7 @@ export function createDemoState(): DemoSetup {
     {
       id: "a-byz-1",
       ownerId: "p-byzantium",
-      locationId: "thrace",
+      locationId: "constantinople",
       units: units({ [UnitType.INFANTRY]: 3, [UnitType.LEVY]: 1 }),
     },
     {
@@ -165,9 +167,11 @@ export function createDemoState(): DemoSetup {
       units: units({ [UnitType.LEVY]: 2, [UnitType.INFANTRY]: 1, [UnitType.CAVALRY]: 1 }),
     },
     {
+      // The siege train mustered at the Ottoman European capital
+      // (edirne, MAP.md:74) for the siege of Constantinople below.
       id: "a-ott-2",
       ownerId: "p-ottoman",
-      locationId: "bulgaria",
+      locationId: "edirne",
       units: units({ [UnitType.LEVY]: 3, [UnitType.SIEGE]: 1 }),
     },
     {
@@ -179,13 +183,13 @@ export function createDemoState(): DemoSetup {
     {
       id: "a-gen-1",
       ownerId: "p-genoa",
-      locationId: "crimea",
+      locationId: "kaffa",
       units: units({ [UnitType.LEVY]: 1, [UnitType.INFANTRY]: 1 }),
     },
     {
       id: "a-hun-1",
       ownerId: "p-hungary",
-      locationId: "hungary",
+      locationId: "buda",
       units: units({ [UnitType.LEVY]: 2, [UnitType.INFANTRY]: 1, [UnitType.CAVALRY]: 1 }),
     },
     {
@@ -198,15 +202,17 @@ export function createDemoState(): DemoSetup {
 
   const fleets: Fleet[] = [
     {
+      // Venice's home water — "the Gulf", MAP.md:289.
       id: "f-ven-1",
       ownerId: "p-venice",
-      locationId: "adriatic-sea",
+      locationId: "adriatic",
       units: units({ [UnitType.GALLEY]: 2, [UnitType.WARSHIP]: 1 }),
     },
     {
+      // Genoa guards the Bosphorus chokepoint off Pera (MAP.md:283).
       id: "f-gen-1",
       ownerId: "p-genoa",
-      locationId: "ligurian-sea",
+      locationId: "bosphorus",
       units: units({ [UnitType.WARSHIP]: 2 }),
     },
   ];
@@ -225,15 +231,12 @@ export function createDemoState(): DemoSetup {
     log: [],
   };
 
-  // Siege of Constantinople, 1453 — MAP.md:54 ("Sudden-death objective");
-  // constantinople sits in the SVG's thrace region.
-  // Wall tiers, MAP.md §3: constantinople T5 (line 54) → thrace;
-  // belgrade T4 (line 83) → serbia (its Danube frontier region here);
-  // venice T3 (line 72) → venetia; genoa T3 (line 74) → liguria;
-  // buda T3 (line 82) → hungary.
+  // Siege of Constantinople, 1453 — MAP.md:71 ("Sudden-death objective").
+  // Wall tiers from MAP.md §3 quick reference (lines 143-145):
+  // T5 constantinople; T4 belgrade, rome; T3 venice, genoa, buda.
   const overlays: BoardOverlayState = {
-    sieges: [{ provinceId: "thrace", besiegerFaction: Faction.OTTOMAN }],
-    walls: { thrace: 5, serbia: 4, venetia: 3, liguria: 3, hungary: 3 },
+    sieges: [{ provinceId: "constantinople", besiegerFaction: Faction.OTTOMAN }],
+    walls: { constantinople: 5, belgrade: 4, rome: 4, venice: 3, genoa: 3, buda: 3 },
   };
 
   return { gameState, overlays };

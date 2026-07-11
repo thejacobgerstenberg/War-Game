@@ -7,9 +7,22 @@ import type { Page } from "@playwright/test";
 // Screenshots/evidence land in e2e/output by default; QA runs override with
 // BOARD_SHOTS_DIR to collect evidence outside the repo. No __dirname here:
 // the workspace is ESM ("type":"module"), so derive it from import.meta.url.
-const SHOTS_DIR =
-  process.env.BOARD_SHOTS_DIR ??
-  path.join(path.dirname(fileURLToPath(import.meta.url)), "output");
+const SPEC_DIR = path.dirname(fileURLToPath(import.meta.url));
+const SHOTS_DIR = process.env.BOARD_SHOTS_DIR ?? path.join(SPEC_DIR, "output");
+
+// The canon-id fixture SVG (a test asset, not art) is served to the page via
+// route interception and mounted through the Board's `svgUrl` override.
+const FIXTURE_SVG_PATH = path.join(SPEC_DIR, "fixtures", "canon-board.svg");
+const FIXTURE_SVG_URL = "/e2e/canon-board.svg";
+
+// docs/MAP.md canon (55 provinces / 12 seas) vs the vendored hand-drawn
+// board.svg (53 old region ids / 12 old sea ids): the expected drift until
+// the rebuilt canon-id art board lands. 17 province ids and 3 sea ids
+// coincide between the schemes.
+const EXPECTED_DRIFT = {
+  provinces: { missingInSvg: 38, extraInSvg: 36 },
+  seaZones: { missingInSvg: 9, extraInSvg: 9 },
+};
 
 function shot(name: string): string {
   fs.mkdirSync(SHOTS_DIR, { recursive: true });
@@ -19,8 +32,19 @@ function shot(name: string): string {
 async function openDemo(page: Page): Promise<void> {
   await page.goto("/board-demo");
   await expect(page.locator("svg#board")).toBeVisible();
+  // The vendored SVG still carries the retired 53-region + 12-sea id scheme.
   await expect(page.locator("#board-provinces path")).toHaveCount(53);
   await expect(page.locator("#board-seas path")).toHaveCount(12);
+}
+
+async function openFixtureDemo(page: Page): Promise<void> {
+  await page.route(`**${FIXTURE_SVG_URL}`, (route) =>
+    route.fulfill({ path: FIXTURE_SVG_PATH, contentType: "image/svg+xml" }),
+  );
+  await page.goto(`/board-demo?svgUrl=${encodeURIComponent(FIXTURE_SVG_URL)}`);
+  await expect(page.locator("svg#board")).toBeVisible();
+  await expect(page.locator("#board-provinces path")).toHaveCount(10);
+  await expect(page.locator("#board-seas path")).toHaveCount(3);
 }
 
 /**
@@ -56,8 +80,13 @@ async function pointOnShape(page: Page, id: string): Promise<{ x: number; y: num
 
 test.describe.configure({ mode: "serial" });
 
-test.describe("board demo", () => {
-  test("mounts the SVG once and the dev id-diff reporter covers the id space", async ({
+// ---------------------------------------------------------------------------
+// Real demo: the vendored hand-drawn SVG with the RETIRED id scheme. Canon
+// map data no longer matches it, so the id-diff must report exactly the
+// known drift — this is how the eventual canon-SVG swap stays verifiable.
+// ---------------------------------------------------------------------------
+test.describe("board demo — vendored SVG (expected id drift)", () => {
+  test("id-diff panel and dev reporter surface the canon-vs-SVG drift", async ({
     page,
   }) => {
     const consoleLines: string[] = [];
@@ -67,217 +96,73 @@ test.describe("board demo", () => {
     // Let StrictMode double-mount effects settle before reading the console.
     await page.waitForTimeout(250);
 
-    const mountLines = [...consoleLines];
-    const mountDrift = mountLines.filter((l) => l.includes("[board] id drift"));
+    // The dev panel shows the diff counts computed by the mounted Board.
+    await expect(page.getByTestId("id-diff-provinces")).toHaveText(
+      `provinces: ${EXPECTED_DRIFT.provinces.missingInSvg} data-only / ` +
+        `${EXPECTED_DRIFT.provinces.extraInSvg} svg-only`,
+    );
+    await expect(page.getByTestId("id-diff-seas")).toHaveText(
+      `seas: ${EXPECTED_DRIFT.seaZones.missingInSvg} data-only / ` +
+        `${EXPECTED_DRIFT.seaZones.extraInSvg} svg-only`,
+    );
 
-    // mapData.ts uses exactly the 53+12 board.svg ids (spec §1), so the
-    // mount-time diff is EMPTY and reportIdDiff is a pinned no-op (spec §2.3).
-    // Verify that silence, then verify the same mount-time code path (the real
-    // modules served by Vite) does report when drift exists, via a canary.
-    expect(mountDrift).toHaveLength(0);
-
-    const probe = (await page.evaluate(`(async () => {
-      const idDiff = await import("/src/board/idDiff.ts");
-      const svgMod = await import("/src/board/svg.ts");
-      const svg = document.querySelector("svg#board");
-      const ids = svgMod.collectShapeIds(svg);
-      const dataIds = ids.provinceIds.slice(1).concat(["atlantis"]);
-      const diff = idDiff.diffIds(ids.provinceIds, dataIds);
-      idDiff.reportIdDiff("provinces (e2e canary probe)", diff);
-      const mountDiff = {
-        provinces: idDiff.diffIds(ids.provinceIds, ids.provinceIds),
-        seaZones: idDiff.diffIds(ids.seaZoneIds, ids.seaZoneIds),
-      };
-      return { diff, mountDiff, counts: {
-        provinces: ids.provinceIds.length, seaZones: ids.seaZoneIds.length } };
-    })()`) as {
-      diff: { missingInSvg: string[]; extraInSvg: string[] };
-      mountDiff: {
-        provinces: { missingInSvg: string[]; extraInSvg: string[] };
-        seaZones: { missingInSvg: string[]; extraInSvg: string[] };
-      };
-      counts: { provinces: number; seaZones: number };
-    });
-
-    expect(probe.counts).toEqual({ provinces: 53, seaZones: 12 });
-    expect(probe.diff.missingInSvg).toEqual(["atlantis"]);
-    expect(probe.diff.extraInSvg).toHaveLength(1);
-    // The exact inputs the mount-time effect diffs produce empty diffs.
-    expect(probe.mountDiff.provinces).toEqual({ missingInSvg: [], extraInSvg: [] });
-    expect(probe.mountDiff.seaZones).toEqual({ missingInSvg: [], extraInSvg: [] });
-
-    await page.waitForTimeout(100);
-    const canaryLines = consoleLines
-      .slice(mountLines.length)
-      .filter((l) => l.includes("[board] id drift"));
-    expect(canaryLines.length).toBeGreaterThan(0);
+    // The dev console reporter fired for both id spaces with the same counts.
+    const drift = consoleLines.filter((l) => l.includes("[board] id drift"));
+    expect(drift.length).toBeGreaterThan(0);
+    expect(
+      drift.some((l) =>
+        l.includes(
+          `(provinces): ${EXPECTED_DRIFT.provinces.missingInSvg} data id(s) missing in SVG, ` +
+            `${EXPECTED_DRIFT.provinces.extraInSvg} SVG shape(s) without data`,
+        ),
+      ),
+      `no province drift line in:\n${drift.join("\n")}`,
+    ).toBe(true);
+    expect(
+      drift.some((l) =>
+        l.includes(
+          `(sea zones): ${EXPECTED_DRIFT.seaZones.missingInSvg} data id(s) missing in SVG, ` +
+            `${EXPECTED_DRIFT.seaZones.extraInSvg} SVG shape(s) without data`,
+        ),
+      ),
+      `no sea-zone drift line in:\n${drift.join("\n")}`,
+    ).toBe(true);
 
     fs.mkdirSync(SHOTS_DIR, { recursive: true });
     fs.writeFileSync(
       path.join(SHOTS_DIR, "id-diff.txt"),
       [
-        "# Mount-time id-diff — /board-demo",
+        "# Mount-time id-diff — /board-demo (vendored old-scheme SVG)",
         "",
-        "Mount console drift lines: NONE (this is the spec-pinned behavior:",
-        "mapData.ts uses exactly the 53 province + 12 sea-zone ids of",
-        "assets/board.svg, so diffIds() is empty and reportIdDiff() is a no-op",
-        "per board-spec §2.3 'no-op when both arrays are empty').",
+        "Canon mapData (docs/MAP.md: 55 provinces / 12 seas) vs the retired",
+        "hand-drawn board.svg (53 regions / 12 seas). Expected drift:",
+        `  provinces: ${JSON.stringify(EXPECTED_DRIFT.provinces)}`,
+        `  sea zones: ${JSON.stringify(EXPECTED_DRIFT.seaZones)}`,
         "",
-        "Mount-time diff computed in-page from the same inputs Board.tsx diffs:",
-        `  provinces: ${JSON.stringify(probe.mountDiff.provinces)}`,
-        `  sea zones: ${JSON.stringify(probe.mountDiff.seaZones)}`,
-        "",
-        "Reporter path verified with an injected canary diff (same modules,",
-        "same browser session):",
-        ...canaryLines.map((l) => `  ${l}`),
-        "",
-        "Full mount console:",
-        ...mountLines.map((l) => `  ${l}`),
+        "Console reporter lines:",
+        ...drift.map((l) => `  ${l}`),
         "",
       ].join("\n"),
     );
   });
 
-  test("province hover applies the elevated outline and shows fixture data", async ({
-    page,
-  }) => {
-    await openDemo(page);
-    const pt = await pointOnShape(page, "thrace");
-    await page.mouse.move(pt.x, pt.y);
-
-    await expect(page.locator("#thrace")).toHaveClass(/\bis-hovered\b/);
-    const tooltip = page.locator(".board-tooltip");
-    await expect(tooltip).toBeVisible();
-    // Fixture data: thrace = "Thrace", CITY, yields 6/2/0/1/3 (mapData.ts).
-    await expect(tooltip.locator(".board-tooltip-name")).toHaveText("Thrace");
-    await expect(tooltip.locator(".board-tooltip-sub")).toHaveText("city");
-    await expect(tooltip.locator(".board-tooltip-yields")).toHaveText(
-      "6 gold · 2 grain · 1 stone · 3 faith",
-    );
-
-    await page.screenshot({ path: shot("demo-tooltip.png") });
-
-    // Hover is transient: leaving the shape clears class and tooltip.
-    await page.mouse.move(5, 5);
-    await expect(page.locator("#thrace")).not.toHaveClass(/\bis-hovered\b/);
-    await expect(tooltip).toHaveCount(0);
-  });
-
-  test("click selects a province and highlights the legal move targets", async ({
+  test("selection still works on data-less SVG shapes (id-based, no data required)", async ({
     page,
   }) => {
     await openDemo(page);
     const pt = await pointOnShape(page, "thrace");
     await page.mouse.click(pt.x, pt.y);
     await expect(page.locator("#thrace")).toHaveClass(/\bis-selected\b/);
-
-    // Expected targets from the same adjacency module the board imports:
-    // thrace holds a-byz-1 (fixture), so land neighbors only.
-    const expected = (await page.evaluate(`(async () => {
-      const m = await import("/src/board/mapData.ts");
-      return m.neighborsOf("thrace").filter((n) => !m.isSeaZoneId(n));
-    })()`) as string[]);
-    expect(expected.sort()).toEqual(["bithynia", "bulgaria", "macedonia"]);
-
-    await expect(page.locator("#board-provinces path.is-move-target")).toHaveCount(
-      expected.length,
-    );
-    for (const id of expected) {
-      await expect(page.locator(`#${id}`)).toHaveClass(/\bis-move-target\b/);
-    }
-    // Armies never target sea zones.
-    await expect(page.locator("#board-seas path.is-move-target")).toHaveCount(0);
-
-    // Selection is persistent: it survives the pointer leaving the shape.
-    await page.mouse.move(5, 5);
-    await expect(page.locator("#thrace")).toHaveClass(/\bis-selected\b/);
-
-    await page.screenshot({ path: shot("demo-selected.png") });
-
+    // "thrace" is not a canon id, so it has no game data: no move targets...
+    await expect(page.locator(".is-move-target")).toHaveCount(0);
+    // ...and the tooltip renders its no-data fallback.
+    await page.mouse.move(pt.x, pt.y + 4);
+    const tooltip = page.locator(".board-tooltip");
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip.locator(".board-tooltip-sub")).toHaveText("no data");
     // Clicking the selected shape again toggles the selection off.
     await page.mouse.click(pt.x, pt.y);
     await expect(page.locator("#thrace")).not.toHaveClass(/\bis-selected\b/);
-  });
-
-  test("dev-control owner reassignment flips the owner class and fill", async ({
-    page,
-  }) => {
-    await openDemo(page);
-    const fill = (id: string) =>
-      page.evaluate(
-        (shapeId) => getComputedStyle(document.getElementById(shapeId)!).fill,
-        id,
-      );
-
-    // Fixture: morea starts Byzantine (--faction-byzantium #4B1F3F).
-    // The SVG ships `transition: fill .25s` on .province, so poll the
-    // computed fill instead of reading it the instant the class flips.
-    await expect(page.locator("#morea")).toHaveClass(/\bowner-byzantium\b/);
-    await expect.poll(() => fill("morea")).toBe("rgb(75, 31, 63)");
-
-    await page.locator("[data-testid=owner-province-select]").selectOption("morea");
-    await page.locator("[data-testid=owner-faction-select]").selectOption("p-venice");
-    await page.locator("[data-testid=owner-apply]").click();
-
-    await expect(page.locator("#morea")).toHaveClass(/\bowner-venice\b/);
-    await expect(page.locator("#morea")).not.toHaveClass(/\bowner-byzantium\b/);
-    // Visible fill flipped to --faction-venice #1F4E79.
-    await expect.poll(() => fill("morea")).toBe("rgb(31, 78, 121)");
-
-    // And back to Independent: owner-* classes gone, parchment base fill.
-    await page.locator("[data-testid=owner-faction-select]").selectOption("");
-    await page.locator("[data-testid=owner-apply]").click();
-    await expect(page.locator("#morea")).not.toHaveClass(/owner-/);
-  });
-
-  test("colorblind toggle applies pattern overlays", async ({ page }) => {
-    await openDemo(page);
-    await page.locator("[data-testid=colorblind-toggle]").check();
-
-    await expect(page.locator("svg#board")).toHaveClass(/\bcolorblind\b/);
-    for (const slug of ["byzantium", "ottomans", "venice", "genoa", "hungary"]) {
-      await expect(page.locator(`#facPattern-${slug}`)).toHaveCount(1);
-    }
-    // Owned provinces now paint the pattern, not the flat wash.
-    const thraceFill = await page.evaluate(
-      () => getComputedStyle(document.getElementById("thrace")!).fill,
-    );
-    expect(thraceFill).toContain("facPattern-byzantium");
-
-    await page.screenshot({ path: shot("demo-colorblind.png") });
-
-    await page.locator("[data-testid=colorblind-toggle]").uncheck();
-    await expect(page.locator("svg#board")).not.toHaveClass(/\bcolorblind\b/);
-  });
-
-  test("sea-zone hover and select work, with fleet move targets", async ({ page }) => {
-    await openDemo(page);
-    const pt = await pointOnShape(page, "adriatic-sea");
-    await page.mouse.move(pt.x, pt.y);
-
-    await expect(page.locator("#adriatic-sea")).toHaveClass(/\bis-hovered\b/);
-    const tooltip = page.locator(".board-tooltip");
-    await expect(tooltip).toBeVisible();
-    await expect(tooltip.locator(".board-tooltip-name")).toHaveText("Adriatic Sea");
-    await expect(tooltip.locator(".board-tooltip-sub")).toHaveText("sea zone");
-
-    // Fixture: f-ven-1 sits in adriatic-sea; fleets move sea→sea only.
-    await page.mouse.click(pt.x, pt.y);
-    await expect(page.locator("#adriatic-sea")).toHaveClass(/\bis-selected\b/);
-    await expect(page.locator("#ionian-sea")).toHaveClass(/\bis-move-target\b/);
-    await expect(page.locator("#board-seas path.is-move-target")).toHaveCount(1);
-    await expect(page.locator("#board-provinces path.is-move-target")).toHaveCount(0);
-  });
-
-  test("Escape clears the selection", async ({ page }) => {
-    await openDemo(page);
-    const pt = await pointOnShape(page, "thrace");
-    await page.mouse.click(pt.x, pt.y);
-    await expect(page.locator("#thrace")).toHaveClass(/\bis-selected\b/);
-
-    await page.keyboard.press("Escape");
-    await expect(page.locator(".is-selected")).toHaveCount(0);
-    await expect(page.locator(".is-move-target")).toHaveCount(0);
   });
 
   test("a lost pointerup never leaves the board stuck to the cursor", async ({
@@ -435,5 +320,159 @@ test.describe("board demo", () => {
     await page.setViewportSize({ width: 1024, height: 768 });
     await page.waitForTimeout(300);
     await page.screenshot({ path: shot("demo-1024.png") });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Canon fixture: the same demo page with the canon-id test SVG injected via
+// the Board's svgUrl override. Interactions run against MAP.md canon ids.
+// ---------------------------------------------------------------------------
+test.describe("board demo — canon-id fixture SVG", () => {
+  test("mounts the fixture with zero svg-only drift", async ({ page }) => {
+    await openFixtureDemo(page);
+    // All 13 fixture ids are canon, so nothing is svg-only; the 45 provinces
+    // and 9 seas not drawn in the fixture are data-only.
+    await expect(page.getByTestId("id-diff-provinces")).toHaveText(
+      "provinces: 45 data-only / 0 svg-only",
+    );
+    await expect(page.getByTestId("id-diff-seas")).toHaveText(
+      "seas: 9 data-only / 0 svg-only",
+    );
+  });
+
+  test("province hover shows canon MAP.md data in the tooltip", async ({ page }) => {
+    await openFixtureDemo(page);
+    const pt = await pointOnShape(page, "constantinople");
+    await page.mouse.move(pt.x, pt.y);
+
+    await expect(page.locator("#constantinople")).toHaveClass(/\bis-hovered\b/);
+    const tooltip = page.locator(".board-tooltip");
+    await expect(tooltip).toBeVisible();
+    // Canon data: MAP.md constantinople = city, gold primary, faith secondary.
+    await expect(tooltip.locator(".board-tooltip-name")).toHaveText("Constantinople");
+    await expect(tooltip.locator(".board-tooltip-sub")).toHaveText("city");
+    await expect(tooltip.locator(".board-tooltip-yields")).toHaveText(
+      "2 gold · 1 faith",
+    );
+
+    await page.screenshot({ path: shot("fixture-tooltip.png") });
+
+    // Hover is transient: leaving the shape clears class and tooltip.
+    await page.mouse.move(5, 5);
+    await expect(page.locator("#constantinople")).not.toHaveClass(/\bis-hovered\b/);
+    await expect(tooltip).toHaveCount(0);
+  });
+
+  test("click selects constantinople and highlights canon move targets", async ({
+    page,
+  }) => {
+    await openFixtureDemo(page);
+    const pt = await pointOnShape(page, "constantinople");
+    await page.mouse.click(pt.x, pt.y);
+    await expect(page.locator("#constantinople")).toHaveClass(/\bis-selected\b/);
+
+    // Fixture: a-byz-1 garrisons constantinople, so land neighbors only —
+    // selymbria, pera, and bithynia across the Bosphorus strait (MAP.md §6).
+    const expected = ["selymbria", "pera", "bithynia"];
+    await expect(page.locator("#board-provinces path.is-move-target")).toHaveCount(
+      expected.length,
+    );
+    for (const id of expected) {
+      await expect(page.locator(`#${id}`)).toHaveClass(/\bis-move-target\b/);
+    }
+    // Armies never target sea zones.
+    await expect(page.locator("#board-seas path.is-move-target")).toHaveCount(0);
+
+    // Selection is persistent: it survives the pointer leaving the shape.
+    await page.mouse.move(5, 5);
+    await expect(page.locator("#constantinople")).toHaveClass(/\bis-selected\b/);
+
+    await page.screenshot({ path: shot("fixture-selected.png") });
+
+    // Clicking the selected shape again toggles the selection off.
+    await page.mouse.click(pt.x, pt.y);
+    await expect(page.locator("#constantinople")).not.toHaveClass(/\bis-selected\b/);
+  });
+
+  test("canon starting ownership paints the owner classes", async ({ page }) => {
+    await openFixtureDemo(page);
+    const fill = (id: string) =>
+      page.evaluate(
+        (shapeId) => getComputedStyle(document.getElementById(shapeId)!).fill,
+        id,
+      );
+
+    // MAP.md §4 starts: constantinople Byzantine, venice Venetian,
+    // pera/edirne per their factions; rome starts Independent.
+    await expect(page.locator("#constantinople")).toHaveClass(/\bowner-byzantium\b/);
+    await expect.poll(() => fill("constantinople")).toBe("rgb(75, 31, 63)");
+    await expect(page.locator("#venice")).toHaveClass(/\bowner-venice\b/);
+    await expect(page.locator("#pera")).toHaveClass(/\bowner-genoa\b/);
+    await expect(page.locator("#edirne")).toHaveClass(/\bowner-ottomans\b/);
+    await expect(page.locator("#rome")).not.toHaveClass(/owner-/);
+
+    // Dev-control reassignment: hand rome to Venice, then back.
+    await page.locator("[data-testid=owner-province-select]").selectOption("rome");
+    await page.locator("[data-testid=owner-faction-select]").selectOption("p-venice");
+    await page.locator("[data-testid=owner-apply]").click();
+    await expect(page.locator("#rome")).toHaveClass(/\bowner-venice\b/);
+    await expect.poll(() => fill("rome")).toBe("rgb(31, 78, 121)");
+
+    await page.locator("[data-testid=owner-faction-select]").selectOption("");
+    await page.locator("[data-testid=owner-apply]").click();
+    await expect(page.locator("#rome")).not.toHaveClass(/owner-/);
+  });
+
+  test("colorblind toggle applies pattern overlays", async ({ page }) => {
+    await openFixtureDemo(page);
+    await page.locator("[data-testid=colorblind-toggle]").check();
+
+    await expect(page.locator("svg#board")).toHaveClass(/\bcolorblind\b/);
+    for (const slug of ["byzantium", "ottomans", "venice", "genoa", "hungary"]) {
+      await expect(page.locator(`#facPattern-${slug}`)).toHaveCount(1);
+    }
+    // Owned provinces now paint the pattern, not the flat wash.
+    const fill = await page.evaluate(
+      () => getComputedStyle(document.getElementById("constantinople")!).fill,
+    );
+    expect(fill).toContain("facPattern-byzantium");
+
+    await page.screenshot({ path: shot("fixture-colorblind.png") });
+
+    await page.locator("[data-testid=colorblind-toggle]").uncheck();
+    await expect(page.locator("svg#board")).not.toHaveClass(/\bcolorblind\b/);
+  });
+
+  test("sea-zone hover and select work, with fleet move targets", async ({ page }) => {
+    await openFixtureDemo(page);
+    const pt = await pointOnShape(page, "bosphorus");
+    await page.mouse.move(pt.x, pt.y);
+
+    await expect(page.locator("#bosphorus")).toHaveClass(/\bis-hovered\b/);
+    const tooltip = page.locator(".board-tooltip");
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip.locator(".board-tooltip-name")).toHaveText("Bosphorus");
+    await expect(tooltip.locator(".board-tooltip-sub")).toHaveText("sea zone");
+
+    // Fixture: f-gen-1 holds the bosphorus; fleets move sea→sea only. Canon
+    // targets are sea-of-marmara and black-sea-west, but only sea-of-marmara
+    // is drawn in the fixture — data ids without shapes highlight nothing.
+    await page.mouse.click(pt.x, pt.y);
+    await expect(page.locator("#bosphorus")).toHaveClass(/\bis-selected\b/);
+    await expect(page.locator("#sea-of-marmara")).toHaveClass(/\bis-move-target\b/);
+    await expect(page.locator("#board-seas path.is-move-target")).toHaveCount(1);
+    await expect(page.locator("#board-provinces path.is-move-target")).toHaveCount(0);
+  });
+
+  test("Escape and the dev select button drive the controlled selection", async ({
+    page,
+  }) => {
+    await openFixtureDemo(page);
+    await page.locator("[data-testid=select-constantinople]").click();
+    await expect(page.locator("#constantinople")).toHaveClass(/\bis-selected\b/);
+
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".is-selected")).toHaveCount(0);
+    await expect(page.locator(".is-move-target")).toHaveCount(0);
   });
 });

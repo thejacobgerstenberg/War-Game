@@ -5,39 +5,51 @@ import {
   BOARD_MAP,
   BOARD_PROVINCES,
   BOARD_SEA_ZONES,
+  CANON_PROVINCES,
   isSeaZoneId,
   neighborsOf,
 } from "../mapData";
 
-// The board.svg id contract (board-spec §1) — the single source of truth.
+// The canonical docs/MAP.md id contract — 55 land provinces (§3) and
+// 12 sea zones (§7). The single source of truth for every board id.
 const EXPECTED_PROVINCE_IDS = [
-  "albania", "apulia", "armenia", "attica", "aydin", "bithynia", "bosnia",
-  "bulgaria", "calabria", "cappadocia", "caria", "cilicia", "corsica",
-  "crete", "crimea", "croatia", "cyprus", "cyrenaica", "dalmatia", "dobruja",
-  "egypt", "epirus", "euboea", "galatia", "hungary", "karaman", "latium",
-  "liguria", "lombardy", "lycia", "lydia", "macedonia", "moldavia", "morea",
-  "pamphylia", "paphlagonia", "phrygia", "pontus", "rhodes", "sardinia",
-  "serbia", "sicily", "slavonia", "thessaly", "thrace", "transylvania",
-  "trebizond", "tripolitania", "tunis", "tuscany", "venetia", "wallachia",
-  "zeta",
+  // Thrace & Constantinople
+  "constantinople", "selymbria", "pera", "edirne", "gallipoli",
+  // Balkans
+  "philippopolis", "sofia", "wallachia", "serbia", "bosnia", "albania",
+  "croatia", "buda", "belgrade", "transylvania", "dalmatia", "ragusa",
+  // Thrace approaches & Greece & Aegean
+  "epirus", "thessaly", "thessalonica", "athens", "morea", "modon",
+  "negroponte", "chios", "lesbos", "lemnos", "naxos", "crete", "corfu",
+  "rhodes",
+  // Italy & Western Mediterranean
+  "venice", "milan", "genoa", "rome", "naples", "sicily", "tunis",
+  // Anatolia
+  "bithynia", "bursa", "nicaea", "ankara", "konya", "kastamonu", "smyrna",
+  "antalya",
+  // Black Sea
+  "varna", "sinope", "trebizond", "kaffa",
+  // Levant & Egypt
+  "aleppo", "antioch", "cairo", "alexandria", "cyprus",
 ];
 
 const EXPECTED_SEA_ZONE_IDS = [
-  "adriatic-sea", "aegean-sea", "black-sea", "cilician-sea", "ionian-sea",
-  "levantine-sea", "libyan-sea", "ligurian-sea", "sea-of-azov",
-  "sea-of-crete", "sea-of-marmara", "tyrrhenian-sea",
+  "bosphorus", "sea-of-marmara", "aegean", "sea-of-crete",
+  "eastern-mediterranean", "ionian", "adriatic", "tyrrhenian",
+  "sicilian-channel", "black-sea-west", "black-sea-east", "sea-of-azov",
 ];
 
 const ALL_IDS = [...EXPECTED_PROVINCE_IDS, ...EXPECTED_SEA_ZONE_IDS];
 
 describe("id space", () => {
-  it("has exactly the 53 board.svg province ids", () => {
+  it("has exactly the 55 canonical MAP.md province ids", () => {
+    expect(EXPECTED_PROVINCE_IDS).toHaveLength(55);
     expect(BOARD_PROVINCES.map((p) => p.id).sort()).toEqual(
       [...EXPECTED_PROVINCE_IDS].sort(),
     );
   });
 
-  it("has exactly the 12 board.svg sea-zone ids", () => {
+  it("has exactly the 12 canonical MAP.md sea-zone ids", () => {
     expect(BOARD_SEA_ZONES.map((s) => s.id).sort()).toEqual(
       [...EXPECTED_SEA_ZONE_IDS].sort(),
     );
@@ -46,6 +58,7 @@ describe("id space", () => {
   it("isSeaZoneId is true for all sea ids and false for all province ids", () => {
     for (const id of EXPECTED_SEA_ZONE_IDS) expect(isSeaZoneId(id)).toBe(true);
     for (const id of EXPECTED_PROVINCE_IDS) expect(isSeaZoneId(id)).toBe(false);
+    expect(isSeaZoneId("black-sea")).toBe(false); // retired hand-drawn SVG id
     expect(isSeaZoneId("sea_marmara")).toBe(false); // server-sample id, not ours
   });
 
@@ -57,11 +70,11 @@ describe("id space", () => {
 });
 
 describe("adjacency invariants", () => {
-  it("keys are exactly the 65 ids", () => {
+  it("keys are exactly the 67 ids", () => {
     expect(Object.keys(BOARD_ADJACENCY).sort()).toEqual([...ALL_IDS].sort());
   });
 
-  it("every neighbor id is one of the 65 ids", () => {
+  it("every neighbor id is one of the 67 ids", () => {
     const known = new Set(ALL_IDS);
     for (const [id, neighbors] of Object.entries(BOARD_ADJACENCY)) {
       for (const n of neighbors) {
@@ -93,14 +106,34 @@ describe("adjacency invariants", () => {
   });
 
   it("neighborsOf returns the adjacency row, and [] for unknown ids", () => {
-    expect(neighborsOf("thrace")).toEqual(BOARD_ADJACENCY["thrace"]);
+    expect(neighborsOf("constantinople")).toEqual(BOARD_ADJACENCY["constantinople"]);
     expect(neighborsOf("atlantis")).toEqual([]);
+    expect(neighborsOf("thrace")).toEqual([]); // retired SVG region id
   });
 
   it("every sea zone has at least one neighbor", () => {
     for (const id of EXPECTED_SEA_ZONE_IDS) {
       expect(neighborsOf(id).length, `${id} is isolated`).toBeGreaterThan(0);
     }
+  });
+
+  it("encodes the MAP.md §8 straits as land adjacency", () => {
+    // Bosphorus: constantinople <-> bithynia; Messina: naples <-> sicily.
+    expect(neighborsOf("constantinople")).toContain("bithynia");
+    expect(neighborsOf("bithynia")).toContain("constantinople");
+    expect(neighborsOf("naples")).toContain("sicily");
+    expect(neighborsOf("sicily")).toContain("naples");
+  });
+
+  it("keeps the Danube river ports off every sea zone (MAP.md §3 note)", () => {
+    expect(neighborsOf("buda").some(isSeaZoneId)).toBe(false);
+    expect(neighborsOf("belgrade").some(isSeaZoneId)).toBe(false);
+  });
+
+  it("matches MAP.md §6 for Constantinople exactly", () => {
+    expect(neighborsOf("constantinople")).toEqual([
+      "selymbria", "pera", "bithynia", "bosphorus", "sea-of-marmara",
+    ]);
   });
 });
 
@@ -114,36 +147,50 @@ describe("province data invariants", () => {
     }
   });
 
-  it("marks exactly the five capital regions as CITY", () => {
+  it("marks exactly the 15 MAP.md city-terrain provinces as CITY", () => {
     const cities = BOARD_PROVINCES.filter((p) => p.terrain === TerrainType.CITY)
       .map((p) => p.id)
       .sort();
-    expect(cities).toEqual(["hungary", "latium", "liguria", "thrace", "venetia"]);
+    expect(cities).toEqual([
+      "athens", "belgrade", "buda", "cairo", "constantinople", "genoa",
+      "kaffa", "naples", "nicaea", "pera", "ragusa", "rome",
+      "thessalonica", "trebizond", "venice",
+    ]);
   });
 
-  it("every CITY region yields gold >= 4", () => {
+  it("yields follow the primary=2 / secondary=1 quantification", () => {
     for (const p of BOARD_PROVINCES) {
-      if (p.terrain !== TerrainType.CITY) continue;
-      expect(p.yields.gold, `${p.id} city gold too low`).toBeGreaterThanOrEqual(4);
+      const values = Object.values(p.yields).sort((a, b) => b - a);
+      expect(values[0], `${p.id} primary yield`).toBe(2);
+      expect([0, 1], `${p.id} secondary yield`).toContain(values[1]);
+      expect(values.slice(2).every((v) => v === 0), `${p.id} extra yields`).toBe(true);
     }
   });
 
-  it("yields are small non-negative bundles (each field 0-6)", () => {
-    for (const p of BOARD_PROVINCES) {
-      for (const [field, value] of Object.entries(p.yields)) {
-        expect(value, `${p.id}.${field}`).toBeGreaterThanOrEqual(0);
-        expect(value, `${p.id}.${field}`).toBeLessThanOrEqual(6);
-      }
+  it("exposes MAP.md port and wall data on the canon records", () => {
+    const byId = new Map(CANON_PROVINCES.map((p) => [p.id, p]));
+    expect(byId.get("constantinople")).toMatchObject({
+      port: "Y", walls: 5, hv: 5, startingOwner: "Byzantium",
+    });
+    expect(byId.get("buda")).toMatchObject({ port: "R", walls: 3 });
+    // The five deliberate coastal non-ports (MAP.md §7 note).
+    for (const id of ["wallachia", "thessaly", "morea", "bursa", "kastamonu"]) {
+      expect(byId.get(id), id).toMatchObject({ port: "N", coastal: true });
     }
   });
 
   it("every province and sea zone has a non-empty display name", () => {
     for (const p of BOARD_PROVINCES) expect(p.name.length).toBeGreaterThan(0);
     for (const s of BOARD_SEA_ZONES) expect(s.name.length).toBeGreaterThan(0);
-    // Title-casing convention spot checks.
-    expect(BOARD_PROVINCES.find((p) => p.id === "thrace")?.name).toBe("Thrace");
-    expect(BOARD_SEA_ZONES.find((s) => s.id === "sea-of-crete")?.name).toBe(
-      "Sea of Crete",
+    // Naming convention spot checks.
+    expect(BOARD_PROVINCES.find((p) => p.id === "constantinople")?.name).toBe(
+      "Constantinople",
+    );
+    expect(BOARD_PROVINCES.find((p) => p.id === "edirne")?.name).toBe(
+      "Edirne (Adrianople)",
+    );
+    expect(BOARD_SEA_ZONES.find((s) => s.id === "sea-of-marmara")?.name).toBe(
+      "Sea of Marmara",
     );
   });
 });
