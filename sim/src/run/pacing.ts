@@ -81,7 +81,7 @@ console.log(
 console.log(
   `prestige config: keyCity ${CONFIG.prestige.keyCityPerRound}/rnd ` +
     `(+${CONFIG.prestige.constantinopleExtraPerRound} Cple), route ` +
-    `${CONFIG.prestige.tradeRoutePerRound}/rnd, greatWork ${CONFIG.prestige.greatWork}, ` +
+    `${CONFIG.prestige.tradeRoutePerRound}/rnd, greatWorks ${CONFIG.buildings.greatWorks.map((w) => w.prestige).join('/')}, ` +
     `warWon ${CONFIG.prestige.warWon}, objective ${CONFIG.prestige.secretObjective}, ` +
     `current victoryThreshold ${CONFIG.prestige.victoryThreshold}`,
 );

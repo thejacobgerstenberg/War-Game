@@ -47,10 +47,10 @@ const P: Record<string, ProvinceSpec> = {
   // Venice's marble lives in Venetian Dalmatia (Istrian stone via Zara), not
   // on the safe lagoon: the great-work engine works from round 1 but its
   // source is a mainland border province rivals can actually contest.
-  venice: { name: 'Venice', owner: 'venice', terrain: 'plains', wall: 3, key: true, y: [5, 1, 0, 0, 1], coasts: ['adriatic_north'] },
+  venice: { name: 'Venice', owner: 'venice', terrain: 'plains', wall: 3, key: true, y: [5, 1, 0, 1, 1], coasts: ['adriatic_north'] }, // marble 0 -> 1 (engine-reconciliation retune): canon §9.2 works need 6-12 marble — the round-91 "source from Dalmatia" trim assumed 4-marble generic works and starved Venice's work engine (win rate 3.3%), see TUNING_LOG
   friuli: { name: 'Friuli', owner: null, terrain: 'plains', wall: 0, y: [1, 2, 2, 0, 0], coasts: ['adriatic_north'] },
   milan: { name: 'Milan', owner: null, terrain: 'plains', wall: 2, y: [4, 3, 0, 0, 0] },
-  genoa: { name: 'Genoa', owner: 'genoa', terrain: 'hills', wall: 3, key: true, y: [5, 1, 1, 0, 1], coasts: ['ligurian'] },
+  genoa: { name: 'Genoa', owner: 'genoa', terrain: 'hills', wall: 3, key: true, y: [5, 1, 1, 1, 1], coasts: ['ligurian'] }, // marble 0 -> 1 (engine-reconciliation retune, same rationale as venice: canon §9.2 marble prices), see TUNING_LOG
   tuscany: { name: 'Tuscany', owner: null, terrain: 'hills', wall: 1, y: [3, 2, 0, 2, 0], coasts: ['ligurian'] },
   rome: { name: 'Rome', owner: null, terrain: 'plains', wall: 4, key: true, y: [3, 2, 0, 1, 2], coasts: ['tyrrhenian'] }, // canon T4 great fortress
   naples: { name: 'Naples', owner: null, terrain: 'plains', wall: 3, y: [3, 3, 0, 0, 0], coasts: ['tyrrhenian'] },

@@ -229,10 +229,16 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
   const [evMin, evMax] = cfg.events.prestigeMagnitude;
 
   // Pre-roll great work completions: jittered round, completion probability.
+  // Engine reconciliation: works score PER-WORK canon prestige (§9.2). The
+  // i-th completed work pays cfg.buildings.greatWorks[i].prestige in the same
+  // greedy (cheapest-first) order game.ts builds them: 5, 6, 6, 10.
   const greatWorkRounds: number[] = [];
   for (const gw of p.greatWorkSchedule) {
     if (rng.chance(gw.prob)) greatWorkRounds.push(gw.round + rng.range(-1, 1));
   }
+  greatWorkRounds.sort((a, b) => a - b);
+  const gwPrestigeSeq = cfg.buildings.greatWorks.map((w) => w.prestige);
+  let gwBuiltCount = 0;
 
   let keyCities = p.startKeyCities;
   let hasCple = false;
@@ -294,7 +300,9 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
     //     their window but are revealed & SCORED at game end only (canon
     //     §13.1) — added in the final round so they can never trigger an
     //     early threshold win ---
-    for (const gwRound of greatWorkRounds) if (gwRound === r) cum += pr.greatWork;
+    for (const gwRound of greatWorkRounds) {
+      if (gwRound === r && gwBuiltCount < gwPrestigeSeq.length) cum += gwPrestigeSeq[gwBuiltCount++];
+    }
     if (r >= p.objectiveWindow[0] && r <= p.objectiveWindow[1]) {
       for (let i = 0; i < objectiveDone.length; i++) {
         if (!objectiveDone[i] && rng.chance(p.objectiveHazard)) objectiveDone[i] = true;

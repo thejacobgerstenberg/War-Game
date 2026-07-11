@@ -65,12 +65,14 @@ const scenarios: Scenario[] = [
     },
   },
   {
-    name: 'greatWorkP 5->4',
+    name: 'greatWorkP -1 each',
     apply: () => {
-      CONFIG.prestige.greatWork = 4;
+      // per-work prestige since the engine reconciliation (canon §9.2)
+      CONFIG.buildings.greatWorks.forEach((w) => (w.prestige = Math.max(1, w.prestige - 1)));
     },
     restore: () => {
-      CONFIG.prestige.greatWork = 5;
+      const canon: Record<string, number> = { grandBazaar: 5, theodosianWalls: 6, greatUniversity: 6, hagiaSophia: 10 };
+      CONFIG.buildings.greatWorks.forEach((w) => (w.prestige = canon[w.id] ?? w.prestige));
     },
   },
   {

@@ -101,19 +101,27 @@ npm run sim:report
 ```
 
 The committed `results/thresholds.json` (per-player-count victory
-thresholds, TUNING_REPORT §2.13) was produced by exactly:
+thresholds, TUNING_REPORT §2.13; re-derived at the engine-reconciliation
+config) was produced by exactly:
 
 ```bash
-PLAYERS=2 THRESHOLDS=69,71,72,73,74,75,77 npm run sim:thresholds
-PLAYERS=3 THRESHOLDS=75,77,78,79,80,81,83 npm run sim:thresholds
-PLAYERS=4 THRESHOLDS=77,78,79,80,81,82,84 npm run sim:thresholds
-PLAYERS=5 THRESHOLDS=74,76,78,80,82,84,86 npm run sim:thresholds
+PLAYERS=2 npm run sim:thresholds
+PLAYERS=3 npm run sim:thresholds
+PLAYERS=4 npm run sim:thresholds
+PLAYERS=5 npm run sim:thresholds
 ```
 
-(each run merges its count into the JSON; the candidate lists were placed
-from each count's explore-batch leader-accrual quantiles — a recon pass at
-the auto-derived candidates, then a denser final grid around the pass
-region).
+(each run merges its count into the JSON; without a `THRESHOLDS` list the
+candidates are auto-derived from that count's explore-batch leader-accrual
+quantiles — the reconciliation-round grids were 2p 59–82 / 3p 63–85 /
+4p 65–87 / 5p 68–88).
+
+The per-unique economy A/B (TUNING_REPORT §2.3;
+`results/unique_economy_ab.json`) was produced by:
+
+```bash
+npx tsx src/run/unique_economy_ab.ts   # 2,000 games/arm, paired seeds 14530000+i
+```
 
 (Note the last `sim:fullgame` you run overwrites `results/fullgame.json` —
 the committed file is the 3,000-game fresh-seed final run.)

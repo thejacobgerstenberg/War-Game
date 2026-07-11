@@ -3,7 +3,7 @@
     "games": 1000,
     "baseSeed": 311002,
     "smoke": false,
-    "elapsedMs": 24798
+    "elapsedMs": 25280
   },
   "thresholds": {
     "exploitIfSuddenDeathOneBeelinerOver": 0.2,
@@ -32,53 +32,53 @@
         }
       },
       "suddenDeath": {
-        "count": 162,
-        "rate": 0.162,
-        "byBeeliner": 162,
-        "byBeelinerRate": 0.162
+        "count": 167,
+        "rate": 0.167,
+        "byBeeliner": 167,
+        "byBeelinerRate": 0.167
       },
       "beelinerWins": {
-        "count": 162,
-        "rate": 0.162,
+        "count": 167,
+        "rate": 0.167,
         "byType": {
           "threshold": 0,
           "cap": 0,
-          "suddenDeath": 162,
+          "suddenDeath": 167,
           "elimination": 0
         }
       },
       "sdCompletionRounds": {
-        "8": 83,
-        "9": 20,
-        "10": 14,
-        "11": 17,
+        "8": 84,
+        "9": 19,
+        "10": 13,
+        "11": 18,
         "12": 1,
-        "13": 2,
-        "15": 3,
-        "16": 22
+        "13": 1,
+        "15": 1,
+        "16": 30
       },
       "sdEarliestRound": 8,
       "sdBeforeRound9": {
-        "count": 83,
-        "rate": 0.083
+        "count": 84,
+        "rate": 0.084
       },
       "captureRounds": {
-        "7": 83,
-        "8": 20,
-        "9": 14,
-        "10": 17,
+        "7": 84,
+        "8": 19,
+        "9": 13,
+        "10": 18,
         "11": 1,
-        "12": 2,
-        "14": 3,
-        "15": 22
+        "12": 1,
+        "14": 1,
+        "15": 30
       },
       "captureBeforeRound8": {
-        "count": 83,
-        "rate": 0.083
+        "count": 84,
+        "rate": 0.084
       },
       "captureEver": {
-        "count": 162,
-        "rate": 0.162
+        "count": 167,
+        "rate": 0.167
       },
       "siegeStartRounds": {
         "1": 972,
@@ -94,17 +94,17 @@
       },
       "sdGarrisonAtSiegeStart": {
         "3": 13,
-        "4": 135,
-        "5": 4,
-        "6": 6,
+        "4": 142,
+        "5": 3,
+        "6": 5,
         "7": 4
       },
       "blockadeCoverage": {
         "meanShare": 0,
         "sdWinsWithBlockade": 0
       },
-      "sdWithTreasonHeld": 140,
-      "sdWallsIntactAtLastObs": 162,
+      "sdWithTreasonHeld": 139,
+      "sdWallsIntactAtLastObs": 167,
       "byzEliminated": {
         "count": 0,
         "rate": 0,
@@ -112,32 +112,32 @@
         "beforeRound8Rate": 0
       },
       "victoryTypes": {
-        "threshold": 680,
-        "cap": 158,
-        "suddenDeath": 162,
+        "threshold": 655,
+        "cap": 178,
+        "suddenDeath": 167,
         "elimination": 0
       },
       "gameLength": {
         "median": 12,
-        "mean": 12.421,
+        "mean": 12.602,
         "histogram": {
-          "8": 83,
-          "9": 26,
-          "10": 122,
-          "11": 222,
-          "12": 163,
-          "13": 32,
-          "14": 29,
-          "15": 85,
-          "16": 238
+          "8": 84,
+          "9": 20,
+          "10": 56,
+          "11": 181,
+          "12": 261,
+          "13": 45,
+          "14": 49,
+          "15": 68,
+          "16": 236
         }
       },
       "winRateByFaction": {
-        "byzantium": 0.49,
-        "ottomans": 0.162,
-        "venice": 0.053,
-        "genoa": 0.11,
-        "hungary": 0.185
+        "byzantium": 0.478,
+        "ottomans": 0.167,
+        "venice": 0.092,
+        "genoa": 0.109,
+        "hungary": 0.154
       }
     },
     {
@@ -156,59 +156,61 @@
         }
       },
       "suddenDeath": {
-        "count": 135,
-        "rate": 0.135,
-        "byBeeliner": 132,
-        "byBeelinerRate": 0.132
-      },
-      "beelinerWins": {
         "count": 138,
         "rate": 0.138,
+        "byBeeliner": 137,
+        "byBeelinerRate": 0.137
+      },
+      "beelinerWins": {
+        "count": 144,
+        "rate": 0.144,
         "byType": {
           "threshold": 0,
-          "cap": 6,
-          "suddenDeath": 132,
+          "cap": 7,
+          "suddenDeath": 137,
           "elimination": 0
         }
       },
       "sdCompletionRounds": {
         "4": 1,
+        "6": 1,
         "7": 1,
-        "8": 57,
-        "9": 18,
-        "10": 10,
-        "11": 7,
-        "12": 18,
-        "13": 8,
-        "14": 8,
-        "15": 5,
-        "16": 2
+        "8": 62,
+        "9": 12,
+        "10": 13,
+        "11": 12,
+        "12": 9,
+        "13": 9,
+        "14": 11,
+        "15": 2,
+        "16": 5
       },
       "sdEarliestRound": 4,
       "sdBeforeRound9": {
-        "count": 59,
-        "rate": 0.059
+        "count": 65,
+        "rate": 0.065
       },
       "captureRounds": {
         "3": 1,
+        "5": 1,
         "6": 1,
-        "7": 57,
-        "8": 18,
-        "9": 10,
-        "10": 7,
-        "11": 18,
-        "12": 7,
-        "13": 8,
-        "14": 4,
-        "15": 1
+        "7": 62,
+        "8": 12,
+        "9": 13,
+        "10": 12,
+        "11": 9,
+        "12": 9,
+        "13": 10,
+        "14": 2,
+        "15": 5
       },
       "captureBeforeRound8": {
-        "count": 59,
-        "rate": 0.059
+        "count": 65,
+        "rate": 0.065
       },
       "captureEver": {
-        "count": 132,
-        "rate": 0.132
+        "count": 137,
+        "rate": 0.137
       },
       "siegeStartRounds": {
         "2": 88,
@@ -218,32 +220,33 @@
         "6": 1,
         "8": 1,
         "9": 1,
-        "11": 1
+        "11": 1,
+        "15": 1
       },
       "garrisonAtSiegeStart": {
-        "3": 231,
+        "3": 232,
         "4": 629,
         "5": 48,
-        "6": 38,
-        "7": 31,
-        "8": 5,
-        "9": 5,
-        "10": 2
+        "6": 39,
+        "7": 32,
+        "8": 6,
+        "9": 3,
+        "10": 1
       },
       "sdGarrisonAtSiegeStart": {
-        "3": 32,
-        "4": 87,
-        "5": 5,
-        "6": 1,
-        "7": 2,
+        "3": 36,
+        "4": 85,
+        "5": 6,
+        "6": 2,
+        "7": 3,
         "8": 1
       },
       "blockadeCoverage": {
         "meanShare": 0,
         "sdWinsWithBlockade": 0
       },
-      "sdWithTreasonHeld": 125,
-      "sdWallsIntactAtLastObs": 132,
+      "sdWithTreasonHeld": 132,
+      "sdWallsIntactAtLastObs": 137,
       "byzEliminated": {
         "count": 0,
         "rate": 0,
@@ -251,34 +254,35 @@
         "beforeRound8Rate": 0
       },
       "victoryTypes": {
-        "threshold": 336,
-        "cap": 529,
-        "suddenDeath": 135,
+        "threshold": 309,
+        "cap": 553,
+        "suddenDeath": 138,
         "elimination": 0
       },
       "gameLength": {
         "median": 16,
-        "mean": 14.795,
+        "mean": 14.711,
         "histogram": {
           "4": 1,
+          "6": 1,
           "7": 1,
-          "8": 57,
-          "9": 18,
-          "10": 10,
-          "11": 11,
-          "12": 31,
-          "13": 39,
-          "14": 66,
-          "15": 114,
-          "16": 652
+          "8": 62,
+          "9": 12,
+          "10": 14,
+          "11": 15,
+          "12": 30,
+          "13": 43,
+          "14": 98,
+          "15": 74,
+          "16": 649
         }
       },
       "winRateByFaction": {
-        "byzantium": 0.087,
+        "byzantium": 0.077,
         "ottomans": 0.115,
-        "venice": 0.159,
-        "genoa": 0.138,
-        "hungary": 0.501
+        "venice": 0.189,
+        "genoa": 0.144,
+        "hungary": 0.475
       }
     },
     {
@@ -298,95 +302,95 @@
         }
       },
       "suddenDeath": {
-        "count": 142,
-        "rate": 0.142,
-        "byBeeliner": 62,
-        "byBeelinerRate": 0.062
+        "count": 121,
+        "rate": 0.121,
+        "byBeeliner": 39,
+        "byBeelinerRate": 0.039
       },
       "beelinerWins": {
-        "count": 102,
-        "rate": 0.102,
+        "count": 87,
+        "rate": 0.087,
         "byType": {
-          "threshold": 0,
-          "cap": 40,
-          "suddenDeath": 62,
+          "threshold": 2,
+          "cap": 46,
+          "suddenDeath": 39,
           "elimination": 0
         }
       },
       "sdCompletionRounds": {
-        "8": 6,
-        "9": 4,
-        "10": 6,
-        "11": 9,
-        "12": 16,
-        "13": 29,
-        "14": 30,
+        "7": 1,
+        "8": 2,
+        "9": 6,
+        "10": 3,
+        "11": 2,
+        "12": 13,
+        "13": 25,
+        "14": 32,
         "15": 22,
-        "16": 20
+        "16": 15
       },
-      "sdEarliestRound": 8,
+      "sdEarliestRound": 7,
       "sdBeforeRound9": {
-        "count": 6,
-        "rate": 0.006
+        "count": 3,
+        "rate": 0.003
       },
       "captureRounds": {
-        "7": 6,
-        "8": 4,
-        "9": 6,
-        "10": 9,
+        "6": 1,
+        "7": 2,
+        "8": 6,
+        "9": 3,
+        "10": 1,
         "11": 4,
-        "12": 9,
-        "13": 10,
+        "12": 6,
+        "13": 3,
         "14": 9,
         "15": 7
       },
       "captureBeforeRound8": {
-        "count": 6,
-        "rate": 0.006
+        "count": 3,
+        "rate": 0.003
       },
       "captureEver": {
-        "count": 64,
-        "rate": 0.064
+        "count": 42,
+        "rate": 0.042
       },
       "siegeStartRounds": {
-        "5": 120,
-        "6": 30,
-        "7": 14,
-        "8": 7,
-        "9": 32,
-        "10": 33,
-        "11": 36,
-        "12": 53,
-        "13": 45,
-        "14": 45,
-        "15": 29
+        "5": 98,
+        "6": 32,
+        "7": 22,
+        "8": 11,
+        "9": 22,
+        "10": 32,
+        "11": 37,
+        "12": 50,
+        "13": 52,
+        "14": 43,
+        "15": 25
       },
       "garrisonAtSiegeStart": {
         "0": 1,
-        "2": 1,
-        "3": 174,
-        "4": 153,
-        "5": 32,
-        "6": 32,
+        "3": 148,
+        "4": 144,
+        "5": 47,
+        "6": 39,
         "7": 27,
-        "8": 6,
-        "9": 8,
-        "10": 3,
-        "11": 7
+        "8": 8,
+        "9": 3,
+        "10": 2,
+        "11": 4,
+        "12": 1
       },
       "sdGarrisonAtSiegeStart": {
-        "0": 1,
-        "2": 1,
-        "3": 18,
-        "4": 18,
+        "3": 10,
+        "4": 14,
         "5": 1
       },
       "blockadeCoverage": {
-        "meanShare": 0.006756756756756757,
-        "sdWinsWithBlockade": 1
+        "meanShare": 0.0023584905660377358,
+        "sdWinsWithBlockade": 0
       },
-      "sdWithTreasonHeld": 39,
-      "sdWallsIntactAtLastObs": 62,
+      "sdWithTreasonHeld": 26,
+      "sdWallsIntactAtLastObs": 39,
       "byzEliminated": {
         "count": 0,
         "rate": 0,
@@ -394,32 +398,33 @@
         "beforeRound8Rate": 0
       },
       "victoryTypes": {
-        "threshold": 463,
-        "cap": 395,
-        "suddenDeath": 142,
+        "threshold": 451,
+        "cap": 428,
+        "suddenDeath": 121,
         "elimination": 0
       },
       "gameLength": {
         "median": 16,
-        "mean": 15.044,
+        "mean": 14.938,
         "histogram": {
-          "8": 6,
-          "9": 4,
-          "10": 7,
-          "11": 18,
-          "12": 30,
-          "13": 80,
-          "14": 102,
-          "15": 184,
-          "16": 569
+          "7": 1,
+          "8": 2,
+          "9": 7,
+          "10": 9,
+          "11": 10,
+          "12": 38,
+          "13": 72,
+          "14": 175,
+          "15": 166,
+          "16": 520
         }
       },
       "winRateByFaction": {
-        "byzantium": 0.076,
-        "ottomans": 0.177,
-        "venice": 0.102,
-        "genoa": 0.255,
-        "hungary": 0.39
+        "byzantium": 0.105,
+        "ottomans": 0.182,
+        "venice": 0.087,
+        "genoa": 0.244,
+        "hungary": 0.382
       }
     },
     {
@@ -443,31 +448,31 @@
         }
       },
       "suddenDeath": {
-        "count": 177,
-        "rate": 0.177,
-        "byBeeliner": 177,
-        "byBeelinerRate": 0.177
+        "count": 167,
+        "rate": 0.167,
+        "byBeeliner": 167,
+        "byBeelinerRate": 0.167
       },
       "beelinerWins": {
-        "count": 178,
-        "rate": 0.178,
+        "count": 170,
+        "rate": 0.17,
         "byType": {
           "threshold": 0,
-          "cap": 1,
-          "suddenDeath": 177,
+          "cap": 3,
+          "suddenDeath": 167,
           "elimination": 0
         }
       },
       "sdCompletionRounds": {
         "8": 82,
-        "9": 19,
+        "9": 17,
         "10": 12,
         "11": 16,
-        "12": 2,
-        "13": 1,
+        "12": 1,
+        "13": 2,
         "14": 1,
-        "15": 2,
-        "16": 42
+        "15": 1,
+        "16": 35
       },
       "sdEarliestRound": 8,
       "sdBeforeRound9": {
@@ -476,22 +481,22 @@
       },
       "captureRounds": {
         "7": 82,
-        "8": 19,
+        "8": 17,
         "9": 12,
         "10": 16,
-        "11": 2,
-        "12": 1,
+        "11": 1,
+        "12": 2,
         "13": 1,
-        "14": 2,
-        "15": 42
+        "14": 1,
+        "15": 35
       },
       "captureBeforeRound8": {
         "count": 82,
         "rate": 0.082
       },
       "captureEver": {
-        "count": 177,
-        "rate": 0.177
+        "count": 167,
+        "rate": 0.167
       },
       "siegeStartRounds": {
         "1": 972,
@@ -506,18 +511,18 @@
         "8": 2
       },
       "sdGarrisonAtSiegeStart": {
-        "3": 15,
-        "4": 146,
+        "3": 16,
+        "4": 134,
         "5": 5,
         "6": 6,
-        "7": 5
+        "7": 6
       },
       "blockadeCoverage": {
         "meanShare": 0,
         "sdWinsWithBlockade": 0
       },
       "sdWithTreasonHeld": 135,
-      "sdWallsIntactAtLastObs": 177,
+      "sdWallsIntactAtLastObs": 167,
       "byzEliminated": {
         "count": 0,
         "rate": 0,
@@ -525,32 +530,32 @@
         "beforeRound8Rate": 0
       },
       "victoryTypes": {
-        "threshold": 602,
-        "cap": 221,
-        "suddenDeath": 177,
+        "threshold": 598,
+        "cap": 235,
+        "suddenDeath": 167,
         "elimination": 0
       },
       "gameLength": {
         "median": 12,
-        "mean": 12.538,
+        "mean": 12.706,
         "histogram": {
           "8": 82,
-          "9": 24,
-          "10": 117,
-          "11": 209,
-          "12": 185,
-          "13": 26,
-          "14": 20,
-          "15": 33,
-          "16": 304
+          "9": 17,
+          "10": 60,
+          "11": 169,
+          "12": 277,
+          "13": 45,
+          "14": 21,
+          "15": 29,
+          "16": 300
         }
       },
       "winRateByFaction": {
-        "byzantium": 0.493,
-        "ottomans": 0.177,
-        "venice": 0.055,
-        "genoa": 0.001,
-        "hungary": 0.274
+        "byzantium": 0.484,
+        "ottomans": 0.167,
+        "venice": 0.079,
+        "genoa": 0.003,
+        "hungary": 0.267
       }
     },
     {
@@ -569,24 +574,24 @@
         }
       },
       "suddenDeath": {
-        "count": 73,
-        "rate": 0.073,
-        "byBeeliner": 73,
-        "byBeelinerRate": 0.073
+        "count": 65,
+        "rate": 0.065,
+        "byBeeliner": 65,
+        "byBeelinerRate": 0.065
       },
       "beelinerWins": {
-        "count": 73,
-        "rate": 0.073,
+        "count": 65,
+        "rate": 0.065,
         "byType": {
           "threshold": 0,
           "cap": 0,
-          "suddenDeath": 73,
+          "suddenDeath": 65,
           "elimination": 0
         }
       },
       "sdCompletionRounds": {
-        "15": 6,
-        "16": 67
+        "15": 5,
+        "16": 60
       },
       "sdEarliestRound": 15,
       "sdBeforeRound9": {
@@ -594,16 +599,16 @@
         "rate": 0
       },
       "captureRounds": {
-        "14": 6,
-        "15": 67
+        "14": 5,
+        "15": 60
       },
       "captureBeforeRound8": {
         "count": 0,
         "rate": 0
       },
       "captureEver": {
-        "count": 73,
-        "rate": 0.073
+        "count": 65,
+        "rate": 0.065
       },
       "siegeStartRounds": {
         "1": 972,
@@ -624,20 +629,20 @@
       "sdGarrisonAtSiegeStart": {
         "10": 2,
         "11": 1,
-        "12": 4,
-        "13": 13,
-        "14": 37,
-        "15": 12,
+        "12": 2,
+        "13": 12,
+        "14": 30,
+        "15": 13,
         "16": 2,
-        "17": 1,
-        "18": 1
+        "18": 2,
+        "19": 1
       },
       "blockadeCoverage": {
         "meanShare": 0,
         "sdWinsWithBlockade": 0
       },
-      "sdWithTreasonHeld": 18,
-      "sdWallsIntactAtLastObs": 72,
+      "sdWithTreasonHeld": 16,
+      "sdWallsIntactAtLastObs": 64,
       "byzEliminated": {
         "count": 0,
         "rate": 0,
@@ -645,29 +650,30 @@
         "beforeRound8Rate": 0
       },
       "victoryTypes": {
-        "threshold": 565,
-        "cap": 362,
-        "suddenDeath": 73,
+        "threshold": 510,
+        "cap": 425,
+        "suddenDeath": 65,
         "elimination": 0
       },
       "gameLength": {
         "median": 16,
-        "mean": 15.379,
+        "mean": 15.192,
         "histogram": {
-          "11": 7,
-          "12": 14,
-          "13": 50,
-          "14": 77,
-          "15": 226,
-          "16": 626
+          "10": 1,
+          "11": 5,
+          "12": 29,
+          "13": 45,
+          "14": 164,
+          "15": 198,
+          "16": 558
         }
       },
       "winRateByFaction": {
         "byzantium": 0,
-        "ottomans": 0.073,
-        "venice": 0.186,
-        "genoa": 0.386,
-        "hungary": 0.355
+        "ottomans": 0.065,
+        "venice": 0.24,
+        "genoa": 0.326,
+        "hungary": 0.369
       }
     },
     {
@@ -692,11 +698,11 @@
         "byBeelinerRate": 0
       },
       "beelinerWins": {
-        "count": 8,
-        "rate": 0.008,
+        "count": 7,
+        "rate": 0.007,
         "byType": {
           "threshold": 0,
-          "cap": 8,
+          "cap": 7,
           "suddenDeath": 0,
           "elimination": 0
         }
@@ -723,8 +729,8 @@
         "5": 11,
         "6": 5,
         "7": 1,
-        "12": 1,
-        "13": 1
+        "13": 1,
+        "14": 1
       },
       "garrisonAtSiegeStart": {
         "8": 2,
@@ -736,9 +742,9 @@
         "14": 460,
         "15": 132,
         "16": 80,
-        "17": 53,
+        "17": 54,
         "18": 16,
-        "19": 8,
+        "19": 7,
         "20": 3
       },
       "sdGarrisonAtSiegeStart": {},
@@ -762,23 +768,23 @@
       },
       "gameLength": {
         "median": 16,
-        "mean": 15.601,
+        "mean": 15.42,
         "histogram": {
           "10": 1,
-          "11": 5,
-          "12": 15,
-          "13": 35,
-          "14": 47,
-          "15": 109,
-          "16": 788
+          "11": 7,
+          "12": 36,
+          "13": 41,
+          "14": 87,
+          "15": 98,
+          "16": 730
         }
       },
       "winRateByFaction": {
         "byzantium": 0,
-        "ottomans": 0.11,
-        "venice": 0.206,
-        "genoa": 0.008,
-        "hungary": 0.676
+        "ottomans": 0.118,
+        "venice": 0.264,
+        "genoa": 0.007,
+        "hungary": 0.611
       }
     },
     {
@@ -797,24 +803,24 @@
         }
       },
       "suddenDeath": {
-        "count": 28,
-        "rate": 0.028,
-        "byBeeliner": 28,
-        "byBeelinerRate": 0.028
+        "count": 29,
+        "rate": 0.029,
+        "byBeeliner": 29,
+        "byBeelinerRate": 0.029
       },
       "beelinerWins": {
-        "count": 28,
-        "rate": 0.028,
+        "count": 29,
+        "rate": 0.029,
         "byType": {
           "threshold": 0,
           "cap": 0,
-          "suddenDeath": 28,
+          "suddenDeath": 29,
           "elimination": 0
         }
       },
       "sdCompletionRounds": {
-        "15": 2,
-        "16": 26
+        "15": 1,
+        "16": 28
       },
       "sdEarliestRound": 15,
       "sdBeforeRound9": {
@@ -822,16 +828,16 @@
         "rate": 0
       },
       "captureRounds": {
-        "14": 2,
-        "15": 26
+        "14": 1,
+        "15": 28
       },
       "captureBeforeRound8": {
         "count": 0,
         "rate": 0
       },
       "captureEver": {
-        "count": 28,
-        "rate": 0.028
+        "count": 29,
+        "rate": 0.029
       },
       "siegeStartRounds": {
         "1": 972,
@@ -847,17 +853,17 @@
       },
       "sdGarrisonAtSiegeStart": {
         "3": 1,
-        "4": 21,
-        "5": 1,
-        "6": 2,
-        "7": 3
+        "4": 23,
+        "5": 2,
+        "6": 1,
+        "7": 2
       },
       "blockadeCoverage": {
         "meanShare": 0,
         "sdWinsWithBlockade": 0
       },
       "sdWithTreasonHeld": 0,
-      "sdWallsIntactAtLastObs": 28,
+      "sdWallsIntactAtLastObs": 29,
       "byzEliminated": {
         "count": 0,
         "rate": 0,
@@ -865,31 +871,31 @@
         "beforeRound8Rate": 0
       },
       "victoryTypes": {
-        "threshold": 795,
-        "cap": 177,
-        "suddenDeath": 28,
+        "threshold": 764,
+        "cap": 207,
+        "suddenDeath": 29,
         "elimination": 0
       },
       "gameLength": {
         "median": 12,
-        "mean": 13.072,
+        "mean": 13.215,
         "histogram": {
-          "9": 2,
-          "10": 115,
-          "11": 224,
-          "12": 202,
-          "13": 39,
-          "14": 42,
-          "15": 95,
-          "16": 281
+          "9": 1,
+          "10": 52,
+          "11": 179,
+          "12": 302,
+          "13": 49,
+          "14": 67,
+          "15": 82,
+          "16": 268
         }
       },
       "winRateByFaction": {
-        "byzantium": 0.556,
-        "ottomans": 0.028,
-        "venice": 0.061,
-        "genoa": 0.135,
-        "hungary": 0.22
+        "byzantium": 0.545,
+        "ottomans": 0.029,
+        "venice": 0.107,
+        "genoa": 0.131,
+        "hungary": 0.188
       }
     },
     {
@@ -908,23 +914,23 @@
         }
       },
       "suddenDeath": {
-        "count": 70,
-        "rate": 0.07,
-        "byBeeliner": 70,
-        "byBeelinerRate": 0.07
+        "count": 69,
+        "rate": 0.069,
+        "byBeeliner": 69,
+        "byBeelinerRate": 0.069
       },
       "beelinerWins": {
-        "count": 70,
-        "rate": 0.07,
+        "count": 69,
+        "rate": 0.069,
         "byType": {
           "threshold": 0,
           "cap": 0,
-          "suddenDeath": 70,
+          "suddenDeath": 69,
           "elimination": 0
         }
       },
       "sdCompletionRounds": {
-        "15": 6,
+        "15": 5,
         "16": 64
       },
       "sdEarliestRound": 15,
@@ -933,7 +939,7 @@
         "rate": 0
       },
       "captureRounds": {
-        "14": 6,
+        "14": 5,
         "15": 64
       },
       "captureBeforeRound8": {
@@ -941,8 +947,8 @@
         "rate": 0
       },
       "captureEver": {
-        "count": 70,
-        "rate": 0.07
+        "count": 69,
+        "rate": 0.069
       },
       "siegeStartRounds": {
         "1": 972,
@@ -964,17 +970,19 @@
         "11": 1,
         "12": 5,
         "13": 11,
-        "14": 37,
-        "15": 12,
-        "16": 3,
-        "18": 1
+        "14": 35,
+        "15": 11,
+        "16": 2,
+        "17": 1,
+        "18": 2,
+        "19": 1
       },
       "blockadeCoverage": {
         "meanShare": 0,
         "sdWinsWithBlockade": 0
       },
       "sdWithTreasonHeld": 0,
-      "sdWallsIntactAtLastObs": 70,
+      "sdWallsIntactAtLastObs": 69,
       "byzEliminated": {
         "count": 0,
         "rate": 0,
@@ -982,29 +990,30 @@
         "beforeRound8Rate": 0
       },
       "victoryTypes": {
-        "threshold": 566,
-        "cap": 364,
-        "suddenDeath": 70,
+        "threshold": 520,
+        "cap": 411,
+        "suddenDeath": 69,
         "elimination": 0
       },
       "gameLength": {
         "median": 16,
-        "mean": 15.405,
+        "mean": 15.21,
         "histogram": {
-          "11": 6,
-          "12": 8,
-          "13": 44,
-          "14": 83,
-          "15": 235,
-          "16": 624
+          "10": 2,
+          "11": 4,
+          "12": 21,
+          "13": 43,
+          "14": 174,
+          "15": 197,
+          "16": 559
         }
       },
       "winRateByFaction": {
         "byzantium": 0,
-        "ottomans": 0.07,
-        "venice": 0.189,
-        "genoa": 0.397,
-        "hungary": 0.344
+        "ottomans": 0.069,
+        "venice": 0.251,
+        "genoa": 0.33,
+        "hungary": 0.35
       }
     }
   ]

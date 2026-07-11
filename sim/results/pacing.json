@@ -5,7 +5,7 @@
     "playersPerGame": 5,
     "rounds": 16,
     "smoke": false,
-    "elapsedMs": 651,
+    "elapsedMs": 665,
     "thresholdRange": [
       15,
       85
@@ -18,7 +18,6 @@
       "tradeRoutePerRound": 0,
       "tradeMonopolyPerRound": 2,
       "tradeMonopolyAdditionalPerRound": 1,
-      "greatWork": 5,
       "decisiveBattle": 1,
       "outnumberedWin": 1,
       "walledCityCapture": 2,
@@ -28,7 +27,7 @@
       "loseCapital": -3,
       "secretObjective": 4,
       "unjustifiedWar": -1,
-      "victoryThreshold": 80
+      "victoryThreshold": 78
     },
     "eventPrestigeMagnitude": [
       -2,
@@ -356,13 +355,13 @@
         18.12878423834695,
         21.487506006727536,
         23.885071279833415,
-        27.117892039083774,
-        30.36480858561589,
-        33.5796892519622,
-        38.416065993913186,
-        43.25612686208554,
-        48.124219125420474,
-        60.574803780233864
+        27.219445779272785,
+        30.566714720486946,
+        33.88146724331251,
+        38.808905974691655,
+        43.7424315233061,
+        48.70030434086176,
+        61.15088899567515
       ],
       "p10": [
         2,
@@ -397,8 +396,8 @@
         33,
         38,
         43,
-        47,
-        60
+        48,
+        61
       ],
       "p90": [
         4,
@@ -410,13 +409,13 @@
         24,
         27,
         30,
-        34,
+        35,
         38,
         42,
-        47,
-        53,
-        58,
-        71
+        48,
+        54,
+        59,
+        73
       ]
     },
     {
@@ -434,11 +433,11 @@
         24.81279013926685,
         29.882903793821033,
         35.10965263326397,
-        40.55658716183768,
-        46.14695053625741,
-        51.868016647991034,
-        57.38818632943813,
-        70.52032975828398
+        40.57579638226348,
+        46.187289899151594,
+        51.92932607651673,
+        57.449495757963824,
+        70.58163918680967
       ],
       "p10": [
         2,
@@ -765,7 +764,7 @@
       "shareEndedBeforeRound11": 1,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.9087
+      "pRound8LeaderWins": 0.9088
     },
     {
       "threshold": 25,
@@ -792,7 +791,7 @@
       "shareEndedBeforeRound11": 1,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.8977
+      "pRound8LeaderWins": 0.8979
     },
     {
       "threshold": 26,
@@ -819,7 +818,7 @@
       "shareEndedBeforeRound11": 0.9997,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.8816
+      "pRound8LeaderWins": 0.8817
     },
     {
       "threshold": 27,
@@ -846,7 +845,7 @@
       "shareEndedBeforeRound11": 0.9991,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.8585
+      "pRound8LeaderWins": 0.8584
     },
     {
       "threshold": 28,
@@ -873,7 +872,7 @@
       "shareEndedBeforeRound11": 0.9972,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.8369
+      "pRound8LeaderWins": 0.8371
     },
     {
       "threshold": 29,
@@ -914,8 +913,8 @@
         870,
         2429,
         3777,
-        2503,
-        190,
+        2507,
+        186,
         1,
         0,
         0,
@@ -923,11 +922,11 @@
         0
       ],
       "medianEndRound": 9,
-      "meanEndRound": 8.8001,
-      "shareEndedBeforeRound11": 0.9809,
+      "meanEndRound": 8.7997,
+      "shareEndedBeforeRound11": 0.9813,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.7907
+      "pRound8LeaderWins": 0.791
     },
     {
       "threshold": 31,
@@ -941,8 +940,8 @@
         662,
         2035,
         3569,
-        3174,
-        410,
+        3184,
+        400,
         4,
         0,
         0,
@@ -950,11 +949,11 @@
         0
       ],
       "medianEndRound": 9,
-      "meanEndRound": 9.019,
-      "shareEndedBeforeRound11": 0.9586,
+      "meanEndRound": 9.018,
+      "shareEndedBeforeRound11": 0.9596,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.7715
+      "pRound8LeaderWins": 0.7714
     },
     {
       "threshold": 32,
@@ -968,20 +967,20 @@
         489,
         1596,
         3343,
-        3701,
-        753,
-        21,
+        3716,
+        740,
+        19,
         0,
         0,
         0,
         0
       ],
       "medianEndRound": 9,
-      "meanEndRound": 9.2392,
-      "shareEndedBeforeRound11": 0.9226,
+      "meanEndRound": 9.2375,
+      "shareEndedBeforeRound11": 0.9241,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.7511
+      "pRound8LeaderWins": 0.7509
     },
     {
       "threshold": 33,
@@ -995,8 +994,8 @@
         360,
         1248,
         2957,
-        4083,
-        1243,
+        4107,
+        1219,
         44,
         0,
         0,
@@ -1004,11 +1003,11 @@
         0
       ],
       "medianEndRound": 10,
-      "meanEndRound": 9.4532,
-      "shareEndedBeforeRound11": 0.8713,
+      "meanEndRound": 9.4508,
+      "shareEndedBeforeRound11": 0.8737,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.7337
+      "pRound8LeaderWins": 0.7338
     },
     {
       "threshold": 34,
@@ -1022,20 +1021,20 @@
         267,
         963,
         2548,
-        4198,
-        1857,
-        119,
+        4227,
+        1832,
+        115,
         0,
         0,
         0,
         0
       ],
       "medianEndRound": 10,
-      "meanEndRound": 9.6625,
-      "shareEndedBeforeRound11": 0.8024,
+      "meanEndRound": 9.6592,
+      "shareEndedBeforeRound11": 0.8053,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.7182
+      "pRound8LeaderWins": 0.7192
     },
     {
       "threshold": 35,
@@ -1049,20 +1048,20 @@
         187,
         783,
         2163,
-        4090,
-        2495,
-        249,
+        4131,
+        2463,
+        240,
         1,
         0,
         0,
         0
       ],
       "medianEndRound": 10,
-      "meanEndRound": 9.8575,
-      "shareEndedBeforeRound11": 0.7255,
+      "meanEndRound": 9.8525,
+      "shareEndedBeforeRound11": 0.7296,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.7054
+      "pRound8LeaderWins": 0.707
     },
     {
       "threshold": 36,
@@ -1076,20 +1075,20 @@
         130,
         600,
         1850,
-        3841,
-        3117,
-        433,
-        12,
+        3866,
+        3106,
+        420,
+        11,
         0,
         0,
         0
       ],
       "medianEndRound": 10,
-      "meanEndRound": 10.0509,
-      "shareEndedBeforeRound11": 0.6438,
+      "meanEndRound": 10.0469,
+      "shareEndedBeforeRound11": 0.6463,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.6926
+      "pRound8LeaderWins": 0.694
     },
     {
       "threshold": 37,
@@ -1103,20 +1102,20 @@
         96,
         476,
         1488,
-        3539,
-        3601,
-        759,
+        3563,
+        3596,
+        740,
         30,
         0,
         0,
         0
       ],
       "medianEndRound": 10,
-      "meanEndRound": 10.2435,
-      "shareEndedBeforeRound11": 0.561,
+      "meanEndRound": 10.2392,
+      "shareEndedBeforeRound11": 0.5634,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.6804
+      "pRound8LeaderWins": 0.6816
     },
     {
       "threshold": 38,
@@ -1130,20 +1129,20 @@
         64,
         359,
         1220,
-        3133,
-        3979,
-        1173,
-        66,
+        3163,
+        3968,
+        1160,
+        60,
         0,
         0,
         0
       ],
       "medianEndRound": 11,
-      "meanEndRound": 10.4367,
-      "shareEndedBeforeRound11": 0.4782,
+      "meanEndRound": 10.4312,
+      "shareEndedBeforeRound11": 0.4812,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.668
+      "pRound8LeaderWins": 0.6696
     },
     {
       "threshold": 39,
@@ -1157,20 +1156,20 @@
         43,
         264,
         990,
-        2777,
-        4113,
-        1687,
-        120,
+        2798,
+        4124,
+        1658,
+        117,
         1,
         0,
         0
       ],
       "medianEndRound": 11,
-      "meanEndRound": 10.6183,
-      "shareEndedBeforeRound11": 0.4079,
+      "meanEndRound": 10.6127,
+      "shareEndedBeforeRound11": 0.41,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.6561
+      "pRound8LeaderWins": 0.6581
     },
     {
       "threshold": 40,
@@ -1184,20 +1183,20 @@
         27,
         191,
         809,
-        2421,
-        4104,
-        2194,
-        246,
+        2436,
+        4114,
+        2182,
+        233,
         3,
         0,
         0
       ],
       "medianEndRound": 11,
-      "meanEndRound": 10.7949,
-      "shareEndedBeforeRound11": 0.3453,
+      "meanEndRound": 10.7896,
+      "shareEndedBeforeRound11": 0.3468,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.6443
+      "pRound8LeaderWins": 0.6462
     },
     {
       "threshold": 41,
@@ -1211,20 +1210,20 @@
         22,
         148,
         629,
-        2055,
-        3955,
-        2754,
-        426,
+        2080,
+        3960,
+        2738,
+        412,
         9,
         0,
         0
       ],
       "medianEndRound": 11,
-      "meanEndRound": 10.9778,
-      "shareEndedBeforeRound11": 0.2856,
+      "meanEndRound": 10.9709,
+      "shareEndedBeforeRound11": 0.2881,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.6337
+      "pRound8LeaderWins": 0.6357
     },
     {
       "threshold": 42,
@@ -1238,20 +1237,20 @@
         14,
         101,
         500,
-        1773,
-        3725,
-        3176,
-        685,
-        24,
+        1788,
+        3734,
+        3169,
+        669,
+        23,
         0,
         0
       ],
       "medianEndRound": 11,
-      "meanEndRound": 11.1476,
-      "shareEndedBeforeRound11": 0.239,
+      "meanEndRound": 11.1419,
+      "shareEndedBeforeRound11": 0.2405,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.6247
+      "pRound8LeaderWins": 0.6278
     },
     {
       "threshold": 43,
@@ -1265,20 +1264,20 @@
         8,
         74,
         399,
-        1464,
-        3422,
-        3541,
-        1044,
-        46,
+        1480,
+        3444,
+        3522,
+        1028,
+        43,
         0,
         0
       ],
       "medianEndRound": 11,
-      "meanEndRound": 11.3241,
-      "shareEndedBeforeRound11": 0.1947,
+      "meanEndRound": 11.3165,
+      "shareEndedBeforeRound11": 0.1963,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.616
+      "pRound8LeaderWins": 0.6198
     },
     {
       "threshold": 44,
@@ -1292,20 +1291,20 @@
         5,
         51,
         301,
-        1204,
-        3141,
-        3727,
-        1453,
-        114,
+        1215,
+        3152,
+        3725,
+        1441,
+        106,
         3,
         0
       ],
       "medianEndRound": 12,
-      "meanEndRound": 11.5003,
-      "shareEndedBeforeRound11": 0.1562,
+      "meanEndRound": 11.4942,
+      "shareEndedBeforeRound11": 0.1573,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.6099
+      "pRound8LeaderWins": 0.6129
     },
     {
       "threshold": 45,
@@ -1319,20 +1318,20 @@
         4,
         43,
         239,
-        966,
-        2799,
-        3838,
-        1921,
-        185,
+        974,
+        2813,
+        3849,
+        1896,
+        177,
         5,
         0
       ],
       "medianEndRound": 12,
-      "meanEndRound": 11.6666,
-      "shareEndedBeforeRound11": 0.1252,
+      "meanEndRound": 11.6595,
+      "shareEndedBeforeRound11": 0.126,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.6027
+      "pRound8LeaderWins": 0.6052
     },
     {
       "threshold": 46,
@@ -1346,20 +1345,20 @@
         2,
         35,
         174,
-        798,
-        2431,
-        3862,
-        2334,
-        354,
+        805,
+        2453,
+        3850,
+        2332,
+        339,
         10,
         0
       ],
       "medianEndRound": 12,
-      "meanEndRound": 11.8373,
-      "shareEndedBeforeRound11": 0.1009,
+      "meanEndRound": 11.8305,
+      "shareEndedBeforeRound11": 0.1016,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.5975
+      "pRound8LeaderWins": 0.5986
     },
     {
       "threshold": 47,
@@ -1373,20 +1372,20 @@
         2,
         20,
         139,
-        634,
-        2120,
-        3792,
-        2706,
-        563,
-        24,
+        640,
+        2129,
+        3805,
+        2702,
+        541,
+        22,
         0
       ],
       "medianEndRound": 12,
-      "meanEndRound": 12.0009,
-      "shareEndedBeforeRound11": 0.0795,
+      "meanEndRound": 11.9934,
+      "shareEndedBeforeRound11": 0.0801,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.5922
+      "pRound8LeaderWins": 0.5929
     },
     {
       "threshold": 48,
@@ -1400,20 +1399,20 @@
         0,
         16,
         101,
-        526,
-        1805,
-        3659,
-        3044,
-        791,
-        57,
+        528,
+        1817,
+        3671,
+        3048,
+        766,
+        52,
         1
       ],
       "medianEndRound": 12,
-      "meanEndRound": 12.1577,
-      "shareEndedBeforeRound11": 0.0643,
+      "meanEndRound": 12.15,
+      "shareEndedBeforeRound11": 0.0645,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.5855
+      "pRound8LeaderWins": 0.5857
     },
     {
       "threshold": 49,
@@ -1427,20 +1426,20 @@
         0,
         12,
         80,
-        423,
-        1507,
-        3367,
-        3400,
-        1100,
-        108,
+        427,
+        1517,
+        3392,
+        3383,
+        1084,
+        102,
         3
       ],
       "medianEndRound": 12,
-      "meanEndRound": 12.3295,
-      "shareEndedBeforeRound11": 0.0515,
+      "meanEndRound": 12.321,
+      "shareEndedBeforeRound11": 0.0519,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.5815
+      "pRound8LeaderWins": 0.5818
     },
     {
       "threshold": 50,
@@ -1454,20 +1453,20 @@
         0,
         6,
         55,
-        355,
-        1281,
-        3023,
-        3654,
-        1430,
-        192,
+        356,
+        1289,
+        3041,
+        3660,
+        1408,
+        181,
         4
       ],
       "medianEndRound": 13,
-      "meanEndRound": 12.4926,
-      "shareEndedBeforeRound11": 0.0416,
+      "meanEndRound": 12.4845,
+      "shareEndedBeforeRound11": 0.0417,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.5763
+      "pRound8LeaderWins": 0.5771
     },
     {
       "threshold": 51,
@@ -1481,20 +1480,20 @@
         0,
         4,
         43,
-        265,
-        1077,
-        2728,
-        3719,
-        1816,
-        335,
-        13
+        266,
+        1083,
+        2743,
+        3731,
+        1803,
+        315,
+        12
       ],
       "medianEndRound": 13,
-      "meanEndRound": 12.6656,
-      "shareEndedBeforeRound11": 0.0312,
+      "meanEndRound": 12.657,
+      "shareEndedBeforeRound11": 0.0313,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.5725
+      "pRound8LeaderWins": 0.573
     },
     {
       "threshold": 52,
@@ -1508,20 +1507,20 @@
         0,
         3,
         30,
-        207,
-        913,
-        2418,
-        3727,
-        2159,
-        509,
-        34
+        209,
+        918,
+        2440,
+        3735,
+        2145,
+        489,
+        31
       ],
       "medianEndRound": 13,
-      "meanEndRound": 12.8279,
-      "shareEndedBeforeRound11": 0.024,
+      "meanEndRound": 12.8178,
+      "shareEndedBeforeRound11": 0.0242,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.5661
+      "pRound8LeaderWins": 0.5662
     },
     {
       "threshold": 53,
@@ -1535,17 +1534,17 @@
         0,
         2,
         22,
-        170,
-        756,
-        2128,
-        3628,
-        2499,
-        724,
-        71
+        171,
+        758,
+        2138,
+        3653,
+        2502,
+        685,
+        69
       ],
       "medianEndRound": 13,
-      "meanEndRound": 12.9912,
-      "shareEndedBeforeRound11": 0.0194,
+      "meanEndRound": 12.9814,
+      "shareEndedBeforeRound11": 0.0195,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
       "pRound8LeaderWins": 0.5635
@@ -1563,19 +1562,19 @@
         1,
         12,
         138,
-        613,
-        1862,
-        3458,
-        2804,
-        994,
-        118
+        615,
+        1885,
+        3480,
+        2788,
+        974,
+        107
       ],
       "medianEndRound": 13,
-      "meanEndRound": 13.1591,
+      "meanEndRound": 13.1475,
       "shareEndedBeforeRound11": 0.0151,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.5586
+      "pRound8LeaderWins": 0.5593
     },
     {
       "threshold": 55,
@@ -1590,19 +1589,19 @@
         1,
         10,
         95,
-        506,
-        1593,
-        3274,
-        3010,
-        1301,
-        210
+        508,
+        1606,
+        3293,
+        3024,
+        1270,
+        193
       ],
       "medianEndRound": 13,
-      "meanEndRound": 13.3307,
+      "meanEndRound": 13.3191,
       "shareEndedBeforeRound11": 0.0106,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.5559
+      "pRound8LeaderWins": 0.5565
     },
     {
       "threshold": 56,
@@ -1617,19 +1616,19 @@
         0,
         5,
         71,
-        412,
-        1390,
-        3006,
-        3181,
-        1574,
-        361
+        414,
+        1403,
+        3028,
+        3179,
+        1557,
+        343
       ],
       "medianEndRound": 14,
-      "meanEndRound": 13.4965,
+      "meanEndRound": 13.4858,
       "shareEndedBeforeRound11": 0.0076,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.5519
+      "pRound8LeaderWins": 0.5532
     },
     {
       "threshold": 57,
@@ -1644,19 +1643,19 @@
         0,
         3,
         56,
-        336,
-        1191,
-        2709,
-        3242,
-        1919,
-        544
+        337,
+        1199,
+        2743,
+        3254,
+        1891,
+        517
       ],
       "medianEndRound": 14,
-      "meanEndRound": 13.6669,
+      "meanEndRound": 13.6534,
       "shareEndedBeforeRound11": 0.0059,
       "shareDecidedByThreshold": 1,
       "shareDecidedByCap": 0,
-      "pRound8LeaderWins": 0.5466
+      "pRound8LeaderWins": 0.5476
     },
     {
       "threshold": 58,
@@ -1671,19 +1670,19 @@
         0,
         2,
         44,
-        264,
-        1043,
-        2430,
-        3230,
-        2209,
-        778
+        265,
+        1049,
+        2459,
+        3238,
+        2195,
+        748
       ],
       "medianEndRound": 14,
-      "meanEndRound": 13.8271,
+      "meanEndRound": 13.8153,
       "shareEndedBeforeRound11": 0.0046,
       "shareDecidedByThreshold": 0.9999,
       "shareDecidedByCap": 0.00009999999999998899,
-      "pRound8LeaderWins": 0.5429
+      "pRound8LeaderWins": 0.5441
     },
     {
       "threshold": 59,
@@ -1699,18 +1698,18 @@
         2,
         28,
         215,
-        890,
-        2169,
-        3170,
-        2454,
-        1072
+        899,
+        2195,
+        3179,
+        2443,
+        1039
       ],
       "medianEndRound": 14,
-      "meanEndRound": 13.9882,
+      "meanEndRound": 13.9761,
       "shareEndedBeforeRound11": 0.003,
       "shareDecidedByThreshold": 0.9998,
       "shareDecidedByCap": 0.00019999999999997797,
-      "pRound8LeaderWins": 0.5369
+      "pRound8LeaderWins": 0.5394
     },
     {
       "threshold": 60,
@@ -1726,18 +1725,18 @@
         2,
         20,
         169,
-        766,
-        1893,
-        3073,
-        2667,
-        1410
+        767,
+        1924,
+        3093,
+        2657,
+        1368
       ],
       "medianEndRound": 14,
-      "meanEndRound": 14.1465,
+      "meanEndRound": 14.1338,
       "shareEndedBeforeRound11": 0.0022,
       "shareDecidedByThreshold": 0.9996,
       "shareDecidedByCap": 0.00039999999999995595,
-      "pRound8LeaderWins": 0.5339
+      "pRound8LeaderWins": 0.5345
     },
     {
       "threshold": 61,
@@ -1753,18 +1752,18 @@
         2,
         14,
         135,
-        637,
-        1656,
-        2909,
-        2861,
-        1786
+        641,
+        1686,
+        2922,
+        2858,
+        1742
       ],
       "medianEndRound": 14,
-      "meanEndRound": 14.3032,
+      "meanEndRound": 14.2903,
       "shareEndedBeforeRound11": 0.0016,
       "shareDecidedByThreshold": 0.9993,
       "shareDecidedByCap": 0.0007000000000000339,
-      "pRound8LeaderWins": 0.5284
+      "pRound8LeaderWins": 0.5287
     },
     {
       "threshold": 62,
@@ -1780,18 +1779,18 @@
         1,
         10,
         106,
-        534,
-        1470,
-        2704,
-        2939,
-        2236
+        537,
+        1484,
+        2728,
+        2945,
+        2189
       ],
       "medianEndRound": 15,
-      "meanEndRound": 14.451,
+      "meanEndRound": 14.4402,
       "shareEndedBeforeRound11": 0.0011,
       "shareDecidedByThreshold": 0.999,
       "shareDecidedByCap": 0.0010000000000000009,
-      "pRound8LeaderWins": 0.5242
+      "pRound8LeaderWins": 0.5241
     },
     {
       "threshold": 63,
@@ -1808,17 +1807,17 @@
         5,
         82,
         453,
-        1291,
-        2482,
-        2996,
-        2690
+        1311,
+        2507,
+        3000,
+        2641
       ],
       "medianEndRound": 15,
-      "meanEndRound": 14.5908,
+      "meanEndRound": 14.5794,
       "shareEndedBeforeRound11": 0.0006,
-      "shareDecidedByThreshold": 0.9981,
-      "shareDecidedByCap": 0.0019000000000000128,
-      "pRound8LeaderWins": 0.5214
+      "shareDecidedByThreshold": 0.9983,
+      "shareDecidedByCap": 0.0017000000000000348,
+      "pRound8LeaderWins": 0.5222
     },
     {
       "threshold": 64,
@@ -1834,18 +1833,18 @@
         1,
         3,
         58,
-        365,
-        1149,
-        2298,
-        2934,
-        3192
+        368,
+        1164,
+        2333,
+        2932,
+        3141
       ],
       "medianEndRound": 15,
-      "meanEndRound": 14.7248,
+      "meanEndRound": 14.7123,
       "shareEndedBeforeRound11": 0.0004,
-      "shareDecidedByThreshold": 0.9963,
-      "shareDecidedByCap": 0.0037000000000000366,
-      "pRound8LeaderWins": 0.5201
+      "shareDecidedByThreshold": 0.997,
+      "shareDecidedByCap": 0.0030000000000000027,
+      "pRound8LeaderWins": 0.5208
     },
     {
       "threshold": 65,
@@ -1861,18 +1860,18 @@
         1,
         2,
         46,
-        299,
-        1031,
-        2028,
-        2866,
-        3727
+        302,
+        1040,
+        2061,
+        2869,
+        3679
       ],
       "medianEndRound": 15,
-      "meanEndRound": 14.854,
+      "meanEndRound": 14.8432,
       "shareEndedBeforeRound11": 0.0003,
-      "shareDecidedByThreshold": 0.9936,
-      "shareDecidedByCap": 0.006399999999999961,
-      "pRound8LeaderWins": 0.5172
+      "shareDecidedByThreshold": 0.9939,
+      "shareDecidedByCap": 0.006099999999999994,
+      "pRound8LeaderWins": 0.5182
     },
     {
       "threshold": 66,
@@ -1888,18 +1887,18 @@
         0,
         2,
         28,
-        249,
-        877,
-        1842,
-        2761,
-        4241
+        251,
+        888,
+        1871,
+        2760,
+        4200
       ],
       "medianEndRound": 15,
-      "meanEndRound": 14.9776,
+      "meanEndRound": 14.9678,
       "shareEndedBeforeRound11": 0.0002,
-      "shareDecidedByThreshold": 0.9889,
-      "shareDecidedByCap": 0.011099999999999999,
-      "pRound8LeaderWins": 0.5151
+      "shareDecidedByThreshold": 0.9895,
+      "shareDecidedByCap": 0.010499999999999954,
+      "pRound8LeaderWins": 0.5162
     },
     {
       "threshold": 67,
@@ -1915,18 +1914,18 @@
         0,
         2,
         21,
-        195,
-        774,
-        1643,
-        2645,
-        4720
+        196,
+        782,
+        1670,
+        2658,
+        4671
       ],
       "medianEndRound": 15,
-      "meanEndRound": 15.085,
+      "meanEndRound": 15.0755,
       "shareEndedBeforeRound11": 0.0002,
-      "shareDecidedByThreshold": 0.9826,
-      "shareDecidedByCap": 0.01739999999999997,
-      "pRound8LeaderWins": 0.5134
+      "shareDecidedByThreshold": 0.9836,
+      "shareDecidedByCap": 0.01639999999999997,
+      "pRound8LeaderWins": 0.5143
     },
     {
       "threshold": 68,
@@ -1942,18 +1941,18 @@
         0,
         2,
         16,
-        155,
-        656,
-        1453,
-        2509,
-        5209
+        156,
+        663,
+        1478,
+        2536,
+        5149
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.1905,
+      "meanEndRound": 15.1803,
       "shareEndedBeforeRound11": 0.0002,
-      "shareDecidedByThreshold": 0.974,
-      "shareDecidedByCap": 0.026000000000000023,
-      "pRound8LeaderWins": 0.5112
+      "shareDecidedByThreshold": 0.9752,
+      "shareDecidedByCap": 0.024800000000000044,
+      "pRound8LeaderWins": 0.512
     },
     {
       "threshold": 69,
@@ -1970,17 +1969,17 @@
         1,
         13,
         118,
-        554,
-        1279,
-        2380,
-        5655
+        560,
+        1294,
+        2404,
+        5610
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.2857,
+      "meanEndRound": 15.2785,
       "shareEndedBeforeRound11": 0.0001,
-      "shareDecidedByThreshold": 0.963,
-      "shareDecidedByCap": 0.03700000000000003,
-      "pRound8LeaderWins": 0.5093
+      "shareDecidedByThreshold": 0.9638,
+      "shareDecidedByCap": 0.03620000000000001,
+      "pRound8LeaderWins": 0.5111
     },
     {
       "threshold": 70,
@@ -1997,17 +1996,17 @@
         1,
         10,
         102,
-        460,
-        1176,
-        2166,
-        6085
+        465,
+        1194,
+        2176,
+        6052
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.3638,
+      "meanEndRound": 15.3577,
       "shareEndedBeforeRound11": 0.0001,
-      "shareDecidedByThreshold": 0.9473,
-      "shareDecidedByCap": 0.05269999999999997,
-      "pRound8LeaderWins": 0.5083
+      "shareDecidedByThreshold": 0.949,
+      "shareDecidedByCap": 0.051000000000000045,
+      "pRound8LeaderWins": 0.5097
     },
     {
       "threshold": 71,
@@ -2023,18 +2022,18 @@
         0,
         1,
         5,
-        77,
-        387,
-        1045,
-        2025,
-        6460
+        78,
+        390,
+        1059,
+        2040,
+        6427
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.4385,
+      "meanEndRound": 15.4329,
       "shareEndedBeforeRound11": 0.0001,
-      "shareDecidedByThreshold": 0.9279,
-      "shareDecidedByCap": 0.07210000000000005,
-      "pRound8LeaderWins": 0.5067
+      "shareDecidedByThreshold": 0.9299,
+      "shareDecidedByCap": 0.07010000000000005,
+      "pRound8LeaderWins": 0.5075
     },
     {
       "threshold": 72,
@@ -2051,17 +2050,17 @@
         1,
         3,
         65,
-        324,
-        917,
-        1836,
-        6854
+        330,
+        923,
+        1874,
+        6804
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.5077,
+      "meanEndRound": 15.5009,
       "shareEndedBeforeRound11": 0.0001,
-      "shareDecidedByThreshold": 0.9033,
-      "shareDecidedByCap": 0.09670000000000001,
-      "pRound8LeaderWins": 0.504
+      "shareDecidedByThreshold": 0.906,
+      "shareDecidedByCap": 0.09399999999999997,
+      "pRound8LeaderWins": 0.5046
     },
     {
       "threshold": 73,
@@ -2078,17 +2077,17 @@
         0,
         4,
         53,
-        264,
-        813,
-        1665,
-        7201
+        265,
+        821,
+        1695,
+        7162
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.5685,
+      "meanEndRound": 15.5636,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.8723,
-      "shareDecidedByCap": 0.12770000000000004,
-      "pRound8LeaderWins": 0.5025
+      "shareDecidedByThreshold": 0.8766,
+      "shareDecidedByCap": 0.12339999999999995,
+      "pRound8LeaderWins": 0.503
     },
     {
       "threshold": 74,
@@ -2105,17 +2104,17 @@
         0,
         3,
         40,
-        217,
-        712,
-        1511,
-        7517
+        221,
+        720,
+        1523,
+        7493
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.6239,
+      "meanEndRound": 15.6199,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.839,
-      "shareDecidedByCap": 0.16100000000000003,
-      "pRound8LeaderWins": 0.5019
+      "shareDecidedByThreshold": 0.8424,
+      "shareDecidedByCap": 0.15759999999999996,
+      "pRound8LeaderWins": 0.5027
     },
     {
       "threshold": 75,
@@ -2131,18 +2130,18 @@
         0,
         0,
         2,
-        35,
-        171,
-        619,
-        1360,
-        7813
+        36,
+        174,
+        629,
+        1375,
+        7784
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.6739,
+      "meanEndRound": 15.6691,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.8015,
-      "shareDecidedByCap": 0.1985,
-      "pRound8LeaderWins": 0.5014
+      "shareDecidedByThreshold": 0.8067,
+      "shareDecidedByCap": 0.19330000000000003,
+      "pRound8LeaderWins": 0.5021
     },
     {
       "threshold": 76,
@@ -2158,18 +2157,18 @@
         0,
         0,
         1,
-        24,
+        26,
         143,
-        542,
-        1231,
-        8059
+        545,
+        1251,
+        8034
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.7155,
+      "meanEndRound": 15.7121,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.7582,
-      "shareDecidedByCap": 0.24180000000000001,
-      "pRound8LeaderWins": 0.5014
+      "shareDecidedByThreshold": 0.7629,
+      "shareDecidedByCap": 0.23709999999999998,
+      "pRound8LeaderWins": 0.5021
     },
     {
       "threshold": 77,
@@ -2187,16 +2186,16 @@
         1,
         19,
         122,
-        454,
-        1143,
-        8261
+        458,
+        1151,
+        8249
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.7502,
+      "meanEndRound": 15.7486,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.7164,
-      "shareDecidedByCap": 0.28359999999999996,
-      "pRound8LeaderWins": 0.5015
+      "shareDecidedByThreshold": 0.7201,
+      "shareDecidedByCap": 0.27990000000000004,
+      "pRound8LeaderWins": 0.5022
     },
     {
       "threshold": 78,
@@ -2213,17 +2212,17 @@
         0,
         1,
         13,
-        98,
-        402,
-        995,
-        8491
+        100,
+        406,
+        1003,
+        8477
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.785,
+      "meanEndRound": 15.7828,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.67,
-      "shareDecidedByCap": 0.32999999999999996,
-      "pRound8LeaderWins": 0.5015
+      "shareDecidedByThreshold": 0.6747,
+      "shareDecidedByCap": 0.32530000000000003,
+      "pRound8LeaderWins": 0.5021
     },
     {
       "threshold": 79,
@@ -2240,17 +2239,17 @@
         0,
         1,
         8,
-        87,
-        343,
-        849,
-        8712
+        88,
+        344,
+        867,
+        8692
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.8167,
+      "meanEndRound": 15.8144,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.6262,
-      "shareDecidedByCap": 0.3738,
-      "pRound8LeaderWins": 0.5012
+      "shareDecidedByThreshold": 0.6295,
+      "shareDecidedByCap": 0.37050000000000005,
+      "pRound8LeaderWins": 0.5016
     },
     {
       "threshold": 80,
@@ -2267,17 +2266,17 @@
         0,
         0,
         7,
-        71,
-        286,
-        759,
-        8877
+        72,
+        290,
+        764,
+        8867
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.8428,
+      "meanEndRound": 15.8412,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.5819,
-      "shareDecidedByCap": 0.4181,
-      "pRound8LeaderWins": 0.5004
+      "shareDecidedByThreshold": 0.5861,
+      "shareDecidedByCap": 0.41390000000000005,
+      "pRound8LeaderWins": 0.5009
     },
     {
       "threshold": 81,
@@ -2294,17 +2293,17 @@
         0,
         0,
         6,
-        56,
-        227,
-        681,
-        9030
+        58,
+        232,
+        683,
+        9021
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.8673,
+      "meanEndRound": 15.8655,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.5358,
-      "shareDecidedByCap": 0.46419999999999995,
-      "pRound8LeaderWins": 0.5
+      "shareDecidedByThreshold": 0.5398,
+      "shareDecidedByCap": 0.46020000000000005,
+      "pRound8LeaderWins": 0.5005
     },
     {
       "threshold": 82,
@@ -2321,17 +2320,17 @@
         0,
         0,
         5,
-        42,
-        187,
-        607,
-        9159
+        45,
+        192,
+        608,
+        9150
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.8873,
+      "meanEndRound": 15.8853,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.4938,
-      "shareDecidedByCap": 0.5062,
-      "pRound8LeaderWins": 0.4999
+      "shareDecidedByThreshold": 0.497,
+      "shareDecidedByCap": 0.503,
+      "pRound8LeaderWins": 0.5004
     },
     {
       "threshold": 83,
@@ -2348,17 +2347,17 @@
         0,
         0,
         3,
-        37,
-        157,
+        38,
+        159,
         529,
-        9274
+        9271
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.9034,
+      "meanEndRound": 15.9027,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.4507,
-      "shareDecidedByCap": 0.5493,
-      "pRound8LeaderWins": 0.4999
+      "shareDecidedByThreshold": 0.4536,
+      "shareDecidedByCap": 0.5464,
+      "pRound8LeaderWins": 0.5004
     },
     {
       "threshold": 84,
@@ -2376,16 +2375,16 @@
         0,
         2,
         29,
-        136,
-        444,
-        9389
+        137,
+        452,
+        9380
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.9189,
+      "meanEndRound": 15.9179,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.4121,
-      "shareDecidedByCap": 0.5879,
-      "pRound8LeaderWins": 0.4995
+      "shareDecidedByThreshold": 0.4159,
+      "shareDecidedByCap": 0.5841000000000001,
+      "pRound8LeaderWins": 0.5
     },
     {
       "threshold": 85,
@@ -2403,16 +2402,16 @@
         0,
         2,
         20,
-        107,
+        111,
         406,
-        9465
+        9461
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.9312,
+      "meanEndRound": 15.9304,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.3749,
-      "shareDecidedByCap": 0.6251,
-      "pRound8LeaderWins": 0.4991
+      "shareDecidedByThreshold": 0.3789,
+      "shareDecidedByCap": 0.6211,
+      "pRound8LeaderWins": 0.4996
     }
   ],
   "recommendation": {
@@ -2438,18 +2437,18 @@
         0,
         0,
         6,
-        56,
-        227,
-        681,
-        9030
+        58,
+        232,
+        683,
+        9021
       ],
       "medianEndRound": 16,
-      "meanEndRound": 15.8673,
+      "meanEndRound": 15.8655,
       "shareEndedBeforeRound11": 0,
-      "shareDecidedByThreshold": 0.5358,
-      "shareDecidedByCap": 0.46419999999999995,
-      "pRound8LeaderWins": 0.5
+      "shareDecidedByThreshold": 0.5398,
+      "shareDecidedByCap": 0.46020000000000005,
+      "pRound8LeaderWins": 0.5005
     },
-    "reasoning": "Thresholds 78-84 satisfy all pacing criteria (median end round 12-16, <10% of games end before round 11, 40-70% decided by threshold). 81 is chosen because its threshold-decided share (53.6%) is closest to the 55% midpoint; median end round 16, 0.0% of games end before round 11, round-8 leader wins 50.0% of games."
+    "reasoning": "Thresholds 78-84 satisfy all pacing criteria (median end round 12-16, <10% of games end before round 11, 40-70% decided by threshold). 81 is chosen because its threshold-decided share (54.0%) is closest to the 55% midpoint; median end round 16, 0.0% of games end before round 11, round-8 leader wins 50.0% of games."
   }
 }

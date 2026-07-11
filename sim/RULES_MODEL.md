@@ -221,8 +221,9 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
 **Full-game bounded policy (documented simplifications):**
 
 - 1 draw/faction/round in the Income window (University +1 / Great
-  University +2 draws unmodeled). Hand cap 4; overflow discards the
-  lowest-priority card (canon discards at Cleanup).
+  University +2 draws unmodeled). Hand cap 3 (RATIFIED, engine
+  reconciliation 2026-07-11 — GD §7.7's "4" is a docs error); overflow
+  discards the lowest-priority card (canon discards at Cleanup).
 - **Instant resource cards resolve on draw** (Counting-House +2g, Grain
   Barges +2 grain, Papal Indulgence 2g→3 faith, Pay Chest steals up to 3g
   from the prestige leader).
@@ -353,11 +354,18 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   Recruiting pays canon resource costs (siege engines timber+marble,
   galleys timber). Province yields are authored in `map.ts` within
   `CONFIG.yields` bounds.
-- Buildings (one action + costs): **market** (+2 gold/round in province),
-  **wall upgrade** (+1 tier, max T3), **great work** (one-off +5 prestige —
-  the sim's generic stand-in for the §9.2 Great Works, which canon scores
-  at +5..+10 and gates behind multi-round builds; multi-round investment
-  unmodeled).
+- Buildings (one action + canon §9.1 costs since the engine
+  reconciliation): **market** (4g + 2 marble; +1 gold/round in province),
+  **wall upgrade** (+1 tier at the target tier's canon cost — T1 4g/3m,
+  T2 5g/4m, T3 8g/6m; max T3), **great work** (the four canon §9.2 works
+  at per-work costs and per-work prestige 10/6/6/5, each work once per
+  faction, built greedily cheapest-first; canon's 2-3-round investment
+  schedule unmodeled — one Build action completes a work).
+- **Canon §4.3 market conversion (engine reconciliation)**: a Trade action
+  buys ONE secondary resource (timber/marble/faith) with gold at 3:1, or
+  2:1 once the faction owns a Market (`Game.actConvert`; §10.3 RAW "one
+  action per conversion" = one lot). Gold->resource direction only. Agent
+  discipline: trader/opportunist convert at most 1 lot/turn, turtler 2.
 - Trade routes are authored port-pairs in `map.ts` with a gold income and a
   sea-zone path. **Blockade = canon §5.2 (adversarial fix round)**: an
   at-war enemy war fleet on any route zone HALVES the route's income
@@ -393,8 +401,10 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   in key cities) — a coarse stand-in for MAP.md §5's minor-state garrisons.
 - NOT modeled (divergence appendix, R10): mercenary bid market auctions,
   spies, NPC vassals (vassal income = province yields ×0.5 uniform),
-  tax postures, 3:1/2:1 market ratios (the sim uses flat
-  `grainMarket` buy/sell rates), canon trade formula details.
+  tax postures, the resource->gold / specialty lanes of §4.3 (the
+  gold->resource 3:1/2:1 direction IS modeled since the engine
+  reconciliation; grain still uses the flat `grainMarket` buy/sell rates),
+  canon trade formula details.
 
 ## Prestige & victory (canon §13.1 at 2b42386)
 
@@ -409,7 +419,9 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   win a field battle outnumbered +1 (stacks); take a walled city BY FORCE
   (storm, starvation, or treachery — walk-ins score nothing) +2, or +3 for
   T4-T5; win a war +3 (war goes quiet with a net-capture lead, or a player
-  is eliminated); lose your own capital −3; great work +5.
+  is eliminated); lose your own capital −3; great works at canon per-work
+  prestige (Hagia Sophia +10, Theodosian Walls +6, Great University +6,
+  Grand Bazaar +5).
 - **Secret objectives (RATIFIED ERRATA E4, 2026-07-11): THREE per faction
   (canon), +4 EACH scored INDEPENDENTLY at GAME END only** (canon §13.1) —
   they count for the round-16 highest-prestige comparison and can never

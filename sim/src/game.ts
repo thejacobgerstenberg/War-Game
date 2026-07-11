@@ -40,7 +40,7 @@
 
 import type { Army, BattleResult, CombatModifiers, FactionId, PrestigeLedger, UnitType } from './types';
 import { FACTION_IDS, UNIT_TYPES } from './types';
-import { CONFIG, statsFor, type TacticCardDef, type TacticScope } from './rules';
+import { CONFIG, nextAffordableGreatWork, statsFor, wallUpgradeCost, type TacticCardDef, type TacticScope } from './rules';
 import { create, type RNG } from './rng';
 import {
   combatants,
@@ -110,6 +110,8 @@ export interface FactionState {
   marble: number;
   faith: number;
   routes: string[]; // opened trade route ids (<= maxRoutesPerFaction)
+  /** Canon §9.2 works this faction has completed (ids into CONFIG.buildings.greatWorks; each at most once). */
+  greatWorksBuilt: string[];
   hasGreatBombard: boolean;
   hand: string[]; // tactic-card slugs held (canon §7.7; cap CONFIG.cards.handLimit)
   ledger: PrestigeLedger;
@@ -424,6 +426,7 @@ export class Game {
         marble: t.marble,
         faith: t.faith,
         routes: [],
+        greatWorksBuilt: [],
         hasGreatBombard: false,
         hand: [],
         ledger: emptyLedger(),
@@ -1214,25 +1217,58 @@ export class Game {
     const fs = this.factions[f];
     const b = CONFIG.buildings;
     if (build === 'market') {
-      if (p.market || fs.gold < b.market.goldCost || fs.timber < b.market.timberCost) return false;
+      if (p.market || fs.gold < b.market.goldCost || fs.timber < b.market.timberCost || fs.marble < b.market.marbleCost) return false; // canon §9.1: gold 4 + marble 2
       fs.gold -= b.market.goldCost;
       fs.timber -= b.market.timberCost;
+      fs.marble -= b.market.marbleCost;
       p.market = true;
     } else if (build === 'wallUpgrade') {
       if (p.wallTier >= CONFIG.walls.maxBuildableTier) return false; // canon §9.1: Build stops at T3
-      if (fs.gold < b.wallUpgrade.goldCost || fs.timber < b.wallUpgrade.timberCost || fs.marble < b.wallUpgrade.marbleCost) return false;
-      fs.gold -= b.wallUpgrade.goldCost;
-      fs.timber -= b.wallUpgrade.timberCost;
-      fs.marble -= b.wallUpgrade.marbleCost;
+      const cost = wallUpgradeCost(CONFIG, p.wallTier + 1); // canon §9.1 cost of the TARGET tier
+      if (!cost || fs.gold < cost.goldCost || fs.timber < cost.timberCost || fs.marble < cost.marbleCost) return false;
+      fs.gold -= cost.goldCost;
+      fs.timber -= cost.timberCost;
+      fs.marble -= cost.marbleCost;
       p.wallTier++;
     } else {
-      if (fs.gold < b.greatWork.goldCost || fs.marble < b.greatWork.marbleCost || fs.faith < b.greatWork.faithCost) return false;
-      fs.gold -= b.greatWork.goldCost;
-      fs.marble -= b.greatWork.marbleCost;
-      fs.faith -= b.greatWork.faithCost;
-      fs.ledger.greatWorks += CONFIG.prestige.greatWork;
+      // Canon §9.2 great works: first affordable unbuilt work (per-work cost),
+      // scored at its per-work prestige (10/6/6/5); each work once per faction.
+      const w = nextAffordableGreatWork(CONFIG, fs.greatWorksBuilt, fs);
+      if (!w) return false;
+      fs.gold -= w.goldCost;
+      fs.timber -= w.timberCost;
+      fs.marble -= w.marbleCost;
+      fs.faith -= w.faithCost;
+      fs.greatWorksBuilt.push(w.id);
+      fs.ledger.greatWorks += w.prestige;
       this.recomputeTotal(fs);
     }
+    this.consume();
+    return true;
+  }
+
+  /** Canon §4.3 give:get gold ratio for `f` (2:1 with a Market building, else 3:1). */
+  convertRatio(f: FactionId): number {
+    const c = CONFIG.economy.conversion;
+    for (const pid of this.ownedProvinces(f)) if (this.provinces.get(pid)!.market) return c.marketGoldPerResource;
+    return c.baseGoldPerResource;
+  }
+
+  /**
+   * Canon §4.3 market conversion as a Trade action: buy `amount` of a
+   * secondary resource (timber/marble/faith) with gold at the faction's
+   * market ratio (see convertRatio). Gold->resource direction only (the
+   * direction the build economy needs; resource->gold selling remains the
+   * income-phase grain market).
+   */
+  actConvert(f: FactionId, resource: 'timber' | 'marble' | 'faith', amount: number): boolean {
+    if (!this.canAct(f) || amount <= 0) return false;
+    const lot = Math.min(amount, CONFIG.economy.conversion.maxPerAction); // §10.3 RAW: one conversion per action
+    const fs = this.factions[f];
+    const cost = this.convertRatio(f) * lot;
+    if (fs.gold < cost) return false;
+    fs.gold -= cost;
+    fs[resource] += lot;
     this.consume();
     return true;
   }

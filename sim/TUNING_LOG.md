@@ -1022,3 +1022,98 @@ constructor (unseated -> neutral starts, alive=false). New
 run/thresholds.ts + `sim:thresholds` alias; results/thresholds.json;
 TUNING_REPORT §2.13 VICTORY_THRESHOLD_BY_PLAYER_COUNT + §3.6; README
 PLAYERS/THRESHOLDS envs; RULES_MODEL "Player counts 2-5" section.
+
+---
+
+## Engine-reconciliation round (2026-07-11) — balance.ts reconciliation: hand limit 3, canon §9.1/§9.2 prices, per-work prestige, §4.3 conversion, unique-economy A/B
+
+Reconciliation against the engine team's `server/src/engine/balance.ts`
+(feature/engine-core @ 0e5cede) transcription of TUNING_REPORT §2, per
+coordinator notes. Fullgame = 1000 games seed 14530000 unless noted.
+
+### Ratified/adopted changes
+
+1. **Tactic hand limit 4 -> 3** (`cards.handLimit`). Coordinator ratified 3;
+   GD §7.7's "4" is a docs error the pre-reconciliation sim tuned against.
+2. **Per-work great-work prestige + canon §9.2 works** — the generic
+   repeatable great work (25g + 4 marble + 2 faith, +5 each, UNLIMITED
+   repeats) is replaced by the four canon §9.2 works at canon costs and
+   canon per-work prestige (engine `GREAT_WORK_COSTS` / `PRESTIGE_VALUES.greatWork`):
+   Grand Bazaar 16g/6t/6m +5 · Theodosian Walls 15g/12m +6 ·
+   Great University 18g/8m/4f +6 · Hagia Sophia 20g/10m/8f +10.
+   Sim shape: each faction may complete each work once (single Build
+   action; canon's 2-3-round invest schedule stays unmodeled, §6);
+   `FactionState.greatWorksBuilt` tracks completion; agents build the
+   first affordable unbuilt work in cheap-first order.
+3. **§9.1 building-cost drift fixed** (`CONFIG.buildings`): market
+   8g+2 timber/+2 gold -> canon Market **4g+2 marble/+1 gold**; wall
+   upgrade flat 10g+2t+1m -> canon per-tier **T1 4g/3m · T2 5g/4m ·
+   T3 8g/6m** (engine `BUILDING_COSTS`/`WALL_BUILD_COST`).
+4. **NEW: canon §4.3 market conversion modeled** (`Game.actConvert`, a
+   Trade action; `economy.conversion`): buy 1 secondary resource
+   (timber/marble/faith) per action at 3:1 gold, 2:1 with a Market
+   (§10.3 RAW "one action per conversion" = one lot). Needed because the
+   canon §9.1/§9.2 prices make marble the binding build currency and the
+   sim previously had no gold->resource valve (see step measurements).
+   Agent discipline: trader/opportunist convert <=1 lot/turn, turtler <=2.
+
+### Step-wise fullgame impact (1000 games seed 14530000, emulation-verified: arm0 reproduces the committed baseline bit-for-bit)
+
+| arm | byz | ott | ven | gen | hun | thr% | SD% | med |
+|---|---|---|---|---|---|---|---|---|
+| committed (hand 4, generic works, threshold 80) | 18.4 | 17.3 | 13.4 | 27.1 | 23.8 | 57.6 | 12.2 | 16 |
+| + hand limit 3 | 17.7 | 17.5 | 13.4 | 27.4 | 24.0 | 57.3 | 12.3 | 16 |
+| + canon per-work works (costs + 10/6/6/5) | 22.5 | 23.5 | 7.0 | 14.0 | 33.0 | 32.8 | 14.9 | 16 |
+| + §9.1 market/walls + §4.3 conversion + retune (FINAL) | 12.4 | 16.5 | 16.3 | 26.9 | 27.9 | 56.1 | 11.6 | 15 |
+
+- Hand limit 3 alone is a sub-noise change (largest faction delta 0.7pp;
+  se ~1.2pp): with 15/47 deck cards dead in-sim, hand pressure rarely binds.
+- Canon per-work works alone BREAK four bands (venice 7.0 < 12, hungary
+  33.0 > 30, turtler policy 5.4 < 10, threshold-decided 32.8 < 40): capping
+  the great-work channel at 27 prestige/faction removes the repeatable
+  gold->prestige sink that traders/turtlers were tuned around, and canon
+  marble prices (6-12/work vs the old 4) starve the marble-poor trade
+  republics entirely (§9.1 costs pushed venice to 3.3%).
+
+### Retune (minimal, all report-owned levers)
+
+- `prestige.victoryThreshold` 80 -> **78** (re-derived; winner accrual falls
+  with the capped work channel — 14.9x mean winner accrual/round; the 5p
+  subset sweep's auto grid 68-88 tie-breaks to 78 at 55.7% threshold-decided,
+  and T1 bands are green at both 76 and 78 — 78 shipped for sweep
+  consistency).
+- map: **venice marble 0 -> 1**, **genoa marble 0 -> 1** (the round-91
+  "source great-work marble from Dalmatia" trims assumed 4-marble generic
+  works; under canon 6-12-marble works they starved the work engine).
+- §4.3 conversion modeling (change 4 above) is itself the third retune
+  lever: without it the turtler policy sat at 6-9% (floor 10%) at every
+  threshold/map-marble combination probed; with unlimited per-turn
+  conversion it overshot to 32-38% — the one-lot-per-action RAW reading
+  plus the agents' 1-2 lots/turn discipline lands it at 13-15%.
+- Probes rejected: buda_belgrade overland income 2 -> 1 (leaves the
+  ratified R9 Option-A 60-75% band), buda gold 3 -> 2 (no significant
+  Hungary effect), crete/pera/zara/morea/bursa marble additions (byzantium
+  or genoa band violations, or no marginal effect).
+
+### Final config metrics
+
+- 3000 games seed 24681357: byz 14.0 / ott 15.7 / ven 16.8 / gen 24.8 /
+  hun 28.7; policies rusher 14.8 / trader 28.5 / turtler 13.1 /
+  opportunist 23.7; threshold-decided 56.1%, SD 10.5%, median end 15,
+  pre-r11 0.7% — T1-T4 green. (76 measured equally green: 14.1/14.4/17.7/
+  25.4/28.4, thr 64.4%; 78 shipped per the sweep tie-break. Fresh-seed
+  cross-checks green at 1000 games on both 14530000 and 24681357 during
+  the probe phase; full committed runs quoted in TUNING_REPORT §1/§3.5.)
+- Economy module (T6): 15/15 solvent, strike 9 / 13.8 / 11.6 / 11 / 8.7
+  (5/5 >= 8) — green. Snapshot-artifact criteria: hungary `balancedLags`
+  joins the documented red set (byz/ott balancedMid, genoa turtleStrong);
+  fullgame remains ground truth.
+- Per-player-count thresholds re-derived at the final config (sim:thresholds,
+  auto-derived candidate grids): see TUNING_REPORT §2.13/§3.6 and
+  results/thresholds.json.
+
+### Unique-economy A/B (engine question)
+
+`src/run/unique_economy_ab.ts`, 2000 games/arm, paired seeds 14530000+i,
+writes results/unique_economy_ab.json — verdict + recommendation recorded
+in TUNING_REPORT §2.3.

@@ -44,13 +44,14 @@ const SEATS: FactionId[] = ['venice', 'genoa'];
 // live knob snapshot (single source of truth for restore)
 const ORIG = {
   tradeMonopolyPerRound: CONFIG.prestige.tradeMonopolyPerRound,
-  greatWork: CONFIG.prestige.greatWork,
+  // per-work prestige since the engine reconciliation (canon §9.2)
+  greatWorkPrestige: CONFIG.buildings.greatWorks.map((w) => w.prestige),
   keyCityPerRound: CONFIG.prestige.keyCityPerRound,
   victoryThreshold: CONFIG.prestige.victoryThreshold,
 };
 function restoreAll(): void {
   CONFIG.prestige.tradeMonopolyPerRound = ORIG.tradeMonopolyPerRound;
-  CONFIG.prestige.greatWork = ORIG.greatWork;
+  CONFIG.buildings.greatWorks.forEach((w, i) => (w.prestige = ORIG.greatWorkPrestige[i]));
   CONFIG.prestige.keyCityPerRound = ORIG.keyCityPerRound;
   CONFIG.prestige.victoryThreshold = ORIG.victoryThreshold;
 }
@@ -65,10 +66,10 @@ const scenarios: Scenario[] = [
   { name: 'monopolyP 2->1.5', apply: () => (CONFIG.prestige.tradeMonopolyPerRound = 1.5) },
   { name: 'monopolyP 2->1', apply: () => (CONFIG.prestige.tradeMonopolyPerRound = 1) },
   {
-    name: 'monopolyP 2->1 + gwP 5->4',
+    name: 'monopolyP 2->1 + gwP -1 each',
     apply: () => {
       CONFIG.prestige.tradeMonopolyPerRound = 1;
-      CONFIG.prestige.greatWork = 4;
+      CONFIG.buildings.greatWorks.forEach((w) => (w.prestige = Math.max(1, w.prestige - 1)));
     },
   },
 ];

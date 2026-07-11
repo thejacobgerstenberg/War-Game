@@ -18,7 +18,7 @@
 
 import type { Army, FactionId, StrategyProfile, UnitType } from './types';
 import { FACTION_IDS, UNIT_TYPES } from './types';
-import { CONFIG, unitStatsOf, type Config } from './rules';
+import { CONFIG, nextAffordableGreatWork, unitStatsOf, type Config } from './rules';
 import { armyOf, combatants, emptyArmy, removeCasualties, totalUnits } from './combat';
 import { FACTION_STARTS, PROVINCES, PROVINCE_BY_ID, TRADE_ROUTES } from './map';
 
@@ -165,6 +165,8 @@ interface EconState {
   markets: number;
   routesOpen: Set<string>;
   greatWorks: number;
+  /** Canon §9.2 work ids completed (each at most once, mirrors game.ts). */
+  greatWorksBuilt: string[];
   conquestsDone: number;
   expansionIdx: number;
   insolvencyRound: number | null;
@@ -188,6 +190,7 @@ function initState(faction: FactionId): EconState {
     markets: 0,
     routesOpen: new Set(),
     greatWorks: 0,
+    greatWorksBuilt: [],
     conquestsDone: 0,
     expansionIdx: 0,
     insolvencyRound: null,
@@ -387,19 +390,23 @@ function openRouteAction(cfg: Config, s: EconState): boolean {
 function buildMarketAction(cfg: Config, s: EconState): boolean {
   const m = cfg.buildings.market;
   if (s.markets >= s.provinces.size) return false; // one per province
-  if (s.gold < m.goldCost || s.timber < m.timberCost) return false;
+  if (s.gold < m.goldCost || s.timber < m.timberCost || s.marble < m.marbleCost) return false; // canon §9.1: gold 4 + marble 2
   s.gold -= m.goldCost;
   s.timber -= m.timberCost;
+  s.marble -= m.marbleCost;
   s.markets++;
   return true;
 }
 
 function buildGreatWorkAction(cfg: Config, s: EconState): boolean {
-  const g = cfg.buildings.greatWork;
-  if (s.gold < g.goldCost + 15 || s.marble < g.marbleCost || s.faith < g.faithCost) return false;
-  s.gold -= g.goldCost;
-  s.marble -= g.marbleCost;
-  s.faith -= g.faithCost;
+  // Canon §9.2 per-work costs; same greedy order + 15-gold reserve as before.
+  const w = nextAffordableGreatWork(cfg, s.greatWorksBuilt, s, 15);
+  if (!w) return false;
+  s.gold -= w.goldCost;
+  s.timber -= w.timberCost;
+  s.marble -= w.marbleCost;
+  s.faith -= w.faithCost;
+  s.greatWorksBuilt.push(w.id);
   s.greatWorks++;
   return true;
 }
@@ -670,7 +677,7 @@ export function sweepAxes(): SweepAxis[] {
     },
     {
       name: 'marketGoldCost',
-      values: [6, 8, 10],
+      values: [3, 4, 6], // brackets the canon §9.1 Market cost (4g)
       default: CONFIG.buildings.market.goldCost,
       apply: (c, v) => (c.buildings.market.goldCost = v),
     },

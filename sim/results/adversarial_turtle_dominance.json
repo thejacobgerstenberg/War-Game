@@ -5,8 +5,8 @@
     "gamesA": 400,
     "gamesBPerFactionPerArm": 250,
     "gamesCPerFactionPerArm": 600,
-    "victoryThreshold": 80,
-    "elapsedMs": 24947,
+    "victoryThreshold": 78,
+    "elapsedMs": 26234,
     "seedScheme": {
       "A": "seed = 311003 + i",
       "B": "seed = 311003 + 100000*(factionIdx+1) + i, same seeds in both arms",
@@ -16,64 +16,64 @@
   "allTurtle": {
     "games": 400,
     "victoryTypes": {
-      "threshold": 244,
-      "cap": 156,
+      "threshold": 64,
+      "cap": 336,
       "suddenDeath": 0,
       "elimination": 0
     },
     "winsByFaction": {
-      "byzantium": 23,
+      "byzantium": 0,
       "ottomans": 0,
-      "venice": 224,
-      "genoa": 136,
-      "hungary": 17
+      "venice": 261,
+      "genoa": 131,
+      "hungary": 8
     },
-    "meanRounds": 15.81,
-    "meanBattles": 3.1425,
-    "meanWinnerPrestige": 80.2825,
-    "capGames": 156,
-    "thresholdGames": 244,
-    "nearTiesAnyType": 193,
-    "nearTieShareAnyType": 0.4825,
-    "capNearTies": 115,
-    "capNearTieShareOfAllGames": 0.2875,
-    "capNearTieShareOfCapGames": 0.7371794871794872,
-    "medianWinnerMargin": 2,
+    "meanRounds": 16,
+    "meanBattles": 3.06,
+    "meanWinnerPrestige": 75.81,
+    "capGames": 336,
+    "thresholdGames": 64,
+    "nearTiesAnyType": 233,
+    "nearTieShareAnyType": 0.5825,
+    "capNearTies": 217,
+    "capNearTieShareOfAllGames": 0.5425,
+    "capNearTieShareOfCapGames": 0.6458333333333334,
+    "medianWinnerMargin": 1,
     "marginDeciles": [
       0,
       0,
       0,
+      0,
       1,
       1,
+      2,
       2,
       2,
       3,
-      4,
-      5,
-      17
+      9
     ]
   },
   "loneTurtler": {
     "aggr": {
       "overall": {
         "games": 1250,
-        "wins": 235,
-        "rate": 0.188
+        "wins": 157,
+        "rate": 0.1256
       },
       "byFaction": {
         "byzantium": {
           "games": 250,
-          "wins": 27,
-          "rate": 0.108,
+          "wins": 2,
+          "rate": 0.008,
           "winTypes": {
-            "threshold": 9,
-            "cap": 18,
+            "threshold": 0,
+            "cap": 2,
             "suddenDeath": 0,
             "elimination": 0
           },
           "eliminatedRate": 0,
-          "avgFinalPrestige": 55.848,
-          "avgRounds": 15.204
+          "avgFinalPrestige": 51.064,
+          "avgRounds": 15.052
         },
         "ottomans": {
           "games": 250,
@@ -86,73 +86,73 @@
             "elimination": 0
           },
           "eliminatedRate": 0,
-          "avgFinalPrestige": 48.964,
-          "avgRounds": 15.072
+          "avgFinalPrestige": 36.136,
+          "avgRounds": 15.024
         },
         "venice": {
           "games": 250,
-          "wins": 34,
-          "rate": 0.136,
+          "wins": 37,
+          "rate": 0.148,
           "winTypes": {
-            "threshold": 6,
-            "cap": 28,
+            "threshold": 3,
+            "cap": 34,
             "suddenDeath": 0,
             "elimination": 0
           },
           "eliminatedRate": 0,
-          "avgFinalPrestige": 65.272,
-          "avgRounds": 14.724
+          "avgFinalPrestige": 63.86,
+          "avgRounds": 14.536
         },
         "genoa": {
           "games": 250,
-          "wins": 86,
-          "rate": 0.344,
+          "wins": 54,
+          "rate": 0.216,
           "winTypes": {
-            "threshold": 49,
-            "cap": 37,
+            "threshold": 11,
+            "cap": 43,
             "suddenDeath": 0,
             "elimination": 0
           },
           "eliminatedRate": 0,
-          "avgFinalPrestige": 74.272,
-          "avgRounds": 14.636
+          "avgFinalPrestige": 68.564,
+          "avgRounds": 14.496
         },
         "hungary": {
           "games": 250,
-          "wins": 88,
-          "rate": 0.352,
+          "wins": 64,
+          "rate": 0.256,
           "winTypes": {
-            "threshold": 7,
-            "cap": 81,
+            "threshold": 0,
+            "cap": 64,
             "suddenDeath": 0,
             "elimination": 0
           },
           "eliminatedRate": 0,
-          "avgFinalPrestige": 67.508,
-          "avgRounds": 15.22
+          "avgFinalPrestige": 63.988,
+          "avgRounds": 15.096
         }
       }
     },
     "std": {
       "overall": {
         "games": 1250,
-        "wins": 208,
-        "rate": 0.1664
+        "wins": 146,
+        "rate": 0.1168
       },
       "byFaction": {
         "byzantium": {
           "games": 250,
-          "wins": 26,
-          "rate": 0.104,
+          "wins": 1,
+          "rate": 0.004,
           "winTypes": {
-            "threshold": 11,
-            "cap": 15,
+            "threshold": 0,
+            "cap": 1,
             "suddenDeath": 0,
             "elimination": 0
           },
           "eliminatedRate": 0,
-          "avgFinalPrestige": 58.188,
-          "avgRounds": 15.152
+          "avgFinalPrestige": 51.708,
+          "avgRounds": 14.924
         },
         "ottomans": {
           "games": 250,
@@ -165,50 +165,50 @@
             "elimination": 0
           },
           "eliminatedRate": 0,
-          "avgFinalPrestige": 49.292,
-          "avgRounds": 15.108
+          "avgFinalPrestige": 33.508,
+          "avgRounds": 14.96
         },
         "venice": {
           "games": 250,
-          "wins": 45,
-          "rate": 0.18,
+          "wins": 42,
+          "rate": 0.168,
           "winTypes": {
-            "threshold": 10,
-            "cap": 35,
+            "threshold": 6,
+            "cap": 36,
             "suddenDeath": 0,
             "elimination": 0
           },
           "eliminatedRate": 0,
-          "avgFinalPrestige": 68.508,
-          "avgRounds": 14.9
+          "avgFinalPrestige": 66.1,
+          "avgRounds": 14.664
         },
         "genoa": {
           "games": 250,
-          "wins": 99,
-          "rate": 0.396,
+          "wins": 71,
+          "rate": 0.284,
           "winTypes": {
-            "threshold": 60,
-            "cap": 39,
+            "threshold": 16,
+            "cap": 55,
             "suddenDeath": 0,
             "elimination": 0
           },
           "eliminatedRate": 0,
-          "avgFinalPrestige": 75.56,
-          "avgRounds": 14.92
+          "avgFinalPrestige": 70.096,
+          "avgRounds": 14.852
         },
         "hungary": {
           "games": 250,
-          "wins": 38,
-          "rate": 0.152,
+          "wins": 32,
+          "rate": 0.128,
           "winTypes": {
-            "threshold": 10,
-            "cap": 28,
+            "threshold": 0,
+            "cap": 32,
             "suddenDeath": 0,
             "elimination": 0
           },
           "eliminatedRate": 0,
-          "avgFinalPrestige": 65.92,
-          "avgRounds": 14.956
+          "avgFinalPrestige": 61.656,
+          "avgRounds": 14.604
         }
       }
     }
@@ -217,169 +217,169 @@
     "tradeMax": {
       "venice": {
         "games": 600,
-        "wins": 221,
-        "rate": 0.36833333333333335,
+        "wins": 163,
+        "rate": 0.27166666666666667,
         "winTypes": {
-          "threshold": 207,
-          "cap": 14,
+          "threshold": 20,
+          "cap": 143,
           "suddenDeath": 0,
           "elimination": 0
         },
         "eliminatedRate": 0,
-        "avgFinalPrestige": 72.98333333333333,
-        "avgGreatWorkPrestige": 13.333333333333334,
-        "avgTradeRoutePrestige": 29.773333333333333,
-        "avgKeyCityPrestige": 14.886666666666667,
-        "avgCapitalPrestige": 14.886666666666667,
+        "avgFinalPrestige": 68.27833333333334,
+        "avgGreatWorkPrestige": 8.148333333333333,
+        "avgTradeRoutePrestige": 30.026666666666667,
+        "avgKeyCityPrestige": 15.013333333333334,
+        "avgCapitalPrestige": 15.013333333333334,
         "avgConquestPrestige": 0,
         "avgObjectivePrestige": 0,
-        "avgRounds": 14.946666666666667
+        "avgRounds": 15.055
       },
       "genoa": {
         "games": 600,
-        "wins": 334,
-        "rate": 0.5566666666666666,
+        "wins": 323,
+        "rate": 0.5383333333333333,
         "winTypes": {
-          "threshold": 321,
-          "cap": 13,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "eliminatedRate": 0,
-        "avgFinalPrestige": 77.85333333333334,
-        "avgGreatWorkPrestige": 18.466666666666665,
-        "avgTradeRoutePrestige": 29.63,
-        "avgKeyCityPrestige": 14.815,
-        "avgCapitalPrestige": 14.815,
-        "avgConquestPrestige": 0,
-        "avgObjectivePrestige": 0,
-        "avgRounds": 14.815
-      }
-    },
-    "monopolyMax": {
-      "venice": {
-        "games": 600,
-        "wins": 345,
-        "rate": 0.575,
-        "winTypes": {
-          "threshold": 325,
-          "cap": 20,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "eliminatedRate": 0,
-        "avgFinalPrestige": 76.57833333333333,
-        "avgGreatWorkPrestige": 13.125,
-        "avgTradeRoutePrestige": 30.731666666666666,
-        "avgKeyCityPrestige": 16.56,
-        "avgCapitalPrestige": 14.201666666666666,
-        "avgConquestPrestige": 1.2933333333333332,
-        "avgObjectivePrestige": 0.10666666666666667,
-        "avgRounds": 14.261666666666667
-      },
-      "genoa": {
-        "games": 600,
-        "wins": 360,
-        "rate": 0.6,
-        "winTypes": {
-          "threshold": 349,
-          "cap": 11,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "eliminatedRate": 0,
-        "avgFinalPrestige": 78.45,
-        "avgGreatWorkPrestige": 18.983333333333334,
-        "avgTradeRoutePrestige": 29.511666666666667,
-        "avgKeyCityPrestige": 14.611666666666666,
-        "avgCapitalPrestige": 14.596666666666666,
-        "avgConquestPrestige": 0.42333333333333334,
-        "avgObjectivePrestige": 0.013333333333333334,
-        "avgRounds": 14.596666666666666
-      }
-    },
-    "ctrlTurtler": {
-      "venice": {
-        "games": 600,
-        "wins": 156,
-        "rate": 0.26,
-        "winTypes": {
-          "threshold": 64,
-          "cap": 92,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "eliminatedRate": 0,
-        "avgFinalPrestige": 71.16166666666666,
-        "avgGreatWorkPrestige": 10.683333333333334,
-        "avgTradeRoutePrestige": 30.206666666666667,
-        "avgKeyCityPrestige": 15.103333333333333,
-        "avgCapitalPrestige": 15.103333333333333,
-        "avgConquestPrestige": 0,
-        "avgObjectivePrestige": 0,
-        "avgRounds": 15.186666666666667
-      },
-      "genoa": {
-        "games": 600,
-        "wins": 259,
-        "rate": 0.43166666666666664,
-        "winTypes": {
-          "threshold": 122,
-          "cap": 137,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "eliminatedRate": 0,
-        "avgFinalPrestige": 75.47666666666667,
-        "avgGreatWorkPrestige": 14.933333333333334,
-        "avgTradeRoutePrestige": 30.18,
-        "avgKeyCityPrestige": 15.09,
-        "avgCapitalPrestige": 15.09,
-        "avgConquestPrestige": 0,
-        "avgObjectivePrestige": 0.006666666666666667,
-        "avgRounds": 15.091666666666667
-      }
-    },
-    "ctrlTrader": {
-      "venice": {
-        "games": 600,
-        "wins": 239,
-        "rate": 0.3983333333333333,
-        "winTypes": {
-          "threshold": 226,
-          "cap": 13,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "eliminatedRate": 0,
-        "avgFinalPrestige": 73.02333333333333,
-        "avgGreatWorkPrestige": 13.391666666666667,
-        "avgTradeRoutePrestige": 29.7,
-        "avgKeyCityPrestige": 14.85,
-        "avgCapitalPrestige": 14.85,
-        "avgConquestPrestige": 0.006666666666666667,
-        "avgObjectivePrestige": 0.013333333333333334,
-        "avgRounds": 14.935
-      },
-      "genoa": {
-        "games": 600,
-        "wins": 360,
-        "rate": 0.6,
-        "winTypes": {
-          "threshold": 355,
+          "threshold": 318,
           "cap": 5,
           "suddenDeath": 0,
           "elimination": 0
         },
         "eliminatedRate": 0,
-        "avgFinalPrestige": 78.62,
-        "avgGreatWorkPrestige": 19.716666666666665,
-        "avgTradeRoutePrestige": 29.283333333333335,
-        "avgKeyCityPrestige": 14.641666666666667,
-        "avgCapitalPrestige": 14.641666666666667,
-        "avgConquestPrestige": 0.08,
+        "avgFinalPrestige": 76.62,
+        "avgGreatWorkPrestige": 16.13,
+        "avgTradeRoutePrestige": 30.19333333333333,
+        "avgKeyCityPrestige": 15.096666666666666,
+        "avgCapitalPrestige": 15.096666666666666,
+        "avgConquestPrestige": 0,
         "avgObjectivePrestige": 0,
-        "avgRounds": 14.641666666666667
+        "avgRounds": 15.096666666666666
+      }
+    },
+    "monopolyMax": {
+      "venice": {
+        "games": 600,
+        "wins": 357,
+        "rate": 0.595,
+        "winTypes": {
+          "threshold": 321,
+          "cap": 36,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "eliminatedRate": 0,
+        "avgFinalPrestige": 76.02666666666667,
+        "avgGreatWorkPrestige": 6.545,
+        "avgTradeRoutePrestige": 33.425,
+        "avgKeyCityPrestige": 19.088333333333335,
+        "avgCapitalPrestige": 14.331666666666667,
+        "avgConquestPrestige": 1.7166666666666666,
+        "avgObjectivePrestige": 0.12,
+        "avgRounds": 14.366666666666667
+      },
+      "genoa": {
+        "games": 600,
+        "wins": 313,
+        "rate": 0.5216666666666666,
+        "winTypes": {
+          "threshold": 277,
+          "cap": 36,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "eliminatedRate": 0,
+        "avgFinalPrestige": 75.485,
+        "avgGreatWorkPrestige": 13.07,
+        "avgTradeRoutePrestige": 31.01,
+        "avgKeyCityPrestige": 14.956666666666667,
+        "avgCapitalPrestige": 14.861666666666666,
+        "avgConquestPrestige": 0.8983333333333333,
+        "avgObjectivePrestige": 0.18666666666666668,
+        "avgRounds": 14.861666666666666
+      }
+    },
+    "ctrlTurtler": {
+      "venice": {
+        "games": 600,
+        "wins": 162,
+        "rate": 0.27,
+        "winTypes": {
+          "threshold": 28,
+          "cap": 134,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "eliminatedRate": 0,
+        "avgFinalPrestige": 68.36833333333334,
+        "avgGreatWorkPrestige": 8.51,
+        "avgTradeRoutePrestige": 29.883333333333333,
+        "avgKeyCityPrestige": 14.941666666666666,
+        "avgCapitalPrestige": 14.941666666666666,
+        "avgConquestPrestige": 0,
+        "avgObjectivePrestige": 0,
+        "avgRounds": 15.021666666666667
+      },
+      "genoa": {
+        "games": 600,
+        "wins": 184,
+        "rate": 0.30666666666666664,
+        "winTypes": {
+          "threshold": 28,
+          "cap": 156,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "eliminatedRate": 0,
+        "avgFinalPrestige": 70.875,
+        "avgGreatWorkPrestige": 10.25,
+        "avgTradeRoutePrestige": 30.22,
+        "avgKeyCityPrestige": 15.11,
+        "avgCapitalPrestige": 15.11,
+        "avgConquestPrestige": 0,
+        "avgObjectivePrestige": 0,
+        "avgRounds": 15.11
+      }
+    },
+    "ctrlTrader": {
+      "venice": {
+        "games": 600,
+        "wins": 323,
+        "rate": 0.5383333333333333,
+        "winTypes": {
+          "threshold": 263,
+          "cap": 60,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "eliminatedRate": 0,
+        "avgFinalPrestige": 73.855,
+        "avgGreatWorkPrestige": 15.811666666666667,
+        "avgTradeRoutePrestige": 28.91,
+        "avgKeyCityPrestige": 14.455,
+        "avgCapitalPrestige": 14.455,
+        "avgConquestPrestige": 0.006666666666666667,
+        "avgObjectivePrestige": 0.006666666666666667,
+        "avgRounds": 14.528333333333334
+      },
+      "genoa": {
+        "games": 600,
+        "wins": 394,
+        "rate": 0.6566666666666666,
+        "winTypes": {
+          "threshold": 392,
+          "cap": 2,
+          "suddenDeath": 0,
+          "elimination": 0
+        },
+        "eliminatedRate": 0,
+        "avgFinalPrestige": 77.5,
+        "avgGreatWorkPrestige": 20.033333333333335,
+        "avgTradeRoutePrestige": 28.613333333333333,
+        "avgKeyCityPrestige": 14.306666666666667,
+        "avgCapitalPrestige": 14.306666666666667,
+        "avgConquestPrestige": 0.09333333333333334,
+        "avgObjectivePrestige": 0,
+        "avgRounds": 14.306666666666667
       }
     }
   },
@@ -389,9 +389,10 @@
     "tradeMaxVeniceGenoaOver50pct": "flagged if crossed"
   },
   "exploitFlags": [
-    "all-turtle near-ties (margin<2, any victory type): 48.3% of games > 30%",
-    "tradeMax turtle as genoa: 55.7% > 50%",
-    "monopolyMax turtle as venice: 57.5% > 50%",
-    "monopolyMax turtle as genoa: 60.0% > 50%"
+    "all-turtle near-ties (margin<2, any victory type): 58.3% of games > 30%",
+    "all-turtle cap near-ties (margin<2 at the cap): 54.3% of games > 30%",
+    "tradeMax turtle as genoa: 53.8% > 50%",
+    "monopolyMax turtle as venice: 59.5% > 50%",
+    "monopolyMax turtle as genoa: 52.2% > 50%"
   ]
 }

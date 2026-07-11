@@ -22,7 +22,7 @@
  */
 
 import type { FactionId, UnitType } from '../types';
-import { CONFIG, statsFor } from '../rules';
+import { CONFIG, nextAffordableGreatWork, nextUnbuiltGreatWork, statsFor, wallUpgradeCost } from '../rules';
 import { combatants } from '../combat';
 import { PROVINCE_BY_ID, TRADE_ROUTES } from '../map';
 import {
@@ -117,7 +117,7 @@ function tryOpenRoute(g: Game, f: FactionId): boolean {
 function tryMarket(g: Game, f: FactionId, goldReserve: number): boolean {
   const fs = g.faction(f);
   const m = CONFIG.buildings.market;
-  if (fs.gold < m.goldCost + goldReserve || fs.timber < m.timberCost) return false;
+  if (fs.gold < m.goldCost + goldReserve || fs.timber < m.timberCost || fs.marble < m.marbleCost) return false;
   const spots = g
     .ownedProvinces(f)
     .filter((pid) => !g.province(pid).market && !g.isBesieged(pid))
@@ -127,8 +127,7 @@ function tryMarket(g: Game, f: FactionId, goldReserve: number): boolean {
 
 function tryGreatWork(g: Game, f: FactionId, goldReserve: number): boolean {
   const fs = g.faction(f);
-  const gw = CONFIG.buildings.greatWork;
-  if (fs.gold < gw.goldCost + goldReserve || fs.marble < gw.marbleCost || fs.faith < gw.faithCost) return false;
+  if (!nextAffordableGreatWork(CONFIG, fs.greatWorksBuilt, fs, goldReserve)) return false;
   const spots = g.ownedProvinces(f).filter((pid) => !g.isBesieged(pid));
   return spots.length > 0 && g.actBuild(f, spots[0], 'greatWork');
 }
@@ -136,14 +135,19 @@ function tryGreatWork(g: Game, f: FactionId, goldReserve: number): boolean {
 /** Wall upgrade only with marble to spare beyond the next great work. */
 function trySurplusWallUpgrade(g: Game, f: FactionId, goldReserve: number): boolean {
   const fs = g.faction(f);
-  const w = CONFIG.buildings.wallUpgrade;
-  if (fs.marble < CONFIG.buildings.greatWork.marbleCost + 2) return false; // marble feeds great works first
-  if (fs.gold < w.goldCost + goldReserve || fs.timber < w.timberCost || fs.marble < w.marbleCost) return false;
+  const nextWork = nextUnbuiltGreatWork(CONFIG, fs.greatWorksBuilt);
+  if (nextWork && fs.marble < nextWork.marbleCost + 2) return false; // marble feeds great works first
   const spots = g
     .borderOf(f)
     .filter((pid) => g.province(pid).wallTier < 3 && !g.isBesieged(pid))
     .sort((a, b) => PROVINCE_BY_ID.get(b)!.yields.gold - PROVINCE_BY_ID.get(a)!.yields.gold);
-  return spots.length > 0 && g.actBuild(f, spots[0], 'wallUpgrade');
+  for (const pid of spots) {
+    const cost = wallUpgradeCost(CONFIG, g.province(pid).wallTier + 1); // canon §9.1 per-tier cost
+    if (!cost || fs.gold < cost.goldCost + goldReserve || fs.timber < cost.timberCost || fs.marble < cost.marbleCost) continue;
+    if (nextWork && fs.marble < nextWork.marbleCost + cost.marbleCost) continue; // keep the work's marble intact
+    return g.actBuild(f, pid, 'wallUpgrade');
+  }
+  return false;
 }
 
 /** Keep a route-deterrence fleet at the best port. */

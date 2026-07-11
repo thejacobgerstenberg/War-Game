@@ -18,7 +18,7 @@
  */
 
 import type { FactionId, UnitType } from './types';
-import { CONFIG, statsFor } from './rules';
+import { CONFIG, nextAffordableGreatWork, nextUnbuiltGreatWork, statsFor, wallUpgradeCost } from './rules';
 import { combatants } from './combat';
 import { PROVINCE_BY_ID } from './map';
 import {
@@ -368,7 +368,7 @@ function tryOpenRoute(g: Game, f: FactionId): boolean {
 function tryMarket(g: Game, f: FactionId, goldReserve: number): boolean {
   const fs = g.faction(f);
   const m = CONFIG.buildings.market;
-  if (fs.gold < m.goldCost + goldReserve || fs.timber < m.timberCost) return false;
+  if (fs.gold < m.goldCost + goldReserve || fs.timber < m.timberCost || fs.marble < m.marbleCost) return false;
   const spots = g
     .ownedProvinces(f)
     .filter((pid) => !g.province(pid).market && !g.isBesieged(pid))
@@ -378,21 +378,46 @@ function tryMarket(g: Game, f: FactionId, goldReserve: number): boolean {
 
 function tryGreatWork(g: Game, f: FactionId, goldReserve: number): boolean {
   const fs = g.faction(f);
-  const gw = CONFIG.buildings.greatWork;
-  if (fs.gold < gw.goldCost + goldReserve || fs.marble < gw.marbleCost || fs.faith < gw.faithCost) return false;
+  if (!nextAffordableGreatWork(CONFIG, fs.greatWorksBuilt, fs, goldReserve)) return false;
   const spots = g.ownedProvinces(f).filter((pid) => !g.isBesieged(pid));
   return spots.length > 0 && g.actBuild(f, spots[0], 'greatWork');
 }
 
+/**
+ * Canon §4.3 conversion toward the next §9.2 great work: when the treasury is
+ * gold-deep but short a secondary resource (timber/marble/faith) for the next
+ * unbuilt work, spend a Trade action buying the missing resource at the
+ * market ratio (2:1/3:1). Converts only while the work's gold cost + reserve
+ * stays covered after the purchase.
+ */
+function tryConvertTowardGreatWork(g: Game, f: FactionId, goldReserve: number): boolean {
+  const fs = g.faction(f);
+  const w = nextUnbuiltGreatWork(CONFIG, fs.greatWorksBuilt);
+  if (!w) return false;
+  const ratio = g.convertRatio(f);
+  for (const res of ['marble', 'timber', 'faith'] as const) {
+    const need = (res === 'marble' ? w.marbleCost : res === 'timber' ? w.timberCost : w.faithCost) - fs[res];
+    if (need <= 0) continue;
+    const spendable = fs.gold - goldReserve - w.goldCost;
+    const amount = Math.min(need, Math.floor(spendable / ratio));
+    if (amount >= 1) return g.actConvert(f, res, amount);
+    return false; // short the FIRST missing resource: wait for gold, do not skip ahead
+  }
+  return false;
+}
+
 function tryWallUpgrade(g: Game, f: FactionId, goldReserve: number): boolean {
   const fs = g.faction(f);
-  const w = CONFIG.buildings.wallUpgrade;
-  if (fs.gold < w.goldCost + goldReserve || fs.timber < w.timberCost || fs.marble < w.marbleCost) return false;
   const spots = g
     .borderOf(f)
     .filter((pid) => g.province(pid).wallTier < CONFIG.walls.maxBuildableTier && !g.isBesieged(pid))
     .sort((a, b) => targetValue(g, f, b) - targetValue(g, f, a));
-  return spots.length > 0 && g.actBuild(f, spots[0], 'wallUpgrade');
+  for (const pid of spots) {
+    const cost = wallUpgradeCost(CONFIG, g.province(pid).wallTier + 1); // canon §9.1 per-tier cost
+    if (!cost || fs.gold < cost.goldCost + goldReserve || fs.timber < cost.timberCost || fs.marble < cost.marbleCost) continue;
+    return g.actBuild(f, pid, 'wallUpgrade');
+  }
+  return false;
 }
 
 /** Buy the Great Bombard when Constantinople is a realistic target. */
@@ -462,6 +487,7 @@ function rusherTurn(g: Game, f: FactionId): void {
 
 function traderTurn(g: Game, f: FactionId): void {
   const atWar = g.warsOf(f).length > 0;
+  let converted = false; // §4.3 conversion: at most one Trade-action lot per turn (policy discipline)
   while (g.actionsLeft > 0) {
     if (tryRelief(g, f)) continue;
     if (atWar && tryDefend(g, f, 1.2)) continue;
@@ -473,16 +499,19 @@ function traderTurn(g: Game, f: FactionId): void {
     if (atWar && tryAttack(g, f, { minRatio: 1.8, walledRatio: 2.5, players: 'warOnly' })) continue;
     if (tryAttack(g, f, { minRatio: 2.5, walledRatio: 3.5, players: 'none' })) continue;
     if (g.round >= 7 && tryGreatWork(g, f, 10)) continue;
+    if (g.round >= 7 && !converted && tryConvertTowardGreatWork(g, f, 10)) { converted = true; continue; } // canon §4.3 Trade action
     if (combatantsOf(g, f) < 2 * g.ownedProvinces(f).length && tryRecruitMilitary(g, f, false)) continue;
     g.actPass(f);
   }
 }
 
 function turtlerTurn(g: Game, f: FactionId): void {
+  let converted = 0; // §4.3 conversion: up to two Trade-action lots per turn (the builder policy)
   while (g.actionsLeft > 0) {
     if (tryRelief(g, f)) continue;
     if (tryDefend(g, f, 1.2)) continue;
     if (g.round >= 5 && tryGreatWork(g, f, 8)) continue;
+    if (g.round >= 5 && converted < 2 && tryConvertTowardGreatWork(g, f, 8)) { converted++; continue; } // canon §4.3 Trade action
     if (tryMarket(g, f, 12)) continue;
     if (tryOpenRoute(g, f)) continue;
     if (tryWallUpgrade(g, f, 10)) continue;
@@ -505,6 +534,7 @@ function opportunistTurn(g: Game, f: FactionId): void {
       weakest = other;
     }
   }
+  let converted = false; // §4.3 conversion: at most one Trade-action lot per turn (policy discipline)
   while (g.actionsLeft > 0) {
     if (tryRelief(g, f)) continue;
     // snipe secret objective provinces
@@ -518,6 +548,7 @@ function opportunistTurn(g: Game, f: FactionId): void {
     if (g.estGoldIncome(f) < 14 && (tryMarket(g, f, 10) || tryOpenRoute(g, f))) continue;
     if (tryDefend(g, f, 1.1)) continue;
     if (g.round >= 8 && tryGreatWork(g, f, 15)) continue;
+    if (g.round >= 8 && !converted && tryConvertTowardGreatWork(g, f, 15)) { converted = true; continue; } // canon §4.3 Trade action
     if (tryRecruitMilitary(g, f, true)) continue;
     if (tryConsolidate(g, f)) continue;
     if (tryMoveToFront(g, f)) continue;

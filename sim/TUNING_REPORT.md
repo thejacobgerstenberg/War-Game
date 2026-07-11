@@ -24,28 +24,33 @@ caveats: the shared enum spells `OTTOMAN` (sim `ottomans`), and the
 
 ## 1. Executive summary
 
-**This revision implements the RATIFIED ERRATA E1–E5 (coordinator,
-2026-07-11)** — Treason-at-the-Gate gates, diminishing monopoly prestige,
-the Great Bombard canon draw model + emplacement, three independent secret
-objectives, and betrayal/aggression costs — and re-measures everything at
-the retuned CONFIG (`victoryThreshold: 80`, single-lever retune 84 → 80
-after the E2 monopoly nerf lowered winner accrual). All six balance targets
-are green. Primary evidence is the independent 5,000-game verification run
+**This revision is the ENGINE RECONCILIATION (2026-07-11)** against
+`server/src/engine/balance.ts` (feature/engine-core): the ratified tactic
+hand limit **3** (GD §7.7's "4" is a docs error), canon §9.2 **per-work
+great-work prestige (10/6/6/5) and costs**, canon §9.1 **building/wall
+costs** (sim drift fixed), canon §4.3 **market conversion** newly modeled
+(the valve that makes the canon prices playable), a **home annotation on
+every §2 row** (balance.ts / needs-new-engine-field / map-data /
+sim-only-guardrail / kept-canon-divergence), and the **per-unique economy
+A/B** the engine asked for (§2.3 — verdict: model it). Retune (minimal,
+TUNING_LOG engine-reconciliation round): `victoryThreshold` 80 → **78**,
+venice/genoa home marble 0 → 1. All six balance targets are green. Primary
+evidence is the independent 5,000-game verification run
 (`GAMES=5000 SEED=987654321`); the committed `results/fullgame.json` holds
 the 3,000-game fresh-seed final run (`GAMES=3000 SEED=24681357`) — see §7.
 
 | Headline metric | 5,000-game verify (primary) | 3,000-game final (committed) | Target |
 |---|---|---|---|
-| Byzantium win rate | **18.2%** | 17.7% | 12–30% |
-| Ottomans win rate | **17.0%** | 17.3% | 12–30% |
-| Venice win rate | **13.2%** | 12.3% | 12–30% |
-| Genoa win rate | **25.3%** | 26.3% | 12–30% |
-| Hungary win rate | **26.3%** | 26.4% | 12–30% |
-| Policy: rusher / trader / turtler / opportunist | **14.9 / 26.5 / 16.5 / 22.2%** | 13.9 / 25.7 / 17.7 / 22.7% | each 10–40% |
-| Median end round (mean) | **16** (15.07) | 15 (15.03) | 12–16 |
-| Games ending before round 11 | **0.5%** | 0.5% | <10% |
-| Victory split: threshold / cap / sudden death | **57.5 / 30.6 / 11.9%** | 57.6 / 30.2 / 12.3% | threshold 40–70%, SD 1–15% |
-| Sudden-death completions | all r12+ | **all 368 at r12–16** | none before r10; **<15% (errata brief)** |
+| Byzantium win rate | **13.9%** | 14.0% | 12–30% |
+| Ottomans win rate | **15.7%** | 15.7% | 12–30% |
+| Venice win rate | **17.6%** | 16.8% | 12–30% |
+| Genoa win rate | **24.6%** | 24.8% | 12–30% |
+| Hungary win rate | **28.2%** | 28.7% | 12–30% |
+| Policy: rusher / trader / turtler / opportunist | **15.8 / 28.5 / 12.6 / 23.2%** | 14.8 / 28.5 / 13.1 / 23.7% | each 10–40% |
+| Median end round (mean) | **15** (14.89) | 15 (14.88) | 12–16 |
+| Games ending before round 11 | **0.5%** | 0.7% | <10% |
+| Victory split: threshold / cap / sudden death | **55.5 / 34.1 / 10.4%** | 56.1 / 33.4 / 10.5% | threshold 40–70%, SD 1–15% |
+| Sudden-death completions | all r12+ | **all 315 at r12–16** | none before r10; **<15% (errata brief)** |
 | Eliminations | **0** | 0 | no early kingmaker deaths |
 | Constantinople: intact-T5 assault, worst case | — | **0.31%** (siege module) | <2% |
 | Constantinople: no Bombard + no blockade, 12 siege rounds | — | **0.0%** | <10% |
@@ -55,23 +60,25 @@ the 3,000-game fresh-seed final run (`GAMES=3000 SEED=24681357`) — see §7.
 
 **Three sentences for the engine lead.**
 
-1. Transcribe §2 verbatim into `balance.ts`: every number is either a direct
-   canon value (§-cited), a RATIFIED errata value (E1–E5, 2026-07-11), or a
-   sim-validated tuning of a value canon explicitly left to this report (the
-   victory threshold, map yields/routes) — the game is balanced *as a
+1. Transcribe §2 into `balance.ts` per each row's **home** tag: most rows are
+   already transcribed (verify values — notably **`TACTIC_HAND_LIMIT` 4 → 3**,
+   **`PRESTIGE_THRESHOLDS` → 71/74/76/78**), the `needs-new-engine-field`
+   rows require new exports (incl. **per-unique cost/upkeep overrides — the
+   §2.3 A/B shows the tuned balance does not survive without them**:
+   Byzantium +13.5pp, Ottomans −7.0pp under combat-deltas-only uniques), and
+   the `sim-only-guardrail` rows must NOT ship — the game is balanced *as a
    system*, so change values only in pairs with a re-run of
    `npm run sim:full`.
-2. The former round-15 Bombard divergence is GONE: the Bombard now follows
-   the canon Era III draw (seeded uniform rounds 11–16) with a 1-round
-   emplacement (E3), and the sudden-death band holds at 11.9–12.3% (<15%);
-   the remaining deliberate deltas are the **map/trade deltas in
-   §2.10/§2.12** (one setup monopoly per trade-identity faction, Hungary's
-   ratified overland Danube corridor).
-3. The Treason-at-the-Gate errata (E1) closed the last HIGH register item —
-   every beeline hunt bar now passes (worst one-beeliner SD 16.2% ≤20%,
-   ≤r8 8.3% ≤10%); the remaining register items (§5) are design follow-ups
-   (trade-seat monoculture ceiling, all-turtle near-ties, victory-check
-   ordering), none exploit-grade.
+2. The reconciliation adopted canon §9.1/§9.2 prices wholesale; they are
+   playable ONLY together with canon §4.3 market conversion (§2.14) — the
+   capped 27-prestige great-work channel plus marble-priced buildings
+   otherwise collapse the builder/trader game (threshold-decided fell to
+   32.8% and three factions left their bands before the retune, TUNING_LOG).
+3. The remaining deliberate deltas are the **map/trade deltas in §2.10/§2.12**
+   (one setup monopoly per trade-identity faction, Hungary's ratified
+   overland Danube corridor, venice/genoa home marble) and the
+   kept-canon-divergences flagged inline (SIEGE def, §2.2); the open register
+   items (§5) are design follow-ups, none exploit-grade.
 
 ---
 
@@ -83,14 +90,29 @@ obvious. "GUARDRAIL" marks sim-only clamps the engine must **not** ship as
 rules (they mark where the sim is coarser than the game — see RULES_MODEL.md
 GUARDRAILS).
 
+**Home annotations (engine reconciliation, 2026-07-11).** Every row now
+carries a **home** tag using the engine team's grouping of where the value
+lives:
+
+- **balance.ts** — transcribed into `server/src/engine/balance.ts`
+  (feature/engine-core), possibly under a different export name (noted).
+- **needs-new-engine-field** — validated by this report but NOT yet a
+  `balance.ts` export; the engine must add a field/constant for it.
+- **map-data** — lives in authored map/faction data (sim `src/map.ts`; the
+  engine's MAP.md-derived data files), not in balance.ts.
+- **sim-only-guardrail** — a clamp that papers over sim coarseness; the
+  engine must NOT ship it as a rule.
+- **kept-canon-divergence** — the engine keeps the canon value where the sim
+  deliberately diverges; the divergence stays sim-side (impact note given).
+
 ### 2.1 Game shell
 
-| Key | Value | Evidence |
-|---|---|---|
-| `MAX_ROUNDS` | 16 | canon §10 (1400–1453); fullgame median end r16 |
-| `ACTIONS_PER_ROUND` | 4 | canon §10.0; pacing green (T3) at 4 |
-| `SUDDEN_DEATH_HOLD_ROUNDS` | 2 | canon §13.3; fullgame SD 11.9–12.3% at the errata config (1–15% band; errata brief <15%) |
-| `PLAYERS_MIN` / `PLAYERS_MAX` | 2 / 5 | sim supports 2–5; **all balance evidence is 5-player** (see §2.13 threshold note) |
+| Key | Value | Home | Evidence |
+|---|---|---|---|
+| `MAX_ROUNDS` | 16 | balance.ts (`ROUNDS`) | canon §10 (1400–1453); fullgame median end r15–16 |
+| `ACTIONS_PER_ROUND` | 4 | balance.ts (`ACTIONS_PER_ROUND`) | canon §10.0; pacing green (T3) at 4 |
+| `SUDDEN_DEATH_HOLD_ROUNDS` | 2 | needs-new-engine-field | canon §13.3; fullgame SD 9.3% at the reconciliation config (1–15% band) |
+| `PLAYERS_MIN` / `PLAYERS_MAX` | 2 / 5 | needs-new-engine-field | sim supports 2–5; **all balance evidence is 5-player** (see §2.13 threshold note) |
 
 ### 2.2 Unit stats — base table (`UNIT_STATS: Record<UnitType, …>`)
 
@@ -100,18 +122,20 @@ roster maps `levy→LEVY`, `professional→INFANTRY` (the faction's line unit),
 mode* applied to CAVALRY stats (there is no MERCENARY enum member — see the
 multiplier keys below).
 
-| Unit | `GOLD_COST` | `TIMBER_COST` | `MARBLE_COST` | `GRAIN_UPKEEP` | `GOLD_UPKEEP` | `CV_ATK/DEF` | Evidence |
-|---|---|---|---|---|---|---|---|
-| LEVY | 2 | 0 | 0 | 1 | 0 | 1/1 | canon §6.1; combat.json levyVsProfessional 6v4 = 26.1% (quality gap visible) |
-| INFANTRY (professional) | 4 | 0 | 0 | 1 | 0 | 2/3 | canon §6.1; combat.json openField 6v4 = 52.2%, 6v6 = 13.1% (defender favored at parity) |
-| mercenary (hired CAVALRY) | 9 (= 6 × 1.5) | 0 | 0 | 4 (= 2 × 2) | 0 | 3/2 | canon §6.2 terms; adversarial_merc_rush.json: no exploit flags, cycle-vs-honest z = 1.31 (n.s., E5b re-measure) |
-| SIEGE | 8 | 2 | 2 | 1 | 0 | 0/0 (never rolls in the field) | canon §6.1; siege.json grid: engines drive E[capture] 7.3→2.2 rounds at T3 |
-| GALLEY | 5 | 2 | 0 | 1 | 0 | 2/2 | canon §6.1; galley upkeep in grain per §4.4; economy.json strike incl. galleys 5/5 ≥8 |
+| Unit | `GOLD_COST` | `TIMBER_COST` | `MARBLE_COST` | `GRAIN_UPKEEP` | `GOLD_UPKEEP` | `CV_ATK/DEF` | Home | Evidence |
+|---|---|---|---|---|---|---|---|---|
+| LEVY | 2 | 0 | 0 | 1 | 0 | 1/1 | balance.ts (`UNIT_STATS`) | canon §6.1; combat.json levyVsProfessional 6v4 = 26.1% (quality gap visible) |
+| INFANTRY (professional) | 4 | 0 | 0 | 1 | 0 | 2/3 | balance.ts (`UNIT_STATS`) | canon §6.1; combat.json openField 6v4 = 52.2%, 6v6 = 13.1% (defender favored at parity) |
+| mercenary (hired CAVALRY) | 9 (= 6 × 1.5) | 0 | 0 | 4 (= 2 × 2) | 0 | 3/2 | balance.ts (`UNIT_STATS[CAVALRY]` × `MERC_MARKET`/`MERC_UPKEEP_MULTIPLIER`) | canon §6.2 terms; adversarial_merc_rush.json: no exploit flags |
+| SIEGE | 8 | 2 | 2 | 1 | 0 | 0/0 (never rolls in the field) | balance.ts (`UNIT_STATS`) — **kept-canon-divergence on DEF**: engine/canon SIEGE def = 1, sim fields 0/0. Impact: engines never roll field dice either way; canon def 1 only makes a caught siege train die marginally slower (threshold 6 vs auto-clamp) — no measurable effect on the tuned aggregates | canon §6.1; siege.json grid: engines drive E[capture] 7.3→2.2 rounds at T3 |
+| GALLEY | 5 | 2 | 0 | 1 | 0 | 2/2 | balance.ts (`UNIT_STATS`) | canon §6.1; galley upkeep in grain per §4.4; economy.json strike incl. galleys 5/5 ≥8 |
 
 Mercenary-mode multiplier keys (canonical form):
-`MERC_GOLD_COST_MULT = 1.5`, `MERC_GRAIN_UPKEEP_MULT = 2`,
-`MERC_DESERT_FIRST = true`, `MERCS_ARRIVE_INSTANTLY = true` (canon §6.2,
-§4.4). The §6.3 bid market is unmodeled (§6 appendix).
+`MERC_GOLD_COST_MULT = 1.5` (home: balance.ts `MERC_MARKET.hireGoldMultiplier`),
+`MERC_GRAIN_UPKEEP_MULT = 2` (home: balance.ts `MERC_UPKEEP_MULTIPLIER`),
+`MERC_DESERT_FIRST = true` (home: balance.ts `DESERTION_ORDER` + §4.4 logic),
+`MERCS_ARRIVE_INSTANTLY = true` (home: **needs-new-engine-field**) (canon
+§6.2, §4.4). The §6.3 bid market is unmodeled (§6 appendix).
 
 ### 2.3 Per-faction unit overrides (`FACTION_UNIT_OVERRIDES`)
 
@@ -120,6 +144,15 @@ Combat asymmetry is measured: Janissary (3/3) attacking Varangian (2/4) wins
 45.9% at 6v4 and 8.5% at 6v6 vs the 52.2%/13.1% symmetric baseline
 (combat.json `janissaryVsVarangian` — elite defense beats elite attack at
 parity, as designed).
+
+Home, split per the engine's model: the **CV (combat) deltas** below are
+balance.ts (`UNIQUE_UNIT_OVERRIDES` atkMod/defMod — transcribed); the
+**cost/upkeep (economy) deltas** are **needs-new-engine-field** — the engine
+currently prices every unique at its base UnitType (all professionals 4g
+etc.) and `UniqueUnitDef` has no cost/upkeep override fields. The A/B below
+answers the engine's question of whether that structure is worth adding
+(genoa's INFANTRY gold 3 is NOT an economy delta — it is the base ARCHER
+cost of its base unit and needs no new field).
 
 | Faction | Slot | Represents | Override | Evidence |
 |---|---|---|---|---|
@@ -131,23 +164,57 @@ parity, as designed).
 | GENOA | mercenary | Mercenary Brokers | gold **6** (×1.5 surcharge **waived**, not a discount) | canon §6.2 "Genoa hires at ×1.0"; merc_rush clean |
 | GENOA | GALLEY | Carrack | CV 2/**3** | FACTIONS; beeline solo_genoa blockade arms (§4) |
 | HUNGARY | LEVY | "Strongest Levies" | gold **1**, CV **2/2** | FACTIONS (+1 combat, −1 gold); hungary strike 8.7 ≥ 8 |
-| HUNGARY | INFANTRY | Black Army | gold 5, CV **3**/3, upkeep **1 gold, 0 grain** | FACTIONS; hungary 24.9–26.5% in band |
+| HUNGARY | INFANTRY | Black Army | gold 5, CV **3**/3, upkeep **1 gold, 0 grain** | FACTIONS; hungary in band |
+
+#### Per-unique ECONOMY A/B — verdict: **model it** (engine question, reconciliation 2026-07-11)
+
+Protocol: 2,000 games/arm, paired seeds (game *i* = seed 14530000 + *i* in
+both arms), `results/unique_economy_ab.json` (`src/run/unique_economy_ab.ts`).
+**Arm A** = shipped sim (per-unique costs/upkeep above). **Arm B** = engine
+shape: every faction unit at base §2.2 costs/upkeep, all combat CVs and
+every other value unchanged (stripped: Varangian 6g→4g; devshirme levies
+grain 0→1; Janissary and Black Army 5g→4g and 1-gold/0-grain→0-gold/1-grain
+upkeep; Galeazza timber 1→2; Genoa merc 6g→9g; Hungarian levy 1g→2g).
+Noise floor ≈ 0.8–1.0pp s.e. per arm.
+
+| faction | arm A (per-unique economy) | arm B (engine shape) | Δ B−A |
+|---|---|---|---|
+| BYZANTIUM | 14.8% | **28.3%** | **+13.5pp** |
+| OTTOMAN | 16.1% | **9.1%** | **−7.0pp** |
+| VENICE | 16.1% | 16.9% | +0.8pp (n.s.) |
+| GENOA | 25.9% | 21.4% | **−4.4pp** |
+| HUNGARY | 27.3% | 24.3% | **−3.0pp** |
+
+Four of five factions move far beyond the noise floor. Under the engine
+shape Byzantium nearly doubles (Varangians at 4g make the premier defensive
+infantry also the cheapest elite — Constantinople becomes nearly untakeable:
+**sudden death collapses 10.7% → 2.6%**, leaving the tuned 1–15% band's
+center), the Ottomans fall through the 12% T1 floor (devshirme grain-0
+levies and gold-paid Janissaries are the Ottoman floor, §2.5's Ghaza bump
+was calibrated on top of them), and Genoa/Hungary lose their FACTIONS.md
+economic identities. **Recommendation: add per-unique economy fields to the
+engine** — extend `UniqueUnitDef` with optional `cost`/`grainUpkeep`/
+`goldUpkeep` overrides (plus the two faction economy riders that are not
+unit stats: Genoa's merc-surcharge waiver = `MERC_MARKET.genoaGoldMultiplier`
+(already in balance.ts) and Venice's galley timber discount). The tuned
+balance does NOT survive combat-deltas-only uniques; if the engine ships
+arm B regardless, the whole §2 config must be re-tuned from scratch.
 
 ### 2.4 Recruiting (`RECRUIT_PER_ACTION` etc.)
 
-| Key | Value | Evidence |
-|---|---|---|
-| `RECRUIT_PER_ACTION` | levy 4, INFANTRY 2, mercenary 3, SIEGE 1, GALLEY 2 | sim-validated throughput (canon has no per-type caps); economy T6 all-green at these rates |
-| `OTTOMAN_LEVY_RECRUIT_BONUS` | +2 levies per recruit action | FACTIONS devshirme ("raised anywhere, in bulk"); ottomans 17.0–17.3% in band at the errata config |
-| `MERCS_ARRIVE_INSTANTLY` | true | canon §6.2 |
+| Key | Value | Home | Evidence |
+|---|---|---|---|
+| `RECRUIT_PER_ACTION` | levy 4, INFANTRY 2, mercenary 3, SIEGE 1, GALLEY 2 | needs-new-engine-field | sim-validated throughput (canon has no per-type caps); economy T6 all-green at these rates |
+| `OTTOMAN_LEVY_RECRUIT_BONUS` | +2 levies per recruit action | needs-new-engine-field | FACTIONS devshirme ("raised anywhere, in bulk"); ottomans 14.4% in band at the reconciliation config |
+| `MERCS_ARRIVE_INSTANTLY` | true | needs-new-engine-field | canon §6.2 |
 
 ### 2.5 Faction modifiers (`FACTION_MODS: Record<Faction, …>`)
 
-| Key | Value | Evidence |
-|---|---|---|
-| `TRADE_INCOME_MULT` | VENICE 1.5, GENOA 1.5, others 1.0 | canon §5.2 merchant bonus; trader policy 25.7–26.5% in band |
-| `CAPITAL_EXTRA_GOLD` | BYZANTIUM 2, others 0 | Hagia Sophia income proxy; byzantium 18.9–19.6% in band (was 90.5% at old proxy 4) |
-| `GHAZA_CITY_CAPTURE_PRESTIGE` | OTTOMAN **+2** per walled city taken (on top of §2.13 capture prestige), others 0 | FACTIONS Ghaza (canon +1; raised 1→2 in the adversarial fix round after the §8.2.3 harbor fixes slowed the Ottoman siege game — within the §14 asymmetry budget). Ottomans 10.0% → 13.9–14.2%; 17.0–17.3% at the errata config (E3's earlier Bombard lifts the siege game — no further Ghaza retune needed) |
+| Key | Value | Home | Evidence |
+|---|---|---|---|
+| `TRADE_INCOME_MULT` | VENICE 1.5, GENOA 1.5, others 1.0 | balance.ts (`TRADE.maritimeMultiplier`) | canon §5.2 merchant bonus; trader policy 29.2% in band |
+| `CAPITAL_EXTRA_GOLD` | BYZANTIUM 2, others 0 | needs-new-engine-field | Hagia Sophia income proxy; byzantium 14.1% in band (was 90.5% at old proxy 4). NOTE: the engine sources the standing Hagia Sophia yield in economy.ts §9.2 (RULING 1) — reconcile this proxy against that yield when transcribing |
+| `GHAZA_CITY_CAPTURE_PRESTIGE` | OTTOMAN **+2** per walled city taken (on top of §2.13 capture prestige), others 0 | needs-new-engine-field | FACTIONS Ghaza (canon +1; raised 1→2 in the adversarial fix round after the §8.2.3 harbor fixes slowed the Ottoman siege game — within the §14 asymmetry budget). Ottomans 14.4% in band at the reconciliation config |
 
 ### 2.6 Combat kernel (canon §7)
 
@@ -157,24 +224,29 @@ simultaneous casualties, lowest-value first (LEVY → INFANTRY → mercenary →
 GALLEY, §4.4). The §7.4 worked example is asserted in `src/run/_smoke.ts`
 (17 threshold checks).
 
-| Key | Value | Evidence |
-|---|---|---|
-| `HIT_THRESHOLD_BASE` | 7 | canon §7.1 |
-| `HIT_THRESHOLD_MIN` / `MAX` | 2 / 6 | canon §7.1 clamp; combat.json sanity: 0 monotonicity/ordering violations over 100k trials/cell |
-| `OUTNUMBER_RATIO` / `OUTNUMBER_BONUS` | 2 / +1 | canon §7.3; combat.json 12v6 open field = 97.6% |
-| `OUTNUMBER_VS_WALLS` | false — GUARDRAIL/gap-fill (no frontage on an escalade) | RULES_MODEL kernel gap-fill 2; needed for T5a 0.31% |
-| `ROUT_LOSS_FRACTION` / `ROUT_ROLL_MAX` | 0.5 / routs on 1d6 ≤ 3 | canon §7.5 |
-| `DEFENDER_ROUTS_BEHIND_WALLS` | false — gap-fill (nowhere to flee) | RULES_MODEL gap-fill 3 |
-| `WALL_COVER_SAVE_ON` | 3 (hits on garrison deflected on 1d6 ≤ 3 while walls stand) — gap-fill vs clamp saturation | RULES_MODEL gap-fill 4; without it a 12-stack storms a 6-man T5 garrison ~6% (T5a fail) |
-| `ATTACKER_WITHDRAW_FRACTION` | 0.35 | sim policy floor; keeps assault grids finite |
-| `BATTLE_MAX_ROUNDS` | 25 (stalemate → siege continues) | sim bound; no timeout observed in siege grids |
-| `SIEGE_ENGINE_ESCALADE_BONUS` | 3 (engines roll at CV 0+3 only while assaulting unbreached walls) | canon §6.1 "SIEGE +3 vs walls" |
-| `TERRAIN_DEFENDER_BONUS` | plains 0; hills/mountains/forest **+1**; (sim marsh +1 — no canon terrain) | canon §7.3; combat.json hills 6v4 = 31.4% vs 52.2% open |
-| `AMPHIBIOUS_PENALTY` | 1 (attacker −1 across strait / amphibious) | canon §7.3/§5.3; combat.json riverCrossing 6v4 = 25.5% |
+| Key | Value | Home | Evidence |
+|---|---|---|---|
+| `HIT_THRESHOLD_BASE` | 7 | balance.ts (`COMBAT_MODS.hitBase`) | canon §7.1 |
+| `HIT_THRESHOLD_MIN` / `MAX` | 2 / 6 | balance.ts (`COMBAT_MODS.hitClampMin/Max`) | canon §7.1 clamp; combat.json sanity: 0 monotonicity/ordering violations over 100k trials/cell |
+| `OUTNUMBER_RATIO` / `OUTNUMBER_BONUS` | 2 / +1 | balance.ts (`COMBAT_MODS.outnumber*`) | canon §7.3; combat.json 12v6 open field = 97.6% |
+| `OUTNUMBER_VS_WALLS` | false — GUARDRAIL/gap-fill (no frontage on an escalade) | sim-only-guardrail | RULES_MODEL kernel gap-fill 2; needed for T5a 0.31% |
+| `ROUT_LOSS_FRACTION` / `ROUT_ROLL_MAX` | 0.5 / routs on 1d6 ≤ 3 | balance.ts (`COMBAT_MODS.routLossFraction/routThreshold`) | canon §7.5 |
+| `DEFENDER_ROUTS_BEHIND_WALLS` | false — gap-fill (nowhere to flee) | sim-only-guardrail | RULES_MODEL gap-fill 3 |
+| `WALL_COVER_SAVE_ON` | 3 (hits on garrison deflected on 1d6 ≤ 3 while walls stand) — gap-fill vs clamp saturation | sim-only-guardrail | RULES_MODEL gap-fill 4; without it a 12-stack storms a 6-man T5 garrison ~6% (T5a fail) |
+| `ATTACKER_WITHDRAW_FRACTION` | 0.35 | sim-only-guardrail | sim policy floor; keeps assault grids finite |
+| `BATTLE_MAX_ROUNDS` | 25 (stalemate → siege continues) | sim-only-guardrail | sim bound; no timeout observed in siege grids |
+| `SIEGE_ENGINE_ESCALADE_BONUS` | 3 (engines roll at CV 0+3 only while assaulting unbreached walls) | balance.ts (`SIEGE.bombardVsWalls` / `UNIT_STATS[SIEGE].special "+3-vs-walls"`) | canon §6.1 "SIEGE +3 vs walls" |
+| `TERRAIN_DEFENDER_BONUS` | plains 0; hills/mountains/forest **+1**; (sim marsh +1 — no canon terrain) | balance.ts (`TERRAIN_DEF_MOD`) | canon §7.3; combat.json hills 6v4 = 31.4% vs 52.2% open |
+| `AMPHIBIOUS_PENALTY` | 1 (attacker −1 across strait / amphibious) | balance.ts (`COMBAT_MODS.amphibiousAttacker`) | canon §7.3/§5.3; combat.json riverCrossing 6v4 = 25.5% |
 
 ### 2.7 Walls T1–T5 (canon §8.1) and escalade
 
 Defender bonus is **binary**: full while wall HP > 0, zero at breach.
+
+Home: balance.ts (`WALL_TIERS` / `MAP_WALL_TIER`) for the tier table;
+`MAX_BUILDABLE_WALL_TIER = 3` is **needs-new-engine-field** (the engine's
+`WALL_BUILD_COST` prices T1–T5 but nothing yet gates the Build action at T3;
+T4/T5 must stay authored/great-work only).
 
 | Tier | `WALL_HP_BY_TIER` | `WALL_DEFENDER_BONUS_BY_TIER` | Notes |
 |---|---|---|---|
@@ -185,8 +257,10 @@ Defender bonus is **binary**: full while wall HP > 0, zero at breach.
 | T4 | 13 | +4 | authored: Belgrade, Rome |
 | T5 | 16 | +4 | Theodosian Walls — Constantinople only (§8.3) |
 
-`ESCALADE_PENALTY = 1` (attacker −1 assaulting unbreached walls, §8.2.4);
-`ASSAULT_ALLOWED_ANYTIME = true`. Evidence: combat.json wall sets — 6v4
+`ESCALADE_PENALTY = 1` (attacker −1 assaulting unbreached walls, §8.2.4;
+home: balance.ts `COMBAT_MODS.escalade`);
+`ASSAULT_ALLOWED_ANYTIME = true` (home: balance.ts — combat-subsystem rule,
+no constant). Evidence: combat.json wall sets — 6v4
 attacker odds collapse 52.2% → 0.4% (T1) → 0.1% (T2–T5): with professional
 garrisons the clamp saturates, so tiers differentiate via wall HP (siege
 length) and starvation, not assault odds — by design. siege.json
@@ -199,21 +273,21 @@ Not modeled (engine should ship canon): wall repair +1 HP/round out of siege
 
 ### 2.8 Siege (canon §8.2–8.4)
 
-| Key | Value | Evidence |
-|---|---|---|
-| `SIEGE_DAMAGE_DIE` | 1d6 → [1,1,2,2,3,3] wall HP | canon §8.2.2; siege.json grid T1–T4 E[capture] 1.0–2.7 rounds at 3 engines |
-| `MAX_EFFECTIVE_ENGINES` | 3 (divergence — canon uncapped) | siege.json T3/g6: engines 3→6 leave capture% and E[rounds] flat (97.3%/2.2 at e3 ≈ e4–e6) — the cap binds nothing in practice but keeps engine-spam out of the agents |
-| `T5_MASONRY_CAP_PER_ROUND` | 1 HP/round total vs intact T5 | canon §8.3; siege.json T5b: 0.0% capture in 12 rounds without the Bombard |
-| `SIEGE_GRAIN_STORES_BASE` | 3 rounds (Granary +2 unmodeled) | canon §8.2.3; blockade starve medians 7/9/11 (T5c) |
-| `STARVATION_UNITS_PER_ROUND` | 1, weakest first | canon §8.2.3 |
-| `BESIEGER_ATTRITION_PER_ROUND` | 0.03 (divergence — canon has none; anti-infinite-siege pressure) | siege.json abandonment rates; keeps e0 sieges from parking forever |
-| `SEA_RESUPPLY` | enabled: a besieged coastal city depletes stores **only under full naval blockade** | canon §8.2.3; T5b 0.0% |
-| Blockade contest rule | a zone is enemy-controlled only if an enemy war fleet is **present and uncontested** by any friendly war fleet (RAW §8.2.3/§5.3) — one defending harbor galley keeps the lane open | adversarial fix: land-power camp-galley blockades removed; beeline SD 78.1% → 22.6% (§4) |
-| Harbor reinforcement | while not fully blockaded, the owner may recruit inside and ferry troops in by sea (`Game.harborOpen`) | §8.2.3 corollary (Giustiniani relief); part of the same fix chain |
-| `GREAT_BOMBARD_DRAW_ROUND_MIN` / `MAX` | **11 / 16** — RATIFIED ERRATA **E3**: the omen `great-bombard-forged` sits at a uniformly random position in the Era III deck; per-game seeded draw round uniform over rounds 11–16 (replaces the former fixed-r15 reveal divergence) | fullgame SD 11.9–12.3% (<15% errata brief; all completions r12+); TUNING_LOG errata round |
-| `GREAT_BOMBARD_EMPLACEMENT_ROUNDS` | **1** — E3: after acquisition (or moving to a new siege) the Bombard is emplaced for 1 full siege round before it first fires (no wall damage / no masonry-cap lift from it that round) | siege.json E3 curve: k=2 ≈ 0.4%, k=3 = 68.3–98.3%; median capture siege round 3 (was 2) |
-| `GREAT_BOMBARD_FREE_TO_OTTOMAN` | true; else auction — sim fallback: richest payer at `GREAT_BOMBARD_AUCTION_GOLD = 40` | canon §8.4 (card auctions gold+marble bids; sim simplifies) |
-| `GREAT_BOMBARD_DAMAGE_DICE` | 2 wall-damage dice/round (~4 avg, max 6); **lifts the T5 masonry cap for the whole train** once emplaced | canon §8.4; siege.json T5d (E3 re-derived): capture ≤4 rounds after first shot 91.7–100% |
+| Key | Value | Home | Evidence |
+|---|---|---|---|
+| `SIEGE_DAMAGE_DIE` | 1d6 → [1,1,2,2,3,3] wall HP | balance.ts (`SIEGE.bombardDamage`) | canon §8.2.2; siege.json grid T1–T4 E[capture] 1.0–2.7 rounds at 3 engines |
+| `MAX_EFFECTIVE_ENGINES` | 3 (divergence — canon uncapped) | sim-only-guardrail | siege.json T3/g6: engines 3→6 leave capture% and E[rounds] flat (97.3%/2.2 at e3 ≈ e4–e6) — the cap binds nothing in practice but keeps engine-spam out of the agents |
+| `T5_MASONRY_CAP_PER_ROUND` | 1 HP/round total vs intact T5 | balance.ts (`SIEGE.t5MasonryCapPerRound`) | canon §8.3; siege.json T5b: 0.0% capture in 12 rounds without the Bombard |
+| `SIEGE_GRAIN_STORES_BASE` | 3 rounds (Granary +2 unmodeled) | balance.ts (`SIEGE.baseHoldoutRounds` / `granaryBonusRounds`) | canon §8.2.3; blockade starve medians 7/9/11 (T5c) |
+| `STARVATION_UNITS_PER_ROUND` | 1, weakest first | balance.ts (`SIEGE.starvationLossPerRound` + `DESERTION_ORDER`) | canon §8.2.3 |
+| `BESIEGER_ATTRITION_PER_ROUND` | 0.03 (divergence — canon has none; anti-infinite-siege pressure) | sim-only-guardrail | siege.json abandonment rates; keeps e0 sieges from parking forever |
+| `SEA_RESUPPLY` | enabled: a besieged coastal city depletes stores **only under full naval blockade** | balance.ts (siege-subsystem rule, canon §8.2.3 — no constant) | canon §8.2.3; T5b 0.0% |
+| Blockade contest rule | a zone is enemy-controlled only if an enemy war fleet is **present and uncontested** by any friendly war fleet (RAW §8.2.3/§5.3) — one defending harbor galley keeps the lane open | balance.ts (naval-subsystem rule — no constant) | adversarial fix: land-power camp-galley blockades removed; beeline SD 78.1% → 22.6% (§4) |
+| Harbor reinforcement | while not fully blockaded, the owner may recruit inside and ferry troops in by sea (`Game.harborOpen`) | balance.ts (siege-subsystem rule — no constant) | §8.2.3 corollary (Giustiniani relief); part of the same fix chain |
+| `GREAT_BOMBARD_DRAW_ROUND_MIN` / `MAX` | **11 / 16** — RATIFIED ERRATA **E3**: the omen `great-bombard-forged` sits at a uniformly random position in the Era III deck; per-game seeded draw round uniform over rounds 11–16 (replaces the former fixed-r15 reveal divergence) | balance.ts (Era III deck position — event-deck data + `ERA_BOUNDARIES`) | fullgame SD in band (all completions late-game); TUNING_LOG errata round |
+| `GREAT_BOMBARD_EMPLACEMENT_ROUNDS` | **1** — E3: after acquisition (or moving to a new siege) the Bombard is emplaced for 1 full siege round before it first fires (no wall damage / no masonry-cap lift from it that round) | balance.ts (`GREAT_BOMBARD.emplacementRounds`) | siege.json E3 curve: k=2 ≈ 0.4%, k=3 = 68.3–98.3%; median capture siege round 3 (was 2) |
+| `GREAT_BOMBARD_FREE_TO_OTTOMAN` | true; else auction — sim fallback: richest payer at `GREAT_BOMBARD_AUCTION_GOLD = 40` | free-to-Ottoman: balance.ts (delta-3 spawn semantics); `GREAT_BOMBARD_AUCTION_GOLD = 40`: **sim-only-guardrail** (the engine auctions gold+marble bids per canon §8.4, not a fixed price) | canon §8.4 (card auctions gold+marble bids; sim simplifies) |
+| `GREAT_BOMBARD_DAMAGE_DICE` | 2 wall-damage dice/round (~4 avg, max 6); **lifts the T5 masonry cap for the whole train** once emplaced | balance.ts (`GREAT_BOMBARD.bombardDice` / `ignoresMasonryCap`) | canon §8.4; siege.json T5d (E3 re-derived): capture ≤4 rounds after first shot 91.7–100% |
 
 Unmodeled Bombard riders (ship per canon §8.4): 3-grain upkeep/silence,
 1-province move, no mountains, sink-on-transport-loss, capture-as-loot.
@@ -227,6 +301,8 @@ The 23 ratified designs at final magnitudes are encoded verbatim in
 were fixed inputs to tuning** — do not retune them; the one ratified errata
 is E1 (Treason at the Gate, §5.A). Sim plays at most ONE card per side per battle (canon allows one per
 battle *round* — the measured card impact is a mild underestimate).
+Home: the per-design card data lives in the engine's `engine/tactics/cards.ts`
+(per balance.ts' own note); the deck-wide keys below are balance.ts (`TACTIC`).
 
 Combat-relevant designs and measured impact (combat.json, 100k trials/cell,
 vs openField 6v4 = 52.2%):
@@ -254,10 +330,22 @@ the Bazaar, Feigned Retreat, Chain Across the Horn, Greek Fire, A Death in
 the Palace. Re-measure the card layer when fleets/movement/diplomacy land
 (§6).
 
-Deck/hand keys: `CARD_DRAWS_PER_ROUND = 1` (University unmodeled),
-`HAND_LIMIT = 4` (canon §7.7).
+Deck/hand keys: `CARD_DRAWS_PER_ROUND = 1` (University unmodeled; home:
+balance.ts `TACTIC.drawPerIncome`), **`HAND_LIMIT = 3`** (home: balance.ts
+`TACTIC_HAND_LIMIT` / `TACTIC.handLimit` — **the engine's transcribed 4 must
+be updated to 3**). RATIFIED (coordinator, engine reconciliation
+2026-07-11): the tactic-card hand limit is **3**; GD §7.7's "4" is a docs
+error (this report's pre-reconciliation revisions tuned against it).
+Re-measured at 3: sub-noise fullgame impact (largest faction delta 0.7pp at
+1000 games, se ≈ 1.2pp — with 15/47 deck cards dead in-sim, hand pressure
+rarely binds; TUNING_LOG engine-reconciliation round). Re-check when the
+movement/info/naval cards go live in the engine (§6).
 
 ### 2.10 Province yields — bounds and tuned map deltas
+
+Home: **map-data**, all rows (`YIELD_BOUNDS`, `KEY_CITY_GOLD_MIN`, and every
+per-province delta below live in authored map data — sim `src/map.ts`, the
+engine's MAP.md-derived files — not in balance.ts).
 
 Authoring bounds (`map.ts` is validated against these):
 `YIELD_BOUNDS` gold [0,5], grain [0,4], timber [0,2], marble [0,2],
@@ -272,34 +360,44 @@ are load-bearing balance results, not flavor):
 | pera | gold **2**, marble **1** | Genoa's great-work marble moved onto the warpath (parity with Venice's Zara); gold trimmed in the fix round (Genoa 30.2%→27.8%) |
 | bursa | gold **4** (was 3) | Silk-Road terminus; Ottoman floor re-lift after the §8.2.3 harbor fixes (ottomans 10.0%→13.9–14.2%) |
 | chios | gold **2** (was 3); caffa gold **3** (was 4) | colonial-surplus trim: Genoa's runaway was great-works funded by untouchable colonies (retune-1 it5/7) |
-| venice | marble **0**; zara marble **1** | Venice's great-work engine sourced from contestable Dalmatia, not the lagoon (round-91: venice 32.4%→in band) |
+| venice | marble **1** (0→1, engine-reconciliation retune); zara marble **1** | round-91 had moved Venice's great-work marble wholly to contestable Dalmatia (venice 32.4%→in band) — but that assumed the 4-marble generic work; canon §9.2 works cost 6–12 marble and starved Venice to **3.3%**. One home marble restores it to band (17.7% at 3,000 games); Dalmatia stays the contestable second source |
+| genoa | marble **1** (0→1, engine-reconciliation retune) | same §9.2-price rationale as venice (genoa 5.3%→25.4%); pera stays the on-warpath second source |
 | belgrade | marble **0**; buda gold **3** (was 4) | Hungary Option-A moderation (42.4%→in band; TUNING_LOG retune-1 it10–11) |
 | constantinople grain 2, morea grain 3, mesembria grain 3 | rump-Byzantium grain floor | economy: Byz income ≥ upkeep for a credible strike force (old-kernel it17, still load-bearing) |
 | salonica | Byzantine, T3, key | canon thessalonica (FACTIONS); trebizond stays a neutral T3 key city |
 
-### 2.11 Buildings
+### 2.11 Buildings & Great Works — **canon §9.1/§9.2 adopted (engine reconciliation, 2026-07-11)**
 
-Sim models a 3-building set (canon §9.1 lists 8 + four §9.2 Great Works with
-multi-round builds — see §6). Validated values:
+The pre-reconciliation sim carried building-cost drift (market 8g+2 timber/
++2 gold, wall +1 tier 10g+2t+1m, a generic repeatable 25g+4m+2f/+5 great
+work). Per the reconciliation, **building and great-work costs are now canon
+§9.1/§9.2 verbatim** — the sim was re-run and retuned at these prices (see
+§2.13 threshold, §2.10 marble deltas, and the §4.3 conversion row in §2.14;
+TUNING_LOG engine-reconciliation round). The sim still models only the
+Market and Walls rows of the 8-building §9.1 table (see §6).
 
-| Key | Value | Evidence |
-|---|---|---|
-| `MARKET_COST` / `MARKET_EXTRA_GOLD` | 8g + 2 timber / +2 gold/round | trader policy 26% in band |
-| `WALL_UPGRADE_COST` | 10g + 2 timber + **1 marble** (+1 tier, max T3) | **marble 2→1 was a real tuning outcome**: at 2 marble, wall upgrades starved great works and the turtler policy fell below the 10% floor (9.3%); at 0 it overshot (turtler 20–22%, genoa 31.9%); at 1: turtler 10.9–19.2% across seeds (round-91 it3–4). If the engine uses canon §9.1 wall costs, preserve the *ratio*: wall-marble must stay well below great-work marble |
-| `GREAT_WORK_COST` / `GREAT_WORK_PRESTIGE` | 25g + 4 marble + 2 faith / **+5** once | sim's generic stand-in for §9.2 (+5…+10, multi-round); monopolyMax ledger: greatWorks 13.1–19.3 avg prestige for the trade republics (turtle_dominance.json) |
+| Key | Value | Home | Evidence |
+|---|---|---|---|
+| `MARKET_COST` / `MARKET_EXTRA_GOLD` | **4g + 2 marble / +1 gold/round** (canon §9.1) | balance.ts (`BUILDING_COSTS[MARKET]` / `BUILDING_EFFECTS[MARKET]`) | trader policy 29.2% in band at the reconciliation config |
+| `WALL_BUILD_COST` by target tier | **T1 4g+3m · T2 5g+4m · T3 8g+6m** (canon §9.1 Walls Lv1/Lv2 = T2/T3; T1 per the engine table); Build stops at T3 (`MAX_BUILDABLE_WALL_TIER`, home needs-new-engine-field, §2.7) | balance.ts (`WALL_BUILD_COST`) | turtler policy 13.4% ≥ 10% at the reconciliation config. The pre-reconciliation "wall-marble must stay well below great-work marble" ratio warning is RESOLVED by the §4.3 conversion valve (§2.14) — without it these canon marble prices broke the turtler floor (6–9%) |
+| `GREAT_WORK_COSTS` / per-work prestige | **canon §9.2 per work**: Hagia Sophia 20g/10m/8f → **+10** · Theodosian Walls 15g/12m → **+6** · Great University 18g/8m/4f → **+6** · Grand Bazaar 16g/6t/6m → **+5**; each work once per faction in-sim | balance.ts (`GREAT_WORK_COSTS`, `PRESTIGE_VALUES.greatWork`) | replaces the sim's generic +5 stand-in (drift, fixed). Fullgame impact of the swap alone: threshold-decided 57.6%→32.8%, venice 13.4%→7.0%, hungary 23.8%→33.0% — the capped 27-prestige/faction channel forced the §2.13 threshold re-derivation (80→78) and the §2.10/§2.14 retune |
+
+Multi-round §9.2 builds (2–3 invest rounds) remain unmodeled — the sim
+completes a work in one Build action (§6); the engine ships canon rounds
+(`GREAT_WORK_COSTS[*].rounds`).
 
 ### 2.12 Trade
 
-| Key | Value | Evidence |
-|---|---|---|
-| `BASE_ROUTE_INCOME` | 3 (sim default; routes are authored per-pair below — canon §5.2's formula is unmodeled, §6) | economy income telemetry: mean gold/round byz 19.1 / ott 21.1 / ven 30.7 / gen 24.7 / hun 17.5 |
-| `MAX_ROUTES_PER_FACTION` | 3 | trader 26% in band; venice/genoa avg open routes 2.8/turn (economy_exploit control) |
-| `BLOCKADE_INCOME_MULT` | **0.5** — a blockaded route yields ×0.5; only a **severed** route (endpoint lost) yields 0 | canon §5.2 (adversarial fix, HIGH): pre-fix blockade *cancelled* routes and a single 5g picket galley deleted a trader faction — trader-Genoa under a dedicated Ottoman griefer 0.1% pre-fix → **36.6%** post-fix vs 51.3% control; blockade-mechanism attribution now ~0.5pp (36.6 vs 37.1 with the mechanism off); a passive-picket griefer wins **0.0%** (total self-sacrifice, was self-profitable) |
-| `MERCHANT_FACTION_MULT` | 1.5 (Venice, Genoa) | canon §5.2 |
-| `TRADE_MONOPOLY_PRESTIGE_FIRST` / `_ADDITIONAL` | **+2 first / +1 each additional** simultaneous monopoly — RATIFIED ERRATA **E2** (diminishing returns; no escort requirement) | errata re-measure: monopolyMax Venice 66.2%→57.5%, Genoa 61.7%→60.0% (§4.5); Venice/Genoa T1 held at threshold 80 |
-| Overland caravan routes | ratified (R9 Option A): land-to-land, no sea zones, fleet-unblockadable; income = **60% of the comparable sea route** (the floor of the ratified 60–75% band; canon rules them army-blockadable — not modeled, flatters overland slightly) | Hungary floor fix: 3.9% → in band (22.7–26.5%); at 75% (3g) Hungary hit 41–42% — see §5 note and TUNING_LOG retune-1 it8–12 |
+| Key | Value | Home | Evidence |
+|---|---|---|---|
+| `BASE_ROUTE_INCOME` | 3 (sim default; routes are authored per-pair below — canon §5.2's formula is unmodeled, §6) | map-data (authored per-pair; the engine's §5.2 formula constants live in balance.ts `TRADE`) | economy income telemetry |
+| `MAX_ROUTES_PER_FACTION` | 3 | needs-new-engine-field | trader 28.5% in band; venice/genoa avg open routes 2.8/turn (economy_exploit control) |
+| `BLOCKADE_INCOME_MULT` | **0.5** — a blockaded route yields ×0.5; only a **severed** route (endpoint lost) yields 0 | balance.ts (`TRADE.blockadeMultiplier` / `severedIncome`) | canon §5.2 (adversarial fix, HIGH): pre-fix blockade *cancelled* routes and a single 5g picket galley deleted a trader faction — trader-Genoa under a dedicated Ottoman griefer 0.1% pre-fix → **36.6%** post-fix vs 51.3% control; a passive-picket griefer wins **0.0%** |
+| `MERCHANT_FACTION_MULT` | 1.5 (Venice, Genoa) | balance.ts (`TRADE.maritimeMultiplier`) | canon §5.2 |
+| `TRADE_MONOPOLY_PRESTIGE_FIRST` / `_ADDITIONAL` | **+2 first / +1 each additional** simultaneous monopoly — RATIFIED ERRATA **E2** (diminishing returns; no escort requirement) | balance.ts (`MONOPOLY_PRESTIGE`) | errata re-measure: monopolyMax Venice 66.2%→57.5%, Genoa 61.7%→60.0% (§4.5) |
+| Overland caravan routes | ratified (R9 Option A): land-to-land, no sea zones, fleet-unblockadable; income = **60% of the comparable sea route** (the floor of the ratified 60–75% band; canon rules them army-blockadable — not modeled, flatters overland slightly) | map-data (authored routes) | Hungary floor fix: 3.9% → in band; at 75% (3g) Hungary hit 41–42% — see §5 note and TUNING_LOG retune-1 it8–12 |
 
-Authored route table (map.ts; income gold/round):
+Authored route table (map.ts; income gold/round; home: **map-data**, all rows):
 
 | Route | Income | Notes |
 |---|---|---|
@@ -320,104 +418,108 @@ salonica_constantinople, constantinople_caffa — Byzantine hub snowball.)
 
 ### 2.13 Prestige & victory (canon §13.1)
 
-| Key | Value | Evidence |
-|---|---|---|
-| `PRESTIGE_OWN_CAPITAL` | +1/round | canon §13.1 |
-| `PRESTIGE_ENEMY_CAPITAL` | +3/round | canon §13.1 |
-| `PRESTIGE_KEY_CITY` | +1/round each | canon §13.1 (sim's old 1.5 reverted — capital income replaces the premium) |
-| `PRESTIGE_TRADE_MONOPOLY_FIRST` / `_ADDITIONAL` | **+2 / +1** (E2 diminishing returns) | §2.12; ceiling reduced (§4.5), residual filed §5 |
-| `PRESTIGE_GREAT_WORK` | +5 once | §2.11 |
-| `PRESTIGE_DECISIVE_BATTLE` | +1 | canon §13.1 (loser wiped or routed; withdrawals don't count) |
-| `PRESTIGE_OUTNUMBERED_WIN` | +1 (stacks with decisive) | canon §13.1 |
-| `PRESTIGE_WALLED_CITY_CAPTURE` | +2 (T1–T3), **+3 (T4–T5)** — BY FORCE only (walk-ins score nothing) | canon §13.1 |
-| `PRESTIGE_WAR_WON` | +3 | canon §13.1 |
-| `PRESTIGE_LOSE_CAPITAL` | −3 | canon §13.1 |
-| `PRESTIGE_SECRET_OBJECTIVE` | **+4 PER OBJECTIVE, INDEPENDENTLY; 3 objectives per faction; scored at GAME END only** — RATIFIED ERRATA **E4** (counts for the round-16 comparison; can never trigger an early threshold win) | canon §13.1 + FACTIONS (3 per faction); errata re-measure: per-objective completion 6.0%, end-reveal flips 9.6% of unique-leader cap games (§4.4) — the channel is live |
-| `PRESTIGE_UNJUSTIFIED_WAR` | **−1** once, at war declaration, unless justified — RATIFIED ERRATA **E5a**. Sim justification mapping (engine should ship canon §11 casus belli): target holds one of your secret-objective provinces, OR target is the current prestige leader, OR target attacked you first this game | canon §11 aggression-cost family; measured 0.79 charges/game in fullgame; war-poke pricing §4.2 |
-| `GHAZA_CITY_CAPTURE_PRESTIGE` | OTTOMAN +2 | §2.5 |
-| per-route prestige / per-province capture prestige / Constantinople extra | **0** (levers, off — canon has none) | retune: the conquest track (+2/province) was a pre-canon lever, removed |
-| `TURN_ORDER` | re-sort each Cleanup, lowest prestige first (tiebreak fewer provinces) | canon §13.4; modeled since the fix round (runaway-leader hunt) |
-| `CAP_TIEBREAK` | most key cities, then most gold | canon §13.3; modeled since the fix round |
-| **`VICTORY_THRESHOLD`** | **80** (checked at Cleanup only; 84 → 80 in the ratified errata round) | see below |
-| **`VICTORY_THRESHOLD_BY_PLAYER_COUNT`** | **2p: 72 · 3p: 78 · 4p: 80 · 5p: 80** (≈ 15.2× / 15.6× / 15.5× / 15.2× that count's mean winner accrual/round) | §3.6, `results/thresholds.json` |
+| Key | Value | Home | Evidence |
+|---|---|---|---|
+| `PRESTIGE_OWN_CAPITAL` | +1/round | balance.ts (`PRESTIGE_VALUES.holdOwnCapitalPerRound`) | canon §13.1 |
+| `PRESTIGE_ENEMY_CAPITAL` | +3/round | balance.ts (`PRESTIGE_VALUES` / `CONQUEST_PRESTIGE`) | canon §13.1 |
+| `PRESTIGE_KEY_CITY` | +1/round each | balance.ts (`PRESTIGE_VALUES.holdKeyCityPerRound`) | canon §13.1 (sim's old 1.5 reverted — capital income replaces the premium) |
+| `PRESTIGE_TRADE_MONOPOLY_FIRST` / `_ADDITIONAL` | **+2 / +1** (E2 diminishing returns) | balance.ts (`MONOPOLY_PRESTIGE`) | §2.12; ceiling reduced (§4.5), residual filed §5 |
+| `PRESTIGE_GREAT_WORK` | **per work (canon §9.2/§13.1): Hagia Sophia +10 · Theodosian Walls +6 · Great University +6 · Grand Bazaar +5** — adopted at the engine reconciliation (replaces the sim's generic flat +5; §2.11) | balance.ts (`PRESTIGE_VALUES.greatWork`, keyed by `GreatWorkType` — engine kept canon; sim now matches) | §2.11 fullgame impact + TUNING_LOG engine-reconciliation round |
+| `PRESTIGE_DECISIVE_BATTLE` | +1 | balance.ts (`CONQUEST_PRESTIGE.decisiveBattle`) | canon §13.1 (loser wiped or routed; withdrawals don't count) |
+| `PRESTIGE_OUTNUMBERED_WIN` | +1 (stacks with decisive) | balance.ts (`CONQUEST_PRESTIGE.outnumberedWin`) | canon §13.1 |
+| `PRESTIGE_WALLED_CITY_CAPTURE` | +2 (T1–T3), **+3 (T4–T5)** — BY FORCE only (walk-ins score nothing) | balance.ts (`CONQUEST_PRESTIGE.takeWalledCity*`) | canon §13.1 |
+| `PRESTIGE_WAR_WON` | +3 | balance.ts (`CONQUEST_PRESTIGE.winWar`) | canon §13.1 |
+| `PRESTIGE_LOSE_CAPITAL` | −3 | balance.ts (`PRESTIGE_VALUES.loseCapital`) | canon §13.1 |
+| `PRESTIGE_SECRET_OBJECTIVE` | **+4 PER OBJECTIVE, INDEPENDENTLY; 3 objectives per faction; scored at GAME END only** — RATIFIED ERRATA **E4** | balance.ts (`PRESTIGE_VALUES.secretObjective`; the 3-independent-objectives + game-end-only scoring semantics are objective-subsystem rules) | canon §13.1 + FACTIONS; errata re-measure: per-objective completion 6.0%, end-reveal flips 9.6% of unique-leader cap games (§4.4) |
+| `PRESTIGE_UNJUSTIFIED_WAR` | **−1** once, at war declaration, unless justified — RATIFIED ERRATA **E5a**. Sim justification mapping (engine should ship canon §11 casus belli): target holds one of your secret-objective provinces, OR target is the current prestige leader, OR target attacked you first this game | balance.ts (`UNJUSTIFIED_WAR_PRESTIGE`) | canon §11 aggression-cost family; war-poke pricing §4.2 |
+| `GHAZA_CITY_CAPTURE_PRESTIGE` | OTTOMAN +2 | needs-new-engine-field | §2.5 |
+| per-route prestige / per-province capture prestige / Constantinople extra | **0** (levers, off — canon has none) | sim-only-guardrail (dead levers; the engine ships nothing) | retune: the conquest track (+2/province) was a pre-canon lever, removed |
+| `TURN_ORDER` | re-sort each Cleanup, lowest prestige first (tiebreak fewer provinces) | balance.ts (round-loop rule, canon §13.4 — no constant) | modeled since the fix round (runaway-leader hunt) |
+| `CAP_TIEBREAK` | most key cities, then most gold | balance.ts (Cleanup-resolver rule, canon §13.3 — no constant) | modeled since the fix round |
+| **`VICTORY_THRESHOLD`** | **78** (checked at Cleanup only; 80 → 78 in the engine-reconciliation round — the canon §9.2 per-work adoption lowered winner accrual) | balance.ts (`PRESTIGE_THRESHOLDS[5]` — **engine's transcribed 80 must be updated**) | see below |
+| **`VICTORY_THRESHOLD_BY_PLAYER_COUNT`** | **2p: 71 · 3p: 74 · 4p: 76 · 5p: 78** (≈ 15.3× / 15.0× / 14.9× / 14.9× that count's mean winner accrual/round; re-derived at the reconciliation config) | balance.ts (`PRESTIGE_THRESHOLDS` — **engine's 72/78/80/80 must be updated**) | §3.6, `results/thresholds.json` |
 
-**VICTORY_THRESHOLD = 80**, expressed both ways per the canon §13.2 handoff
+**VICTORY_THRESHOLD = 78**, expressed both ways per the canon §13.2 handoff
 ("threshold supplied by balance TUNING_REPORT"):
 
-- **Absolute: 80 prestige**, first checked at Cleanup (canon §13.2's 25/30/35
+- **Absolute: 78 prestige**, first checked at Cleanup (canon §13.2's 25/30/35
   are pre-tuning placeholders — the §13.1 conquest rows plus monopoly/capital
   income raise total inflow far beyond them).
-- **As a multiple of winner accrual: 80 = 15.16× the mean winner
-  prestige-accrual per round** — 5.277 prestige/round, computed over exactly
-  the 3,000 committed `results/fullgame.json` games (mean of per-game
-  final-prestige/rounds; mean winner final prestige 78.7 at mean end round
-  15.03; aggregate form 80 ÷ (78.7/15.03) = 15.29×). The pre-errata config
-  sat at ~15.9–16.0×; the E2 monopoly nerf lowered accrual, so the multiple
-  drifted to ~15.2–15.3×. If future rules changes move mean winner accrual,
-  re-derive the absolute value from ~15–16× and re-verify T1–T4.
-- Calibration lineage (errata round A/B at 1,000 games seed 14530000, then
-  seed-verified at 3,000/5,000): **84** → threshold-decided 37.4% (T3 floor
-  40% broken), SD 14.6%; **82** → 47.2%/13.7% but Venice 11.6% on the fresh
-  seed (T1 floor broken); **80** → 57.5–57.6% threshold-decided, SD
-  11.9–12.3%, Venice 12.3–13.4% across all three seeds — all bands green.
-  Pacing window 78–84 (rec 81); 80 sits inside it.
+- **As a multiple of winner accrual: 78 ≈ 14.9× the mean winner
+  prestige-accrual per round** (5.222 prestige/round, mean winner final 77.0
+  — 5-player subset-sweep confirm batch, 2,000 games seed 74530005). The
+  errata config sat at ~15.2–15.3×; the canon §9.2 per-work adoption capped
+  the great-work channel at 27 prestige/faction and lowered winner accrual,
+  so both the absolute value and the multiple fell. If future rules changes
+  move mean winner accrual, re-derive from ~15× and re-verify T1–T4.
+- Calibration lineage (engine-reconciliation round, TUNING_LOG): at the old
+  80, per-work works alone drove threshold-decided to 32.8% (T3 floor
+  broken); the probe grid 64–80 with the §2.10 marble retune and the §2.14
+  §4.3-conversion valve restored all bands at 76–78. The 5-player subset
+  sweep (auto grid 68–88) passes 75–85 and tie-breaks to **78** (55.7%
+  threshold-decided, closest to the ~55% target); T1 bands were measured
+  green at both 76 and 78 on 3,000 games — 78 shipped, consistent with the
+  sweep.
+
 **Victory thresholds by player count** (`VICTORY_THRESHOLD_BY_PLAYER_COUNT`,
-derived empirically per count — sweep evidence §3.6,
-`results/thresholds.json`; canon §13.2's 25/30/35 predate the final
-prestige sources and are superseded):
+re-derived empirically per count at the reconciliation config — sweep
+evidence §3.6, `results/thresholds.json`; canon §13.2's 25/30/35 predate the
+final prestige sources and are superseded):
 
 | players | threshold | accrual-multiple form | median end | pre-r11 | threshold-decided | sudden death |
 |---|---|---|---|---|---|---|
-| 2 | **72** | 15.2× mean winner accrual/round (4.740/rd; mean winner final 69.6) | 16 (mean 14.9) | 0.2% | 56.9% | 1.7% |
-| 3 | **78** | 15.6× (5.013/rd; 75.7) | 16 (mean 15.2) | 0.2% | 55.8% | 4.5% |
-| 4 | **80** | 15.5× (5.154/rd; 78.0) | 16 (mean 15.3) | 0.3% | 53.8% | 8.3% |
-| 5 | **80** | 15.2× (5.279/rd; 78.8) | 16 (mean 15.0) | 0.3% | 58.4% | 11.7% |
+| 2 | **71** | 15.3× mean winner accrual/round (4.651/rd; mean winner final 68.7) | 16 | 0.2% | 54.3% | 1.6% |
+| 3 | **74** | 15.0× (4.930/rd; 72.9) | 16 | 0.4% | 59.2% | 3.5% |
+| 4 | **76** | 14.9× (5.104/rd; 75.1) | 15 | 0.7% | 57.6% | 6.8% |
+| 5 | **78** | 14.9× (5.222/rd; 77.0) | 15 | 0.6% | 55.4% | 10.3% |
 
 (Pacing stats are each count's fresh-seed 2,000-game confirm batch at the
-recommended value; sweep selection used the same criteria as the 5-player
-84 → 80 derivation — median end 12–16, <10% pre-r11, threshold-decided
-35–75%, SD <15%, tie-break toward ~55% threshold-decided. The 5-player
-sweep re-selected 80 from candidates 74–86, confirming the errata-round
-value under the subset protocol.)
+recommended value, seeds 74530002–74530005; selection criteria unchanged —
+median end 12–16, <10% pre-r11, threshold-decided 35–75%, SD <15%,
+tie-break toward ~55% threshold-decided.)
 
 - **Fewer players ⇒ lower threshold.** With unseated factions' homelands
   reverting to neutral garrisons, fewer rivals contest key cities and there
   are fewer enemy-capital/war prestige sources, so leader accrual falls
-  (leader p50 at r16 in the unreachable-threshold explore batches: 75 / 80 /
-  82 / 83 for 2/3/4/5 players). All four values sit at ≈ 15.2–15.6× that
+  (leader p50 at r16 in the unreachable-threshold explore batches: 72 / 76 /
+  79 / 82 for 2/3/4/5 players). All four values sit at ≈ 14.9–15.3× that
   count's mean winner accrual/round — the invariant to preserve if rules
   changes move accrual (cf. the royal-marriage note, §6).
 - **Caveat — pacing-only guarantee at 2–4 players.** Faction win-rate
   BALANCE was never a tuning target below 5 players (T1 is a 5-player
-  target); only the T3/T4-style pacing bands above were enforced. Aggregate
-  2-player seat win rates run Hungary 69.6% … Ottomans 26.9% (3p: Hungary
-  52.0% … Ottomans 17.5%; 4p: Hungary 38.3% … Ottomans 16.8%).
+  target); only the pacing bands above were enforced. Aggregate 2-player
+  seat win rates run Hungary 68.8% … Ottomans 15.6% (3p: Hungary 53.2% …
+  Ottomans 14.7%).
 - **Caveat — degenerate 2-player pairs** (confirm batch, 200 games/pair):
-  **hungary+venice → Hungary 87.0%**, **hungary+ottomans → Hungary 83.5%**,
-  **genoa+ottomans → Genoa 81.5%**, byzantium+venice → Venice 70.5%. Ship
-  2-player only with a matchup guide/handicap or after a dedicated balance
-  pass. At 3 players one triple crosses the line (hungary+ottomans+venice →
-  Hungary 73.6%); at 4–5 players no subset has a faction above 70%.
+  **ottomans+venice → Venice 97.5%**, **hungary+ottomans → Hungary 87.5%**,
+  **genoa+ottomans → Genoa 86.0%**, byzantium+venice → Venice 80.5%,
+  hungary+venice → Hungary 73.5%. Ship 2-player only with a matchup
+  guide/handicap or after a dedicated balance pass. At 3–5 players no
+  subset has a faction above 70% (confirm batches).
 - Byzantium-absent games leave Constantinople a **neutral T5 fortress**;
   sudden death is unchanged and stays in band at every count (SD share
   above; RULES_MODEL.md "Player counts").
 
 ### 2.14 Economy misc
 
-| Key | Value | Evidence |
-|---|---|---|
-| `GRAIN_MARKET_BUY_GOLD_PER_GRAIN` / `SELL` | 2 / 1 | economy solvency 15/15 (canon §4.3's 3:1/2:1 generic ratios unmodeled, §6) |
-| `GRAIN_SHORTFALL_DESERTION_FRACTION` | 0.25/round of unfed units | sim shape; canon §4.4 is 1 unit per grain short — same direction, different sharpness (§6) |
-| `UNPAID_MERC_DESERTION` | 100%, desert first | canon §4.4/§6.2 |
-| `MERC_REVOLT_PILLAGE_GOLD` / `_YIELD_ROUNDS` | **2 / 1** — RATIFIED ERRATA **E5b**: deserting unpaid/unfed mercenaries revolt and pillage their host province (owner −2 stored gold; province yields nothing next round). Camp deserters: gold only (no owner province — gap; canon card also pillages on unpaid Janissary/Black-Army pay, engine should follow card text) | canon EVENT_CARDS #22 "Mercenary Revolt" semantics; merc_rush re-measure: cycle-vs-honest z 1.81 → **1.31** (gradient shrunk, no exploit) |
-| `GOLD_FLOOR` | 0 (treasury never negative; shortfall → desertion) | — |
-| Skeleton-garrison rule | peacetime desertion / negative-unit events never remove the LAST combatant of a walled province's garrison; **besieged** walled garrisons are fully exempt from insolvency desertion (the siege stores clock is the sole hunger source, §8.2.3) | rules-visible fix: pre-fix, treasury shortfall deserted Constantinople's garrison from behind intact walls (walk-in falls at r5–7); beeline fix chain §4 |
+| Key | Value | Home | Evidence |
+|---|---|---|---|
+| `GRAIN_MARKET_BUY_GOLD_PER_GRAIN` / `SELL` | 2 / 1 | needs-new-engine-field | economy solvency 15/15 |
+| **`MARKET_CONVERSION` (canon §4.3) — NEW, modeled since the engine reconciliation** | gold→secondary resource (timber/marble/faith) at **3:1** base, **2:1** with a Market building; a Trade action, **one give:get lot per action** (§10.3 RAW) | balance.ts (`MARKET_RATIOS.base/market` — transcribed; the sim now exercises them) | load-bearing at canon §9.1/§9.2 prices: without the valve the turtler policy fell to 6–9% (floor 10%) at every threshold/marble combination probed; with it 13.1% (TUNING_LOG engine-reconciliation round). The engine ships full §4.3 (both directions + specialty lanes); the sim models the gold→resource direction only |
+| `GRAIN_SHORTFALL_DESERTION_FRACTION` | 0.25/round of unfed units | sim-only-guardrail | sim shape; canon §4.4 is 1 unit per grain short — same direction, different sharpness (§6) |
+| `UNPAID_MERC_DESERTION` | 100%, desert first | balance.ts (§4.4/§6.2 rule + `DESERTION_ORDER`) | canon §4.4/§6.2 |
+| `MERC_REVOLT_PILLAGE_GOLD` / `_YIELD_ROUNDS` | **2 / 1** — RATIFIED ERRATA **E5b**: deserting unpaid/unfed mercenaries revolt and pillage their host province (owner −2 stored gold; province yields nothing next round). Camp deserters: gold only (no owner province — gap; canon card also pillages on unpaid Janissary/Black-Army pay, engine should follow card text) | `_PILLAGE_GOLD`: balance.ts (`MERC_REVOLT_PILLAGE.pillageGold`); `_YIELD_ROUNDS = 1`: **needs-new-engine-field** | canon EVENT_CARDS #22 "Mercenary Revolt" semantics; merc_rush re-measure: cycle-vs-honest z 1.81 → **1.31** |
+| `GOLD_FLOOR` | 0 (treasury never negative; shortfall → desertion) | needs-new-engine-field | — |
+| Skeleton-garrison rule | peacetime desertion / negative-unit events never remove the LAST combatant of a walled province's garrison; **besieged** walled garrisons are fully exempt from insolvency desertion (the siege stores clock is the sole hunger source, §8.2.3) | sim-only-guardrail (in shape — but the engine must reach the same invariant via canon §8.2.3 siege-clock semantics; re-run the beeline hunt if it does not) | rules-visible fix: pre-fix, treasury shortfall deserted Constantinople's garrison from behind intact walls (walk-in falls at r5–7); beeline fix chain §4 |
 
 ### 2.15 Omen magnitudes (GUARDRAIL bounds for the event deck)
 
 The sim abstracts §12's era decks as one card/round with bounded magnitudes.
 EVENT_CARDS.md authors should keep single-card swings inside these measured
 bounds:
+
+Home: **sim-only-guardrail**, all rows (bounds for EVENT_CARDS.md authors,
+not engine constants).
 
 | Key | Value | Evidence |
 |---|---|---|
@@ -429,6 +531,10 @@ bounds:
 
 ### 2.16 Neutral garrisons
 
+Home: **map-data**, all rows (the engine authors minor-state garrisons in
+MAP.md data; these are the composition rules the authored garrisons must
+average out to).
+
 | Key | Value | Evidence |
 |---|---|---|
 | `NEUTRAL_BASE_LEVIES` | 2 | coarse stand-in for MAP.md minor-state garrisons; baseLevies 2→1 broke Venice's T1 band (reverted, retune-1 T6 sweep) |
@@ -436,6 +542,10 @@ bounds:
 | `NEUTRAL_KEY_CITY_PROFESSIONALS` | +2 | — |
 
 ### 2.17 Faction starting sheets (canon FACTIONS.md)
+
+Home: treasuries are balance.ts (`FACTION_STARTING_RESOURCES` — transcribed);
+starting provinces & garrisons are **map-data** (FACTIONS.md/MAP.md-derived
+setup data).
 
 Treasuries (`STARTING_TREASURY: Record<Faction, ResourceBundle>` — gold /
 grain / timber / marble / faith):
@@ -572,67 +682,72 @@ projections at canon prices and treasuries:
 - **Rush credibility** (strike power = INF + merc + galley + 0.3×levy at its
   rounds-4/5 peak, target ≥8): byzantium **9.0**, ottomans **13.8**, venice
   **11.6**, genoa **11.0**, hungary **8.7** — 5/5 (T6 second clause).
-- Income at r16 (gold/round, balanced archetype): byz 26, ott 32, ven 61.5,
-  gen 55.5, hun 28 — the merchant ×1.5 is visible and intended.
+  Unchanged by the reconciliation (unit prices untouched).
+- Income at r16 (gold/round, balanced archetype): byz 35, ott 39, ven 51.5,
+  gen 46.5, hun 20 — the merchant ×1.5 is visible and intended; the canon
+  §9.1 market (+1 gold/round, was sim +2) trims the trade republics' top end
+  vs the pre-reconciliation figures.
 - Non-T6 snapshot criteria that remain red (documented, not chased):
-  byzantium/ottomans `balancedMid`, genoa `turtleStrong` — artifacts of the
-  harness's deterministic expansion ordering, not rules numbers (the sweep
-  therefore reports `pricePoints: null`); fullgame ground truth has every
-  faction and policy in band.
+  byzantium/ottomans/hungary `balancedMid`, genoa `turtleStrong` — artifacts
+  of the harness's deterministic expansion ordering, not rules numbers (the
+  sweep therefore reports `pricePoints: null`; hungary's `balancedMid` joined
+  the set at the canon §9.1 prices); fullgame ground truth has every faction
+  and policy in band.
 
 ### 3.4 Pacing abstraction (`results/pacing.json` — seed 14530529, 10k trajectory games)
 
-Threshold sweep over archetype accrual trajectories (errata config: E2
-diminishing monopolies + E4 three independent objectives in the model):
-all-criteria window **78–84**, recommendation 81. The shipped 80 sits
-inside the window; at 80 the abstraction predicts median end r16, 0%
-before r11 — the engine measures threshold-decided 57.5–57.6%. The
-abstraction cannot model inter-player suppression and its threshold-share
-estimate diverges from the engine; it was used only for coarse windowing.
-**`fullgame` is ground truth for pacing** (T3 measured there, all three
-seeds green).
+Threshold sweep over archetype accrual trajectories (reconciliation config:
+per-work §9.2 prestige sequence 5/6/6/10 in the trajectory model):
+all-criteria window **78–84**, recommendation 81. The shipped 78 sits at
+the window's edge, inside it; the engine measures threshold-decided
+55.5–56.1%. The abstraction cannot model inter-player suppression and its
+threshold-share estimate diverges from the engine; it was used only for
+coarse windowing. **`fullgame` is ground truth for pacing** (T3 measured
+there, all three seeds green).
 
 ### 3.5 Full-game Monte-Carlo (`results/fullgame.json` + 5,000-game verify)
 
-Faction × policy win rates (5,000-game verify at the errata config, % of
-that faction's seats with that policy):
+Faction × policy win rates (5,000-game verify at the reconciliation config,
+% of that faction's seats with that policy):
 
 | faction | rusher | trader | turtler | opportunist |
 |---|---|---|---|---|
-| byzantium | 13% | 13% | 10% | **38%** |
-| ottomans | **36%** | 6% | 0% | 26% |
-| venice | 1% | **32%** | 21% | 0% |
-| genoa | 1% | **60%** | 40% | 0% |
-| hungary | 23% | 22% | 12% | **48%** |
+| byzantium | 14% | 3% | 0% | **39%** |
+| ottomans | **35%** | 2% | 0% | 24% |
+| venice | 1% | **49%** | 21% | 0% |
+| genoa | 2% | **67%** | 29% | 0% |
+| hungary | 25% | 22% | 13% | **53%** |
 
 Aggregates are in band; the wide cell spread (dead corners: ottoman-turtler
-0%, venice/genoa rusher+opportunist 0–1%; genoa-trader as the strongest cell,
-consistent with §4.6's ceiling flag) is a scripted-agent limitation
+0%, venice/genoa rusher+opportunist 0–2%; genoa-trader as the strongest cell,
+consistent with §4.6's ceiling flag; byzantium's trader/turtler cells thinned
+further under the capped §9.2 work channel) is a scripted-agent limitation
 filed for faction-aware agents — no aggregate target covers cells.
 
-Game length (3,000-game committed run at the errata config): median 15,
-mean 15.03; the E3 earlier Bombard and threshold 80 pull some endings into
-r12–15.
+Game length (3,000-game committed run at the reconciliation config): median
+15, mean 14.88; threshold 78 and the capped work channel pull more endings
+into r12–15.
 
 ```
-r 9                                 2
-r10                                 13
-r11                                 24
-r12  ██▎                            115
-r13  ████▊                          241
-r14  ███████▉                       394
-r15  ██████████████▎                713
-r16  ██████████████████████████████ 1498
+r 9                                 6
+r10                                 15
+r11  ▋                              32
+r12  ██▉                            133
+r13  █████▍                         243
+r14  ████████████▋                  568
+r15  ██████████████▋                659
+r16  ██████████████████████████████ 1344
 ```
 
-Mean prestige by round (3,000-game committed run at the errata config;
-survivor-averaged) against the threshold — the average table does *not*
-cross 80, which is why ~30% of games go to the round-16 cap and only
-winners (mean final 78.7) get threshold-close:
+Mean prestige by round (3,000-game committed run at the reconciliation
+config; survivor-averaged) against the threshold — the average table does
+*not* cross 78, which is why ~33% of games go to the round-16 cap and only
+winners (mean final 76.6, accrual 5.201/round → 78 = 15.0×) get
+threshold-close:
 
-<svg viewBox="0 0 830 400" width="830" role="img" aria-label="Average prestige by round for the five factions rises roughly linearly from about 3.5 at round 1 to 57 to 71 at round 16, with Hungary highest throughout; the victory threshold 80 sits above every average curve." xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 830 400" width="830" role="img" aria-label="Average prestige by round for the five factions rises roughly linearly from about 3.5 at round 1 to 50 to 69 at round 16, with Hungary highest throughout; the victory threshold 78 sits above every average curve." xmlns="http://www.w3.org/2000/svg">
   <rect x="0" y="0" width="830" height="400" fill="#fcfcfb"/>
-  <text x="60" y="24" font-family="sans-serif" font-size="14" font-weight="bold" fill="#0b0b0b">Mean prestige by round vs VICTORY_THRESHOLD 80 (3,000 games, seed 24681357, errata config)</text>
+  <text x="60" y="24" font-family="sans-serif" font-size="14" font-weight="bold" fill="#0b0b0b">Mean prestige by round vs VICTORY_THRESHOLD 78 (3,000 games, seed 24681357, reconciliation config)</text>
   <g stroke="#e4e3df" stroke-width="1">
     <line x1="60" y1="290" x2="700" y2="290"/><line x1="60" y1="223" x2="700" y2="223"/>
     <line x1="60" y1="157" x2="700" y2="157"/><line x1="60" y1="90" x2="700" y2="90"/>
@@ -647,29 +762,30 @@ winners (mean final 78.7) get threshold-close:
     <text x="573" y="374">r13</text><text x="700" y="374">r16</text>
     <text x="380" y="392">round</text>
   </g>
-  <!-- threshold 80 -->
-  <line x1="60" y1="89.4" x2="700" y2="89.4" stroke="#52514e" stroke-width="1.5" stroke-dasharray="7 4"/>
-  <text x="64" y="83" font-family="sans-serif" font-size="12" font-weight="bold" fill="#0b0b0b">VICTORY_THRESHOLD 80 (winners' mean final prestige: 78.7)</text>
+  <!-- threshold 78 -->
+  <line x1="60" y1="96.0" x2="700" y2="96.0" stroke="#52514e" stroke-width="1.5" stroke-dasharray="7 4"/>
+  <text x="64" y="89" font-family="sans-serif" font-size="12" font-weight="bold" fill="#0b0b0b">VICTORY_THRESHOLD 78 (winners' mean final prestige: 76.6)</text>
   <!-- x(r) = 60 + (r-1)*42.667 ; y(v) = 356 - v*3.333 -->
-  <polyline fill="none" stroke="#2a78d6" stroke-width="2" points="60,345.5 102.7,332.6 145.3,320.9 188,309.5 230.7,294.4 273.3,281.4 316,264.6 358.7,248.6 401.3,234.3 444,220.4 486.7,207.2 529.3,194.1 572,182.3 614.7,171.9 657.3,162.4 700,150.8"/>
-  <polyline fill="none" stroke="#1baf7a" stroke-width="2" points="60,343.6 102.7,334.3 145.3,324.0 188,309.4 230.7,298.1 273.3,286.4 316,272.8 358.7,261.6 401.3,247.9 444,237.5 486.7,226.7 529.3,215.3 572,198.7 614.7,186.3 657.3,173.6 700,165.0"/>
-  <polyline fill="none" stroke="#eda100" stroke-width="2" points="60,344.4 102.7,332.7 145.3,320.7 188,309.0 230.7,291.1 273.3,279.4 316,261.6 358.7,244.3 401.3,228.3 444,216.2 486.7,204.1 529.3,191.8 572,177.4 614.7,165.9 657.3,155.1 700,148.6"/>
-  <polyline fill="none" stroke="#008300" stroke-width="2" points="60,344.3 102.7,332.6 145.3,320.8 188,309.0 230.7,291.8 273.3,277.6 316,257.3 358.7,243.6 401.3,227.4 444,211.3 486.7,198.5 529.3,185.8 572,170.6 614.7,159.8 657.3,152.1 700,150.3"/>
-  <polyline fill="none" stroke="#4a3aa7" stroke-width="2" points="60,343.7 102.7,328.1 145.3,309.9 188,294.5 230.7,279.6 273.3,262.2 316,247.8 358.7,232.5 401.3,217.5 444,202.5 486.7,187.2 529.3,172.5 572,158.4 614.7,144.5 657.3,131.6 700,119.0"/>
+  <polyline fill="none" stroke="#2a78d6" stroke-width="2" points="60,345.4 102.7,332.6 145.3,321.0 188,309.6 230.7,297.4 273.3,285.4 316,272.2 358.7,254.6 401.3,241.0 444,229.2 486.7,217.2 529.3,199.6 572,187.5 614.7,174.6 657.3,164.2 700,152.3"/>
+  <polyline fill="none" stroke="#1baf7a" stroke-width="2" points="60,343.7 102.7,334.4 145.3,323.9 188,309.5 230.7,299.7 273.3,290.0 316,280.3 358.7,271.1 401.3,261.7 444,252.6 486.7,242.3 529.3,231.4 572,218.3 614.7,206.8 657.3,197.1 700,190.7"/>
+  <polyline fill="none" stroke="#eda100" stroke-width="2" points="60,344.4 102.7,332.7 145.3,320.7 188,309.0 230.7,297.4 273.3,283.7 316,270.0 358.7,248.0 401.3,234.2 444,216.4 486.7,203.8 529.3,191.3 572,173.1 614.7,157.2 657.3,147.0 700,139.1"/>
+  <polyline fill="none" stroke="#008300" stroke-width="2" points="60,344.3 102.7,332.5 145.3,320.8 188,309.0 230.7,297.1 273.3,285.1 316,269.3 358.7,253.3 401.3,233.3 444,220.3 486.7,206.9 529.3,189.9 572,170.9 614.7,159.2 657.3,153.7 700,153.2"/>
+  <polyline fill="none" stroke="#4a3aa7" stroke-width="2" points="60,343.7 102.7,328.2 145.3,310.0 188,294.7 230.7,279.8 273.3,262.4 316,248.0 358.7,232.4 401.3,217.6 444,203.0 486.7,188.1 529.3,173.6 572,160.3 614.7,148.8 657.3,136.4 700,124.5"/>
   <g font-family="sans-serif" font-size="12" font-weight="bold">
-    <text x="706" y="122" fill="#4a3aa7">Hungary 71.1</text>
-    <text x="706" y="145" fill="#8a6500">Venice 62.2</text>
-    <text x="706" y="158" fill="#008300">Genoa 61.7</text>
-    <text x="706" y="171" fill="#2a78d6">Byzantium 61.6</text>
-    <text x="706" y="184" fill="#0e7a54">Ottomans 57.3</text>
+    <text x="706" y="128" fill="#4a3aa7">Hungary 69.4</text>
+    <text x="706" y="142" fill="#8a6500">Venice 65.1</text>
+    <text x="706" y="156" fill="#2a78d6">Byzantium 61.1</text>
+    <text x="706" y="170" fill="#008300">Genoa 60.9</text>
+    <text x="706" y="194" fill="#0e7a54">Ottomans 49.6</text>
   </g>
 </svg>
 
 (Direct labels give each series' r16 mean; Hungary's high *average* is its
 consistency — its win rate stays in band because averages, not wins, are
-plotted. The E2 monopoly nerf is visible in the trade republics' flatter
-late curves — Venice/Genoa r16 means fell ~2–3 points vs the pre-errata
-figure. Mean battles/game: 11.5.)
+plotted. The capped §9.2 work channel is visible in Genoa's flattened
+late curve — its r16 mean now tracks Byzantium's — and in the Ottoman
+series (few works, fewer rival prestige sinks to contest). Mean
+battles/game: 11.2.)
 
 **Win-rate evolution across tuning rounds** (fullgame, 1,000 games seed
 14530000 unless noted; from TUNING_LOG):
@@ -686,8 +802,11 @@ figure. Mean battles/game: 11.5.)
 | pre-errata fresh-seed 3,000g, SEED=24681357 (84) | 18.9 | 13.9 | 13.0 | 27.8 | 26.5 |
 | pre-errata verify 5,000g, SEED=987654321 (84) | 19.6 | 14.2 | 14.6 | 26.8 | 24.9 |
 | ratified errata round, 1,000g seed 14530000 (80) | 18.4 | 17.3 | 13.4 | 27.1 | 23.8 |
-| **errata fresh-seed 3,000g, SEED=24681357 (80) — committed** | **17.7** | **17.3** | **12.3** | **26.3** | **26.4** |
-| **errata verify 5,000g, SEED=987654321 (80)** | **18.2** | **17.0** | **13.2** | **25.3** | **26.3** |
+| errata fresh-seed 3,000g, SEED=24681357 (80) | 17.7 | 17.3 | 12.3 | 26.3 | 26.4 |
+| errata verify 5,000g, SEED=987654321 (80) | 18.2 | 17.0 | 13.2 | 25.3 | 26.3 |
+| engine-reconciliation round, 1,000g seed 14530000 (78) | 12.4 | 16.5 | 16.3 | 26.9 | 27.9 |
+| **reconciliation fresh-seed 3,000g, SEED=24681357 (78) — committed** | **14.0** | **15.7** | **16.8** | **24.8** | **28.7** |
+| **reconciliation verify 5,000g, SEED=987654321 (78)** | **13.9** | **15.7** | **17.6** | **24.6** | **28.2** |
 
 ### 3.6 Player-count threshold sweep (`results/thresholds.json`, `sim:thresholds`)
 
@@ -704,41 +823,42 @@ pre-r11, threshold-decided 35–75%, SD <15%; tie-break toward ~55%
 threshold-decided. Candidate lists (recon at auto-derived ranges, then the
 committed denser grids) are in README "Regenerating the report numbers".
 
-Paired-seed sweep tables (threshold-decided / SD / median end / pre-r11):
+Paired-seed sweep tables at the reconciliation config (auto-derived
+candidate grids from each count's explore quantiles; threshold-decided /
+SD / median end / pre-r11):
 
 | T (2p) | thr% | SD% | med | <r11 | | T (3p) | thr% | SD% | med | <r11 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 69 | 64.1 | 2.4 | 15 | 0.2% | | 75 | 63.2 | 5.3 | 15 | 0.4% |
-| 71 | 59.0 | 2.5 | 15 | 0.2% | | 77 | 58.0 | 5.9 | 16 | 0.3% |
-| **72** | **56.3** | **2.5** | **16** | **0.2%** | | **78** | **56.2** | **6.1** | **16** | **0.3%** |
-| 73 | 53.6 | 2.7 | 16 | 0.1% | | 79 | 52.7 | 6.3 | 16 | 0.3% |
-| 74 | 51.5 | 2.9 | 16 | 0.1% | | 80 | 47.8 | 6.6 | 16 | 0.3% |
-| 75 | 49.4 | 3.0 | 16 | 0.1% | | 81 | 43.8 | 6.7 | 16 | 0.2% |
-| 77 | 46.0 | 3.3 | 16 | 0.1% | | 83 | 35.7 | 6.9 | 16 | 0.1% |
+| 59 | 91.0 ✗ | 0.9 | 13 | 2.4% | | 63 | 92.7 ✗ | 2.2 | 13 | 1.7% |
+| 63 | 80.6 ✗ | 1.9 | 14 | 0.8% | | 67 | 80.6 ✗ | 3.2 | 14 | 0.9% |
+| 67 | 66.9 | 2.4 | 15 | 0.3% | | 70 | 70.4 | 4.0 | 15 | 0.6% |
+| **71** | **54.0** | **2.8** | **16** | **0.1%** | | **74** | **60.1** | **4.5** | **16** | **0.2%** |
+| 74 | 44.6 | 3.4 | 16 | 0.1% | | 78 | 43.5 | 5.5 | 16 | 0.2% |
+| 78 | 32.4 ✗ | 3.4 | 16 | 0.0% | | 81 | 38.6 | 5.9 | 16 | 0.1% |
+| 82 | 26.1 ✗ | 3.6 | 16 | 0.0% | | 85 | 27.3 ✗ | 6.4 | 16 | 0.1% |
 
 | T (4p) | thr% | SD% | med | <r11 | | T (5p) | thr% | SD% | med | <r11 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 77 | 66.9 | 6.4 | 15 | 0.9% | | 74 | 77.5 ✗ | 7.4 | 14 | 1.0% |
-| 78 | 63.6 | 7.1 | 16 | 0.9% | | 76 | 71.5 | 8.1 | 15 | 0.6% |
-| 79 | 58.8 | 7.4 | 16 | 0.7% | | 78 | 66.1 | 9.5 | 15 | 0.3% |
-| **80** | **55.3** | **7.4** | **16** | **0.5%** | | **80** | **57.3** | **10.9** | **16** | **0.1%** |
-| 81 | 51.4 | 7.6 | 16 | 0.5% | | 82 | 49.3 | 12.1 | 16 | 0.1% |
-| 82 | 46.4 | 7.8 | 16 | 0.3% | | 84 | 39.6 | 13.6 | 16 | 0.1% |
-| 84 | 36.1 | 8.3 | 16 | 0.3% | | 86 | 30.7 ✗ | 13.8 | 16 | 0.1% |
+| 65 | 94.0 ✗ | 2.4 | 13 | 2.3% | | 68 | 89.5 ✗ | 4.4 | 13 | 2.7% |
+| 69 | 81.9 ✗ | 3.9 | 14 | 1.3% | | 71 | 80.3 ✗ | 5.3 | 14 | 1.7% |
+| 72 | 74.2 | 4.9 | 15 | 1.2% | | 75 | 67.8 | 7.2 | 15 | 0.9% |
+| **76** | **59.0** | **6.3** | **15** | **0.9%** | | **78** | **55.7** | **9.1** | **15** | **0.7%** |
+| 80 | 45.5 | 7.5 | 16 | 0.7% | | 81 | 47.7 | 11.4 | 16 | 0.4% |
+| 83 | 39.4 | 8.3 | 16 | 0.4% | | 85 | 35.2 | 12.5 | 16 | 0.2% |
+| 87 | 23.9 ✗ | 9.0 | 16 | 0.0% | | 88 | 20.6 ✗ | 13.2 | 16 | 0.2% |
 
 (✗ = fails the 35–75% threshold-decided band; every other cell above passes
-all four criteria. The 5-player sweep **re-selects 80** — the errata-round
-value — under the subset protocol: 80's 57.3% is the closest to the ~55%
-tie-break target (82 sits at 49.3%). The pre-errata 84 lands at 39.6% —
-inside this sweep's 35% floor but under the original T3 40% floor that
-forced the errata re-derivation, and far from the tie-break either way.)
+all four criteria. The 5-player sweep tie-breaks to **78** — 55.7% is the
+closest to the ~55% target; the pre-reconciliation 80 would land near 47.7%
+(81's cell). T1 faction bands were additionally measured green at both 76
+and 78 on 3,000 games; 78 shipped, consistent with the sweep.)
 
 Confirm batches (fresh seeds 74530002–74530005) are quoted in §2.13's
 per-count table, including the accrual multiples and the degenerate-pair
-caveats (2p worst: hungary+venice → Hungary 87.0% of 200). Elimination
+caveats (2p worst: ottomans+venice → Venice 97.5% of 200). Elimination
 victories: 0 at every count (the skeleton-garrison and walled-capture rules
 make total conquest slower than either clock). Sudden death scales DOWN
-with fewer players (11.7% → 1.7% from 5p to 2p): fewer rivals reach
+with fewer players (10.3% → 1.6% from 5p to 2p): fewer rivals reach
 Constantinople's neighborhood, and Byzantium-absent games put a full
 neutral T5 garrison behind the Theodosian walls.
 
@@ -746,10 +866,12 @@ neutral T5 garrison behind the Theodosian walls.
 
 ## 4. Adversarial audit
 
-Six exploit hunts were run against the final errata config (all JSONs
-regenerated at the shipped CONFIG, base seeds unchanged; the four verdicts
-affected by the errata — beeline, turtle-dominance, economy war-poke,
-runaway-leader — are quoted before → after).
+Six exploit hunts were re-run against the final engine-reconciliation
+config (all JSONs regenerated at the shipped CONFIG — hand 3, canon
+§9.1/§9.2 prices, §4.3 conversion, threshold 78 — base seeds unchanged).
+No exploit-grade bar is breached at the reconciliation config; the quoted
+histories (pre-fix → errata) are retained, with the reconciliation
+re-measures appended per hunt.
 
 ### 4.1 Constantinople beeline (`adversarial_cple_beeline.json` — 1,000 games/arm, seed 311002)
 
@@ -771,6 +893,10 @@ errata:
 
 **Both hunt-brief bars now PASS everywhere** (SD ≤ 20% with one dedicated
 beeliner; ≤ 10% completing by r8; Byzantium never eliminated before r8).
+Reconciliation re-measure (same seeds, final config): worst one-beeliner SD
+**16.7%** (solo_ottoman; duo 16.7%, guard_ottoman 6.5%, guard_genoa 0.0%),
+sd≤r8 worst **8.4%**, Byzantium eliminations 0 — verdict flag stays false;
+the errata-round conclusions carry over unchanged.
 Treason still supplies most SD wins in undefended-Byzantium arms
 (sdWithTreasonHeld 140/162 solo_ottoman) because Constantinople's authored
 4-unit start garrison satisfies the ≤ 4 gate when Byzantium never
@@ -778,7 +904,8 @@ reinforces — but a defended city turns the card off entirely (guard arms
 7.3%/0.0%, treason-held 18/0). The noTreason counterfactuals are no longer
 0.0%: that residue (2.8–7.0%, earliest r15) is the E3 r11–16 Bombard draw
 opening the walls legitimately — the same priced-in late-game SD as the
-fullgame T4 band (11.9–12.3%, all completions r12+).
+fullgame T4 band (10.4–10.5% at the reconciliation config, all completions
+r12+).
 
 History: the pre-errata adversarial fix round had already closed the four
 non-card capture paths (canon §8.2.3 RAW blockade contest, harbor
@@ -811,7 +938,12 @@ faction's best honest policy (max delta +3.5pp for ottomans, inside its
 own rusher line and within noise). Omen income swings measured 0.20–0.35×
 mean round income (§2.15). **EXPLOIT DEAD; residual poke wart re-filed
 (§5 still-open item 5: full closure needs canon §11 tribute peace, not a
-one-off charge).**
+one-off charge).** Reconciliation re-measure (same seeds, final config):
+trader-Genoa under the dedicated griefer **45.4%** vs 53.8% control, with
+the blockade mechanism off 48.1% — mechanism attribution ~2.7pp, still
+war-driven not picket-driven; the **passive-picket griefer wins 0.0%**
+(unchanged); fight-back remains a real war (Genoa 1.0% when it commits to
+fighting the Ottoman navy head-on).
 
 ### 4.3 Mercenary rush (`adversarial_merc_rush.json` — 500 games/faction/variant, paired seeds 311001+)
 
@@ -822,6 +954,8 @@ honest 6.0%, both far below the 13.3% control line). Paired same-seed
 cycle-vs-honest z = 1.81 → **1.31** (well inside noise) — the stiffing
 gradient shrank under the errata; former register item 7 is CLOSED (a
 scope gap on Janissary/Black-Army pay remains, §5 still-open item 6).
+Reconciliation re-measure: cycle 7.4% vs honest 7.0% (control 14.7%),
+paired z = **1.58** — still inside noise, no flags.
 
 ### 4.4 Runaway leader (`adversarial_runaway_leader.json` — 2,000 games/arm, seed 311004)
 
@@ -839,7 +973,10 @@ of surviving faction-games; 459 objectives actually scored across 323 of
 595 cap games). Leader-pressure engagement unchanged (131 changed
 decisions/arm; ON−OFF r8 delta −0.4pp). Residual lead stickiness is now
 *at* the line rather than over it — kept open as a design note (§5
-still-open item 3).
+still-open item 3). Reconciliation re-measure: r8 unique-leader
+predictivity **67.5%** (further under the 70% line), objective reveal
+flips 9.2% of unique-leader cap games, per-objective completion 5.8% —
+the E4 channel survives the reconciliation unchanged.
 
 ### 4.5 Turtle dominance (`adversarial_turtle_dominance.json` — seed 311003)
 
@@ -855,18 +992,24 @@ trade-seat monoculture ceiling is re-filed (§5 still-open item 2: needs a
 competing gold→prestige sink or at-risk trade). All-five-turtle tables:
 48.3% of games end with winner margin <2 (73.7% of its cap-decided games)
 — unchanged class, §5 still-open item 1. Lone-turtle free-riding stays
-dead (16.6–18.8% overall vs the 40% bar).
+dead (16.6–18.8% overall vs the 40% bar). Reconciliation re-measure:
+monoculture ceilings monopolyMax Venice **59.5%** / Genoa 52.2%, tradeMax
+Genoa 53.8% (same >50% flag class, no worsening beyond noise); lone-turtle
+12.6% overall (dead); all-turtle near-ties **58.3%** of games margin <2
+(48.3% pre-reconciliation — the capped §9.2 work channel makes mirror
+turtle tables tie even harder; §5 still-open item 1 sharpened).
 
 ### 4.6 Faction floor (`adversarial_faction_floor.json` — 80 grid configs × 300 + 1,000-game verification cells, seeds 111006/311006)
 
-Re-run at the errata config: flags remain cell-level only (no aggregate
-target breached): ceiling genoa+trader 64.7% vs a mixed field and
-hungary+opportunist cells; floors are the dead faction×policy corners
-(ottoman-turtler 0.0%, venice/genoa rusher+opportunist 0–1.3%) — an
-archetype-agent limitation (naval factions have land-shaped
-rusher/opportunist scripts), filed as harness follow-up (faction-aware
-agents), not a rules change. Eliminations 0 everywhere; no cell dies by
-round 8.
+Re-run at the reconciliation config: flags remain cell-level only (no
+aggregate target breached): ceiling genoa+trader **67.0%** vs a mixed field
+(verification cell 66.6% at 1,000 games); floors are the dead
+faction×policy corners (ottoman/byzantium-turtler 0.0%, venice/genoa
+rusher+opportunist 0–2%, and — new under the capped work channel —
+byzantium+trader 0–4%) — an archetype-agent limitation (naval factions
+have land-shaped rusher/opportunist scripts; byzantium's trader script has
+no §4.3-era identity), filed as harness follow-up (faction-aware agents),
+not a rules change. Eliminations 0 everywhere; no cell dies by round 8.
 
 ---
 
@@ -878,7 +1021,9 @@ round (2026-07-11), and the still-open design decisions.
 ### 5.A Ratified + re-measured (coordinator errata E1–E5, 2026-07-11)
 
 Each item: the former register finding, the ratified fix as implemented,
-and the before → after evidence at the final config (threshold 80).
+and the before → after evidence at the errata-round config (threshold 80;
+the engine-reconciliation re-measures at the final threshold-78 config are
+appended per hunt in §4).
 
 **E1 — Treason at the Gate** *(closes former item 1, HIGH)*. Ratified card
 gates: playable only vs a garrison of **≤ 4 units**, and its "2+
@@ -980,8 +1125,8 @@ different numbers.
 | 6 | **Fleet battles** (§7.6, §5.3 escort/sever duels) | Sim computes sea-zone presence from ported galleys; no pure fleet battles, so blockades vs fleet-holding ports are under-produced and 2 tactic cards (Pilot ×3, Greek Fire) are dead. The siege module measures the fully-blockaded case directly, so T5 targets stand; naval-identity factions (Venice) likely *gain* when real fleet combat lands. |
 | 7 | **Movement/info tactic cards** (Forced March, Ears in the Bazaar, Feigned Retreat, Chain Across the Horn, A Death in the Palace) | 7 designs / 15 of 47 cards are dead draws in-sim → measured card-layer impact (§2.9) is an underestimate, and hand pressure (limit 4) is softer than it will be. Re-measure card impact in engine playtests. |
 | 8 | **Secret objectives: sim shape vs canon flavor**: E4's 3 independent objectives are modeled as "hold seeded province i at game end" ×3; canon/FACTIONS objectives are richer (faith goals, route goals, named conquests) | The +12 hidden swing and kingmaker channel are now measured (§4.4: 6.0% per-objective completion, 9.6% reveal flips); richer objective TYPES may change completion rates — re-check flip share when the real objective cards are authored. |
-| 9 | **Byzantine auto-repel power** (FACTIONS: first two siege rounds of Constantinople take no bombardment damage) | Stacks with the E3 emplacement: first Bombard damage would slip from siege round 2 to ~4, shifting capture to ~5–7 siege rounds; with late draws (r14–16) the City then often survives to the cap — would cut SD below the current 11.9–12.3% and strengthen Byzantium. T5 targets were calibrated without it per the coordinator's spec; re-run the siege module when implemented. |
-| 10 | Smaller gaps: tax postures (§4.2), 3:1/2:1 market ratios (§4.3), full §5.2 route-income formula + piracy, §6.4 stack limits, ARCHER/CAVALRY/WARSHIP as separate slots (§6.1), University/Granary and the 8-building §9.1 table, multi-round Great Works (§9.2), wall repair (§8.2.5), itemized era decks (§12), 4–5-player face-up omen preview, ±1 morale | Each individually second-order for the tuned aggregates (T1–T6); collectively they argue for a **regression re-run of `sim:full` against engine-measured accrual once the engine exists** — the balance-regression CI job (PR #1) expects exactly the `sim:smoke`/`sim:full`/`sim:report` scripts this package ships. |
+| 9 | **Byzantine auto-repel power** (FACTIONS: first two siege rounds of Constantinople take no bombardment damage) | Stacks with the E3 emplacement: first Bombard damage would slip from siege round 2 to ~4, shifting capture to ~5–7 siege rounds; with late draws (r14–16) the City then often survives to the cap — would cut SD below the current 10.4–10.5% and strengthen Byzantium. T5 targets were calibrated without it per the coordinator's spec; re-run the siege module when implemented. |
+| 10 | Smaller gaps: tax postures (§4.2), the resource→gold and specialty lanes of §4.3 (the gold→resource 3:1/2:1 direction IS modeled since the reconciliation, §2.14), full §5.2 route-income formula + piracy, §6.4 stack limits, ARCHER/CAVALRY/WARSHIP as separate slots (§6.1), Granary/Shipyard/Temple/University of the 8-building §9.1 table, multi-round Great Works (§9.2 — per-work costs/prestige ARE modeled, the 2–3-round invest schedule is not), wall repair (§8.2.5), itemized era decks (§12), 4–5-player face-up omen preview, ±1 morale | Each individually second-order for the tuned aggregates (T1–T6); collectively they argue for a **regression re-run of `sim:full` against engine-measured accrual once the engine exists** — the balance-regression CI job (PR #1) expects exactly the `sim:smoke`/`sim:full`/`sim:report` scripts this package ships. |
 
 ---
 
@@ -1011,10 +1156,15 @@ GAMES=3000 SEED=24681357  npm run sim:fullgame   # reproduces committed results/
 GAMES=5000 SEED=987654321 npm run sim:fullgame   # the independent verification run quoted in §1
 
 # per-player-count threshold sweep (§2.13 / §3.6; merges into results/thresholds.json)
-PLAYERS=2 THRESHOLDS=69,71,72,73,74,75,77 npm run sim:thresholds
-PLAYERS=3 THRESHOLDS=75,77,78,79,80,81,83 npm run sim:thresholds
-PLAYERS=4 THRESHOLDS=77,78,79,80,81,82,84 npm run sim:thresholds
-PLAYERS=5 THRESHOLDS=74,76,78,80,82,84,86 npm run sim:thresholds
+# (auto-derived candidate grids from each count's explore quantiles — the
+#  reconciliation-round grids were 2p 59-82 / 3p 63-85 / 4p 65-87 / 5p 68-88)
+PLAYERS=2 npm run sim:thresholds
+PLAYERS=3 npm run sim:thresholds
+PLAYERS=4 npm run sim:thresholds
+PLAYERS=5 npm run sim:thresholds
+
+# per-unique economy A/B (§2.3; writes results/unique_economy_ab.json)
+npx tsx src/run/unique_economy_ab.ts   # 2,000 games/arm, paired seeds 14530000+i
 
 # adversarial suite (not in npm scripts; writes results/adversarial_*.json)
 GAMES=1000 npx tsx src/adversarial/run_cple_beeline.ts   # seed 311002 (committed JSON is 1,000 games/arm)
@@ -1033,25 +1183,28 @@ default without env overrides is 14530000/1,000); 5,000-game verify
 **74530002–74530005**.
 
 **Determinism note.** All statistics in this report were read back from
-executed runs at the shipped errata CONFIG (threshold 80). The committed
-`fullgame.json` is the 3,000-game `SEED=24681357` run executed at that
-config; the §2.13 accrual statistics (5.277/round, winner mean final 78.7,
-multiple 15.16×) were measured over the same replayed games, and every
-sudden-death completion in it lands at rounds 12–16. `sim:report` renders
-headline numbers from the committed JSONs without re-simulating.
+executed runs at the shipped reconciliation CONFIG (threshold 78). The
+committed `fullgame.json` is the 3,000-game `SEED=24681357` run executed at
+that config; the §3.5 accrual statistics (5.201/round, winner mean final
+76.6, multiple 15.0×) were measured over the same replayed games, and every
+sudden-death completion in it lands at rounds 12–16 (315 games). `sim:report`
+renders headline numbers from the committed JSONs without re-simulating.
 
-**Errata-round provenance (2026-07-11).** All `results/*.json` were
-regenerated at the ratified-errata CONFIG (E1–E5 + `victoryThreshold: 80`)
-with the base seeds unchanged: combat 789415 (kernel untouched — 0
-violations), siege 20260711 (E3 emplacement curve, T5d re-derived),
-economy, pacing (E2+E4 in the trajectory model, window 78–84), fullgame
-24681357 (committed) — plus the independent `GAMES=5000 SEED=987654321`
-verify quoted in §1 (byz 18.2 / ott 17.0 / ven 13.2 / gen 25.3 / hun 26.3;
-threshold-decided 57.5%, SD 11.9%; all six targets green) and the default
-`GAMES=1000 SEED=14530000` A/B runs recorded in TUNING_LOG. The six
-adversarial JSONs were regenerated at the same config and seeds
-(311001–311006 + 111006); the four errata-affected verdicts are quoted
-before → after in §4. Pre-errata numbers cited for comparison come from
-the previous committed artifacts (adversarial fix round, threshold 84).
-The config is seed-robust across three independent seed sets (14530000,
+**Engine-reconciliation provenance (2026-07-11).** All `results/*.json`
+were regenerated at the reconciliation CONFIG (hand limit 3, canon
+§9.1/§9.2 building & great-work prices, per-work prestige 10/6/6/5, canon
+§4.3 conversion, venice/genoa marble 1, `victoryThreshold: 78`) with the
+base seeds unchanged: combat 789415 (kernel untouched — 0 violations),
+siege 20260711 (all T5 targets re-verified, values unchanged), economy,
+pacing (per-work prestige sequence in the trajectory model, window 78–84),
+fullgame 24681357 (committed) — plus the independent
+`GAMES=5000 SEED=987654321` verify quoted in §1 (byz 13.9 / ott 15.7 /
+ven 17.6 / gen 24.6 / hun 28.2; threshold-decided 55.5%, SD 10.4%; all six
+targets green) and the default `GAMES=1000 SEED=14530000` step-attribution
+runs recorded in TUNING_LOG. The six adversarial JSONs were regenerated at
+the same config and seeds (311001–311006 + 111006) with reconciliation
+re-measures appended per hunt in §4; `unique_economy_ab.json` is the §2.3
+A/B (2,000 games/arm, paired seeds 14530000+i). The per-count thresholds
+were re-derived (sweep seeds 14530000, confirms 74530002–74530005). The
+config is seed-robust across three independent seed sets (14530000,
 24681357, 987654321).

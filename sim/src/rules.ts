@@ -208,6 +208,26 @@ const TACTIC_CARDS: TacticCardDef[] = [
   { slug: 'the-white-knights-stroke', tier: 'rare', copies: 1, scope: 'landBattle', priority: 5, rerollsPerRound: 3, firstRoundOnly: true },
 ];
 
+// ---------------------------------------------------------------- great works
+
+/** Generic build price bundle (gold/timber/marble). */
+export interface BuildCost {
+  goldCost: number;
+  timberCost: number;
+  marbleCost: number;
+}
+
+/** One canon §9.2 Great Work (per-work cost + per-work prestige, GD table). */
+export interface GreatWorkDef {
+  id: string;
+  goldCost: number;
+  timberCost: number;
+  marbleCost: number;
+  faithCost: number;
+  /** One-off prestige on completion (canon §9.2/§13.1: 10/6/6/5 by work). */
+  prestige: number;
+}
+
 // --------------------------------------------------------------------- CONFIG
 
 export const CONFIG = {
@@ -336,7 +356,7 @@ export const CONFIG = {
   tacticCards: TACTIC_CARDS,
   cards: {
     drawsPerRound: 1, // canon §7.7: 1 draw per Income phase (University draws unmodeled)
-    handLimit: 4, // canon §7.7: discard down to 4 at Cleanup
+    handLimit: 3, // RATIFIED (coordinator, engine reconciliation 2026-07-11): hand limit 3 — GD §7.7's "4" is a docs error (the pre-reconciliation sim tuned against it); re-measured at 3
   },
 
   yields: {
@@ -349,10 +369,36 @@ export const CONFIG = {
     keyCityGoldMin: 2, // key cities must yield at least this much gold
   },
 
+  /**
+   * Engine reconciliation (2026-07-11): building & great-work costs now follow
+   * canon §9.1/§9.2 verbatim (engine balance.ts BUILDING_COSTS /
+   * WALL_BUILD_COST / GREAT_WORK_COSTS). The pre-reconciliation sim values
+   * (market 8g+2t/+2g, wall +1 tier 10g+2t+1m, generic great work 25g+4m+2f/+5)
+   * were sim-local drift — logged in TUNING_LOG (reconciliation round).
+   */
   buildings: {
-    market: { goldCost: 8, timberCost: 2, extraGoldPerRound: 2 }, // one per province
-    wallUpgrade: { goldCost: 10, timberCost: 2, marbleCost: 1 }, // +1 wall tier, max walls.maxBuildableTier
-    greatWork: { goldCost: 25, marbleCost: 4, faithCost: 2, prestige: 5 }, // one-off prestige monument
+    market: { goldCost: 4, timberCost: 0, marbleCost: 2, extraGoldPerRound: 1 }, // canon §9.1 Market: gold 4 + marble 2, +1 gold/round, one per province
+    /** Wall build/upgrade cost keyed by TARGET tier (canon §9.1 Walls Lv1/Lv2 = T2/T3; T1 per engine WALL_BUILD_COST). Max walls.maxBuildableTier. */
+    wallUpgrade: {
+      byTargetTier: {
+        1: { goldCost: 4, timberCost: 0, marbleCost: 3 },
+        2: { goldCost: 5, timberCost: 0, marbleCost: 4 }, // canon §9.1 Walls Lv1
+        3: { goldCost: 8, timberCost: 0, marbleCost: 6 }, // canon §9.1 Walls Lv2
+      } as Record<number, BuildCost>,
+    },
+    /**
+     * Canon §9.2 Great Works, per-work costs + per-work prestige (10/6/6/5).
+     * Sim shape: one Build action completes a work (canon's 2-3-round invest
+     * schedule unmodeled — §6 divergence appendix), each faction may complete
+     * each work once. List order = the greedy build preference (cheapest /
+     * least faith-gated first); actBuild takes the first affordable unbuilt.
+     */
+    greatWorks: [
+      { id: 'grandBazaar', goldCost: 16, timberCost: 6, marbleCost: 6, faithCost: 0, prestige: 5 },
+      { id: 'theodosianWalls', goldCost: 15, timberCost: 0, marbleCost: 12, faithCost: 0, prestige: 6 },
+      { id: 'greatUniversity', goldCost: 18, timberCost: 0, marbleCost: 8, faithCost: 4, prestige: 6 },
+      { id: 'hagiaSophia', goldCost: 20, timberCost: 0, marbleCost: 10, faithCost: 8, prestige: 10 },
+    ] as GreatWorkDef[],
   },
 
   trade: {
@@ -370,6 +416,22 @@ export const CONFIG = {
 
   economy: {
     grainMarket: { buyGoldPerGrain: 2, sellGoldPerGrain: 1 }, // convert at these rates during income phase
+    /**
+     * Canon §4.3 market conversion (a Trade action): buy secondary resources
+     * (timber/marble/faith) with gold at give:get — 3:1 base, 2:1 once the
+     * faction owns a Market building. MODELED since the engine reconciliation
+     * (2026-07-11): the canon §9.1/§9.2 prices make marble the binding build
+     * currency, and without the §4.3 valve gold-rich builders had no
+     * gold->prestige path once home marble ran out (the turtler policy fell
+     * to 6-9%, under its 10% floor). Gold->resource direction only;
+     * resource->gold selling remains the grain market above.
+     */
+    conversion: {
+      baseGoldPerResource: 3,
+      marketGoldPerResource: 2,
+      /** Canon §10.3 RAW: "one action per conversion" — one give:get lot (1 resource bought) per Trade action. */
+      maxPerAction: 1,
+    },
     grainShortfallDesertionFraction: 0.25, // fraction of unfed units that desert each round
     unpaidMercDesertionFraction: 1.0, // unpaid mercenaries all desert immediately (canon §4.4: desert first)
     goldFloor: 0, // treasury can't go negative; unpayable upkeep triggers desertion instead
@@ -410,7 +472,9 @@ export const CONFIG = {
     tradeRoutePerRound: 0, // canon §13.1 has NO per-route prestige (kept as a tuning lever, default 0)
     tradeMonopolyPerRound: 2, // canon §13.1 + ERRATA E2 (2026-07-11): the FIRST open route with BOTH endpoints owned scores this...
     tradeMonopolyAdditionalPerRound: 1, // ...and each ADDITIONAL simultaneous monopoly scores this (diminishing returns; no escort requirement)
-    greatWork: 5, // one-off on completion (canon §9.2: +5..+10; sim's generic great work = +5)
+    // great-work prestige is PER WORK since the engine reconciliation (canon
+    // §9.2/§13.1: Hagia Sophia 10, Theodosian Walls 6, Great University 6,
+    // Grand Bazaar 5) — see CONFIG.buildings.greatWorks[].prestige.
     decisiveBattle: 1, // canon §13.1: win a decisive battle (enemy wiped or routed)
     outnumberedWin: 1, // canon §13.1: win a field battle outnumbered (stacks with decisive)
     walledCityCapture: 2, // canon §13.1: take a walled city (T1-T3) by storm or siege
@@ -428,7 +492,7 @@ export const CONFIG = {
      * attacked you first this game.
      */
     unjustifiedWar: -1,
-    victoryThreshold: 80, // reach this prestige at Cleanup => immediate win (owned by the TUNING_REPORT; recalibrated to canon §13.1 sources; 82 -> 84 in the adversarial fix round — trims the genoa/venice trader threshold ceiling after the canon §5.2 blockade-halving fix made trade income more robust, see TUNING_LOG)
+    victoryThreshold: 78, // reach this prestige at Cleanup => immediate win (owned by the TUNING_REPORT; 80 -> 78 in the engine-reconciliation round: canon §9.2 per-work prestige caps the great-work channel at 27/faction, lowering winner accrual — re-derived per the §2.13 accrual-multiple method and confirmed by the 5p subset sweep (14.9x winner accrual/round), see TUNING_LOG)
   },
 
   neutrals: {
@@ -453,4 +517,36 @@ export function unitStatsOf(cfg: Config, faction: FactionId | null | undefined, 
 /** Deep-copy CONFIG so sweep runners can mutate numbers without aliasing. */
 export function cloneConfig(): Config {
   return JSON.parse(JSON.stringify(CONFIG)) as Config;
+}
+
+/** First canon §9.2 work (list order) this actor has not built yet, ignoring cost. */
+export function nextUnbuiltGreatWork(cfg: Config, built: readonly string[]): GreatWorkDef | null {
+  for (const w of cfg.buildings.greatWorks) if (!built.includes(w.id)) return w;
+  return null;
+}
+
+/**
+ * First unbuilt canon §9.2 work (list order: cheapest / least faith-gated
+ * first) the treasury can afford right now, or null. `goldReserve` is the
+ * agents' keep-back-for-troops margin.
+ */
+export function nextAffordableGreatWork(
+  cfg: Config,
+  built: readonly string[],
+  res: { gold: number; timber: number; marble: number; faith: number },
+  goldReserve = 0,
+): GreatWorkDef | null {
+  for (const w of cfg.buildings.greatWorks) {
+    if (built.includes(w.id)) continue;
+    if (res.gold >= w.goldCost + goldReserve && res.timber >= w.timberCost && res.marble >= w.marbleCost && res.faith >= w.faithCost) {
+      return w;
+    }
+  }
+  return null;
+}
+
+/** Cost to raise a province's walls to `targetTier` (canon §9.1), or null if not buildable. */
+export function wallUpgradeCost(cfg: Config, targetTier: number): BuildCost | null {
+  if (targetTier > cfg.walls.maxBuildableTier) return null;
+  return cfg.buildings.wallUpgrade.byTargetTier[targetTier] ?? null;
 }

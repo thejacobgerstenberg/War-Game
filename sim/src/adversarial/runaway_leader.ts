@@ -30,7 +30,7 @@
 
 import type { FactionId, UnitType } from '../types';
 import { FACTION_IDS } from '../types';
-import { CONFIG, statsFor } from '../rules';
+import { CONFIG, nextAffordableGreatWork, statsFor, wallUpgradeCost } from '../rules';
 import { combatants } from '../combat';
 import { KEY_CITY_IDS, PROVINCE_BY_ID } from '../map';
 import {
@@ -394,7 +394,7 @@ function tryOpenRoute(g: Game, f: FactionId): boolean {
 function tryMarket(g: Game, f: FactionId, goldReserve: number): boolean {
   const fs = g.faction(f);
   const m = CONFIG.buildings.market;
-  if (fs.gold < m.goldCost + goldReserve || fs.timber < m.timberCost) return false;
+  if (fs.gold < m.goldCost + goldReserve || fs.timber < m.timberCost || fs.marble < m.marbleCost) return false;
   const spots = g
     .ownedProvinces(f)
     .filter((pid) => !g.province(pid).market && !g.isBesieged(pid))
@@ -404,21 +404,23 @@ function tryMarket(g: Game, f: FactionId, goldReserve: number): boolean {
 
 function tryGreatWork(g: Game, f: FactionId, goldReserve: number): boolean {
   const fs = g.faction(f);
-  const gw = CONFIG.buildings.greatWork;
-  if (fs.gold < gw.goldCost + goldReserve || fs.marble < gw.marbleCost || fs.faith < gw.faithCost) return false;
+  if (!nextAffordableGreatWork(CONFIG, fs.greatWorksBuilt, fs, goldReserve)) return false;
   const spots = g.ownedProvinces(f).filter((pid) => !g.isBesieged(pid));
   return spots.length > 0 && g.actBuild(f, spots[0], 'greatWork');
 }
 
 function tryWallUpgrade(g: Game, f: FactionId, goldReserve: number): boolean {
   const fs = g.faction(f);
-  const w = CONFIG.buildings.wallUpgrade;
-  if (fs.gold < w.goldCost + goldReserve || fs.timber < w.timberCost || fs.marble < w.marbleCost) return false;
   const spots = g
     .borderOf(f)
     .filter((pid) => g.province(pid).wallTier < CONFIG.walls.maxBuildableTier && !g.isBesieged(pid))
     .sort((a, b) => targetValue(g, f, b) - targetValue(g, f, a));
-  return spots.length > 0 && g.actBuild(f, spots[0], 'wallUpgrade');
+  for (const pid of spots) {
+    const cost = wallUpgradeCost(CONFIG, g.province(pid).wallTier + 1); // canon §9.1 per-tier cost
+    if (!cost || fs.gold < cost.goldCost + goldReserve || fs.timber < cost.timberCost || fs.marble < cost.marbleCost) continue;
+    return g.actBuild(f, pid, 'wallUpgrade');
+  }
+  return false;
 }
 
 function tryBuyBombard(g: Game, f: FactionId, goldReserve: number): boolean {
