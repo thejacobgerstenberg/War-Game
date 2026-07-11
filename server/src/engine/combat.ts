@@ -300,19 +300,6 @@ function moraleShift(state: GameState, faction: Faction | null, ctx: BattleCtx):
 }
 
 /**
- * §8.4 Great Bombard unlock check. Per CONTRACT2 §12.6 the flag
- * `Player.greatBombardUnlocked` is canonical; the equivalent Omen #34 side-channel
- * is a `kind:"unlock"` modifier carrying `data.unlock === "GREAT_BOMBARD"`.
- */
-function greatBombardUnlocked(state: GameState, playerId: string): boolean {
-  const p = state.players.find((pl) => pl.id === playerId);
-  if (p?.greatBombardUnlocked) return true;
-  const fac = factionOf(state, playerId);
-  const unlocks = getModifiers(state, "unlock", fac ? { faction: fac } : undefined);
-  return unlocks.some((m) => m.data?.unlock === GREAT_BOMBARD.variant);
-}
-
-/**
  * §8.4 (delta 3, 1-round emplacement): a freshly placed or relocated Great Bombard
  * cannot FIRE (bombard the walls) until the round AFTER it entered play. The
  * authoritative arrival clock is the {@link GameState.greatBombard} singleton's
@@ -1317,16 +1304,20 @@ export function resolveSiege(
   live.roundsElapsed += 1;
 
   // 2. Bombardment (§8.2.2 / §8.4) — generic SIEGE units roll 1 die each; a Great
-  // Bombard (§8.4) rolls GREAT_BOMBARD.bombardDice dice when its owner has it
-  // unlocked, and lifts the §8.3 T5 masonry cap for the whole train.
+  // Bombard (§8.4) rolls GREAT_BOMBARD.bombardDice dice once emplaced, and lifts the
+  // §8.3 T5 masonry cap for the whole train.
   const defenderFaction = factionOf(next, prov.ownerId);
   const besiegerFaction = factionOf(next, siege.besiegerId);
-  // §8.4 CONTRACT2 §12.6: enhanced fire only if the besieger has the Bombard unlocked.
-  const bombardUnlocked = greatBombardUnlocked(next, siege.besiegerId);
+  // §8.4: the AUTHORIZATION for enhanced fire is the PHYSICAL PRESENCE of a
+  // GREAT_BOMBARD variant piece in the besieging train. That variant can only ever
+  // enter play via the one-per-game Omen #34 spawn (into GameState.greatBombard +
+  // a GREAT_BOMBARD unit in a province), so carrying it IS the authorization — there
+  // is no separate `Player.greatBombardUnlocked` flag / `unlock` modifier to consult.
   // §8.4 delta 3 (1-round emplacement): a freshly placed/relocated Great Bombard
-  // cannot FIRE until the round AFTER it entered play. An unlocked-but-not-yet-
-  // emplaced piece contributes NO bombardment this round (it does not even fire as a
-  // plain gun — it is still emplacing). A locked/absent tracker defaults to emplaced.
+  // cannot FIRE until the round AFTER it entered play. A not-yet-emplaced piece
+  // contributes NO bombardment this round (it does not even fire as a plain gun — it
+  // is still emplacing). The arrival clock is GameState.greatBombard.emplacedRound;
+  // an absent/mismatched tracker defaults to emplaced (back-compat with fixtures).
   const bombardEmplaced = greatBombardEmplaced(next, prov);
   let genericGuns = 0;
   let greatBombards = 0;
@@ -1335,12 +1326,10 @@ export function resolveSiege(
     for (const v of w.variants) {
       if (v.base !== UnitType.SIEGE) continue;
       if (v.variant === GREAT_BOMBARD.variant) {
-        // §8.4: an UNLOCKED + EMPLACED Great Bombard fires enhanced; before it is
-        // emplaced (delta 3) it cannot bombard the walls this round; a LOCKED piece
-        // is treated as a plain single-die siege gun (CONTRACT2 §12.6).
-        if (bombardUnlocked && bombardEmplaced) greatBombards += v.count;
-        else if (!bombardUnlocked) genericGuns += v.count;
-        // unlocked but NOT yet emplaced → no bombardment contribution this round.
+        // §8.4: an EMPLACED Great Bombard fires enhanced (its presence authorizes it);
+        // before it is emplaced (delta 3) it cannot bombard the walls this round.
+        if (bombardEmplaced) greatBombards += v.count;
+        // not yet emplaced → no bombardment contribution this round.
       } else {
         genericGuns += v.count;
       }
@@ -1355,8 +1344,8 @@ export function resolveSiege(
   // ORDINARY siege train inflicts at most SIEGE.t5MasonryCapPerRound Wall-HP per
   // round IN TOTAL (not per unit). This is a property of the intact wall, NOT of
   // the defender's faction — a non-Byzantine holder of Constantinople is equally
-  // protected. An emplaced UNLOCKED Great Bombard lifts the cap for the WHOLE
-  // besieging train (§8.4). `greatBombards` is > 0 only when unlocked.
+  // protected. An emplaced Great Bombard lifts the cap for the WHOLE besieging train
+  // (§8.4). `greatBombards` is > 0 only when a GREAT_BOMBARD piece is present + emplaced.
   const intactT5Wall = prov.walls.tier === 5 && prov.walls.hp > 0;
   const masonryCapLifted = greatBombards > 0;
   if (intactT5Wall && !masonryCapLifted) {
