@@ -398,7 +398,7 @@ describe("scorePrestige — FL-06/07/08 secret-objective predicates", () => {
       { type: GreatWorkType.HAGIA_SOPHIA, progress: 3 }, // complete = intact
     ];
     s.players.find((p) => p.id === "p1")!.treasury.faith = 15;
-    // No church_union acceptance marker ⇒ "refused" (the doc default).
+    // acceptedChurchUnion undefined ⇒ "refused" (Prep4/FIX-PREP2 default).
     const out = scorePrestige(s);
     expect(completed(out, "p1")).toBe(true);
   });
@@ -429,14 +429,8 @@ describe("scorePrestige — FL-06/07/08 secret-objective predicates", () => {
       { type: GreatWorkType.HAGIA_SOPHIA, progress: 3 },
     ];
     s.players.find((p) => p.id === "p1")!.treasury.faith = 20;
-    // Persistent marker recording that Byzantium accepted the Union.
-    s.activeModifiers.push({
-      id: "cu-accept",
-      scope: "game",
-      kind: "church_union",
-      target: { faction: Faction.BYZANTIUM },
-      data: { accepted: true },
-    });
+    // Prep4 canonical field: the player accepted the Union ⇒ predicate blocked.
+    s.players.find((p) => p.id === "p1")!.acceptedChurchUnion = true;
     const out = scorePrestige(s);
     expect(completed(out, "p1")).toBeFalsy();
   });
@@ -466,11 +460,8 @@ describe("scorePrestige — FL-06/07/08 secret-objective predicates", () => {
     blank(s);
     setObjective(s, "p2", ghazi); // p2 owns nothing → minProvinces fails
     s.round = 16;
-    const hv = s.provinces.filter((p) => (p.highValue ?? 0) >= 3).slice(0, 3);
-    expect(hv.length).toBe(3);
-    for (const prov of hv) {
-      pushLog(s, { type: "siege", actors: ["p2"], targets: [prov.id], data: { sacked: true } });
-    }
+    // Prep4 canonical counter (incremented by combat on HV-city capture).
+    s.players.find((p) => p.id === "p2")!.sackedHighValueCities = 3;
     const out = scorePrestige(s);
     expect(completed(out, "p2")).toBe(true);
   });
@@ -485,17 +476,14 @@ describe("scorePrestige — FL-06/07/08 secret-objective predicates", () => {
     expect(completed(out, "p2")).toBeFalsy();
   });
 
-  it("FL-07 Ghazi Empire: only 2 distinct HV sacks is not enough", () => {
+  it("FL-07 Ghazi Empire: only 2 HV sacks is not enough", () => {
     const s = fresh();
     const ghazi = seededObj(s, "p2", "ott-ghazi-empire");
     blank(s);
     setObjective(s, "p2", ghazi);
     s.round = 16;
-    const hv = s.provinces.filter((p) => (p.highValue ?? 0) >= 3).slice(0, 2);
-    // Sack the same two cities twice each: still only 2 DISTINCT cities.
-    for (const prov of [...hv, ...hv]) {
-      pushLog(s, { type: "siege", actors: ["p2"], targets: [prov.id], data: { sacked: true } });
-    }
+    // Counter below the threshold of 3 ⇒ sack gate unmet.
+    s.players.find((p) => p.id === "p2")!.sackedHighValueCities = 2;
     const out = scorePrestige(s);
     expect(completed(out, "p2")).toBeFalsy();
   });

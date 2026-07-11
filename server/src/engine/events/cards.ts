@@ -397,15 +397,16 @@ const e8: EventEffect = (state, ctx) => {
 };
 
 // #9 Discovery of Alum — chios holder gains a permanent +2 gold/round (STANDING).
-const e9: EventEffect = (state, ctx) => {
-  const owner = controllerId(state, "chios");
-  let s = owner ? grantRes(state, owner, { gold: 2 }) : state;
-  return eventLog(s, ctx, "Discovery of Alum: whoever holds Chios gains a standing +2 gold/round (dye monopoly).", {
+// FL-04 (EVENT_CARDS.md #9): the permanent +2 🪙/round is now delivered by the
+// economy `income` modifier reader (buildCardModifiers case 9 → economy
+// incomeModifierGold), which fires EVERY live Income phase — including the draw
+// round. Do NOT also grant +2 gold immediately here, or round 1 would double-apply.
+const e9: EventEffect = (state, ctx) =>
+  eventLog(state, ctx, "Discovery of Alum: whoever holds Chios gains a standing +2 gold/round (dye monopoly).", {
     standing: true,
     perRoundGold: 2,
     province: "chios",
   });
-};
 
 // #10 Marriage Alliance — HELD: drawer takes 3 gold dowry (or NAP / discounted vassal).
 const e10: EventEffect = (state, ctx) => {
@@ -497,6 +498,11 @@ const e17: EventEffect = (state, ctx) => {
   if (ctx.choice === "ACCEPT") {
     let s = grantPrestige(state, byz.id, -1);
     s = grantRes(s, byz.id, { faith: -2 });
+    // FL-08 (EVENT_CARDS.md #17 Council of Florence / Church Union): accepting the
+    // Union records `acceptedChurchUnion = true` on the acting (Byzantine) player.
+    // prestige.ts reads "refused Church Union" as `!acceptedChurchUnion` for the
+    // "Faith of the Fathers" secret objective; leaving it undefined = REFUSED.
+    s = mapPlayerId(s, byz.id, (p) => ({ ...p, acceptedChurchUnion: true }));
     return eventLog(s, ctx, "Council of Florence: Byzantium ACCEPTS Union — Western aid, but −2 faith/round for 2 rounds and −1 prestige.", {
       faithPerRound: -2,
       durationRounds: 2,
@@ -748,19 +754,15 @@ const e34: EventEffect = (state, ctx) => {
 };
 
 // #35 Black Death Returns — PERSISTENT 2 rounds: cities/HV −1 grain −1 gold; cull 1 per 3 levy/inf.
-const e35: EventEffect = (state, ctx) => {
-  let s: GameState = state;
-  const affected = s.provinces.filter(
-    (p) => p.terrain === TerrainType.CITY || (p.highValue ?? 0) > 0,
-  );
-  for (const prov of affected) {
-    if (prov.ownerId) s = grantRes(s, prov.ownerId, { grain: -1, gold: -1 });
-  }
-  return eventLog(s, ctx, "Black Death Returns: for 2 rounds every city and high-value province produces −1 grain and −1 gold; each faction destroys 1 levy/infantry per 3 it fields (densest provinces first).", {
+// FL-19 (EVENT_CARDS.md #35): the −1 🌾/−1 🪙 per city/high-value province is now
+// applied by the economy `plague` modifier reader (buildCardModifiers case 35 →
+// economy plaguePenalty) EACH live round (round..expiresRound, i.e. both rounds).
+// Do NOT also cull yields immediately here, or the draw round would double-hit.
+const e35: EventEffect = (state, ctx) =>
+  eventLog(state, ctx, "Black Death Returns: for 2 rounds every city and high-value province produces −1 grain and −1 gold; each faction destroys 1 levy/infantry per 3 it fields (densest provinces first).", {
     durationRounds: 2,
     cullRatio: 3,
   });
-};
 
 // #36 Gunpowder Revolution — STANDING: bombards/handgunners −1 cost +1 siege; marble walls −1 tier.
 const e36: EventEffect = (state, ctx) =>

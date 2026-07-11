@@ -731,8 +731,14 @@ function applyLevyCall(state: GameState, action: GameAction): GameState {
   if (!capital) {
     throw new EngineError("BAD_LEVY", `${minor.name} holds no province to raise levies in.`);
   }
-  // §11.5 levy size = 2 base + 1 per garrison tier.
-  const requested = VASSAL.levyBase + VASSAL.levyPerTier * minor.tier;
+  // §11.5 levy size = `levyBase` (2) + `levyPerTier` (1) per GARRISON tier,
+  // where garrison tier = ⌊garrison-unit-count ÷ garrisonTierDivisor⌋ (FL-17 /
+  // FL-05 shared garrison-tier definition; CANON §11.5 supersedes the CONTRACT2
+  // baseline). This is the SAME formula the diplomacy.runRevolts automatic-levy
+  // path uses — previously this path used `minor.tier` (the MAP WALL tier),
+  // over-producing free levies whenever wall tier ≠ garrison tier.
+  const garrisonTier = Math.floor(minor.garrison / VASSAL.garrisonTierDivisor);
+  const requested = VASSAL.levyBase + VASSAL.levyPerTier * garrisonTier;
   // §6.4 stacking limit — the free levy may not push the caller's stack at the
   // vassal capital past the land (8) / city (12) cap; trim the excess (mirrors
   // the clamp diplomacy.runRevolts applies on the automatic levy path). This is
@@ -822,7 +828,17 @@ export function applyAction(state: GameState, action: GameAction): GameState {
     }
 
     case "MERC_BID":
-      // Bidding happens during the merc market window, not a budgeted action.
+      // §6.3 Bidding / passing happens in the merc-market window, not as a
+      // budgeted action. DA-3 (CANON CLARIFICATION 3 — true round-robin with a
+      // voluntary pass): a MERC_BID may carry `pass:true` (Prep4's
+      // MercBidAction.pass), a deliberate withdrawal from the offer's round-robin,
+      // or be an ordinary raise. The reducer only validates the issuer and
+      // FORWARDS the whole action — the `pass` flag included — to the mercenaries
+      // handler (frozen signature `applyMercBid(state, action)`), whose round-robin
+      // records a pass in the offer's `passedPlayerIds` and closes the auction when
+      // one non-passed bidder remains (a raise is dispatched unchanged). actions.ts
+      // does NOT interpret the pass itself; it is the dispatch/validation half of
+      // DA-3, the mercenaries round-robin is the resolution half.
       requirePlayer(state, action.player);
       return applyMercBid(state, action);
 
@@ -879,7 +895,19 @@ export function applyAction(state: GameState, action: GameAction): GameState {
           `${player.name} does not hold card ${action.cardId}.`,
         );
       }
-      let next = resolveCard(state, action.cardId);
+      // FL-03 (EVENT_CARDS.md Era II #28 Papal Interdict, "Target loses all
+      // ✝️ income for 2 rounds"): thread the action's targeting fields into the
+      // events subsystem so a targeted card reaches its target. Without the
+      // `targetPlayerId`, resolveCard's ctx.targetPlayerId was always undefined
+      // and #28's faith_income modifier stayed untargeted → economy zeroed EVERY
+      // faction's faith instead of only the interdicted one. `targetProvinceId`
+      // and `choice` (PLAY_CARD payload, CONTRACT §2) are forwarded too for the
+      // province-scoped / choice-driven cards.
+      let next = resolveCard(state, action.cardId, {
+        targetPlayerId: action.targetPlayerId,
+        targetProvinceId: action.targetProvinceId,
+        choice: action.choice,
+      });
       // Discard exactly one copy of the played card (hand order preserved by
       // resolveCard, which touches treasury/prestige/modifiers, not the hand).
       next = {

@@ -621,6 +621,10 @@ export function applyVassalize(state: GameState, action: GameAction): GameState 
   // §11.5 roll = 1d6 + prestige-tier − garrison-tier (+ marriage bonus − rep),
   // where garrison-tier = ⌊garrison ÷ 2⌋ (GAME_DESIGN §11.5; CANON §11.5) — FL-05,
   // NOT the authored wall tier (minor.tier).
+  // DA-2 (CANON CLARIFICATION 3, GAME_DESIGN §11.5): the standing-NAP +1 clause is
+  // DROPPED. Minors hold no treaties in this engine model, so "a standing NAP with a
+  // minor" is undefined and the +1 is dead — balance.VASSAL.napBonus is deprecated to 0
+  // and deliberately NOT summed into this roll. Do not re-wire it.
   const roll = die + prestigeTier(me) - garrisonTier(tgt) + marriageBonus - repPenalty;
   const success = roll >= VASSAL.rollTarget;
 

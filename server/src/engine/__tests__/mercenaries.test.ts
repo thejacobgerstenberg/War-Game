@@ -44,13 +44,31 @@ const genoaOtt: SeatInput[] = [
   { id: "p2", name: "Murad", faction: Faction.OTTOMAN, isHost: false },
 ];
 
+const threeSeat: SeatInput[] = [
+  { id: "p1", name: "Basil", faction: Faction.BYZANTIUM, isHost: true },
+  { id: "p2", name: "Murad", faction: Faction.OTTOMAN, isHost: false },
+  { id: "p3", name: "Doge", faction: Faction.VENICE, isHost: false },
+];
+
 /** Put a single unbid company offer into the market. */
 function offer(companyId: string): MercCompanyOffer {
-  return { companyId, currentBid: 0, highBidderId: null, sold: false };
+  return {
+    companyId,
+    currentBid: 0,
+    highBidderId: null,
+    sold: false,
+    passedPlayerIds: [],
+    activeBidderId: undefined,
+  };
 }
 
 function bid(player: string, companyId: string, amount: number): MercBidAction {
   return { type: "MERC_BID", player, companyId, bid: amount };
+}
+
+/** A voluntary DA-3 pass (§6.3 step 2): the `bid` field is ignored when pass=true. */
+function pass(player: string, companyId: string): MercBidAction {
+  return { type: "MERC_BID", player, companyId, bid: 0, pass: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -147,9 +165,11 @@ describe("applyMercBid — §6.3 raise-or-pass bidding", () => {
     expect(s2.mercMarket[0].highBidderId).toBe("p2");
   });
 
-  it("closes the auction and fields when no rival can afford a legal raise (all-but-high-bidder passed)", () => {
-    // p1 rich, p2 can cover 12 but not 12 + minBidRaise, so p1's opening bid
-    // leaves no rival able to raise → the auction closes at once (§6.3 step 3).
+  it("forced auto-pass: a rival who cannot afford the minimum raise is auto-passed and the auction closes (DA-3, §6.3 step 2)", () => {
+    // CANON CLARIFICATION 3: affordability survives ONLY as an auto-pass. p1 rich,
+    // p2 can cover 12 but not 12 + minBidRaise (=13), so on p1's opening bid p2 is
+    // FORCED to pass → only one non-passed bidder remains → the auction closes and
+    // the winner is fielded at face value (§6.3 step 3).
     const s = game(byzOtt);
     s.players[0].treasury.gold = 100;
     s.players[1].treasury.gold = 12;
@@ -157,6 +177,52 @@ describe("applyMercBid — §6.3 raise-or-pass bidding", () => {
     const out = applyMercBid(s, bid("p1", "CATALAN", 12));
     expect(out.mercMarket[0].sold).toBe(true);
     expect(out.players[0].treasury.gold).toBe(100 - 12); // face value gold sink
+    // p2 is recorded as a (forced) pass in the offer's round-robin pass set.
+    expect(out.mercMarket[0].passedPlayerIds).toContain("p2");
+    expect(out.mercMarket[0].passedPlayerIds).not.toContain("p1"); // the winner never passes
+  });
+
+  it("voluntary pass closes the auction when one non-passed bidder remains and fields the high bidder at face value (DA-3, §6.3 step 2)", () => {
+    // Both players are wealthy, so nobody is auto-passed. p1 opens at 12; p2 could
+    // out-raise but VOLUNTARILY passes → only p1 (the high bidder) remains → the
+    // auction closes and p1 is fielded, paying the current high bid at face value.
+    const s = game(byzOtt);
+    s.players[0].treasury.gold = 100;
+    s.players[1].treasury.gold = 100;
+    s.mercMarket = [offer("CATALAN")];
+    const s1 = applyMercBid(s, bid("p1", "CATALAN", 12));
+    expect(s1.mercMarket[0].sold).toBe(false); // still open — p2 can raise
+    const out = applyMercBid(s1, pass("p2", "CATALAN"));
+    expect(out.mercMarket[0].sold).toBe(true); // one bidder remains → closed
+    expect(out.mercMarket[0].passedPlayerIds).toContain("p2");
+    expect(out.players[0].treasury.gold).toBe(100 - 12); // winner pays face value
+  });
+
+  it("a voluntary pass with rivals still active does NOT close the auction (round-robin, DA-3)", () => {
+    // Three wealthy bidders: p1 opens, p3 passes, but p2 is still active → the
+    // auction stays open and the round-robin pointer moves to the remaining rival.
+    const s = game(threeSeat);
+    s.players[0].treasury.gold = 100;
+    s.players[1].treasury.gold = 100;
+    s.players[2].treasury.gold = 100;
+    s.mercMarket = [offer("CATALAN")];
+    const s1 = applyMercBid(s, bid("p1", "CATALAN", 12));
+    const out = applyMercBid(s1, pass("p3", "CATALAN"));
+    expect(out.mercMarket[0].sold).toBe(false); // p2 still active → open
+    expect(out.mercMarket[0].passedPlayerIds).toEqual(["p3"]);
+    expect(out.mercMarket[0].highBidderId).toBe("p1");
+    // Round-robin pointer: the next non-passed rival after the high bidder is p2.
+    expect(out.mercMarket[0].activeBidderId).toBe("p2");
+  });
+
+  it("a passed player cannot re-enter the offer's round-robin (DA-3)", () => {
+    const s = game(threeSeat);
+    s.players.forEach((p) => (p.treasury.gold = 100));
+    s.mercMarket = [offer("CATALAN")];
+    const s1 = applyMercBid(s, bid("p1", "CATALAN", 12));
+    const s2 = applyMercBid(s1, pass("p2", "CATALAN"));
+    // p2 has withdrawn — a later bid from p2 is rejected (passing is permanent).
+    expect(() => applyMercBid(s2, bid("p2", "CATALAN", 20))).toThrow(EngineError);
   });
 
   it("is deterministic and pure: bidding consumes no RNG and does not mutate the input", () => {

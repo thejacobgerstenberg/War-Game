@@ -216,6 +216,31 @@ describe("resolveCard — representative card effects", () => {
     ).toBe(false);
   });
 
+  it("#28 Papal Interdict scopes the faith modifier to the interdicted faction ALONE when a target is threaded (FL-03)", () => {
+    // resolveCard now accepts the PLAY_CARD target; interdict p2 (Ottoman). The
+    // faith_income modifier must bite ONLY the Ottoman — not every seated faction.
+    const s = fresh(seats4); // drawer = p1 (Byzantium)
+    const after = resolveCard(s, omenCardId(28), { targetPlayerId: "p2" });
+    const faithMod = after.activeModifiers.find(
+      (m) => m.sourceCardId === omenCardId(28) && m.kind === "faith_income",
+    );
+    expect(faithMod).toBeDefined();
+    expect(faithMod!.value).toBe(0);
+    expect(faithMod!.target!.faction).toBe(Faction.OTTOMAN);
+    // It bites only the target: the drawer's own (Byzantine) faith is not scoped.
+    expect(faithMod!.target!.faction).not.toBe(Faction.BYZANTIUM);
+  });
+
+  it("#17 Council of Florence ACCEPT sets acceptedChurchUnion on the acting Byzantine player (FL-08)", () => {
+    const s = fresh(seats4); // Byzantium = p1
+    expect(player(s, "p1").acceptedChurchUnion).toBeUndefined();
+    const accepted = resolveCard(s, omenCardId(17), { choice: "ACCEPT" });
+    expect(player(accepted, "p1").acceptedChurchUnion).toBe(true);
+    // REFUSE (or any non-ACCEPT choice) leaves the flag falsy = Church Union refused.
+    const refused = resolveCard(s, omenCardId(17), { choice: "REFUSE" });
+    expect(player(refused, "p1").acceptedChurchUnion).toBeFalsy();
+  });
+
   it("#46 The Fall of Constantinople awards +5 prestige to the Byzantine holder and arms sudden death", () => {
     const s = fresh(seats4); // Byzantium (p1) still holds Constantinople
     const after = resolveCard(s, omenCardId(46));
@@ -233,14 +258,21 @@ describe("resolveCard — representative card effects", () => {
 // ---------------------------------------------------------------------------
 
 describe("resolveCard — durable cards register an ActiveModifier", () => {
-  it("#9 Discovery of Alum posts a standing +2 gold/round income modifier on Chios", () => {
-    const after = resolveCard(fresh(seats4), omenCardId(9));
+  it("#9 Discovery of Alum posts a standing +2 gold/round income modifier on Chios and does NOT double-apply on the draw round (FL-04)", () => {
+    const s = fresh(seats4); // Chios starts Genoese (p4)
+    const chiosOwner = s.provinces.find((p) => p.id === "chios")!.ownerId!;
+    const goldBefore = player(s, chiosOwner).treasury.gold;
+    const after = resolveCard(s, omenCardId(9));
     const mod = after.activeModifiers.find((m) => m.sourceCardId === omenCardId(9));
     expect(mod).toBeDefined();
     expect(mod!.kind).toBe("income");
     expect(mod!.value).toBe(2);
     expect(mod!.scope).toBe("game");
     expect(mod!.target!.provinceId).toBe("chios");
+    // FL-04: the +2 🪙/round is delivered by the economy income reader EACH live
+    // round (incl. round 1), not granted immediately here — the Chios holder's gold
+    // is unchanged on the draw round so the bonus is not applied twice.
+    expect(player(after, chiosOwner).treasury.gold).toBe(goldBefore);
   });
 
   it("#18 Venetian–Genoese War posts a 2-round persistent trade modifier with an expiry", () => {
@@ -255,15 +287,36 @@ describe("resolveCard — durable cards register an ActiveModifier", () => {
     expect(mod!.expiresRound).toBe(7);
   });
 
-  it("#35 Black Death Returns posts a 2-round persistent plague modifier", () => {
+  it("#35 Black Death Returns posts a 2-round persistent plague modifier and does NOT hit yields immediately (FL-19)", () => {
     const s = fresh(seats4);
     s.round = 11;
+    // Byzantium (p1) holds Constantinople, a CITY the plague afflicts.
+    const grainBefore = player(s, "p1").treasury.grain;
+    const goldBefore = player(s, "p1").treasury.gold;
     const after = resolveCard(s, omenCardId(35));
     const mod = after.activeModifiers.find((m) => m.sourceCardId === omenCardId(35));
     expect(mod).toBeDefined();
     expect(mod!.kind).toBe("plague");
     expect(mod!.scope).toBe("persistent");
     expect(mod!.expiresRound).toBe(12);
+    // FL-19: the −1 🌾/−1 🪙 per city/HV province is applied by the economy plague
+    // reader each live round (both rounds), NOT immediately — no treasury change on
+    // the draw round, so the draw round is not double-penalised.
+    expect(player(after, "p1").treasury.grain).toBe(grainBefore);
+    expect(player(after, "p1").treasury.gold).toBe(goldBefore);
+  });
+
+  it("#39 Relic Discovered posts a FACTION-targeted +1 gold/round income modifier (FL-19b)", () => {
+    const s = fresh(seats4); // drawer = active p1 (Byzantium), holds relic provinces
+    const after = resolveCard(s, omenCardId(39));
+    const mod = after.activeModifiers.find((m) => m.sourceCardId === omenCardId(39));
+    expect(mod).toBeDefined();
+    expect(mod!.kind).toBe("income");
+    expect(mod!.value).toBe(1);
+    expect(mod!.scope).toBe("game");
+    // FL-19b: economy's income reader ignores untargeted modifiers, so #39 must be
+    // scoped to the enshrining/owning faction (the drawer) to be attributed.
+    expect(mod!.target!.faction).toBe(Faction.BYZANTIUM);
   });
 
   it("#36 Gunpowder Revolution posts standing siege (+1) and wall (−1) modifiers", () => {

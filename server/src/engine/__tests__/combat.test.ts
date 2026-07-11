@@ -924,3 +924,163 @@ describe("prestige signals (§13, CONTRACT2 §12.8)", () => {
     expect(city?.target?.faction).toBe(Faction.OTTOMAN);
   });
 });
+
+// ---------------------------------------------------------------------------
+// §8.2 step 1 siege investment (FL-12): declaring a siege CREATES the SiegeState
+// seeded with grainStores (base, +Granary), so store-driven starvation has a
+// starting value. This is the sole construction point of a SiegeState.
+// ---------------------------------------------------------------------------
+
+describe("siege investment seeds grainStores (§8.2 step 1, FL-12)", () => {
+  const investBattle: PendingBattle = {
+    id: "b1",
+    provinceId: "keep",
+    attackerId: "p1",
+    defenderId: "p2",
+    attackerStackIds: ["s1"],
+    defenderStackIds: [],
+    isSiege: true,
+  };
+
+  it("a declared siege on a standing-walled city creates a SiegeState seeded with baseHoldoutRounds (no dice)", () => {
+    const state = makeState({
+      provinces: [
+        province("keep", { ownerId: "p2", terrain: TerrainType.CITY, walls: { tier: 1, hp: 3 }, garrison: 2 }),
+      ],
+      armies: [army("s1", "p1", "keep", { [UnitType.INFANTRY]: 6, [UnitType.SIEGE]: 2 })],
+    });
+    const res = resolveBattle(state, investBattle, makeRng(SEED, 0));
+    // Investment is not an assault: no capture, no dice consumed.
+    expect(res.winnerId).toBeNull();
+    expect(res.rounds).toBe(0);
+    expect(res.state.rngCursor).toBe(0);
+    expect(res.state.provinces[0].ownerId).toBe("p2"); // still the defender's
+    // The SiegeState now exists, seeded with the default hold-out.
+    expect(res.state.siegeStates).toHaveLength(1);
+    const live = res.state.siegeStates[0];
+    expect(live.provinceId).toBe("keep");
+    expect(live.besiegerId).toBe("p1");
+    expect(live.besiegingArmyIds).toEqual(["s1"]);
+    expect(live.grainStores).toBe(SIEGE.baseHoldoutRounds);
+    expect(live.circumvallated).toBe(true);
+    expect(live.breached).toBe(false);
+    // Mirrored onto the province for the combat subsystem.
+    expect(res.state.provinces[0].siege?.grainStores).toBe(SIEGE.baseHoldoutRounds);
+    // Purity: the caller's input is untouched.
+    expect(state.siegeStates).toHaveLength(0);
+  });
+
+  it("a Granary folds +granaryBonusRounds into the INITIAL grainStores", () => {
+    const state = makeState({
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 1, hp: 3 },
+          garrison: 2,
+          buildings: [BuildingType.GRANARY],
+        }),
+      ],
+      armies: [army("s1", "p1", "keep", { [UnitType.INFANTRY]: 6 })],
+    });
+    const res = resolveBattle(state, investBattle, makeRng(SEED, 0));
+    expect(res.state.siegeStates[0].grainStores).toBe(
+      SIEGE.baseHoldoutRounds + SIEGE.granaryBonusRounds,
+    );
+  });
+
+  it("is deterministic: investing the same siege twice → identical result", () => {
+    const build = (): GameState =>
+      makeState({
+        provinces: [
+          province("keep", { ownerId: "p2", terrain: TerrainType.CITY, walls: { tier: 1, hp: 3 }, garrison: 2 }),
+        ],
+        armies: [army("s1", "p1", "keep", { [UnitType.INFANTRY]: 6 })],
+      });
+    const r1 = resolveBattle(build(), investBattle, makeRng(SEED, 0));
+    const r2 = resolveBattle(build(), investBattle, makeRng(SEED, 0));
+    expect(r1).toEqual(r2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §13.1 / FACTIONS Ottoman #3 "Ghazi Empire" (FL-07): sacking an enemy
+// high-value city increments the capturer's sackedHighValueCities + logs sacked.
+// ---------------------------------------------------------------------------
+
+describe("high-value city sack counter (§13.1 / FACTIONS Ottoman #3, FL-07)", () => {
+  it("a won FIELD battle that captures an enemy high-value city increments sackedHighValueCities and logs data.sacked", () => {
+    const state = makeState({
+      provinces: [
+        province("nicaea", { ownerId: "p2", terrain: TerrainType.PLAINS, highValue: 3 }),
+      ],
+      armies: [
+        army("a1", "p1", "nicaea", { [UnitType.INFANTRY]: 20 }),
+        army("d1", "p2", "nicaea", { [UnitType.LEVY]: 1 }),
+      ],
+    });
+    const battle: PendingBattle = {
+      id: "b1",
+      provinceId: "nicaea",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+    };
+    const res = resolveBattle(state, battle, makeRng(SEED, 0));
+    expect(res.winnerId).toBe("p1");
+    expect(res.state.provinces[0].ownerId).toBe("p1");
+    // The Ghazi counter ticks on the capturing player only.
+    expect(res.state.players.find((p) => p.id === "p1")?.sackedHighValueCities).toBe(1);
+    expect(res.state.players.find((p) => p.id === "p2")?.sackedHighValueCities ?? 0).toBe(0);
+    // The capture log entry flags the sack.
+    const capLog = res.state.log.find((l) => l.type === "battle" && l.data?.sacked === true);
+    expect(capLog).toBeDefined();
+  });
+
+  it("a siege STORM that captures an enemy high-value city increments the counter and logs data.sacked", () => {
+    const state = makeState({
+      provinces: [
+        province("nicaea", {
+          ownerId: "p2",
+          terrain: TerrainType.PLAINS,
+          walls: { tier: 0, hp: 0 }, // breached → field-odds assault captures
+          garrison: 1,
+          highValue: 4,
+        }),
+      ],
+      armies: [army("s1", "p1", "nicaea", { [UnitType.INFANTRY]: 20 })],
+      siegeStates: [siegeState({ provinceId: "nicaea" })],
+    });
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.captured).toBe(true);
+    expect(res.state.players.find((p) => p.id === "p1")?.sackedHighValueCities).toBe(1);
+    const capLog = res.state.log.find((l) => l.type === "siege" && l.data?.sacked === true);
+    expect(capLog).toBeDefined();
+  });
+
+  it("capturing an ordinary (non-high-value) city does NOT increment the sack counter", () => {
+    const state = makeState({
+      provinces: [
+        province("plain", { ownerId: "p2", terrain: TerrainType.PLAINS }), // no highValue
+      ],
+      armies: [
+        army("a1", "p1", "plain", { [UnitType.INFANTRY]: 20 }),
+        army("d1", "p2", "plain", { [UnitType.LEVY]: 1 }),
+      ],
+    });
+    const battle: PendingBattle = {
+      id: "b1",
+      provinceId: "plain",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+    };
+    const res = resolveBattle(state, battle, makeRng(SEED, 0));
+    expect(res.state.provinces[0].ownerId).toBe("p1");
+    expect(res.state.players.find((p) => p.id === "p1")?.sackedHighValueCities ?? 0).toBe(0);
+    const capLog = res.state.log.find((l) => l.type === "battle" && l.data?.sacked === true);
+    expect(capLog).toBeUndefined();
+  });
+});

@@ -8,6 +8,7 @@
  * and never mutated; the advanced rng cursor is written onto the returned state.
  */
 import {
+  BuildingType,
   Faction,
   TerrainType,
   UnitType,
@@ -635,6 +636,85 @@ function writeBack(
   }
 }
 
+/**
+ * §13.1 / FACTIONS Ottoman Secret Objective #3 "Ghazi Empire" (FL-07): sacking an
+ * ENEMY high-value city (`province.highValue` truthy — on the canonical map every
+ * HV node is authored HV(3)+, so truthy ≡ the doc's "HV(3)+ nodes") by a won
+ * battle or storm increments the capturing player's `sackedHighValueCities`
+ * counter. The prestige subsystem reads that counter for the "sack three
+ * high-value cities" clause (CONTRACT2 FIX-PREP2). MUST be called BEFORE
+ * {@link captureProvince} flips ownership, so the pre-capture owner still reads as
+ * the enemy. Returns true when a sack was counted (drives the log's `data.sacked`).
+ */
+function sackHighValueCity(state: GameState, prov: Province, capturerId: string): boolean {
+  if (!prov.highValue) return false; // not a high-value node
+  if (prov.ownerId === capturerId) return false; // never a sack of your own city
+  const cap = state.players.find((pl) => pl.id === capturerId);
+  if (!cap) return false;
+  cap.sackedHighValueCities = (cap.sackedHighValueCities ?? 0) + 1;
+  return true;
+}
+
+/**
+ * §8.2 step 1 (FL-12): investing a standing-walled city is the ONLY point a
+ * {@link SiegeState} is first constructed. A MOVE that declares a siege
+ * (`PendingBattle.isSiege`) does NOT resolve as an immediate field assault — it
+ * circumvallates the city and seeds the hold-out so resolveSiege's store-driven
+ * starvation (§8.2 step 3) has a starting value. Hold-out = base 3 rounds, +2 with
+ * a Granary, folded straight into the INITIAL `grainStores` (NOT a parallel
+ * holdout constant). No dice are rolled, so the rng cursor is unchanged
+ * (deterministic); bombardment/assault begin on the NEXT COMBAT phase. Idempotent:
+ * a reinforcing siege move folds its stacks into the existing siege.
+ */
+function investSiege(
+  state: GameState,
+  battle: PendingBattle,
+  prov: Province,
+  rng: Rng,
+): BattleResult {
+  const emptyReport: CasualtyReport = { losses: {}, routed: [] };
+  const existing = state.siegeStates.find((s) => s.provinceId === prov.id);
+  if (existing) {
+    for (const id of battle.attackerStackIds) {
+      if (!existing.besiegingArmyIds.includes(id)) existing.besiegingArmyIds.push(id);
+    }
+    prov.siege = { ...existing };
+  } else {
+    // §8.2 step 3: grainStores = default 3 (SIEGE.baseHoldoutRounds) + 2 with a
+    // Granary (SIEGE.granaryBonusRounds).
+    const hasGranary = prov.buildings.includes(BuildingType.GRANARY);
+    const grainStores =
+      SIEGE.baseHoldoutRounds + (hasGranary ? SIEGE.granaryBonusRounds : 0);
+    const siege: SiegeState = {
+      provinceId: prov.id,
+      besiegerId: battle.attackerId,
+      besiegingArmyIds: [...battle.attackerStackIds],
+      roundsElapsed: 0,
+      grainStores,
+      breached: false,
+      circumvallated: true,
+    };
+    state.siegeStates = [...state.siegeStates, siege];
+    prov.siege = { ...siege };
+  }
+  const out = appendLog(state, {
+    round: state.round,
+    phase: state.phase,
+    type: "siege",
+    actors: [battle.attackerId, ...(battle.defenderId ? [battle.defenderId] : [])],
+    targets: [prov.id],
+    message: `${battle.attackerId} invests ${prov.name}; the siege begins.`,
+    data: { invested: true, grainStores: prov.siege?.grainStores },
+  });
+  return {
+    state: { ...out, rngCursor: rng.cursor },
+    winnerId: null,
+    rounds: 0,
+    attacker: emptyReport,
+    defender: emptyReport,
+  };
+}
+
 /** Flip province ownership after a capture, clearing garrison/siege and the C'ple flag. */
 function captureProvince(state: GameState, prov: Province, newOwnerId: string): void {
   prov.ownerId = newOwnerId;
@@ -719,6 +799,14 @@ export function resolveBattle(
     }
   }
 
+  // §8.2 step 1 (FL-12): a MOVE that DECLARES a siege on a standing-walled city
+  // invests it rather than storming immediately. Create the SiegeState here (its
+  // sole construction point) seeded with grainStores, so resolveSiege's
+  // store-driven starvation has a starting value. No dice → rng cursor unchanged.
+  if ((battle.isSiege ?? false) && prov && prov.walls.hp > 0) {
+    return investSiege(next, battle, prov, rng);
+  }
+
   // Uncontested move → occupation (§6.4); no dice consumed.
   if (defenders.length === 0 || sideTotal(defenders) === 0) {
     if (prov && sideTotal(attackers) > 0) {
@@ -800,8 +888,12 @@ export function resolveBattle(
 
   // §7: winner takes the province if the attacker prevails in a field battle.
   let captured = false;
+  let sacked = false;
   const capturedTier = provPost?.walls.tier ?? 0;
   if (winnerId === battle.attackerId && !outcome.attackerRouted && provPost) {
+    // §13.1 / FACTIONS Ottoman #3 (FL-07): sacking an enemy high-value city feeds
+    // the Ghazi Empire objective. Count it BEFORE the ownership flip.
+    sacked = sackHighValueCity(post, provPost, battle.attackerId);
     captureProvince(post, provPost, battle.attackerId);
     captured = true;
   }
@@ -868,6 +960,9 @@ export function resolveBattle(
       attackerRouted: outcome.attackerRouted,
       defenderRouted: outcome.defenderRouted,
       prestigePending: pending,
+      // §13.1 / FACTIONS Ottoman #3 (FL-07): true when this capture sacked an
+      // enemy high-value city (drives the Ghazi Empire counter).
+      sacked,
     },
   });
   logged = { ...logged, rngCursor: rng.cursor };
@@ -1275,7 +1370,12 @@ export function resolveSiege(
   writeBack(next, besiegers, "army", false, undefined);
 
   const capturedTier = prov.walls.tier;
+  let sacked = false;
   if (captured) {
+    // §13.1 / FACTIONS Ottoman #3 (FL-07): storming an enemy high-value city is a
+    // sack — count it BEFORE the ownership flip so the pre-capture owner reads as
+    // the enemy.
+    sacked = sackHighValueCity(next, prov, siege.besiegerId);
     captureProvince(next, prov, siege.besiegerId);
   } else {
     // Mirror updated siege progress back onto state.
@@ -1326,6 +1426,9 @@ export function resolveSiege(
       breached: live.breached,
       assaultRounds,
       prestigePending: pending,
+      // §13.1 / FACTIONS Ottoman #3 (FL-07): true when the storm sacked an enemy
+      // high-value city (drives the Ghazi Empire counter).
+      sacked,
     },
   });
 

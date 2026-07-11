@@ -76,6 +76,12 @@ function buildCardModifiers(
   const expires = round + Math.max(1, d) - 1;
   const mid = (suffix: string): string => `${card.id}:${suffix}`;
 
+  // The drawer (active player) and its faction — the enshrining/owning faction for
+  // drawer-scoped standing bonuses (FL-19b #39 Relic Discovered).
+  const drawerId = state.turnOrder[state.activePlayerIndex] ?? null;
+  const drawerFaction =
+    drawerId != null ? (state.players.find((p) => p.id === drawerId)?.faction ?? null) : null;
+
   switch (card.n) {
     // #9 Discovery of Alum — STANDING: whoever holds Chios gains +2 gold/round.
     case 9:
@@ -195,7 +201,10 @@ function buildCardModifiers(
         },
       ];
     // #39 Relic Discovered — STANDING: +1 gold/round pilgrimage at the enshrined
-    // faith province.
+    // faith province (EVENT_CARDS.md #39). FL-19b: the `income` reader only pays a
+    // TARGETED modifier (untargeted income mods are ignored — economy
+    // incomeModifierGold), so scope this to the owning/target faction (the drawer
+    // who enshrined the relic) so the +1 🪙/round is actually attributed each round.
     case 39:
       return [
         {
@@ -204,6 +213,7 @@ function buildCardModifiers(
           scope: "game",
           kind: "income",
           value: 1,
+          ...(drawerFaction ? { target: { faction: drawerFaction } } : {}),
           data: { perRoundGold: 1 },
         },
       ];
@@ -317,14 +327,30 @@ export function drawOmen(state: GameState): GameState {
  * back. The drawing faction is the active player; choice/target inputs (for cards
  * that need them) arrive later via the PLAY_CARD action layer.
  */
-export function resolveCard(state: GameState, cardId: string): GameState {
+export function resolveCard(
+  state: GameState,
+  cardId: string,
+  ctxInput: { targetPlayerId?: string; targetProvinceId?: string; choice?: string } = {},
+): GameState {
   const card = EVENT_CARD_BY_ID[cardId];
   const effect = EVENT_EFFECT_BY_ID[cardId];
   if (!card || !effect) return state;
 
   const rng = makeRng(state.rngSeed, state.rngCursor);
   const activeId = state.turnOrder[state.activePlayerIndex] ?? null;
-  const ctx: EventEffectContext = { drawerId: activeId, rng };
+  // FL-03 (EVENT_CARDS.md #28 Papal Interdict + other targeted cards): the
+  // PLAY_CARD action layer (actions.ts) threads `targetPlayerId`/`targetProvinceId`/
+  // `choice` here (PLAY_CARD carries them per CONTRACT §2). The Omen-draw path
+  // (drawOmen) calls with no target, so the neutral-omen branches fire. Without
+  // this, ctx.targetPlayerId was always undefined and #28's faith_income modifier
+  // could never be scoped to the interdicted faction.
+  const ctx: EventEffectContext = {
+    drawerId: activeId,
+    rng,
+    targetPlayerId: ctxInput.targetPlayerId,
+    targetProvinceId: ctxInput.targetProvinceId,
+    choice: ctxInput.choice,
+  };
 
   // EVENT_CARDS.md: a faction-specific card with no valid target resolves as a
   // neutral no-op — the effect fn logs the neutral reading; we skip its durable

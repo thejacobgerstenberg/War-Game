@@ -24,6 +24,7 @@ import {
 import { createInitialState, type SeatInput } from "../gameState.js";
 import { applyAction, EngineError } from "../actions.js";
 import { advancePhase } from "../roundLoop.js";
+import { omenCardId } from "../events/index.js";
 
 const seats: SeatInput[] = [
   { id: "p1", name: "Basil", faction: Faction.BYZANTIUM, isHost: true },
@@ -488,6 +489,60 @@ describe("PLAY_CARD (§10.6)", () => {
     const next = applyAction(s, { type: "PLAY_CARD", player: "p1", cardId: "held-card-x" });
     expect(next.players.find((p) => p.id === "p1")!.hand).toHaveLength(0);
   });
+
+  it("FL-03 threads targetPlayerId into resolveCard (#28 Papal Interdict hits the target alone)", () => {
+    // EVENT_CARDS.md Era II #28: "Target loses all ✝️ income for 2 rounds." p1
+    // (Byzantium) plays the interdict targeting p2 (Ottoman). Because actions.ts
+    // now forwards action.targetPlayerId to resolveCard, #28 posts a faith_income
+    // modifier SCOPED to the interdicted faction. Without the thread, #28's
+    // neutral (no-target) path posts NOTHING — so the modifier's presence AND its
+    // Ottoman-scoped target together prove the target reached the events layer.
+    const s = fresh(); // p1 = Byzantium, p2 = Ottoman
+    const interdict = omenCardId(28);
+    s.players.find((p) => p.id === "p1")!.hand = [
+      { id: interdict, name: "Papal Interdict", description: "", cost: {} },
+    ];
+    const next = applyAction(s, {
+      type: "PLAY_CARD",
+      player: "p1",
+      cardId: interdict,
+      targetPlayerId: "p2",
+    });
+    const faithMod = next.activeModifiers.find(
+      (m) => m.sourceCardId === interdict && m.kind === "faith_income",
+    );
+    expect(faithMod).toBeDefined();
+    expect(faithMod!.target?.faction).toBe(Faction.OTTOMAN); // scoped to the target, not global
+    // The played copy is still discarded from hand.
+    expect(next.players.find((p) => p.id === "p1")!.hand).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MERC_BID voluntary pass dispatch (DA-3 / CANON CLARIFICATION 3, §6.3)
+// ---------------------------------------------------------------------------
+
+describe("MERC_BID pass dispatch (DA-3 / §6.3)", () => {
+  it("§6.3 forwards a pass:true MERC_BID to the mercenaries round-robin (records the pass)", () => {
+    // CANON CLARIFICATION 3 / DA-3: MERC_BID may carry pass:true (a voluntary
+    // withdrawal). actions.ts only validates the issuer and forwards the whole
+    // action — pass flag included — to applyMercBid, whose round-robin records
+    // the passer in the offer's `passedPlayerIds` (bid ignored on a pass). Here
+    // the dispatch must NOT reject the pass, and the pass must reach the handler.
+    const s = fresh();
+    s.mercMarket = [
+      { companyId: "CATALAN", currentBid: 0, highBidderId: null, sold: false },
+    ];
+    const next = applyAction(s, {
+      type: "MERC_BID",
+      player: "p1",
+      companyId: "CATALAN",
+      bid: 0,
+      pass: true,
+    });
+    const offer = next.mercMarket.find((o) => o.companyId === "CATALAN")!;
+    expect(offer.passedPlayerIds ?? []).toContain("p1");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -527,11 +582,14 @@ describe("DECLARE_WAR (§11)", () => {
 
 describe("LEVY_CALL (§11.5)", () => {
   function withVassal(s: GameState): GameState {
+    // FL-17: garrison 4 gives a GARRISON tier of ⌊4 ÷ 2⌋ = 2, deliberately
+    // DIFFERENT from the MAP wall `tier: 1`, so the levy-size test distinguishes
+    // the correct garrison-tier formula from the old wall-tier one.
     s.minors.push({
       id: "m-serbia",
       name: "Serbia",
       provinceIds: ["selymbria"],
-      garrison: 2,
+      garrison: 4,
       tier: 1,
       vassalOf: "p1",
       roundsUntilLevy: 0,
@@ -539,15 +597,17 @@ describe("LEVY_CALL (§11.5)", () => {
     return s;
   }
 
-  it("§11.5 raises 2 LEVY + 1 per garrison tier in the vassal's capital", () => {
+  it("§11.5 levy size = 2 base + 1 per GARRISON tier ⌊garrison ÷ 2⌋ (FL-17)", () => {
     const s = withVassal(fresh());
     s.phase = GamePhase.DIPLOMACY;
     const next = applyAction(s, { type: "LEVY_CALL", player: "p1", minorId: "m-serbia" });
     const army = next.armies.find((a) => a.ownerId === "p1" && a.locationId === "selymbria")!;
     // Byzantium's canonical starting garrison at selymbria is 1 LEVY (FACTIONS.md
-    // / CONTRACT §11); the levy call raises 3 more (2 base + 1 per tier-1) into
-    // that same stack → 4 total. (CANON: canonical starting forces are live.)
-    expect(army.units[UnitType.LEVY]).toBe(4); // 1 starting + (2 base + 1 tier-1)
+    // / CONTRACT §11). Serbia's garrison tier = ⌊4 ÷ 2⌋ = 2, so the levy call
+    // raises 2 base + 1×2 = 4 into that same stack → 5 total. Under the OLD
+    // wall-tier formula (2 + 1×tier-1) it would have raised only 3 (→ 4) — this
+    // asserts the garrison-tier fix (§11.5, CANON supersedes the CONTRACT2 baseline).
+    expect(army.units[UnitType.LEVY]).toBe(5); // 1 starting + (2 base + 1 × garrison-tier-2)
     // Cooldown re-armed so runRevolts won't double-levy this cadence.
     expect(next.minors.find((m) => m.id === "m-serbia")!.roundsUntilLevy).toBe(2);
   });
@@ -556,7 +616,8 @@ describe("LEVY_CALL (§11.5)", () => {
     const s = withVassal(fresh());
     s.phase = GamePhase.DIPLOMACY;
     // Fill p1's stack at the vassal capital (selymbria) to 7 land units, one shy
-    // of the §6.4 land cap (8). A 3-unit levy must be trimmed to 1, not 3.
+    // of the §6.4 land cap (8). The 4-unit levy (2 base + garrison-tier-2) must
+    // be trimmed to 1, not 4.
     const army = s.armies.find(
       (a) => a.ownerId === "p1" && a.locationId === "selymbria",
     )!;
@@ -565,7 +626,7 @@ describe("LEVY_CALL (§11.5)", () => {
     const after = next.armies.find(
       (a) => a.ownerId === "p1" && a.locationId === "selymbria",
     )!;
-    // 7 + min(3, 8 - 7) = 8, never 10 — stacking invariant preserved (§6.4).
+    // 7 + min(4, 8 - 7) = 8, never 11 — stacking invariant preserved (§6.4).
     expect(after.units[UnitType.LEVY]).toBe(8);
   });
 

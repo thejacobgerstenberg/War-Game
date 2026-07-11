@@ -357,6 +357,22 @@ export interface MercCompanyOffer {
   highBidderId: string | null;
   /** True once resolved (fielded or handed to an NPC minor). */
   sold: boolean;
+  /**
+   * DA-3 (§6.3 step 2, CANON CLARIFICATION 3) — true round-robin auction close.
+   * Player ids that have voluntarily passed (or been auto-passed for inability to
+   * afford the minimum raise) on THIS offer; the auction closes when only one
+   * non-passed bidder remains (winner pays the current high bid at face value).
+   * Optional so hand-built offer literals stay valid; the mercenaries subsystem
+   * (`refreshMercMarket`) initialises it to `[]` when building each offer, and
+   * `applyMercBid` pushes to it — treat absent as `[]`.
+   */
+  passedPlayerIds?: string[];
+  /**
+   * DA-3 — player id whose turn it is to act in the round-robin, or undefined when
+   * the auction has no active bidder yet. The mercenaries subsystem advances this
+   * as bids/passes come in.
+   */
+  activeBidderId?: string;
 }
 
 /** An in-progress siege of a walled province. */
@@ -547,6 +563,21 @@ export interface Player {
    * these into `prestige`.
    */
   conquestPrestige?: number;
+  /**
+   * FL-08 (Byzantium secret objective "Faith of the Fathers") — true once this
+   * player has ACCEPTED Church Union (Omen #17, resolved with `choice:"ACCEPT"`).
+   * undefined/false = has NOT accepted = REFUSED. The events agent sets it true on
+   * acceptance; prestige.ts reads "refused Church Union" as `!acceptedChurchUnion`.
+   */
+  acceptedChurchUnion?: boolean;
+  /**
+   * FL-07 (Ottoman secret objective "Ghazi Empire") — count of enemy high-value
+   * cities this player has sacked/captured over the game. combat.ts increments it
+   * on capture of an enemy high-value city; prestige.ts reads it for the
+   * minProvinces-OR-sackedHighValueCities completion predicate. Initialised to 0
+   * in `createInitialState`; treat absent as 0.
+   */
+  sackedHighValueCities?: number;
 }
 
 /**
