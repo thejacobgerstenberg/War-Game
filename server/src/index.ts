@@ -14,14 +14,16 @@ import { Server } from "socket.io";
 import {
   SOCKET_EVENTS,
   type ClientToServerEvents,
-  type CreateGamePayload,
-  type JoinGamePayload,
-  type PickFactionPayload,
-  type RejoinGamePayload,
   type ServerToClientEvents,
 } from "@imperium/shared";
 import { LobbyManager, LobbyError, MAX_PLAYERS } from "./lobby/lobbyManager.js";
 import { log } from "./log.js";
+import {
+  parseCreateGamePayload,
+  parseJoinGamePayload,
+  parsePickFactionPayload,
+  parseRejoinGamePayload,
+} from "./validate.js";
 
 type ImperiumServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
@@ -142,107 +144,149 @@ export function createApp(options: CreateAppOptions = {}) {
       }
     };
 
+    /**
+     * Top-level error boundary for socket handlers: a socket event must NEVER
+     * crash the process (socket.io v4 does not catch listener throws — an
+     * unguarded exception here is an unauthenticated remote kill).
+     *
+     * The wrapped handler receives the raw first emit argument as `unknown`
+     * (never destructured in param position, so a payload-less emit cannot
+     * throw before we run); extra junk arguments are dropped. Any throw is
+     * answered to the emitting socket as `error_msg` — LobbyError messages
+     * verbatim, anything unexpected as a generic line so internals never
+     * leak — and logged as a single-line JSON entry.
+     */
+    const boundary =
+      (event: string, handler: (payload: unknown) => void) =>
+      (...args: unknown[]): void => {
+        try {
+          handler(args[0]);
+        } catch (err) {
+          if (err instanceof LobbyError) {
+            emitError(err.message);
+            log("warn", "socket_event_rejected", err.message, {
+              ...(roomCode ? { roomCode } : {}),
+              socketEvent: event,
+            });
+          } else {
+            emitError("Unexpected server error.");
+            log(
+              "error",
+              "socket_handler_error",
+              err instanceof Error ? err.message : String(err),
+              {
+                ...(roomCode ? { roomCode } : {}),
+                socketEvent: event,
+                ...(err instanceof Error && err.stack
+                  ? { stack: err.stack }
+                  : {}),
+              },
+            );
+          }
+        }
+      };
+
     socket.on(
       SOCKET_EVENTS.CREATE_GAME,
-      ({ playerName }: CreateGamePayload) => {
-        try {
-          const { room, player } = lobby.createGame(playerName);
-          playerId = player.id;
-          roomCode = room.code;
-          socket.join(room.code);
-          socket.emit(SOCKET_EVENTS.GAME_CREATED, {
-            roomCode: room.code,
-            playerId: player.id,
-            sessionToken: player.sessionToken,
-          });
-          broadcastLobby(room.code);
-          log(
-            "info",
-            "room_created",
-            `room created by ${player.name} (2-${MAX_PLAYERS} players)`,
-            { roomCode: room.code },
-          );
-        } catch (err) {
-          emitError(errMessage(err));
-        }
-      },
+      boundary(SOCKET_EVENTS.CREATE_GAME, (raw) => {
+        const parsed = parseCreateGamePayload(raw);
+        if (!parsed.ok) return emitError(parsed.error);
+        const { room, player } = lobby.createGame(parsed.value.playerName);
+        playerId = player.id;
+        roomCode = room.code;
+        socket.join(room.code);
+        socket.emit(SOCKET_EVENTS.GAME_CREATED, {
+          roomCode: room.code,
+          playerId: player.id,
+          sessionToken: player.sessionToken,
+        });
+        broadcastLobby(room.code);
+        log(
+          "info",
+          "room_created",
+          `room created by ${player.name} (2-${MAX_PLAYERS} players)`,
+          { roomCode: room.code },
+        );
+      }),
     );
 
     socket.on(
       SOCKET_EVENTS.JOIN_GAME,
-      ({ roomCode: code, playerName }: JoinGamePayload) => {
-        try {
-          const { room, player } = lobby.joinGame(code, playerName);
-          playerId = player.id;
-          roomCode = room.code;
-          socket.join(room.code);
-          socket.emit(SOCKET_EVENTS.GAME_CREATED, {
-            roomCode: room.code,
-            playerId: player.id,
-            sessionToken: player.sessionToken,
-          });
-          broadcastLobby(room.code);
-          log(
-            "info",
-            "player_joined",
-            `${player.name} joined (${room.players.length}/${MAX_PLAYERS} seats filled)`,
-            { roomCode: room.code },
-          );
-        } catch (err) {
-          emitError(errMessage(err));
-        }
-      },
+      boundary(SOCKET_EVENTS.JOIN_GAME, (raw) => {
+        const parsed = parseJoinGamePayload(raw);
+        if (!parsed.ok) return emitError(parsed.error);
+        const { room, player } = lobby.joinGame(
+          parsed.value.roomCode,
+          parsed.value.playerName,
+        );
+        playerId = player.id;
+        roomCode = room.code;
+        socket.join(room.code);
+        socket.emit(SOCKET_EVENTS.GAME_CREATED, {
+          roomCode: room.code,
+          playerId: player.id,
+          sessionToken: player.sessionToken,
+        });
+        broadcastLobby(room.code);
+        log(
+          "info",
+          "player_joined",
+          `${player.name} joined (${room.players.length}/${MAX_PLAYERS} seats filled)`,
+          { roomCode: room.code },
+        );
+      }),
     );
 
     socket.on(
       SOCKET_EVENTS.REJOIN_GAME,
-      ({ roomCode: code, sessionToken }: RejoinGamePayload) => {
-        try {
-          const { room, player } = lobby.rejoinGame(code, sessionToken);
-          playerId = player.id;
-          roomCode = room.code;
-          socket.join(room.code);
-          // Everyone (including the rejoiner) sees the seat flip connected.
-          broadcastLobby(room.code);
-          if (room.startedByHost && room.state) {
-            // Mid-game resume: replay game_started for screen routing, then
-            // the authoritative snapshot. Per-action state_update broadcasts
-            // arrive with the action engine (engine/actions.ts reducer).
-            socket.emit(SOCKET_EVENTS.GAME_STARTED, { state: room.state });
-            socket.emit(SOCKET_EVENTS.STATE_UPDATE, { state: room.state });
-          }
-          log(
-            "info",
-            "player_rejoined",
-            `${player.name} reattached to their seat`,
-            { roomCode: room.code },
-          );
-        } catch (err) {
-          emitError(errMessage(err));
+      boundary(SOCKET_EVENTS.REJOIN_GAME, (raw) => {
+        const parsed = parseRejoinGamePayload(raw);
+        if (!parsed.ok) return emitError(parsed.error);
+        const { room, player } = lobby.rejoinGame(
+          parsed.value.roomCode,
+          parsed.value.sessionToken,
+        );
+        playerId = player.id;
+        roomCode = room.code;
+        socket.join(room.code);
+        // Everyone (including the rejoiner) sees the seat flip connected.
+        broadcastLobby(room.code);
+        if (room.startedByHost && room.state) {
+          // Mid-game resume: replay game_started for screen routing, then
+          // the authoritative snapshot. Per-action state_update broadcasts
+          // arrive with the action engine (engine/actions.ts reducer).
+          socket.emit(SOCKET_EVENTS.GAME_STARTED, { state: room.state });
+          socket.emit(SOCKET_EVENTS.STATE_UPDATE, { state: room.state });
         }
-      },
+        log(
+          "info",
+          "player_rejoined",
+          `${player.name} reattached to their seat`,
+          { roomCode: room.code },
+        );
+      }),
     );
 
     socket.on(
       SOCKET_EVENTS.PICK_FACTION,
-      ({ faction }: PickFactionPayload) => {
+      boundary(SOCKET_EVENTS.PICK_FACTION, (raw) => {
+        const parsed = parsePickFactionPayload(raw);
+        if (!parsed.ok) return emitError(parsed.error);
         if (!roomCode || !playerId) {
           return emitError("You are not in a game.");
         }
-        try {
-          lobby.pickFaction(roomCode, playerId, faction);
-          broadcastLobby(roomCode);
-        } catch (err) {
-          emitError(errMessage(err));
-        }
-      },
+        lobby.pickFaction(roomCode, playerId, parsed.value.faction);
+        broadcastLobby(roomCode);
+      }),
     );
 
-    socket.on(SOCKET_EVENTS.START_GAME, () => {
-      if (!roomCode || !playerId) {
-        return emitError("You are not in a game.");
-      }
-      try {
+    // start_game/leave_game carry no payload; junk arguments are ignored.
+    socket.on(
+      SOCKET_EVENTS.START_GAME,
+      boundary(SOCKET_EVENTS.START_GAME, () => {
+        if (!roomCode || !playerId) {
+          return emitError("You are not in a game.");
+        }
         const { state } = lobby.startGame(roomCode, playerId);
         broadcastLobby(roomCode);
         io.to(roomCode).emit(SOCKET_EVENTS.GAME_STARTED, { state });
@@ -252,45 +296,50 @@ export function createApp(options: CreateAppOptions = {}) {
           `game started with ${state.players.length} players`,
           { roomCode },
         );
-      } catch (err) {
-        emitError(errMessage(err));
-      }
-    });
+      }),
+    );
 
-    socket.on(SOCKET_EVENTS.LEAVE_GAME, () => {
-      if (!roomCode || !playerId) return;
-      const code = roomCode;
-      const name = lobby
-        .getRoom(code)
-        ?.players.find((p) => p.id === playerId)?.name;
-      lobby.leaveGame(code, playerId);
-      socket.leave(code);
-      broadcastLobby(code);
-      log("info", "player_left", `${name ?? "player"} left`, {
-        roomCode: code,
-      });
-      playerId = null;
-      roomCode = null;
-    });
+    socket.on(
+      SOCKET_EVENTS.LEAVE_GAME,
+      boundary(SOCKET_EVENTS.LEAVE_GAME, () => {
+        if (!roomCode || !playerId) return;
+        const code = roomCode;
+        const name = lobby
+          .getRoom(code)
+          ?.players.find((p) => p.id === playerId)?.name;
+        lobby.leaveGame(code, playerId);
+        socket.leave(code);
+        broadcastLobby(code);
+        log("info", "player_left", `${name ?? "player"} left`, {
+          roomCode: code,
+        });
+        playerId = null;
+        roomCode = null;
+      }),
+    );
 
     socket.on("disconnect", () => {
-      if (playerId) lobby.markDisconnected(playerId);
-      if (roomCode) {
-        broadcastLobby(roomCode);
-        log("info", "player_disconnected", "socket disconnected; seat held", {
-          roomCode,
-        });
+      // No emitError here — the socket is already gone; just never throw.
+      try {
+        if (playerId) lobby.markDisconnected(playerId);
+        if (roomCode) {
+          broadcastLobby(roomCode);
+          log("info", "player_disconnected", "socket disconnected; seat held", {
+            roomCode,
+          });
+        }
+      } catch (err) {
+        log(
+          "error",
+          "socket_handler_error",
+          err instanceof Error ? err.message : String(err),
+          { ...(roomCode ? { roomCode } : {}), socketEvent: "disconnect" },
+        );
       }
     });
   });
 
   return { app, httpServer, io, lobby, startReaper, stopReaper };
-}
-
-function errMessage(err: unknown): string {
-  if (err instanceof LobbyError) return err.message;
-  if (err instanceof Error) return err.message;
-  return "Unexpected server error.";
 }
 
 /**
