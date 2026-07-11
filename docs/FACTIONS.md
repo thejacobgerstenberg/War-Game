@@ -6,7 +6,7 @@ Starting Ownership Summary. Event references point to `EVENT_CARDS.md`.
 
 **Reading the stat blocks**
 
-- **Starting Resources** — a pool of 🪙 gold / 🌾 grain / 🪵 timber / 🪨 stone / ✝️ faith at turn 1.
+- **Starting Resources** — a pool of 🪙 gold / 🌾 grain / 🪵 timber / 🪨 marble / ✝️ faith at turn 1.
 - **Starting Army** — units already on the board, listed by province.
 - **Unit shorthand:** *levy* (cheap conscript), *inf* (professional infantry), *cav* (cavalry/knights),
   *merc* (mercenary), *siege* (bombard/trebuchet), *war galley*, *merchant galley*.
@@ -38,6 +38,11 @@ The generic `WARSHIP` ("great galley / carrack", `GAME_DESIGN.md` §6.1) is buil
 **every** faction; Venice's *Galeazza* and Genoa's *Carrack* are those factions' named
 WARSHIP variants, not separate hull types.
 
+The **Great Bombard** is the exception to the "uses its base type's raise cost" rule: it is a
+**unique, one-per-game** engine that can never be recruited. It enters play only through the
+Era III omen `great-bombard-forged` and is governed by `GAME_DESIGN.md` §8.4; it is listed
+under the Ottomans because they receive it by default when in play (otherwise it is auctioned).
+
 ---
 
 ## ✝️ BYZANTIUM — *The Queen of Cities, at twilight*
@@ -66,9 +71,10 @@ WARSHIP variants, not separate hull types.
 ### Unique Powers
 1. **Theodosian Walls.** `constantinople` starts at wall **Tier 5** (16 Wall HP, defender +4 —
    `GAME_DESIGN.md` §8.1) and **auto-repels the first two siege rounds** each time it is besieged
-   (defenders sally; no bombardment damage those rounds). Only a **Great Bombard** (see Ottomans / event
-   *The Great Bombard Forged*) rolls enough wall damage to batter them down quickly (double wall-damage
-   dice, `GAME_DESIGN.md` §8.2).
+   (defenders sally; no bombardment damage those rounds). Against intact T5 masonry an ordinary siege
+   train inflicts at most 1 Wall HP/round (`GAME_DESIGN.md` §8.3); only the **Great Bombard** (see
+   Ottomans / event *The Great Bombard Forged*) lifts that cap and rolls enough wall damage to batter
+   them down quickly (`GAME_DESIGN.md` §8.4).
 2. **Hagia Sophia.** `constantinople` yields **+2 ✝️ faith/round** on top of its listed yield. Byzantium may
    spend faith to **sway Orthodox neutrals** (`serbia`, `trebizond`, `wallachia`, `epirus`, `thessaly`, `athens`)
    toward neutrality or alliance instead of paying gold.
@@ -113,11 +119,13 @@ WARSHIP variants, not separate hull types.
 ### Unique Powers
 1. **Devshirme & the Timariots.** *Levies cost −1 🌾 to sustain* and can be **raised in one turn in any owned
    province**. The Ottoman fields the largest, cheapest land army on the map.
-2. **The Great Bombard.** From round 6 onward (or immediately via event *The Great Bombard Forged*) the
-   Ottoman may build **Orban's Great Bombard** — a super-siege engine (a `SIEGE` variant) that rolls
-   **double wall-damage dice** (up to 6 Wall HP/round, `GAME_DESIGN.md` §8.2) — enough to batter down even
-   the Tier-5 Theodosian Walls, and the only reliable answer to them. Slow, costly (🪙+🪨), fragile
-   in open battle.
+2. **The Great Bombard.** When the Era III omen *The Great Bombard Forged* (`great-bombard-forged`)
+   resolves, **Orban's Great Bombard** enters play — free, in the Ottoman capital if the Ottoman is in
+   play (otherwise it is auctioned to the highest bidder). One exists per game; it cannot be recruited,
+   rebuilt, or duplicated. It rolls **two wall-damage dice** per siege round and lifts the T5 masonry
+   cap for the whole besieging train (`GAME_DESIGN.md` §8.4) — the only reliable answer to the Tier-5
+   Theodosian Walls. Slow, grain-hungry, rolls no dice in open battle — and if its escort falls, it
+   passes **intact to the victor**.
 3. **Ghaza (Holy Raid).** Razzias against **neutral beyliks and Christian frontier provinces** cost −25% and
    return extra 🪙 plunder; the Ottoman gains a small prestige bump each time it takes a new city.
 

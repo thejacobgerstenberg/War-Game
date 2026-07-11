@@ -198,7 +198,7 @@ The Game Board is a full-viewport grid: manuscript chrome around a central map.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  RESOURCE BAR  gold ● grain ● timber ● stone ● faith ● │ prestige │yr │  top
+│  RESOURCE BAR  gold ● grain ● timber ● marble ● faith ●│ prestige │yr │  top
 ├───────────┬──────────────────────────────────────────┬───────────────┤
 │  PLAYER   │                                          │   ACTIONS /    │
 │  STATUS   │            CENTRAL SVG MAP                │   CARDS panel  │
@@ -299,7 +299,7 @@ are the manuscript rule.
 
 ### 8.2 Resource pills
 Small rounded coins: an icon (§4-style glyph) + a Cinzel number, one per resource
-(`gold` gold, `grain` verdigris-wheat, `timber` brown, `stone` grey, `faith`
+(`gold` gold, `grain` verdigris-wheat, `timber` brown, `marble` grey, `faith`
 lapis). A delta (`+3` / `−1`) animates on the pill each Income phase.
 
 ### 8.3 Faction badges & army tokens

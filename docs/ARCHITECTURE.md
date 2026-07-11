@@ -94,7 +94,7 @@ interface ResourceBundle {
   gold: number;
   grain: number;
   timber: number;
-  stone: number;   // "stone/marble"
+  marble: number;
   faith: number;
 }
 
@@ -166,7 +166,7 @@ interface GameState {
   log: GameLogEntry[];             // structured event log (§9), from day one
 }
 
-const EMPTY_RESOURCES: ResourceBundle = { gold:0, grain:0, timber:0, stone:0, faith:0 };
+const EMPTY_RESOURCES: ResourceBundle = { gold:0, grain:0, timber:0, marble:0, faith:0 };
 ```
 
 ### 3.3 Growth fields (added as systems land)
@@ -192,7 +192,7 @@ no `Math.random()` inside it). Everything is a function of explicit inputs.
 
 | File | Exports | Responsibility |
 |---|---|---|
-| `engine/mapData.ts` | `PROVINCES`, `SEA_ZONES`, `ADJACENCY` | Static map definition (from [`MAP.md`](./MAP.md)) |
+| `engine/mapData.ts` | `PROVINCES`, `SEA_ZONES`, `ADJACENCY` | Static map definition; every province/sea-zone id matches the [`MAP.md`](./MAP.md) registry verbatim (e.g. `edirne`, `sea-of-marmara`, `aegean`, `bosphorus`, `black-sea-west`) |
 | `engine/gameState.ts` | `createInitialState(roomCode, seats)` | Build a fresh `GameState` for a started game |
 | `engine/income.ts` | `computeIncome(state, playerId)` | Sum owned-province yields minus army grain upkeep → `ResourceBundle` (buildings/trade routes land with those systems) |
 | `engine/adjacency.ts` | `areAdjacent(a, b)` | Graph queries over the map (movement/attack legality) |
