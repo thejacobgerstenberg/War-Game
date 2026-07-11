@@ -5,8 +5,9 @@
 - **Validated SHA:** `c3060cf672eedfbbf70eaab9e7750494590b7c02` (main)
 - **Contract document:** `deploy/OPERATIONS.md`
 - **Evidence:** every claim below cites a verbatim capture under the session scratchpad,
-  `…/scratchpad/staging-evidence/` (one file per check, plus two lobby screenshots and
-  `server-run{1,2,3}.log`/`.exit`). Filenames below are relative to that directory.
+  `…/scratchpad/staging-evidence/` (one file per check, plus two lobby screenshots).
+  The raw server captures `server-run{1,2,3}.log`/`.exit` live one level up, directly in
+  `…/scratchpad/`. Filenames below are relative to `staging-evidence/`.
 
 ---
 
@@ -82,7 +83,7 @@ headed `APPROXIMATED, NOT CONTAINERIZED`).
 | 2 | `lobby-e2e` | **PASS** (approximated) | `lobby-e2e.txt` + screenshots `lobby-e2e-contextA.png` / `lobby-e2e-contextB.png`. Context A (Aldric) created room, 6-char code `IUWVUR` captured from the lobby UI; context B (Isabeau) joined by typing it. Both rosters (verbatim innerText): `Aldric · host / BYZANTIUM / Isabeau / OTTOMAN`. Screenshots visually verified: host view with Start Game enabled; guest view "Awaiting the host…". |
 | 3 | `ws-upgrade` | **PASS** (approximated — proven through the vite-preview stand-in, not nginx itself) | `ws-upgrade.txt` — both contexts' WebSockets at `ws://localhost:3000/socket.io/?EIO=4&transport=websocket` (same-origin `:3000`); engine.io upgrade handshake frames `2probe` → `3probe` → `5` captured, game frames flowing (Playwright only surfaces a websocket after the 101 handshake). All 8 `/socket.io/` polling requests target `localhost:3000`; `network requests to localhost:8080 from either context: 0 (PASS — none)`. |
 | 4 | `no-hardcoded-origin` | **PASS** (approximated — bundle served by vite preview, but built exactly as compose builds it, `VITE_SERVER_URL=""`) | `no-hardcoded-origin.txt` — `grep -c 'localhost:8080'` = `0` in both `/assets/index-DILMrHhA.js` and `/assets/index-FE054mxp.css` (`grep exit code: 1 (1 = no match = PASS)`). The dev-only fallback literal in `client/src/socket.ts` is tree-shaken out of the production bundle. |
-| 5 | `sigterm-drain` | **PASS** (approximated — `kill -TERM` for `docker stop`, wrapper exit code for `docker inspect`) | `sigterm-drain.txt` — with both clients connected and listeners armed **before** signalling: (a) both received `42["server_shutdown",{"reconnectAfterMs":5000}]` ~13 ms after SIGTERM; (b) server logged, all as single-line JSON: `"SIGTERM: new rooms refused, server_shutdown broadcast, draining up to 20s"` → `"drain complete: all sockets disconnected"` → `"server closed, exiting 0"`; (c) exit code `0` recorded 3.4 s after SIGTERM — inside the 20 s drain window and 25 s compose `stop_grace_period`. Reproduced across runs 1, 2, 3. |
+| 5 | `sigterm-drain` | **PASS** (approximated — `kill -TERM` for `docker stop`, wrapper exit code for `docker inspect`) | `sigterm-drain.txt` — with both clients connected and listeners armed **before** signalling: (a) both received `42["server_shutdown",{"reconnectAfterMs":5000}]` ~13 ms after SIGTERM; (b) server logged, all as single-line JSON: `"SIGTERM: new rooms refused, server_shutdown broadcast, draining up to 20s"` → `"drain complete: all sockets disconnected"` → `"server closed, exiting 0"`; (c) exit code `0` recorded 3.4 s after SIGTERM — inside the 20 s drain window and 25 s compose `stop_grace_period`. The full three-part assertion (client `server_shutdown` frames + JSON log sequence + exit 0) is evidenced for run 2; runs 1 and 3 corroborate the JSON log sequence + exit 0 only (run 3 had no connected clients). |
 | 6 | `reaper` | **PASS** (approximated — `ROOM_TTL_SECONDS=10` as process env via scratchpad wrapper; committed compose untouched) | `reaper.txt` — room `RBQNKJ` created via socket.io through the `:3000` proxy (`/healthz` rooms 0→1), socket disconnected, and 11.1 s later: `{"ts":"2026-07-11T20:26:36.526Z","level":"info","roomCode":"RBQNKJ","event":"room_reaped","msg":"empty room reaped after ROOM_TTL_SECONDS=10"}`; `/healthz` rooms back to 0. |
 | 7 | `log-shape` | **PASS** (approximated — wrapper-captured stdout for `docker compose logs`) | `log-shape.txt` — 20/20 lines across three server runs (≥5 required) parse as single-line JSON with ISO-8601 `ts`, `level` ∈ {debug,info,warn,error}, string `event`/`msg`, and 6-char `roomCode` exactly on room-scoped events, per OPERATIONS.md §6. Sample: `{"ts":"2026-07-11T20:22:02.728Z","level":"info","event":"server_started","msg":"IMPERIUM server listening on 0.0.0.0:8080"}`. Events observed: `server_started`, `room_created`, `player_joined`, `player_disconnected`, `room_reaped`, `shutdown`. 0 failures. |
 
@@ -93,7 +94,7 @@ headed `APPROXIMATED, NOT CONTAINERIZED`).
 **None.** No changes to `deploy/` were required — all committed configs
 (`docker-compose.yml`, `nginx.conf`, Dockerfiles' build recipe as reproduced) behaved as
 specified. The git working tree on `deploy/staging-validation` remained clean throughout;
-this report is the only file added.
+the branch adds only two files, this report and `deploy/LAUNCH_CHECKLIST.md`.
 
 ---
 

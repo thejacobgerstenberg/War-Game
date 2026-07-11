@@ -81,9 +81,9 @@ Already baked into `deploy/fly.toml` `[env]` — do **not** re-set as secrets:
       fly deploy -c deploy/fly.toml --dockerfile deploy/Dockerfile.server
       ```
 
-- [ ] 5.2 Expected duration: first deploy ~5–10 min (cold image layers on the
+- [ ] 5.2 **[ANY OPERATOR]** Expected duration: first deploy ~5–10 min (cold image layers on the
       remote builder); subsequent deploys ~1–3 min from cache.
-- [ ] 5.3 Healthy output looks like: build pushes the image, one machine
+- [ ] 5.3 **[ANY OPERATOR]** Healthy output looks like: build pushes the image, one machine
       updates, the `[checks.healthz]` check (GET `/healthz` every 15s, 10s
       grace) flips to **passing** — flyctl prints something like
       `Machine <id> update finished: success` / `1 passing` and exits 0. A
