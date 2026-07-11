@@ -362,7 +362,7 @@ describe("scorePrestige — §13.3 secret objectives scored only at game end", (
     const plain = plainId(s);
     isolate(s, { [plain]: "p1" });
     withObjective(s, "p1", plain);
-    s.players.find((p) => p.id === "p2")!.prestige = 25; // p2 crosses → game ends
+    s.players.find((p) => p.id === "p2")!.prestige = 72; // p2 crosses 2p threshold 72 → game ends (balance §2 transcription, PR #11 @203a881)
     const out = scorePrestige(s);
     // p1's objective is revealed at the terminating cleanup.
     expect(prestigeOf(out, "p1")).toBe(PRESTIGE_VALUES.secretObjective);
@@ -741,7 +741,7 @@ describe("scorePrestige / checkVictory — §13.3 Constantinople sudden death", 
     cple.ownerId = "p2";
     s.constantinopleHold = { faction: Faction.OTTOMAN, rounds: 2 };
     // Simultaneously, Byzantium (p1) is far over the prestige threshold this cleanup.
-    s.players.find((p) => p.id === "p1")!.prestige = 100; // >> threshold 25
+    s.players.find((p) => p.id === "p1")!.prestige = 100; // >> 2p threshold 72 (balance §2 transcription, PR #11 @203a881)
     // Both triggers fire; sudden death (Ottoman) wins, NOT the prestige leader.
     expect(checkVictory(s)).toBe(Faction.OTTOMAN);
   });
@@ -752,7 +752,7 @@ describe("scorePrestige / checkVictory — §13.3 Constantinople sudden death", 
     cple.ownerId = "p2";
     // Only one cleanup held → sudden death not yet armed.
     s.constantinopleHold = { faction: Faction.OTTOMAN, rounds: 1 };
-    s.players.find((p) => p.id === "p1")!.prestige = 30; // over threshold
+    s.players.find((p) => p.id === "p1")!.prestige = 80; // over 2p threshold 72 (balance §2 transcription, PR #11 @203a881)
     // Threshold win stands for Byzantium; sudden death has not triggered.
     expect(checkVictory(s)).toBe(Faction.BYZANTIUM);
   });
@@ -763,37 +763,40 @@ describe("scorePrestige / checkVictory — §13.3 Constantinople sudden death", 
 // ---------------------------------------------------------------------------
 
 describe("checkVictory — §13.2 prestige threshold", () => {
-  it("2 players → threshold 25", () => {
-    expect(PRESTIGE_THRESHOLDS[2]).toBe(25);
+  // Per-count victory thresholds re-keyed to the ratified §2.13 table
+  // (VICTORY_THRESHOLD_BY_PLAYER_COUNT): 2p=72, 3p=78, 4p=80, 5p=80 —
+  // balance §2 transcription (PR #11 @203a881).
+  it("2 players → threshold 72", () => {
+    expect(PRESTIGE_THRESHOLDS[2]).toBe(72);
     const s = fresh(seats2);
-    s.players.find((p) => p.id === "p1")!.prestige = 24;
+    s.players.find((p) => p.id === "p1")!.prestige = 71;
     expect(checkVictory(s)).toBeNull();
-    s.players.find((p) => p.id === "p1")!.prestige = 25;
+    s.players.find((p) => p.id === "p1")!.prestige = 72;
     expect(checkVictory(s)).toBe(Faction.BYZANTIUM);
   });
 
-  it("3 players → threshold 30", () => {
-    expect(PRESTIGE_THRESHOLDS[3]).toBe(30);
+  it("3 players → threshold 78", () => {
+    expect(PRESTIGE_THRESHOLDS[3]).toBe(78);
     const s = fresh(seats3);
-    s.players.find((p) => p.id === "p2")!.prestige = 29;
+    s.players.find((p) => p.id === "p2")!.prestige = 77;
     expect(checkVictory(s)).toBeNull();
-    s.players.find((p) => p.id === "p2")!.prestige = 30;
+    s.players.find((p) => p.id === "p2")!.prestige = 78;
     expect(checkVictory(s)).toBe(Faction.OTTOMAN);
   });
 
-  it("4 players → threshold 35", () => {
-    expect(PRESTIGE_THRESHOLDS[4]).toBe(35);
+  it("4 players → threshold 80", () => {
+    expect(PRESTIGE_THRESHOLDS[4]).toBe(80);
     const s = fresh(seats4);
-    s.players.find((p) => p.id === "p4")!.prestige = 34;
+    s.players.find((p) => p.id === "p4")!.prestige = 79;
     expect(checkVictory(s)).toBeNull();
-    s.players.find((p) => p.id === "p4")!.prestige = 35;
+    s.players.find((p) => p.id === "p4")!.prestige = 80;
     expect(checkVictory(s)).toBe(Faction.HUNGARY);
   });
 
   it("§13.2 when several cross the same cleanup, highest prestige wins", () => {
     const s = fresh(seats2);
-    s.players.find((p) => p.id === "p1")!.prestige = 26;
-    s.players.find((p) => p.id === "p2")!.prestige = 30;
+    s.players.find((p) => p.id === "p1")!.prestige = 74; // over 2p threshold 72
+    s.players.find((p) => p.id === "p2")!.prestige = 80; // higher → wins (balance §2 transcription)
     expect(checkVictory(s)).toBe(Faction.OTTOMAN);
   });
 
@@ -803,17 +806,17 @@ describe("checkVictory — §13.2 prestige threshold", () => {
     const s = fresh(seats2);
     const key = keyCityId(s);
     isolate(s, { [key]: "p2" }); // p2 holds one more key city
-    // Both are at the 2-player threshold (25) with equal prestige.
-    s.players.find((p) => p.id === "p1")!.prestige = 25;
-    s.players.find((p) => p.id === "p2")!.prestige = 25;
+    // Both are at the 2-player threshold (72) with equal prestige (balance §2 transcription, PR #11 @203a881).
+    s.players.find((p) => p.id === "p1")!.prestige = 72;
+    s.players.find((p) => p.id === "p2")!.prestige = 72;
     expect(checkVictory(s)).toBe(Faction.OTTOMAN);
   });
 
   it("§13.3 cap tiebreak: equal prestige AND key cities breaks on most gold", () => {
     const s = fresh(seats2);
     isolate(s, {}); // neither holds a key city
-    s.players.find((p) => p.id === "p1")!.prestige = 25;
-    s.players.find((p) => p.id === "p2")!.prestige = 25;
+    s.players.find((p) => p.id === "p1")!.prestige = 72;
+    s.players.find((p) => p.id === "p2")!.prestige = 72;
     s.players.find((p) => p.id === "p1")!.treasury.gold = 4;
     s.players.find((p) => p.id === "p2")!.treasury.gold = 11; // more gold → p2
     expect(checkVictory(s)).toBe(Faction.OTTOMAN);
@@ -821,7 +824,7 @@ describe("checkVictory — §13.2 prestige threshold", () => {
 
   it("CANON #3 / §13.2: victory is only checked at Cleanup (END phase)", () => {
     const s = fresh(seats2);
-    s.players.find((p) => p.id === "p1")!.prestige = 30; // over threshold
+    s.players.find((p) => p.id === "p1")!.prestige = 80; // over 2p threshold 72 (balance §2 transcription, PR #11 @203a881)
     // Mid-round: threshold crossing must NOT win outside Cleanup.
     for (const phase of [
       GamePhase.INCOME,

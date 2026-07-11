@@ -202,15 +202,16 @@ describe("tactic draw + discard (§7.7)", () => {
     expect((after.tacticDeck ?? []).length).toBe((s.tacticDeck ?? []).length - 2);
   });
 
-  it("discards down to the hand limit (3) at Cleanup", () => {
+  it("discards down to the hand limit (4) at Cleanup", () => {
+    // TACTIC_HAND_LIMIT = 4 per balance §2 transcription (PR #11 @203a881, §2.9).
     const s = fresh();
     const fakes = ["a", "b", "c", "d", "e"].map((x) => asTacticCardId(x)) as TacticCardId[];
     s.players.find((p) => p.id === "p1")!.tacticHand = [...fakes]; // 5 pre-held
-    const after = fullRound(s); // INCOME draws +1 (→6), END prunes to 3
+    const after = fullRound(s); // INCOME draws +1 (→6), END prunes to 4
     const hand = after.players.find((p) => p.id === "p1")!.tacticHand ?? [];
-    expect(hand.length).toBe(3);
+    expect(hand.length).toBe(4);
     // Overflow went onto the discard pile (nothing removed-from-game here).
-    expect((after.tacticDiscard ?? []).length).toBeGreaterThanOrEqual(3);
+    expect((after.tacticDiscard ?? []).length).toBeGreaterThanOrEqual(2);
   });
 });
 
