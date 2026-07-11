@@ -166,13 +166,8 @@ jobs:
                 size=$(stat -c%s "$f")
                 ext_lc=$(echo "${f##*.}" | tr '[:upper:]' '[:lower:]')
                 case "$f" in
-                  *music*) is_music=1 ;;
-                  *)
-                    case "$ext_lc" in
-                      mp3|ogg|flac) is_music=1 ;;
-                      *) is_music=0 ;;
-                    esac
-                    ;;
+                  audio/music/*|*/music/*) is_music=1 ;;
+                  *) is_music=0 ;;
                 esac
                 if [ "$is_music" -eq 1 ]; then
                   if [ "$size" -gt 5242880 ]; then

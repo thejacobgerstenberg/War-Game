@@ -40,7 +40,7 @@ Until the scaffold merges, treat the above as the target rather than a working r
 CI is designed so partial scaffolds still pass — jobs use guards and `--if-present` so a workstream that hasn't landed its scripts yet won't turn the build red. Here's what runs and what each job expects:
 
 - **detect** — Feature detection. Inspects the repo to decide which downstream jobs have work to do, so empty or not-yet-scaffolded areas are skipped rather than failed.
-- **code** — Runs `npm ci`, then `typecheck`, `lint`, `build`, and `vitest`, each via `--if-present`. Partial scaffolds pass because missing scripts are simply skipped.
+- **code** — Runs `npm ci`, then `typecheck`, `lint`, `build`, and `test` (server tests run on vitest), each via `--if-present`. Partial scaffolds pass because missing scripts are simply skipped.
 - **sim** — Installs `sim/` dependencies and runs `sim:smoke` as a fast smoke run to catch obvious breakage without waiting on a full suite.
 - **assets** — Validates media:
   - SVGs: `xmllint` confirms every SVG parses and that ids are unique within each file.
@@ -52,8 +52,8 @@ There's also a scheduled **balance-regression** workflow (manual `workflow_dispa
 ### What CI expects from each workstream
 
 - **Monorepo (`feature/design-and-scaffold`)** — Expose `typecheck`, `lint`, `build`, and `test` npm scripts (they run via `--if-present`, so add them as they become real).
-- **Sim (`feature/balance-sim`)** — Provide a fast `sim:smoke` script for PR CI, and ideally `sim:full` / `sim:report` for the scheduled balance job.
-- **Audio (`feature/audio-assets`)** — Keep `audio/CREDITS.md` current (every audio file must be listed) and respect the size budgets (5 MB music / 200 KB sfx).
+- **Sim (`feature/balance-sim`)** — Provide a fast `sim:smoke` script for PR CI, and ideally `sim:full` / `sim:regression` / `sim:report` (plus an optional `test` script) for the scheduled balance job.
+- **Audio (`feature/audio-assets`)** — Keep `audio/CREDITS.md` current (every audio file must be listed) and respect the size budgets (5 MB music / 200 KB sfx). Files under `audio/music/**` count against the 5 MB music budget; all other audio files count against the 200 KB sfx budget.
 - **Art (`feature/visual-assets`)** — Ship well-formed SVGs with ids that are unique within each file.
 - **Docs & lore (`feature/narrative` and docs authors)** — Use relative internal links so the docs link check passes.
 
