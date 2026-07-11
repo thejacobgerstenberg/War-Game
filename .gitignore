@@ -4,3 +4,5 @@ dist
 .DS_Store
 *.tsbuildinfo
 .env
+test-results
+client/e2e/output

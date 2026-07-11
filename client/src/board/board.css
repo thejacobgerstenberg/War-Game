@@ -18,6 +18,20 @@
   background: #12233a;
 }
 
+/* Screen-reader-only keyboard hint (Board.tsx aria-describedby). Self-styled
+   here (not base.css .visually-hidden) because /board-demo mounts the Board
+   without App's stylesheets. */
+.board-kbd-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .board-viewport:active {
   cursor: grabbing;
 }
@@ -55,6 +69,26 @@ svg#board .province.is-selected,
 svg#board .sea-zone.is-selected {
   stroke: var(--imp-gold, #c9a227) !important;
   stroke-width: 4 !important;
+}
+
+/* Keyboard focus (design/mockups/README: :focus-visible = the gold ring).
+   Shapes are strokes, not boxes, so the ring is a gold stroke; the outline
+   a browser would draw around an SVG path's bounding box is suppressed. */
+svg#board .province:focus-visible,
+svg#board .sea-zone:focus-visible {
+  outline: none;
+  stroke: var(--imp-gold, #c9a227);
+  stroke-width: 3;
+}
+
+svg#board .sea-zone:focus-visible {
+  fill-opacity: 0.3;
+  stroke-opacity: 1;
+}
+
+.board-viewport:focus-visible {
+  outline: 2px solid var(--imp-gold, #c9a227);
+  outline-offset: -2px;
 }
 
 svg#board .province.is-move-target {
@@ -141,8 +175,18 @@ svg#board.colorblind .province.owner-hungary {
 svg#board .ov-army,
 svg#board .ov-fleet,
 svg#board .ov-siege,
-svg#board .ov-walls {
+svg#board .ov-walls,
+svg#board .ov-selection-label {
   user-select: none;
+}
+
+/* Selection name-plate (mockup .province-select-ring .ring-label,
+   design/mockups/game.html): gold plate, ink small-caps display face.
+   The plate — not the gold stroke alone — is the selection channel. */
+svg#board .ov-selection-label text {
+  font-family: var(--font-display, "Cinzel", Georgia, serif);
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
 }
 
 svg#board .ov-army text,

@@ -28,6 +28,7 @@
  * this act 2 can play (see OverlayManager's combat note).
  */
 import { useEffect, useRef, useState } from "react";
+import { UnitType } from "@imperium/shared";
 import type { PendingBattle } from "@imperium/shared";
 import { useGame } from "../GameProvider";
 import { useAudio } from "../../audio/AudioProvider";
@@ -203,7 +204,13 @@ export function CombatModal({ battle, onClose }: CombatModalProps): JSX.Element 
           myRole={myRole}
           locationName={locationName}
           rivalName={myRole === "attacker" ? defenderName : attackerName}
-          modifiers={buildModifiers(atk.total, def.total, battle, prov)}
+          modifiers={buildModifiers(
+            atk.total,
+            def.total,
+            atk.units[UnitType.CAVALRY],
+            battle,
+            prov,
+          )}
           onClose={onClose}
           siege={
             prov?.siege !== undefined
@@ -265,6 +272,7 @@ export function CombatModal({ battle, onClose }: CombatModalProps): JSX.Element 
 function buildModifiers(
   atkTotal: number,
   defTotal: number,
+  atkCavalry: number,
   battle: PendingBattle,
   prov: { terrain: string; walls: { tier: number; hp: number } } | null,
 ): ModifierRow[] {
@@ -312,7 +320,9 @@ function buildModifiers(
       text: "The defender outnumbers the attacker two to one or more: defender +1 each round.",
     });
   }
-  if (prov !== null && prov.terrain === "PLAINS") {
+  // §7.3: the engine grants the charge only to the attacker's CAVALRY on
+  // PLAINS (server/src/engine/combat.ts rollGroup) — no horse, no row.
+  if (prov !== null && prov.terrain === "PLAINS" && atkCavalry > 0) {
     rows.push({
       glyph: "⚔",
       name: "Cavalry Charge",

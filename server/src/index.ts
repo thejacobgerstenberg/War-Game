@@ -544,6 +544,52 @@ export function createApp(options: CreateAppOptions = {}) {
           return;
         }
 
+        // ADVANCE_PHASE authorization: the phase machine is engine-driven (the
+        // turn timer calls advancePhase directly) or HOST-driven — mirroring
+        // lobbyManager.startGame's host check. The engine's advancePhase is a
+        // pure, actorless state transition, so this transport boundary is the
+        // ONLY gate; without it any seated player could loop ADVANCE_PHASE and
+        // blast the table through all 16 rounds (omens, combats, victory) or
+        // close a phase mid-turn to void the other seats' remaining deeds.
+        if (action.type === "ADVANCE_PHASE" && !seat.isHost) {
+          socket.emit(SOCKET_EVENTS.ACTION_REJECTED, {
+            reason: "The host alone may move the years onward.",
+            code: "NOT_HOST",
+          });
+          log("warn", "advance_phase_denied", "non-host ADVANCE_PHASE refused", {
+            roomCode: code,
+            socketEvent: SOCKET_EVENTS.GAME_ACTION,
+          });
+          return;
+        }
+
+        // ADVANCE_PHASE idempotency (the Onward race): the host may ask the
+        // table to move on, and the turn timer can beat them to it. When the
+        // action carries the round/phase the client was looking at and the
+        // authoritative state has already moved past it, the request is
+        // ALREADY satisfied — stepping the machine again would silently skip
+        // a phase for the whole room. Resync the issuing seat (a snapshot
+        // clears its pending flag) and stop; this is a race, not an offence,
+        // so no action_rejected toast.
+        if (
+          action.type === "ADVANCE_PHASE" &&
+          ((action.fromRound !== undefined &&
+            action.fromRound !== room.state.round) ||
+            (action.fromPhase !== undefined &&
+              action.fromPhase !== room.state.phase))
+        ) {
+          socket.emit(SOCKET_EVENTS.STATE_SNAPSHOT, {
+            state: projectStateFor(room.state, seat.id),
+          });
+          log(
+            "info",
+            "advance_phase_stale",
+            "stale ADVANCE_PHASE ignored (table already moved on); seat resynced",
+            { roomCode: code },
+          );
+          return;
+        }
+
         // Dispatch to the pure engine. ADVANCE_PHASE runs the phase/turn state
         // machine; everything else is a budgeted/validated reducer action.
         let nextState: GameState;

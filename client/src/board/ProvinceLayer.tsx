@@ -8,7 +8,9 @@ interface ShapeHit {
   kind: LocationKind;
 }
 
-const SHAPE_SELECTOR = "#board-provinces path[id], #board-seas path[id]";
+/** Every selectable shape. Exported so Board can decorate the same set
+ *  with accessible names (aria-label) from mapData. */
+export const SHAPE_SELECTOR = "#board-provinces path[id], #board-seas path[id]";
 
 declare global {
   interface Window {
@@ -70,6 +72,12 @@ export function ProvinceLayer(props: ProvinceLayerProps): JSX.Element {
         pristine = el.getAttribute("class") ?? "";
         pristineRef.current.set(el, pristine);
       }
+      // Keyboard/SR selection state mirrors is-selected (role="button" set
+      // at attach; diff-guarded like the class writes below).
+      const pressed = el.id === current.selection ? "true" : "false";
+      if (el.getAttribute("aria-pressed") !== pressed) {
+        el.setAttribute("aria-pressed", pressed);
+      }
       let next = pristine;
       const owner = current.ownerClassById.get(el.id);
       if (owner != null) next += ` ${owner}`;
@@ -98,6 +106,19 @@ export function ProvinceLayer(props: ProvinceLayerProps): JSX.Element {
 
     const attach = (svg: SVGSVGElement): void => {
       ensureFactionPatterns(svg);
+
+      // A11y: every province/sea shape is a real keyboard tab stop that
+      // toggles selection with Enter/Space — the map must be playable
+      // without a pointer. Board.tsx overwrites aria-label with the canon
+      // display name once mapData is reconciled; the raw id is the fallback
+      // for shapes mapData does not know (retired board ids).
+      for (const el of svg.querySelectorAll<SVGPathElement>(SHAPE_SELECTOR)) {
+        el.setAttribute("tabindex", "0");
+        el.setAttribute("role", "button");
+        el.setAttribute("aria-pressed", "false");
+        if (!el.hasAttribute("aria-label")) el.setAttribute("aria-label", el.id);
+      }
+
       svgRef.current = svg;
       host.appendChild(svg);
 
@@ -157,10 +178,39 @@ export function ProvinceLayer(props: ProvinceLayerProps): JSX.Element {
         propsRef.current.onSelect(hit.id === propsRef.current.selection ? null : hit.id);
       };
 
+      // Keyboard activation: Enter/Space on a focused shape toggles the
+      // selection exactly like a click (no drag suppression — keyboards
+      // don't pan). preventDefault stops Space from scrolling the page.
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const hit = shapeFromEvent(e);
+        if (hit === null) return;
+        e.preventDefault();
+        propsRef.current.onSelect(hit.id === propsRef.current.selection ? null : hit.id);
+      };
+
+      // Keyboard parity with hover: focusing a shape shows the same ring
+      // and tooltip (anchored to the shape's on-screen center).
+      const onFocusIn = (e: FocusEvent) => {
+        const hit = shapeFromEvent(e);
+        if (hit === null || hit.el === hoveredRef.current?.el) return;
+        const rect = hit.el.getBoundingClientRect();
+        setHover(hit, rect.left + rect.width / 2, rect.top + rect.height / 2);
+      };
+
+      const onFocusOut = (e: FocusEvent) => {
+        const hit = shapeFromEvent(e);
+        if (hit === null || hit.el !== hoveredRef.current?.el) return;
+        setHover(null, 0, 0);
+      };
+
       svg.addEventListener("pointerover", onPointerOver);
       svg.addEventListener("pointerout", onPointerOut);
       svg.addEventListener("pointermove", onPointerMove);
       svg.addEventListener("click", onClick);
+      svg.addEventListener("keydown", onKeyDown);
+      svg.addEventListener("focusin", onFocusIn);
+      svg.addEventListener("focusout", onFocusOut);
 
       // The class-sync/colorblind effects may have already run against a
       // null svg (async fetch path) — bring the fresh mount up to date.

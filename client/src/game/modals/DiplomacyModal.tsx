@@ -22,8 +22,9 @@
  *
  * Copy: design/mockups/diplomacy.html, lore/ui-text.md §3/§7,
  * lore/tutorial/script.md step-24. Sounds: crowd_murmur while the court is
- * open, ui_click on presses, quill_scratch on seals, horn_fanfare when war is
- * declared, church_bell when a royal marriage is sealed (README §4).
+ * open, ui_click on presses, quill_scratch on seals (war declarations
+ * included — AUDIO_DESIGN §2 reserves horn_fanfare for victory), church_bell
+ * when a royal marriage is sealed (README §4).
  *
  * Opened by OverlayManager on intent {type:"diplomacy", targetPlayerId?}.
  */
@@ -39,7 +40,8 @@ import type {
 import { Button, ConfirmModal, CREST_URL, IconChip, Modal, toRoman, useToast } from "../../ui";
 import { useAudio } from "../../audio/AudioProvider";
 import { useGame } from "../GameProvider";
-import { isMyTurn, provinceById } from "../selectors";
+import { provinceById } from "../selectors";
+import { useFreshLogEntries } from "../useFreshLog";
 import { ACTION_ERROR_COPY, BUTTONS, FACTION_NAME } from "../uiText";
 import "./court.css";
 
@@ -178,37 +180,41 @@ type ConfirmState =
   | null;
 
 export function DiplomacyModal({ targetPlayerId, onClose }: DiplomacyModalProps): JSX.Element {
-  const { gameState, myPlayerId, dispatch, pendingAction, timer } = useGame();
-  const { playSfx } = useAudio();
+  const { gameState, myPlayerId, dispatch, pendingAction } = useGame();
+  const { playSfx, stopSfx } = useAudio();
   const toast = useToast();
 
   const my = gameState.players.find((p) => p.id === myPlayerId) ?? null;
   const rivals = gameState.players.filter((p) => p.id !== myPlayerId);
 
-  // crowd_murmur loops for the life of this screen (README §4).
-  const murmured = useRef(false);
+  // crowd_murmur loops for the life of this screen (README §4). This modal
+  // OWNS the loop, so the unmount cleanup stops it explicitly (AUDIO_DESIGN
+  // §2 "never leave an orphaned loop running"): OverlayManager can replace
+  // the court with an auto overlay (battle / auction / victory) or another
+  // intent in the same commit, so a scrim stays in the DOM throughout and
+  // the engine's no-scrim safety net never fires. Empty deps on purpose
+  // (mount/unmount only — same pattern as CombatModal's audio effect); the
+  // captured playSfx/stopSfx delegate to the app-lifetime engine singleton,
+  // so the mount-time closures never go stale.
   useEffect(() => {
-    if (!murmured.current) {
-      murmured.current = true;
-      playSfx("crowd_murmur");
-    }
-  }, [playSfx]);
+    playSfx("crowd_murmur");
+    return () => stopSfx("crowd_murmur");
+  }, []);
 
   /* ---- act gating: PROPOSE/RENOUNCE/DECLARE_WAR/VASSALIZE/LEVY_CALL are
-   * budgeted deeds in the action window; ACCEPT is free (engine actions.ts). */
-  const myTurn = isMyTurn(gameState, myPlayerId, timer);
+   * budgeted deeds in the action window; ACCEPT is free (engine actions.ts).
+   * Mirror the engine's spendAction rule exactly (phase + budget) — the action
+   * window is SIMULTANEOUS for all seats; no turn-ownership rule exists. */
   const inWindow =
     gameState.phase === GamePhase.RECRUITMENT ||
     gameState.phase === GamePhase.MOVEMENT ||
     gameState.phase === GamePhase.DIPLOMACY;
   const deeds = my?.actionsRemaining ?? 0;
-  const actReason = !myTurn
-    ? ACTION_ERROR_COPY.NOT_YOUR_TURN
-    : !inWindow
-      ? "You wait upon another court. Be patient."
-      : deeds <= 0
-        ? ACTION_ERROR_COPY.NO_ACTIONS
-        : undefined;
+  const actReason = !inWindow
+    ? "You wait upon another court. Be patient."
+    : deeds <= 0
+      ? ACTION_ERROR_COPY.NO_ACTIONS
+      : undefined;
 
   /* ---- table data --------------------------------------------------------- */
   const treaties = useMemo(() => {
@@ -283,9 +289,37 @@ export function DiplomacyModal({ targetPlayerId, onClose }: DiplomacyModalProps)
     setComposer(null);
   };
 
+  /* ---- confirmation flourish ------------------------------------------------
+   * dispatch() is fire-and-forget; success feedback is keyed off the state
+   * broadcast, mirroring GreatWorksModal's completion flourish. The ACCEPT
+   * chronicle line (diplomacy.ts::applyDiplomacy) is type "diplomacy" with my
+   * seat among the actors and data {treatyId, treatyType, expiresRound} — the
+   * only diplomacy line carrying BOTH treatyId and treatyType. */
+  const awaitingAccept = useRef(false);
+  useFreshLogEntries((entries) => {
+    if (!awaitingAccept.current) return;
+    for (const e of entries) {
+      if (
+        e.type === "diplomacy" &&
+        e.actors.includes(myPlayerId) &&
+        e.data?.treatyId !== undefined &&
+        e.data?.treatyType !== undefined
+      ) {
+        awaitingAccept.current = false;
+        // church_bell when a royal marriage is SEALED (header contract §4).
+        if (e.data.treatyType === TreatyType.ROYAL_MARRIAGE) playSfx("church_bell");
+        toast.triumph("So it is written.");
+        break;
+      }
+    }
+  });
+
   const acceptOffer = (offer: ProposalView): void => {
+    // quill_scratch belongs to the seal-press itself; the triumph toast and
+    // the wedding bell wait for the server to chronicle the treaty (above) —
+    // a stale offer or phase change may yet see the ACCEPT rejected.
     playSfx("quill_scratch");
-    if (offer.treatyType === TreatyType.ROYAL_MARRIAGE) playSfx("church_bell");
+    awaitingAccept.current = true;
     dispatch({
       type: "DIPLOMACY",
       player: myPlayerId,
@@ -296,7 +330,6 @@ export function DiplomacyModal({ targetPlayerId, onClose }: DiplomacyModalProps)
         treatyId: offer.id,
       },
     });
-    toast.triumph("So it is written.");
   };
 
   /* ---- destructive confirms ------------------------------------------------ */
@@ -324,6 +357,21 @@ export function DiplomacyModal({ targetPlayerId, onClose }: DiplomacyModalProps)
     }
   };
 
+  /* Seals (truce/alliance) still in force with the rival named in the war
+   * confirm. The engine does NOT forbid declaring war across them — neither
+   * actions.ts::applyDeclareWar nor diplomacy.ts::declareWar checks treaties,
+   * and the declaration leaves the seal standing until Break Faith is sealed —
+   * so the confirm spells that out honestly instead of disabling the deed. */
+  const warBindingSeals: Treaty[] =
+    confirm?.kind === "war"
+      ? (my?.treaties ?? []).filter(
+          (t) =>
+            t.parties.includes(confirm.rival.id) &&
+            (t.type === TreatyType.NAP || t.type === TreatyType.ALLIANCE) &&
+            !(t.expiresRound !== null && t.expiresRound <= gameState.round),
+        )
+      : [];
+
   const sealBreak = (treaty: Treaty, otherId: string): void => {
     playSfx("quill_scratch");
     dispatch({
@@ -341,8 +389,9 @@ export function DiplomacyModal({ targetPlayerId, onClose }: DiplomacyModalProps)
 
   const sealWar = (rival: Player): void => {
     if (!rival.faction) return;
+    // quill_scratch only: AUDIO_DESIGN §2 reserves horn_fanfare for victory,
+    // and diplomacy.html's sound legend assigns no fanfare to declarations.
     playSfx("quill_scratch");
-    playSfx("horn_fanfare");
     dispatch({
       type: "DECLARE_WAR",
       player: myPlayerId,
@@ -697,15 +746,7 @@ export function DiplomacyModal({ targetPlayerId, onClose }: DiplomacyModalProps)
                       setJustification("none");
                       setConfirm({ kind: "war", rival });
                     }}
-                    disabledReason={
-                      actReason ??
-                      (shared.some(
-                        (t) =>
-                          t.type === TreatyType.NAP || t.type === TreatyType.ALLIANCE,
-                      )
-                        ? ACTION_ERROR_COPY.TREASON_GATE
-                        : undefined)
-                    }
+                    disabledReason={actReason}
                   >
                     Take the Field
                   </Button>
@@ -921,10 +962,16 @@ export function DiplomacyModal({ targetPlayerId, onClose }: DiplomacyModalProps)
       <aside className="dip-caution" role="note" aria-label="The cost of breaking a truce">
         <div>
           <span className="dip-caution-kicker">The Scribes&rsquo; Caution</span>
+          {/* Adapted from diplomacy.html:372-374 — its second clause promised
+              an envoy ban no engine rule enforces (applyDiplomacy has no
+              proposal ban). The truthful law: -2 Prestige (betrayNap), and at
+              two betrayals every later diplomacy roll suffers (diplomacy.ts
+              REPUTATION_BETRAYAL_THRESHOLD). Copy may not promise game law
+              the engine does not keep. */}
           <p>
             Break a sealed truce and the chronicle is unsparing: two Prestige struck from your
-            name, and no envoy of yours received at any court for a round thereafter. The
-            scribes forget nothing.
+            name — and a court twice betrayed weighs every oath of yours the lighter ever
+            after. The scribes forget nothing.
           </p>
         </div>
       </aside>
@@ -970,6 +1017,14 @@ export function DiplomacyModal({ targetPlayerId, onClose }: DiplomacyModalProps)
             {confirm.rival.faction ? FACTION_NAME[confirm.rival.faction] : confirm.rival.name}.
             Name the cause, that the scribes may weigh it.
           </p>
+          {warBindingSeals.map((t) => (
+            <p key={t.id} className="dip-warning-line">
+              {t.type === TreatyType.ALLIANCE ? "An alliance" : "A truce"} yet binds you to{" "}
+              {playerName(confirm.rival.id)}. Taking the field will not void the seal — it
+              stands until you Break Faith upon it, and that breach strikes{" "}
+              {numberWord(Math.abs(BREAK_PRESTIGE[t.type]))} Prestige from your name.
+            </p>
+          ))}
           <div className="dip-composer-row" role="radiogroup" aria-label="The cause of war">
             {JUSTIFICATIONS.map((j) => (
               <Button

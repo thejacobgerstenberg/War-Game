@@ -16,6 +16,15 @@
   align-items: center;
   gap: 0.5em;
   outline: none;
+  border-radius: var(--radius-1);
+}
+
+/* Keyboard focus = the standard gold ring (design/mockups/README:
+   ":focus-visible = same gold rim"; WCAG 2.4.7). The tooltip opening on
+   focus is not enough — the trigger itself must show the ring. */
+.hud-phase-body:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
 
 /* Twilight glyph is commissioned (path reserved: art/icons/phase-twilight.svg).
@@ -55,6 +64,13 @@
   white-space: nowrap;
 }
 .hud-turn.is-me { outline: 2px solid var(--gold); }
+
+/* Keyboard focus on the turn chip (a tabIndex=0 tooltip trigger): the same
+   gold ring, offset so it stays visible even over .is-me's snug outline. */
+.hud-turn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
 .hud-turn-crest {
   display: block;
   width: 1.6em;

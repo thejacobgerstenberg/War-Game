@@ -60,8 +60,14 @@ export function activePlayerId(state: GameState): string | null {
 }
 
 /**
- * True when it is my turn. The transport turn_timer (when present) is the
- * authoritative live signal; otherwise derive from turnOrder.
+ * True when I hold the §13.4 initiative (turn_timer when present, else
+ * turnOrder/activePlayerIndex). DISPLAY/PACING SIGNAL ONLY — never use this
+ * to gate order buttons. The server's spendAction authorizes deeds by phase
+ * + action budget alone; the action window is SIMULTANEOUS for all seats,
+ * and the engine never rotates activePlayerIndex (it always points at
+ * turnOrder[0]). Gating a commit on this locks every other seat out for the
+ * whole game. Gate on phase + actionsRemaining instead (see the modals'
+ * actReason ladders and the ActionBar).
  */
 export function isMyTurn(
   state: GameState,

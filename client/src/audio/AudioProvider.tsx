@@ -46,6 +46,15 @@ export type AudioBus = "music" | "ambient" | "sfx" | "ui";
 export interface AudioApi {
   /** Fire a one-shot sound effect (subject to the 80ms debounce). */
   playSfx: (name: SfxName) => void;
+  /**
+   * Stop a looping sfx (battle_distant / crowd_murmur) with the contractual
+   * 50 ms fade; a no-op for one-shot names. ADDITIVE to the frozen contract
+   * — no existing signature changed. The component that started a loop owns
+   * it and MUST call this from its unmount cleanup (AUDIO_DESIGN §2 "never
+   * leave an orphaned loop running"): overlays can replace one another in a
+   * single React commit, so nothing else can know the owner went away.
+   */
+  stopSfx: (name: SfxName) => void;
   /** Crossfade the music state machine to a scene. */
   setMusicScene: (scene: MusicScene) => void;
   musicScene: MusicScene;
@@ -73,6 +82,7 @@ export function AudioProvider({ children }: { children: ReactNode }): JSX.Elemen
   const api = useMemo<AudioApi>(
     () => ({
       playSfx: (name) => engine.playSfx(name),
+      stopSfx: (name) => engine.stopSfx(name),
       setMusicScene: (scene) => engine.setScene(scene),
       musicScene: snapshot.scene,
       muted: snapshot.muted,

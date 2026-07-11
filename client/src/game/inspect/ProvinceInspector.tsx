@@ -15,6 +15,7 @@
  * ids, so a real click can select an id unknown to GameState — every lookup
  * here null-checks and falls back to the "The Realm" empty card.
  */
+import { useId, useState } from "react";
 import { BuildingType, GamePhase, TerrainType } from "@imperium/shared";
 import type { Army, Fleet } from "@imperium/shared";
 import { useGame } from "../GameProvider";
@@ -68,6 +69,12 @@ export function ProvinceInspector({ className }: ProvinceInspectorProps): JSX.El
   const { selection, setSelection, setArmedOrder } = useSelection();
   const overlay = useOverlay();
   const { playSfx } = useAudio();
+
+  // Empty-state place picker (a11y finding: the map's first selection must
+  // also be reachable without a pointer). Filter text over the canon map
+  // dataset; choosing an entry selects it exactly like a board click.
+  const [placeQuery, setPlaceQuery] = useState("");
+  const pickerInputId = useId();
 
   const province = selection !== null ? provinceById(gameState, selection) : null;
   const sea = selection !== null && !province ? seaZoneById(gameState, selection) : null;
@@ -179,6 +186,14 @@ export function ProvinceInspector({ className }: ProvinceInspectorProps): JSX.El
   // Empty / unknown selection
   // ==========================================================================
   if (province === null && sea === null) {
+    const q = placeQuery.trim().toLowerCase();
+    const places = [
+      ...BOARD_MAP.provinces.map((p) => ({ id: p.id, name: p.name })),
+      ...BOARD_MAP.seaZones.map((s) => ({ id: s.id, name: s.name })),
+    ]
+      .filter((p) => q === "" || p.name.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
     return (
       <Panel
         variant="parchment"
@@ -187,6 +202,36 @@ export function ProvinceInspector({ className }: ProvinceInspectorProps): JSX.El
         className={["insp-card", className ?? ""].filter(Boolean).join(" ")}
       >
         <p className="rubric">{CHOOSE_PROMPT}</p>
+        <div className="insp-picker">
+          <label htmlFor={pickerInputId}>Or seek it by name</label>
+          <input
+            id={pickerInputId}
+            type="search"
+            value={placeQuery}
+            onChange={(e) => setPlaceQuery(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {places.length === 0 ? (
+            <p className="rubric">No such place is written on the map.</p>
+          ) : (
+            <ul className="insp-adj insp-picker-list">
+              {places.map((p) => (
+                <li key={p.id}>
+                  <Button
+                    variant="quiet"
+                    onClick={() => {
+                      playSfx("ui_click");
+                      setSelection(p.id);
+                    }}
+                  >
+                    {p.name}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </Panel>
     );
   }

@@ -45,18 +45,26 @@ export const BOARD_MAP: BoardMapData = {
 };
 
 /**
- * Legal one-step move targets from a location: armies move province→province,
- * fleets move sea→sea; no embarkation in this demo. Ownership never filters.
- * Result preserves adjacency order. Empty/unknown location → [].
+ * Legal one-step move targets from a location, mirroring the engine's
+ * applyMove (server/src/engine/actions.ts): armies move province→province
+ * (strait edges included), fleets move province↔sea and sea↔sea — a fleet in
+ * port may put to sea past an army garrisoning the same province, and a fleet
+ * at sea may put into any bordering harbor (every province touching a sea
+ * zone is coastal by construction). Armies never enter sea zones (crossing
+ * water is the March order's amphibious `transportFleetId` flag, not a sea
+ * step). When both an army and a fleet stand at `fromId` the result is the
+ * UNION of both target sets. Ownership never filters. Result preserves
+ * adjacency order. Empty/unknown location → [].
  */
 export function legalMoveTargets(state: GameState, fromId: string): string[] {
-  if (state.armies.some((army) => army.locationId === fromId)) {
-    return neighborsOf(fromId).filter((n) => !isSeaZoneId(n));
+  const hasArmy = state.armies.some((army) => army.locationId === fromId);
+  const hasFleet = state.fleets.some((fleet) => fleet.locationId === fromId);
+  if (isSeaZoneId(fromId)) {
+    // Only fleets stand at sea: adjacent zones (sail on) + harbors (put in).
+    return hasFleet ? [...neighborsOf(fromId)] : [];
   }
-  if (state.fleets.some((fleet) => fleet.locationId === fromId)) {
-    return neighborsOf(fromId).filter((n) => isSeaZoneId(n));
-  }
-  return [];
+  if (!hasArmy && !hasFleet) return [];
+  return neighborsOf(fromId).filter((n) => (isSeaZoneId(n) ? hasFleet : hasArmy));
 }
 
 /** player id → faction, skipping players who have not picked a faction. */

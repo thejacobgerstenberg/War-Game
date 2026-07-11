@@ -15,10 +15,17 @@
  *     (README §3), persisted at "imperium.settings.v1" and applied app-wide
  *     (body class + the board's colorblind prop, via settingsStore)
  *
- * It also anchors the music state machine to the game screen: mounted for
- * exactly the life of GameBoard, it drives LOBBY→GAME on mount and
- * GAME→LOBBY on unmount (AUDIO_DESIGN §4) — battle transitions belong to
- * the combat modal.
+ * The door is mounted in two places: docked top-left of the map by
+ * GameBoard, and in the pre-game menu footer (settings/MenuFooter, mounted
+ * by App on every non-game screen) so menu_theme can be muted or turned
+ * down before a game ever starts — AUDIO_DESIGN §5 makes these controls
+ * required, and home.html callout 5 puts the gear on the home screen.
+ *
+ * When `anchorGameScene` is set (the GameBoard mount), it also anchors the
+ * music state machine to the game screen: mounted for exactly the life of
+ * GameBoard, it drives LOBBY→GAME on mount and GAME→LOBBY on unmount
+ * (AUDIO_DESIGN §4) — battle transitions belong to the combat modal. The
+ * pre-game mounts pass `anchorGameScene={false}` and leave the scene alone.
  *
  * Keyboard: the gear is a real button; Modal (ui/Modal) traps focus and
  * closes on Escape; sliders and switches are native inputs.
@@ -52,9 +59,18 @@ const BUS_ROWS: ReadonlyArray<{ bus: AudioBus; label: string }> = [
 
 export interface SettingsPanelProps {
   className?: string;
+  /**
+   * When true (the GameBoard mount's default), this panel's lifetime drives
+   * the AUDIO_DESIGN §4 LOBBY↔GAME music machine. Pre-game mounts (the menu
+   * footer) pass false so opening the door never starts campaign_ambient.
+   */
+  anchorGameScene?: boolean;
 }
 
-export function SettingsPanel({ className }: SettingsPanelProps): JSX.Element {
+export function SettingsPanel({
+  className,
+  anchorGameScene = true,
+}: SettingsPanelProps): JSX.Element {
   const { playSfx, muted, setMuted, volume, setVolume } = useAudio();
   const { colorblind } = useUiSettings();
   const [open, setOpen] = useState(false);
@@ -62,10 +78,13 @@ export function SettingsPanel({ className }: SettingsPanelProps): JSX.Element {
   const engine = getAudioEngine();
   const master = useSyncExternalStore(engine.subscribe, engine.getSnapshot).master;
 
-  // Music machine anchor (AUDIO_DESIGN §4): this panel lives for exactly the
-  // life of the game screen. Deliberately mount-only — reacting to context
-  // churn here would bounce the scene through LOBBY on every volume change.
+  // Music machine anchor (AUDIO_DESIGN §4): the GameBoard mount lives for
+  // exactly the life of the game screen. Deliberately mount-only — reacting
+  // to context churn here would bounce the scene through LOBBY on every
+  // volume change. (anchorGameScene never changes across a mount: the two
+  // door sites are distinct component instances.)
   useEffect(() => {
+    if (!anchorGameScene) return;
     const e = getAudioEngine();
     e.markGameScreenMounted(true);
     e.setScene("GAME");
@@ -73,6 +92,8 @@ export function SettingsPanel({ className }: SettingsPanelProps): JSX.Element {
       e.markGameScreenMounted(false);
       e.setScene("LOBBY");
     };
+    // (mount-only by design; react-hooks/exhaustive-deps is not registered in
+    // this repo's eslint config, so no suppression directive is needed)
   }, []);
 
   return (

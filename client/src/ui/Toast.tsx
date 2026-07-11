@@ -14,6 +14,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -47,10 +48,62 @@ const ToastContext = createContext<ToastApi | null>(null);
 const MAX_VISIBLE = 3;
 const DEFAULT_DURATION_MS = 5000;
 
+/**
+ * Breathing room between the game top bar and the rack: matches the
+ * --space-2 (8px) gap of the gb-shell grid (styles/tokens.css).
+ */
+const RACK_CLEARANCE_PX = 8;
+
+/**
+ * README §2: the rack sits top-center, BELOW the phase track. On the game
+ * screen the phase track lives inside the .gb-top header, so the rack must
+ * clear the header's bottom edge — otherwise a persistent error toast
+ * occludes the phase track and round counter. The header's height is
+ * content-driven (and changes at the mobile breakpoint), so we measure it
+ * instead of hardcoding an offset. Screens without a .gb-top (home, lobby)
+ * return null and the CSS default top (--space-5, per mockups.css §10)
+ * applies.
+ */
+function measureRackTop(): number | null {
+  const topBar = document.querySelector(".gb-top");
+  if (!topBar) return null;
+  return Math.round(topBar.getBoundingClientRect().bottom) + RACK_CLEARANCE_PX;
+}
+
 export function ToastProvider({ children }: { children: ReactNode }): JSX.Element {
   const [toasts, setToasts] = useState<ToastEntry[]>([]);
+  const [rackTop, setRackTop] = useState<number | null>(null);
   const nextId = useRef(1);
   const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+
+  // While toasts are visible, keep the rack below the .gb-top header (see
+  // measureRackTop). Layout effect so the first toast paints in the right
+  // place; observers track header resize/appearance for persistent errors
+  // that outlive a screen change. Idle when the rack is empty.
+  const rackVisible = toasts.length > 0;
+  useLayoutEffect(() => {
+    if (!rackVisible) return;
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const top = measureRackTop();
+      setRackTop((prev) => (prev === top ? prev : top));
+    };
+    const schedule = () => {
+      if (raf === 0) raf = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("resize", schedule);
+    // Catches the top bar mounting/unmounting or growing (e.g. the phase
+    // track wrapping at the mobile breakpoint) while a toast persists.
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      window.removeEventListener("resize", schedule);
+      observer.disconnect();
+      if (raf !== 0) cancelAnimationFrame(raf);
+    };
+  }, [rackVisible]);
 
   const dismiss = useCallback((id: number) => {
     const timer = timers.current.get(id);
@@ -107,7 +160,11 @@ export function ToastProvider({ children }: { children: ReactNode }): JSX.Elemen
     <ToastContext.Provider value={api}>
       {children}
       {createPortal(
-        <div className="toast-rack" aria-live="polite">
+        <div
+          className="toast-rack"
+          aria-live="polite"
+          style={rackTop === null ? undefined : { top: rackTop }}
+        >
           {toasts.map((t) => (
             <div
               key={t.id}

@@ -24,7 +24,7 @@ import type { GameLogEntry, GameState, Player } from "@imperium/shared";
 import { Button, CREST_URL, IconChip, Modal, toRoman } from "../../ui";
 import { useAudio } from "../../audio/AudioProvider";
 import { useGame } from "../GameProvider";
-import { isMyTurn, provinceById } from "../selectors";
+import { provinceById } from "../selectors";
 import { ACTION_ERROR_COPY, BUTTONS, FACTION_NAME, PHASE_NAME } from "../uiText";
 import "./court.css";
 
@@ -95,7 +95,7 @@ export interface SpyModalProps {
 }
 
 export function SpyModal({ targetPlayerId, onClose }: SpyModalProps): JSX.Element {
-  const { gameState, myPlayerId, dispatch, pendingAction, timer } = useGame();
+  const { gameState, myPlayerId, dispatch, pendingAction } = useGame();
   const { playSfx } = useAudio();
 
   const my = gameState.players.find((p) => p.id === myPlayerId) ?? null;
@@ -105,23 +105,22 @@ export function SpyModal({ targetPlayerId, onClose }: SpyModalProps): JSX.Elemen
   const [rivalId, setRivalId] = useState<string | null>(targetPlayerId ?? null);
   const [provinceId, setProvinceId] = useState<string | null>(null);
 
-  /* ---- act gating: SPY is a budgeted deed in the action window. ------------ */
-  const myTurn = isMyTurn(gameState, myPlayerId, timer);
+  /* ---- act gating: SPY is a budgeted deed in the action window. Mirror the
+   * engine's spendAction rule exactly (phase + budget) — the action window is
+   * SIMULTANEOUS for all seats; there is no turn-ownership rule to enforce. */
   const inWindow =
     gameState.phase === GamePhase.RECRUITMENT ||
     gameState.phase === GamePhase.MOVEMENT ||
     gameState.phase === GamePhase.DIPLOMACY;
   const deeds = my?.actionsRemaining ?? 0;
   const goldShort = (my?.treasury.gold ?? 0) < SPY.goldCost;
-  const actReason = !myTurn
-    ? ACTION_ERROR_COPY.NOT_YOUR_TURN
-    : !inWindow
-      ? "You wait upon another court. Be patient."
-      : deeds <= 0
-        ? ACTION_ERROR_COPY.NO_ACTIONS
-        : goldShort
-          ? "Not enough gold in the treasury."
-          : undefined;
+  const actReason = !inWindow
+    ? "You wait upon another court. Be patient."
+    : deeds <= 0
+      ? ACTION_ERROR_COPY.NO_ACTIONS
+      : goldShort
+        ? "Not enough gold in the treasury."
+        : undefined;
 
   /* ---- targets -------------------------------------------------------------- */
   const enemyProvinces = useMemo(

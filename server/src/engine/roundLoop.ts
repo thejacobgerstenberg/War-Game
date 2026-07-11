@@ -156,6 +156,13 @@ function resolveCombatPhase(state: GameState): GameState {
  * (RECRUITMENT/MOVEMENT/DIPLOMACY) are driven by player {@link GameAction}s via
  * the reducer; `advancePhase` transitions between them and runs the automatic
  * phases (Omen+Income, Combat, Cleanup) by calling the subsystems.
+ *
+ * SECURITY: this is a pure, ACTORLESS transition — it performs no caller
+ * validation and moves the whole table, so it must never be reachable from an
+ * arbitrary seat. Callers own authorization: the socket layer (index.ts
+ * game_action) only accepts a client-issued ADVANCE_PHASE from the room HOST
+ * (code NOT_HOST otherwise), and the turn timer invokes it engine-side with no
+ * actor. Any new call site must apply an equivalent gate.
  */
 export function advancePhase(state: GameState): GameState {
   switch (state.phase) {

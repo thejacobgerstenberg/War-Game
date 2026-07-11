@@ -11,14 +11,19 @@
  *  - Muster: unit-type picker with the engine's real raise costs (mirrored in
  *    ./costs.ts) -> RECRUIT. March: select the host's province (the Board
  *    shades legalMoveTargets gold), then a legal destination -> MOVE (with an
- *    optional Lay Siege flag against a walled foe). Raise: an owned province
+ *    optional Lay Siege flag against a walled foe, and an optional From the
+ *    Sea carry — transportFleetId — when a galley fleet of mine lies in a sea
+ *    zone bordering both shores of the march). Raise: an owned province
  *    opens the build sheet (BuildMenu via the overlay router). Traffic /
  *    Parley / Whisper are the doors into the Counting-House / Court of
  *    Envoys / spy overlays. Levy the Tithe -> SET_TAX (free, un-budgeted).
  *  - Yield the Floor is quiet-styled and ALWAYS confirms (ConfirmModal) ->
  *    PASS. At nought deeds every order but Yield disables with the in-voice
  *    reason; outside the action window (INCOME/COMBAT/END) the phase banner
- *    is the reason and "Onward" (ADVANCE_PHASE) moves the table forward.
+ *    is the reason. "Onward" (ADVANCE_PHASE) moves the table forward: direct
+ *    outside the window, confirm-gated inside it (it is the only exit from an
+ *    action phase when turn timers are off, e.g. hot-seat). The action carries
+ *    fromRound/fromPhase so a raced double-Onward is a server-side no-op.
  *  - ui_click on every order button; everything keyboard-reachable; Escape
  *    inside a tray disarms it.
  */
@@ -32,18 +37,35 @@ import {
   UnitType,
   Faction,
 } from "@imperium/shared";
-import type { GameState, ResourceBundle, UnitCounts } from "@imperium/shared";
+import type {
+  Fleet,
+  GameState,
+  RecruitVariant,
+  ResourceBundle,
+  UnitCounts,
+} from "@imperium/shared";
 import { useGame } from "../GameProvider";
 import { useSelection } from "../SelectionContext";
 import { useOverlay } from "../OverlayManager";
 import { useAudio } from "../../audio/AudioProvider";
-import { Button, ConfirmModal, IconChip, PipBudget, ICON_URL, toRoman } from "../../ui";
+import {
+  Button,
+  ConfirmModal,
+  IconChip,
+  PipBudget,
+  ICON_URL,
+  toRoman,
+  useToast,
+} from "../../ui";
+import { useFreshLogEntries } from "../useFreshLog";
+import { sealAwaiting } from "./commitFlourish";
 import {
   isSeaZoneId,
   legalMoveTargets,
   me,
   myBudgetRemaining,
   myStacks,
+  neighborsOf,
   provinceById,
   seaZoneById,
 } from "../selectors";
@@ -54,6 +76,7 @@ import {
   ORDER_GLOSS,
   ORDER_LABEL,
   PHASE_BANNER,
+  PHASE_NAME,
   YIELD_GLOSS,
   YIELD_LABEL,
 } from "../uiText";
@@ -74,8 +97,10 @@ import {
   UNIT_ROLE,
   costEntries,
   costText,
+  factionUniqueUnits,
   shortStores,
 } from "./costs";
+import type { UniqueUnitDisplay } from "./costs";
 import "./actions.css";
 
 /** The seven armable orders in bar order (game.html callout 11). */
@@ -92,6 +117,25 @@ const ORDERS: readonly OrderKind[] = [
 /** Prompt shown while an armed order waits on a map selection. */
 const CHOOSE_PROMPT = "Choose a province upon the map.";
 
+/* In-voice legality reasons (register of lore/ui-text.md §7 errors 6 and 11;
+   no exact lore line exists for these cases, so these are authored in the
+   same voice — the engine's modern strings are kept for action_rejected
+   fallback only, per the COPY contract). */
+const NOT_OWNED_BUILD =
+  "That province flies another's banner — the foundation must be laid on your own ground.";
+const NOT_OWNED_MUSTER =
+  "That province flies another's banner — levies muster only on your own ground.";
+const EMPTY_MUSTER_ROLL =
+  "The muster roll is empty — name at least one company to raise.";
+
+/** Gloss on Onward while an action window is open (it moves the WHOLE table). */
+const ONWARD_GLOSS =
+  "Close the phase for the whole table and move the game onward.";
+
+/** Consequence line for the Onward confirm inside an action window. */
+const onwardConsequence = (phase: GamePhase): string =>
+  `${PHASE_NAME[phase]} closes for every crown at the table, spent deeds or no.`;
+
 /** The engine's action window (server ACTION_PHASES). */
 function inActionWindow(phase: GamePhase): boolean {
   return (
@@ -101,22 +145,33 @@ function inActionWindow(phase: GamePhase): boolean {
   );
 }
 
-/** Mirror of the engine's recruit cost (mercs: ×1.5 gold — Genoa ×1.0 — 0 grain). */
+/** One costed line of a muster order: a generic batch, or a named variant. */
+interface MusterLine {
+  base: UnitType;
+  count: number;
+}
+
+/**
+ * Mirror of the engine's recruit cost (mercs: ×1.5 gold — Genoa ×1.0 — 0
+ * grain). Named variants cost their BASE unit (applyRecruit's addUnitCost).
+ * Costed per LINE — each generic type and each variant separately — so the
+ * mercenary-gold Math.ceil rounds exactly as the engine does.
+ */
 function recruitCost(
-  units: UnitCounts,
+  lines: readonly MusterLine[],
   mercenary: boolean,
   faction: Faction | null,
 ): Partial<ResourceBundle> {
   const mult =
     faction === Faction.GENOA ? MERC_GENOA_GOLD_MULTIPLIER : MERC_HIRE_GOLD_MULTIPLIER;
   const total: Partial<ResourceBundle> = {};
-  for (const [type, n] of Object.entries(units) as [UnitType, number][]) {
-    if (!n || n <= 0) continue;
-    const naval = NAVAL_UNITS.includes(type);
+  for (const { base, count } of lines) {
+    if (count <= 0) continue;
+    const naval = NAVAL_UNITS.includes(base);
     const merc = mercenary && !naval;
-    for (const [k, per] of costEntries(UNIT_COST[type])) {
+    for (const [k, per] of costEntries(UNIT_COST[base])) {
       if (merc && k === "grain") continue;
-      const amount = merc && k === "gold" ? Math.ceil(per * n * mult) : per * n;
+      const amount = merc && k === "gold" ? Math.ceil(per * count * mult) : per * count;
       total[k] = (total[k] ?? 0) + amount;
     }
   }
@@ -132,6 +187,25 @@ export function ActionBar({ className }: ActionBarProps): JSX.Element {
   const { selection, armedOrder, setArmedOrder } = useSelection();
   const overlay = useOverlay();
   const { playSfx } = useAudio();
+  const toast = useToast();
+
+  // Commit flourish (README §2): "So it is written." confirms the DEED, so it
+  // waits for the broadcast whose chronicle carries my sealed order — never
+  // fired optimistically at dispatch (the server may still refuse). RECRUIT
+  // logs type "recruit"; BUILD logs type "build" (BuildMenu sets the shared
+  // latch, see ./commitFlourish); MOVE logs data.move (type "battle" when the
+  // march meets a foe, "phase" otherwise) — server actions.ts/economy.ts.
+  useFreshLogEntries((entries) => {
+    if (!sealAwaiting.current) return;
+    for (const e of entries) {
+      if (!e.actors.includes(myPlayerId)) continue;
+      if (e.type === "recruit" || e.type === "build" || e.data?.move !== undefined) {
+        sealAwaiting.current = false;
+        toast.triumph("So it is written.");
+        break;
+      }
+    }
+  });
 
   const my = me(gameState, myPlayerId);
   const remaining = myBudgetRemaining(gameState, myPlayerId);
@@ -140,6 +214,19 @@ export function ActionBar({ className }: ActionBarProps): JSX.Element {
 
   const [titheOpen, setTitheOpen] = useState(false);
   const [confirmYield, setConfirmYield] = useState(false);
+  const [confirmOnward, setConfirmOnward] = useState(false);
+
+  // ADVANCE_PHASE carries the round/phase THIS client saw so the server can
+  // treat a raced Onward (another seat's click, or the turn timer, landed
+  // first) as already satisfied instead of skipping a second phase.
+  const sendOnward = (): void => {
+    dispatch({
+      type: "ADVANCE_PHASE",
+      player: myPlayerId,
+      fromRound: gameState.round,
+      fromPhase: phase,
+    });
+  };
 
   // -- In-voice unavailability reasons (design contract: disabled = reason) --
   const phaseReason = windowOpen ? undefined : (PHASE_BANNER[phase] ?? CONNECTION.waiting);
@@ -249,15 +336,19 @@ export function ActionBar({ className }: ActionBarProps): JSX.Element {
         {YIELD_LABEL}
       </Button>
 
-      {/* Outside the action window, ADVANCE_PHASE is how the table moves on. */}
-      {!windowOpen && phase !== GamePhase.LOBBY && gameState.winner === undefined && (
+      {/* Onward — ADVANCE_PHASE is how the table moves on. Outside the action
+          window it fires directly; INSIDE an action window it is the only exit
+          when timers are off (hot-seat) and it moves the WHOLE table, so it
+          always confirms first (design contract: destructive = modal). */}
+      {phase !== GamePhase.LOBBY && gameState.winner === undefined && (
         <Button
           variant="quiet"
-          title={PHASE_BANNER[phase]}
+          title={windowOpen ? ONWARD_GLOSS : PHASE_BANNER[phase]}
           disabledReason={pendingAction ? CONNECTION.waiting : undefined}
           onClick={() => {
             playSfx("ui_click");
-            dispatch({ type: "ADVANCE_PHASE", player: myPlayerId });
+            if (windowOpen) setConfirmOnward(true);
+            else sendOnward();
           }}
         >
           {BUTTONS.continue}
@@ -273,6 +364,7 @@ export function ActionBar({ className }: ActionBarProps): JSX.Element {
           selection={selection}
           pendingAction={pendingAction}
           onSeal={(action) => {
+            sealAwaiting.current = true;
             dispatch(action);
             playSfx("quill_scratch");
             disarm();
@@ -291,6 +383,7 @@ export function ActionBar({ className }: ActionBarProps): JSX.Element {
           selection={selection}
           pendingAction={pendingAction}
           onSeal={(action, naval) => {
+            sealAwaiting.current = true;
             dispatch(action);
             playSfx("quill_scratch");
             if (naval) playSfx("ship_creak");
@@ -310,7 +403,7 @@ export function ActionBar({ className }: ActionBarProps): JSX.Element {
             {selection !== null &&
             provinceById(gameState, selection) !== null &&
             provinceById(gameState, selection)?.ownerId !== myPlayerId
-              ? "Can only build in owned provinces."
+              ? NOT_OWNED_BUILD
               : CHOOSE_PROMPT}
           </span>
           <span className="act-seal">
@@ -364,6 +457,21 @@ export function ActionBar({ className }: ActionBarProps): JSX.Element {
           onCancel={() => setConfirmYield(false)}
         />
       )}
+
+      {confirmOnward && (
+        <ConfirmModal
+          title={BUTTONS.continue}
+          consequence={onwardConsequence(phase)}
+          confirmLabel={BUTTONS.confirm}
+          cancelLabel={BUTTONS.cancel}
+          onConfirm={() => {
+            setConfirmOnward(false);
+            sendOnward();
+            playSfx("quill_scratch");
+          }}
+          onCancel={() => setConfirmOnward(false)}
+        />
+      )}
     </footer>
   );
 }
@@ -382,6 +490,7 @@ interface MusterTrayProps {
     player: string;
     provinceId: string;
     units: UnitCounts;
+    variants?: RecruitVariant[];
     mercenary?: boolean;
   }) => void;
   onCancel: () => void;
@@ -390,6 +499,7 @@ interface MusterTrayProps {
 function MusterTray(props: MusterTrayProps): JSX.Element {
   const { gameState, myPlayerId, selection, pendingAction, onSeal, onCancel } = props;
   const [counts, setCounts] = useState<UnitCounts>({});
+  const [variantCounts, setVariantCounts] = useState<Record<string, number>>({});
   const [mercenary, setMercenary] = useState(false);
 
   const prov = selection !== null ? provinceById(gameState, selection) : null;
@@ -398,6 +508,7 @@ function MusterTray(props: MusterTrayProps): JSX.Element {
   // A new province wipes the muster roll.
   useEffect(() => {
     setCounts({});
+    setVariantCounts({});
     setMercenary(false);
   }, [selection]);
 
@@ -406,7 +517,7 @@ function MusterTray(props: MusterTrayProps): JSX.Element {
       <div className="act-tray" role="region" aria-label={ORDER_LABEL.muster}>
         <span className="act-tray-title">{ORDER_LABEL.muster}</span>
         <span className="rubric">
-          {prov !== null ? "Can only recruit in owned provinces." : CHOOSE_PROMPT}
+          {prov !== null ? NOT_OWNED_MUSTER : CHOOSE_PROMPT}
         </span>
         <span className="act-seal">
           <Button variant="quiet" onClick={onCancel}>
@@ -435,13 +546,23 @@ function MusterTray(props: MusterTrayProps): JSX.Element {
     ? undefined
     : `${prov.name} needs a Shipyard for naval units.`;
 
-  const total = recruitCost(counts, mercenary, faction);
-  const totalUnits = Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0);
+  // My faction's signature units (§FACTIONS; RecruitAction.variants).
+  const uniques = factionUniqueUnits(faction);
+
+  const lines: MusterLine[] = [
+    ...(Object.entries(counts) as [UnitType, number][]).map(([base, n]) => ({
+      base,
+      count: n ?? 0,
+    })),
+    ...uniques.map((u) => ({ base: u.base, count: variantCounts[u.variant] ?? 0 })),
+  ];
+  const total = recruitCost(lines, mercenary, faction);
+  const totalUnits = lines.reduce((sum, l) => sum + l.count, 0);
   const short = my ? shortStores(my.treasury, total) : [];
 
   const sealReason =
     totalUnits === 0
-      ? "Recruit order is empty."
+      ? EMPTY_MUSTER_ROLL
       : short.length > 0
         ? RESOURCE_SHORT_REASON[short[0]]
         : pendingAction
@@ -453,6 +574,12 @@ function MusterTray(props: MusterTrayProps): JSX.Element {
       const next = Math.max(0, (prev[type] ?? 0) + delta);
       return { ...prev, [type]: next };
     });
+  };
+  const bumpVariant = (variant: string, delta: number): void => {
+    setVariantCounts((prev) => ({
+      ...prev,
+      [variant]: Math.max(0, (prev[variant] ?? 0) + delta),
+    }));
   };
 
   const unitRow = (type: UnitType, addReason: string | undefined): JSX.Element => {
@@ -488,6 +615,50 @@ function MusterTray(props: MusterTrayProps): JSX.Element {
     );
   };
 
+  // Signature-unit row (RECRUIT variants). Mirrors applyRecruit's gating: the
+  // base unit's location legality PLUS the variant's recruitProvinces list.
+  const placeName = (id: string): string => provinceById(gameState, id)?.name ?? id;
+  const variantRow = (u: UniqueUnitDisplay): JSX.Element => {
+    const n = variantCounts[u.variant] ?? 0;
+    const naval = NAVAL_UNITS.includes(u.base);
+    const gateReason =
+      u.recruitProvinces !== undefined && !u.recruitProvinces.includes(prov.id)
+        ? `${u.name} cannot be raised at ${prov.name} — only at ${u.recruitProvinces
+            .map(placeName)
+            .join(" or ")}.`
+        : undefined;
+    const addReason = gateReason ?? (naval ? navalReason : landReason);
+    return (
+      <li key={u.variant} className="act-unit act-unit--unique">
+        <span className="act-unit-name" title={u.role}>
+          {u.name}
+        </span>
+        <span className="act-unit-cost">{costText(UNIT_COST[u.base])}</span>
+        <span className="act-stepper" role="group" aria-label={u.name}>
+          <Button
+            variant="quiet"
+            aria-label={`Fewer ${u.name}`}
+            disabled={n === 0}
+            onClick={() => bumpVariant(u.variant, -1)}
+          >
+            −
+          </Button>
+          <span className="act-count" aria-live="polite">
+            {n}
+          </span>
+          <Button
+            variant="quiet"
+            aria-label={`More ${u.name}`}
+            disabledReason={addReason}
+            onClick={() => bumpVariant(u.variant, +1)}
+          >
+            +
+          </Button>
+        </span>
+      </li>
+    );
+  };
+
   return (
     <div className="act-tray" role="region" aria-label={ORDER_LABEL.muster}>
       <span className="act-tray-title">
@@ -496,6 +667,7 @@ function MusterTray(props: MusterTrayProps): JSX.Element {
       <ul className="act-units">
         {LAND_UNITS.map((t) => unitRow(t, landReason))}
         {NAVAL_UNITS.map((t) => unitRow(t, navalReason))}
+        {uniques.map(variantRow)}
       </ul>
       <label className="act-check">
         <input
@@ -529,15 +701,23 @@ function MusterTray(props: MusterTrayProps): JSX.Element {
         <Button
           variant="primary"
           disabledReason={sealReason}
-          onClick={() =>
+          onClick={() => {
+            const variants: RecruitVariant[] = uniques
+              .filter((u) => (variantCounts[u.variant] ?? 0) > 0)
+              .map((u) => ({
+                base: u.base,
+                variant: u.variant,
+                count: variantCounts[u.variant] ?? 0,
+              }));
             onSeal({
               type: "RECRUIT",
               player: myPlayerId,
               provinceId: prov.id,
               units: counts,
+              ...(variants.length > 0 ? { variants } : {}),
               ...(mercenary ? { mercenary: true } : {}),
-            })
-          }
+            });
+          }}
         >
           {BUTTONS.setTheSeal}
         </Button>
@@ -563,6 +743,7 @@ interface MarchTrayProps {
       stackId: string;
       toId: string;
       naval?: boolean;
+      transportFleetId?: string;
       declareSiege?: boolean;
     },
     naval: boolean,
@@ -570,11 +751,40 @@ interface MarchTrayProps {
   onCancel: () => void;
 }
 
+/**
+ * §5.3 amphibious transport: my fleet holding at least one GALLEY (or a
+ * galley-based unique variant) lying in a sea zone that borders BOTH shores of
+ * a province→province march can carry the host, landing it "from the sea"
+ * (MoveAction.transportFleetId → the engine's battle.amphibious, attacker −1).
+ * Returns the first such fleet with the zone it sails, or null.
+ */
+function transportFor(
+  myFleets: Fleet[],
+  from: string | null,
+  to: string | null,
+): { fleet: Fleet; zoneId: string } | null {
+  if (from === null || to === null) return null;
+  if (isSeaZoneId(from) || isSeaZoneId(to)) return null;
+  const fromSeas = new Set(neighborsOf(from).filter(isSeaZoneId));
+  for (const zoneId of neighborsOf(to)) {
+    if (!fromSeas.has(zoneId)) continue;
+    const fleet = myFleets.find(
+      (f) =>
+        f.locationId === zoneId &&
+        ((f.units[UnitType.GALLEY] ?? 0) > 0 ||
+          (f.variants ?? []).some((v) => v.base === UnitType.GALLEY && v.count > 0)),
+    );
+    if (fleet) return { fleet, zoneId };
+  }
+  return null;
+}
+
 function MarchTray(props: MarchTrayProps): JSX.Element {
   const { gameState, myPlayerId, selection, pendingAction, onSeal, onCancel } = props;
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);
   const [siege, setSiege] = useState(false);
+  const [bySea, setBySea] = useState(false);
 
   const { armies, fleets } = myStacks(gameState, myPlayerId);
   const hasStackAt = (id: string): boolean =>
@@ -595,12 +805,14 @@ function MarchTray(props: MarchTrayProps): JSX.Element {
     if (legalMoveTargets(gameState, from).includes(selection)) {
       setTo(selection);
       setSiege(false);
+      setBySea(false);
       return;
     }
     if (mineAt(selection)) {
       setFrom(selection);
       setTo(null);
       setSiege(false);
+      setBySea(false);
     }
   }, [selection, from, gameState, myPlayerId]);
 
@@ -620,6 +832,10 @@ function MarchTray(props: MarchTrayProps): JSX.Element {
   const target = to !== null ? provinceById(gameState, to) : null;
   const canSiege =
     target !== null && target.walls.tier > 0 && target.ownerId !== myPlayerId;
+
+  // Amphibious option: only for a MARCHING HOST (never a fleet move) whose
+  // crossing a galley fleet of mine can carry (§5.3, docs/GAME_DESIGN.md).
+  const transport = stack !== null && !naval ? transportFor(fleets, from, to) : null;
 
   const sealReason =
     from === null || stack === null
@@ -662,6 +878,20 @@ function MarchTray(props: MarchTrayProps): JSX.Element {
           </span>
         </label>
       )}
+      {transport !== null && (
+        <label className="act-check">
+          <input
+            type="checkbox"
+            checked={bySea}
+            onChange={(e) => setBySea(e.target.checked)}
+          />
+          From the Sea
+          <span className="act-check-gloss">
+            Your galleys upon {nameOf(transport.zoneId)} carry the host ashore;
+            it comes under arms at −1.
+          </span>
+        </label>
+      )}
       <span className="act-seal">
         <Button variant="quiet" onClick={onCancel}>
           {BUTTONS.cancel}
@@ -671,6 +901,7 @@ function MarchTray(props: MarchTrayProps): JSX.Element {
           disabledReason={sealReason}
           onClick={() => {
             if (from === null || to === null || stack === null) return;
+            const amphibious = bySea && transport !== null;
             onSeal(
               {
                 type: "MOVE",
@@ -678,9 +909,10 @@ function MarchTray(props: MarchTrayProps): JSX.Element {
                 stackId: stack.id,
                 toId: to,
                 ...(naval ? { naval: true } : {}),
+                ...(amphibious ? { transportFleetId: transport.fleet.id } : {}),
                 ...(siege ? { declareSiege: true } : {}),
               },
-              naval,
+              naval || amphibious,
             );
           }}
         >

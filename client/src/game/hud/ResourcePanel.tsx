@@ -8,9 +8,14 @@
  *    bear the order currently armed in the action bar.
  *  - The tithe posture (TaxPosture; §4.2 gold multiplier mirrored for
  *    display) — task contract "tax posture indicator".
- *  - "Renown": the full nought-to-twenty prestige track with a crest marker
- *    for EVERY seated power, plus the victory threshold for this table
- *    (mirrored from the engine's balance.PRESTIGE_THRESHOLDS).
+ *  - "Renown": the prestige track with a crest marker for EVERY seated
+ *    power. The mockup's "nought to twenty" (game.html callout 5) predates
+ *    the ratified §13.2 thresholds (72/78/80/80), so the track keeps the
+ *    21-notch geometry but is relabelled nought-to-threshold (game/prestige
+ *    helpers mirror balance.PRESTIGE_THRESHOLDS); gilded milestones carry a
+ *    hover title with their renown value ("its reward" in the mockup legend
+ *    has no engine counterpart — notches award nothing; only the final
+ *    threshold does, and its title says so).
  *  - "The Powers Assemble": seat chips — crest + faction word + player name,
  *    prestige count, whose turn it is, and per-seat connection state.
  *  - A persistent connection notice while the socket is down.
@@ -34,6 +39,7 @@ import {
   turnBannerFor,
 } from "../uiText";
 import { activePlayerId as selectActivePlayerId, me, provincesOf } from "../selectors";
+import { TRACK_SEGMENTS, notchForPrestige, notchValue, prestigeThreshold } from "../prestige";
 import { FACTION_SLUG } from "../../board/types";
 import { getSocket } from "../../socket";
 import type { OrderKind } from "../types";
@@ -60,23 +66,10 @@ const SHORT_REASON: Record<StoreKey, string> = {
   faith: "The people's faith will not stretch so far.",
 };
 
-/**
- * DISPLAY MIRROR of server/src/engine/balance.ts PRESTIGE_THRESHOLDS (§13.2)
- * — the prestige a crown must reach to close the reckoning early, by seated
- * player count. The engine remains authoritative; re-mirror when rebalanced.
- */
-const PRESTIGE_THRESHOLD_BY_PLAYER_COUNT: Record<number, number> = {
-  2: 72,
-  3: 78,
-  4: 80,
-  5: 80,
-};
-const PRESTIGE_THRESHOLD_FALLBACK = 80;
-
 /** DISPLAY MIRROR of balance.TAX_MULTIPLIERS (§4.2 — gold income only). */
 const TAX_DISPLAY: Record<TaxPosture, { word: string; multiplier: string }> = {
   [TaxPosture.LENIENT]: { word: "Lenient", multiplier: "×0.75" },
-  [TaxPosture.NORMAL]: { word: "Normal", multiplier: "×1" },
+  [TaxPosture.NORMAL]: { word: "Customary", multiplier: "×1" },
   [TaxPosture.HEAVY]: { word: "Heavy", multiplier: "×1.5" },
 };
 
@@ -91,8 +84,11 @@ const ORDER_COST: Partial<Record<OrderKind, Partial<ResourceBundle>>> = {
   raise: { gold: 4, timber: 2 },
 };
 
-/** The prestige track runs nought to twenty (game.html callout 5). */
-const TRACK_MAX = 20;
+/**
+ * The prestige track: the mockup's 21 notches (game.html callout 5), kept
+ * for their geometry and gilded-milestone rhythm, relabelled proportionally
+ * from nought to this table's victory threshold — see game/prestige.ts.
+ */
 
 /** True while the socket can reach the table (drives the herald notice). */
 function useSocketConnected(): boolean {
@@ -158,9 +154,7 @@ export function ResourcePanel({ className }: ResourcePanelProps): JSX.Element {
   const seated = gameState.players.filter(
     (p): p is Player & { faction: NonNullable<Player["faction"]> } => p.faction !== null,
   );
-  const threshold =
-    PRESTIGE_THRESHOLD_BY_PLAYER_COUNT[gameState.players.length] ??
-    PRESTIGE_THRESHOLD_FALLBACK;
+  const threshold = prestigeThreshold(gameState);
   const turnPlayerId = selectActivePlayerId(gameState);
 
   return (
@@ -182,12 +176,18 @@ export function ResourcePanel({ className }: ResourcePanelProps): JSX.Element {
                     income.lines[key].length > 6 ? " · …" : ""
                   }.`
                 : "";
+            // game.html callout 4: when short, the in-voice shortfall line IS
+            // the hover reading — it leads the custom tooltip (no native
+            // title, which would raise a second, competing browser bubble).
+            const gloss = `${RESOURCE_TOOLTIP[key]}${breakdown}`;
             return (
-              <Tooltip key={key} label={`${RESOURCE_TOOLTIP[key]}${breakdown}`}>
+              <Tooltip
+                key={key}
+                label={short ? `${SHORT_REASON[key]} ${gloss}` : gloss}
+              >
                 <span
                   className={`resource-chip${short ? " is-short" : ""}`}
                   tabIndex={0}
-                  title={short ? SHORT_REASON[key] : undefined}
                 >
                   <span className="chip-icon" aria-hidden="true">
                     <img src={ICON_URL[key]} alt="" />
@@ -229,17 +229,37 @@ export function ResourcePanel({ className }: ResourcePanelProps): JSX.Element {
           </Tooltip>
         </h2>
 
-        <ol className="prestige-track hud-prestige" aria-label="Prestige, nought to twenty">
-          {Array.from({ length: TRACK_MAX + 1 }, (_, notch) => {
+        <ol
+          className="prestige-track hud-prestige"
+          aria-label={`Prestige, nought to ${threshold}`}
+        >
+          {Array.from({ length: TRACK_SEGMENTS + 1 }, (_, notch) => {
+            const value = notchValue(notch, threshold);
             const holders = seated.filter(
-              (p) => Math.max(0, Math.min(TRACK_MAX, p.prestige)) === notch,
+              (p) => notchForPrestige(p.prestige, threshold) === notch,
             );
+            // Gilded milestones (base.css 5n+1): hover/focus reads the
+            // renown they stand for; the final one is the threshold itself,
+            // whose reward is the reckoning. (The mockup legend's "read its
+            // reward" is adapted — the ratified balance grants nothing at
+            // intermediate notches.)
+            const milestone = notch > 0 && notch % 5 === 0;
+            const milestoneTip =
+              notch === TRACK_SEGMENTS
+                ? `First to ${threshold} — or the fall of the City — closes the reckoning.`
+                : `Renown ${value} of the ${threshold} that closes the reckoning.`;
             return (
               <li
                 key={notch}
                 className={`notch${holders.length > 0 ? " is-held" : ""}`}
               >
-                {notch}
+                {milestone ? (
+                  <Tooltip label={milestoneTip}>
+                    <span tabIndex={0}>{value}</span>
+                  </Tooltip>
+                ) : (
+                  value
+                )}
                 {holders.map((p) => {
                   const delta = p.prestigeThisRound ?? 0;
                   const stands = `${FACTION_NAME[p.faction]} stands at ${p.prestige}${

@@ -1,0 +1,61 @@
+/* ---------------------------------------------------------------------------
+   market-routes.css — "Charter a Lane" form appended to the Counting-House
+   routes strip (MarketModal zone 8). Kept out of market.css so the two market
+   leaves can be reworked independently. All colors are the locked tokens of
+   styles/tokens.css (or color-mix()es of them), per the design contract.
+   --------------------------------------------------------------------------- */
+
+.mkt-charter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--parchment);
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-2);
+}
+
+.mkt-charter-label {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  font-size: var(--text-xs);
+}
+
+/* Port pickers — same posture as the Court's .dip-field, restated here so the
+   Counting-House does not have to pull in court.css. */
+.mkt-charter-field {
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  color: var(--ink);
+  background: var(--vellum);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-1);
+  padding: 0.3em 0.6em;
+}
+.mkt-charter-field:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--gold);
+}
+
+/* The charted lane readout: full-width line under the pickers. */
+.mkt-charter-lane {
+  flex-basis: 100%;
+  margin: 0;
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: color-mix(in srgb, var(--ink) 72%, var(--parchment));
+}
+
+/* Seal row keeps to the strip's right edge on wide layouts. */
+.mkt-charter-seal {
+  margin-left: auto;
+}
+@media (max-width: 56rem) {
+  .mkt-charter-seal {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}

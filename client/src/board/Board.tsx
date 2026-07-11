@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { BoardProps, Point } from "./types";
 import { ownerClass } from "./types";
 import { factionByPlayer, legalMoveTargets, provinceOwnerFaction } from "./mapData";
@@ -7,7 +7,7 @@ import { computeCentroids } from "./centroids";
 import { diffIds, reportIdDiff } from "./idDiff";
 import { usePanZoom } from "./usePanZoom";
 import { createHoverStore } from "./hoverStore";
-import { ProvinceLayer } from "./ProvinceLayer";
+import { ProvinceLayer, SHAPE_SELECTOR } from "./ProvinceLayer";
 import { Tooltip } from "./Tooltip";
 import { OverlayLayer } from "./overlays/OverlayLayer";
 import "./board.css";
@@ -29,6 +29,7 @@ export function Board(props: BoardProps): JSX.Element {
   const [svgRoot, setSvgRoot] = useState<SVGSVGElement | null>(null);
   const hoverStore = useMemo(createHoverStore, []);
   const panZoom = usePanZoom();
+  const keyboardHintId = useId();
 
   // Memo deps below are pinned by spec §3.3 (narrower than gameState itself
   // so pan/zoom-irrelevant state changes don't recompute derived maps).
@@ -74,6 +75,20 @@ export function Board(props: BoardProps): JSX.Element {
     onIdDiff?.({ provinces, seaZones });
   }, [svgRoot, mapData, onIdDiff]);
 
+  // Accessible names: ProvinceLayer makes each shape a focusable button with
+  // the raw id as a fallback label; here the canon display names from mapData
+  // replace them (unknown/retired ids keep the id so they're still announced).
+  useEffect(() => {
+    if (!svgRoot) return;
+    const nameById = new Map<string, string>();
+    for (const p of mapData.provinces) nameById.set(p.id, p.name);
+    for (const s of mapData.seaZones) nameById.set(s.id, s.name);
+    for (const el of svgRoot.querySelectorAll<SVGPathElement>(SHAPE_SELECTOR)) {
+      const name = nameById.get(el.id);
+      if (name !== undefined) el.setAttribute("aria-label", name);
+    }
+  }, [svgRoot, mapData]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && selection !== null) onSelect(null);
@@ -84,7 +99,23 @@ export function Board(props: BoardProps): JSX.Element {
 
   return (
     <div className={`board-root${className ? ` ${className}` : ""}`}>
-      <div ref={panZoom.viewportRef} className="board-viewport">
+      {/* Keyboard contract (finding: board was mouse-only). The viewport is a
+          tab stop so pan/zoom works before any shape has focus; the hint is
+          read by screen readers via aria-describedby. Label per the locked
+          mockup (design/mockups/game.html: aria-label="The campaign map"). */}
+      <p id={keyboardHintId} className="board-kbd-hint">
+        Arrow keys move the map; plus and minus draw it nearer or farther. Tab
+        moves among provinces and seas; Enter or Space selects one; Escape
+        clears the selection.
+      </p>
+      <div
+        ref={panZoom.viewportRef}
+        className="board-viewport"
+        tabIndex={0}
+        role="region"
+        aria-label="The campaign map"
+        aria-describedby={keyboardHintId}
+      >
         <div ref={panZoom.contentRef} className="board-content">
           <ProvinceLayer
             svgUrl={svgUrl}

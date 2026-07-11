@@ -16,10 +16,12 @@ import { io as connectClient, type Socket } from "socket.io-client";
 import {
   Faction,
   SOCKET_EVENTS,
+  type GameActionType,
   type GameCreatedPayload,
   type LobbyUpdatePayload,
 } from "@imperium/shared";
 import { createApp } from "../index.js";
+import { parseGameActionPayload } from "../validate.js";
 
 type App = ReturnType<typeof createApp>;
 
@@ -422,5 +424,214 @@ describe("faction injection (wire) — defect 2", () => {
     for (const p of room.players) {
       expect(allowed.has(p.faction)).toBe(true);
     }
+  });
+});
+
+/**
+ * parseGameActionPayload (unit) — every envelope rejection of the in-game
+ * `game_action` guard. The engine reducer re-validates variant payloads;
+ * these tests pin the ENVELOPE contract: roomCode / sessionToken / action
+ * object / known action type / player id rules (ADVANCE_PHASE's optional
+ * player + idempotency guard fields included).
+ */
+describe("parseGameActionPayload (unit)", () => {
+  const validAction = { type: "SET_TAX", player: "p1", posture: "HEAVY" };
+  const valid = {
+    roomCode: "ABC123",
+    sessionToken: "tok-1234",
+    action: validAction,
+  };
+
+  it.each([
+    ["undefined", undefined],
+    ["null", null],
+    ["a bare string", "junk"],
+    ["a number", 42],
+    ["an array", [1, 2, 3]],
+  ])("rejects a non-object payload (%s)", (_label, raw) => {
+    const result = parseGameActionPayload(raw);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/malformed game_action/i);
+  });
+
+  it("rejects a missing/invalid/oversized roomCode", () => {
+    for (const roomCode of [
+      undefined,
+      123456,
+      "ABC-12",
+      "TOOLONG",
+      "Z".repeat(100_000),
+    ]) {
+      const result = parseGameActionPayload({ ...valid, roomCode });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toMatch(/room code/i);
+    }
+  });
+
+  it("normalises a lowercase room code instead of rejecting it", () => {
+    const result = parseGameActionPayload({ ...valid, roomCode: "abc123" });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.roomCode).toBe("ABC123");
+  });
+
+  it("rejects a missing/empty/wrong-typed/oversized sessionToken", () => {
+    for (const sessionToken of [undefined, "", 42, "t".repeat(129)]) {
+      const result = parseGameActionPayload({ ...valid, sessionToken });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toMatch(/session token/i);
+    }
+  });
+
+  it("rejects a missing or non-object action", () => {
+    for (const action of [undefined, null, "MOVE", 7, ["MOVE"]]) {
+      const result = parseGameActionPayload({ ...valid, action });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toMatch(/malformed game action/i);
+    }
+  });
+
+  it("rejects an unknown or wrong-typed action.type", () => {
+    for (const type of [undefined, "HACK_THE_GIBSON", "set_tax", 42, {}]) {
+      const result = parseGameActionPayload({
+        ...valid,
+        action: { ...validAction, type },
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toMatch(/unknown game action type/i);
+    }
+  });
+
+  it("accepts every frozen GameAction discriminant", () => {
+    const allTypes: GameActionType[] = [
+      "RECRUIT",
+      "MOVE",
+      "BUILD",
+      "TRADE",
+      "DIPLOMACY",
+      "VASSALIZE",
+      "PLAY_CARD",
+      "PLAY_TACTIC",
+      "DECLARE_WAR",
+      "LEVY_CALL",
+      "SPY",
+      "MERC_BID",
+      "SET_TAX",
+      "PASS",
+      "ADVANCE_PHASE",
+    ];
+    for (const type of allTypes) {
+      const result = parseGameActionPayload({
+        ...valid,
+        action: { type, player: "p1" },
+      });
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.value.action.type).toBe(type);
+    }
+  });
+
+  it("requires a player id on every non-ADVANCE_PHASE action", () => {
+    for (const player of [undefined, "", 42, { id: "p1" }, "x".repeat(65)]) {
+      const result = parseGameActionPayload({
+        ...valid,
+        action: { ...validAction, player },
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toMatch(/must name its player/i);
+      }
+    }
+  });
+
+  it("ADVANCE_PHASE may omit its player but a present one must be valid", () => {
+    expect(
+      parseGameActionPayload({ ...valid, action: { type: "ADVANCE_PHASE" } })
+        .ok,
+    ).toBe(true);
+    expect(
+      parseGameActionPayload({
+        ...valid,
+        action: { type: "ADVANCE_PHASE", player: "p1" },
+      }).ok,
+    ).toBe(true);
+    for (const player of ["", 42, "x".repeat(65)]) {
+      const result = parseGameActionPayload({
+        ...valid,
+        action: { type: "ADVANCE_PHASE", player },
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toMatch(/invalid action player/i);
+    }
+  });
+
+  it("validates ADVANCE_PHASE idempotency guard fields when present", () => {
+    // Valid guards pass through.
+    const ok = parseGameActionPayload({
+      ...valid,
+      action: { type: "ADVANCE_PHASE", fromRound: 3, fromPhase: "INCOME" },
+    });
+    expect(ok.ok).toBe(true);
+    // Non-integer / wrong-typed fromRound and non-string fromPhase fail.
+    for (const action of [
+      { type: "ADVANCE_PHASE", fromRound: 1.5 },
+      { type: "ADVANCE_PHASE", fromRound: "3" },
+      { type: "ADVANCE_PHASE", fromRound: Number.NaN },
+      { type: "ADVANCE_PHASE", fromPhase: 7 },
+      { type: "ADVANCE_PHASE", fromPhase: { evil: true } },
+    ]) {
+      const result = parseGameActionPayload({ ...valid, action });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toMatch(/malformed game action/i);
+    }
+  });
+
+  it("returns a fresh envelope carrying only the known top-level fields", () => {
+    const result = parseGameActionPayload({
+      ...valid,
+      evil: "extra",
+      injected: { polluted: true },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(Object.keys(result.value).sort()).toEqual([
+        "action",
+        "roomCode",
+        "sessionToken",
+      ]);
+    }
+  });
+});
+
+describe("game_action payload validation (wire)", () => {
+  it.each(MALFORMED)("answers error_msg for $label", async ({ args }) => {
+    const socket = connect();
+    await expectErrorFor(socket, SOCKET_EVENTS.GAME_ACTION, ...args);
+    await expectStillServing();
+  });
+
+  it("answers error_msg for a bad envelope without touching any room", async () => {
+    const host = connect();
+    const created = await createGame(host, "Alice");
+
+    const socket = connect();
+    // Unknown action type.
+    await expectErrorFor(socket, SOCKET_EVENTS.GAME_ACTION, {
+      roomCode: created.roomCode,
+      sessionToken: "some-token",
+      action: { type: "HACK", player: "p1" },
+    });
+    // Action missing its player.
+    await expectErrorFor(socket, SOCKET_EVENTS.GAME_ACTION, {
+      roomCode: created.roomCode,
+      sessionToken: "some-token",
+      action: { type: "MOVE" },
+    });
+    // Oversized sessionToken.
+    await expectErrorFor(socket, SOCKET_EVENTS.GAME_ACTION, {
+      roomCode: created.roomCode,
+      sessionToken: "t".repeat(100_000),
+      action: { type: "PASS", player: "p1" },
+    });
+    expect(app.lobby.getRoom(created.roomCode)!.players).toHaveLength(1);
+    await expectStillServing();
   });
 });

@@ -17,7 +17,7 @@
  * Contexts (already provided): useGame (GameProvider is mounted by App),
  * SelectionProvider + OverlayProvider are mounted HERE.
  */
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Faction } from "@imperium/shared";
 import { Board } from "../board/Board";
 import type { BoardOverlayState } from "../board/types";
@@ -33,11 +33,15 @@ import { EventCardReveal } from "../game/cards/EventCardReveal";
 import { TacticHandTray } from "../game/cards/TacticHandTray";
 import { GameLogDrawer } from "../game/log/GameLogDrawer";
 import { AdvisorBubble } from "../game/advisor/AdvisorBubble";
+/* HIDDEN-INFO/OBJECTIVES FIXER: "The Sealed Ambitions" door (self-positioned
+   under the settings gear) — my secret objectives + rivals' sealed counts. */
+import { ObjectivesPanel } from "../game/objectives/ObjectivesPanel";
 /* AUDIO-A11Y AGENT integration (see HANDOFF-audio-a11y-findings.md): the
    Steward's Chamber door + the Scribe's Aids store that feeds the Board's
    colorblind prop. Only these imports and the two marked lines below. */
 import { SettingsPanel } from "../settings/SettingsPanel";
 import { useUiSettings } from "../settings/settingsStore";
+import { useAudio } from "../audio/AudioProvider";
 import "../styles/gameBoard.css";
 
 export function GameBoard(): JSX.Element {
@@ -77,6 +81,9 @@ function GameBoardShell(): JSX.Element {
         </div>
         {/* AUDIO-A11Y AGENT: settings door (self-positioned, top-left). */}
         <SettingsPanel />
+        {/* HIDDEN-INFO/OBJECTIVES FIXER: sealed-ambitions door (self-
+            positioned below the gear; tutorial anchor panel:objectives). */}
+        <ObjectivesPanel />
       </main>
 
       <aside className="gb-side gb-right">
@@ -94,6 +101,18 @@ function BoardMount(): JSX.Element {
   const { selection, setSelection, setHover } = useSelection();
   // AUDIO-A11Y AGENT: the Scribe's Aids toggle drives the board hatching.
   const { colorblind } = useUiSettings();
+  const { playSfx } = useAudio();
+
+  /* game.html legend callout 7: selecting a province fills the province
+     card AND plays ui_click. Deselecting (Escape / empty-sea click -> null)
+     stays silent — the cue marks a selection being made. */
+  const handleSelect = useCallback(
+    (id: string | null) => {
+      if (id !== null) playSfx("ui_click");
+      setSelection(id);
+    },
+    [playSfx, setSelection],
+  );
 
   // Board-local overlay state (sieges + wall tiers) from the shared state.
   const overlays = useMemo<BoardOverlayState>(() => {
@@ -119,7 +138,7 @@ function BoardMount(): JSX.Element {
       mapData={BOARD_MAP}
       gameState={gameState}
       selection={selection}
-      onSelect={setSelection}
+      onSelect={handleSelect}
       onHoverChange={setHover}
       overlays={overlays}
       colorblind={colorblind} // AUDIO-A11Y AGENT: Scribe's Aids wiring

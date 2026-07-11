@@ -13,7 +13,8 @@
  *    (lore/factions/*.md sample lines, situation-tagged) plus the
  *    lore/tutorial/tips.md idle tips, triggered by game state:
  *      war declared on you · siege begun (yours, either side) · ally
- *      betrayed you · victory near (renown at fifteen of twenty) · low gold
+ *      betrayed you · victory near (renown at three quarters of the table's
+ *      victory threshold, balance §13.2) · low gold
  *      · an omen struck · phase-tagged idle tips on your turn.
  *    Rate limits: urgent counsel may replace the seat at most every few
  *    breaths; commentary and idle tips wait far longer. Each trigger key
@@ -24,6 +25,7 @@ import { GamePhase } from "@imperium/shared";
 import type { GameState } from "@imperium/shared";
 import { useGame } from "../GameProvider";
 import { me, isMyTurn, provinceById } from "../selectors";
+import { prestigeThreshold } from "../prestige";
 import { CREST_URL } from "../../ui";
 import { advisorFor, tipsFor } from "./advisorLines";
 import type { CounselTag, TipTag } from "./advisorLines";
@@ -43,8 +45,12 @@ export interface AdvisorBubbleProps {
   className?: string;
 }
 
-/** Renown at which the "victory near" counsel fires (track runs to twenty). */
-const VICTORY_NEAR_PRESTIGE = 15;
+/**
+ * Fraction of the table's victory threshold (balance §13.2, mirrored by
+ * game/prestige.ts) at which "victory near" counsel fires. The mockup-era
+ * flat 15 assumed the stale 0–20 track; 15/20 = three quarters of the way.
+ */
+const VICTORY_NEAR_FRACTION = 0.75;
 /** Treasury gold at or below which the "low gold" counsel fires. */
 const LOW_GOLD = 3;
 
@@ -185,7 +191,10 @@ function useDrivenCounsel(enabled: boolean): {
     }
 
     const my = me(state, myPlayerId);
-    if (my !== null && my.prestige >= VICTORY_NEAR_PRESTIGE) {
+    if (
+      my !== null &&
+      my.prestige >= Math.ceil(prestigeThreshold(state) * VICTORY_NEAR_FRACTION)
+    ) {
       candidates.push({ tag: "victory near", key: "victory-near", gap: GAP_URGENT });
     }
     if (my !== null && my.treasury.gold <= LOW_GOLD) {

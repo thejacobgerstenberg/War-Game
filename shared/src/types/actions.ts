@@ -8,6 +8,7 @@
 import type {
   BuildingType,
   Faction,
+  GamePhase,
   GreatWorkType,
   ResourceBundle,
   SpyMission,
@@ -210,6 +211,16 @@ export interface AdvancePhaseAction {
   type: "ADVANCE_PHASE";
   /** Issuing player id, if player-driven. */
   player?: string;
+  /**
+   * Idempotency guard — the round the issuing client was looking at when it
+   * asked to move on. When present and it no longer matches the authoritative
+   * state (another seat's Onward or the turn timer advanced first), the server
+   * treats the action as already satisfied instead of stepping the phase
+   * machine a second time (which would silently skip a phase for the room).
+   */
+  fromRound?: number;
+  /** Idempotency guard — the phase the issuing client was looking at. */
+  fromPhase?: GamePhase;
 }
 
 /** The complete set of commands the reducer accepts. */

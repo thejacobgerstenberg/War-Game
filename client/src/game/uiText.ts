@@ -146,7 +146,12 @@ export const ACTION_ERROR_COPY: Readonly<Partial<Record<string, string>>> = {
   NO_TARGET: "There is no worthy target within reach.",
   BAD_TARGET: "There is no worthy target within reach.",
   INVALID_TARGET: "There is no worthy target within reach.",
-  TREASON_GATE: "A truce forbids this. You are sworn to peace.",
+  // TREASON_GATE is the engine's treason-at-the-gate SIEGE-TACTIC brake
+  // (server/src/engine/tactics.ts::assertTreasonGate): garrison too strong to
+  // suborn, or the siege laid too early. Voice follows TacticPanel's withheld
+  // lines — it has nothing to do with truces.
+  TREASON_GATE:
+    "Treason finds no purchase at this gate — the garrison stands too strong to be suborned, or the siege was laid too early for a gatekeeper to turn his coat.",
   NO_TREATY: "You hold no pact with that crown to break.",
 };
 

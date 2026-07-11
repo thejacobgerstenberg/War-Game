@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import type { Army, Faction, Fleet } from "@imperium/shared";
 import type { BoardOverlayState, OverlayLayerProps, Point } from "../types";
 import { FleetBadge } from "./FleetBadge";
+import { SelectionLabel } from "./SelectionLabel";
 import { SiegeMarker } from "./SiegeMarker";
 import { UnitBadge } from "./UnitBadge";
 import { WallsMarker } from "./WallsMarker";
@@ -16,6 +17,8 @@ interface OverlayItemsProps {
   overlays: BoardOverlayState | undefined;
   factionByPlayer: ReadonlyMap<string, Faction>;
   selection: string | null;
+  /** Display name of the selected shape, for the on-map name-plate. */
+  selectionName: string | null;
 }
 
 function groupByLocation<T extends { locationId: string }>(items: readonly T[]): Map<string, T[]> {
@@ -35,6 +38,27 @@ function unitCount(units: Record<string, number>): number {
   return Object.values(units).reduce((sum, n) => sum + n, 0);
 }
 
+/** Same id fallback the Tooltip uses for SVG-only shapes with no state data. */
+function titleCaseId(id: string): string {
+  return id
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+/** Display name of the selected province/sea-zone; never throws on unknown ids. */
+function selectionDisplayName(
+  gameState: OverlayLayerProps["gameState"],
+  selection: string | null,
+): string | null {
+  if (selection === null) return null;
+  const province = gameState.provinces.find((p) => p.id === selection);
+  if (province) return province.name;
+  const seaZone = gameState.seaZones.find((s) => s.id === selection);
+  if (seaZone) return seaZone.name;
+  return titleCaseId(selection);
+}
+
 /** The only overlay subtree that re-renders on game-state change; pan/zoom never touches it. */
 const OverlayItems = memo(function OverlayItems({
   centroids,
@@ -43,6 +67,7 @@ const OverlayItems = memo(function OverlayItems({
   overlays,
   factionByPlayer,
   selection,
+  selectionName,
 }: OverlayItemsProps): JSX.Element {
   const nodes: JSX.Element[] = [];
 
@@ -96,6 +121,17 @@ const OverlayItems = memo(function OverlayItems({
     nodes.push(<WallsMarker key={`walls-${provinceId}`} x={c.x} y={c.y - 26} tier={tier} />);
   }
 
+  // On-map name-plate for the selection (design contract: never color alone).
+  // Missing centroid (id without an SVG shape) renders nothing, never throws.
+  if (selection !== null && selectionName !== null) {
+    const c = centroids.get(selection);
+    if (c) {
+      nodes.push(
+        <SelectionLabel key={`sel-label-${selection}`} x={c.x} y={c.y} name={selectionName} />,
+      );
+    }
+  }
+
   return <>{nodes}</>;
 });
 
@@ -137,6 +173,7 @@ export function OverlayLayer({
       overlays={overlays}
       factionByPlayer={factionByPlayer}
       selection={selection}
+      selectionName={selectionDisplayName(gameState, selection)}
     />,
     group,
   );

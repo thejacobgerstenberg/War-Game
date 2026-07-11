@@ -21,6 +21,7 @@ import { useGame } from "../GameProvider";
 import { useAudio } from "../../audio/AudioProvider";
 import { Modal, Button, IconChip, toRoman } from "../../ui";
 import { me, provinceById } from "../selectors";
+import { sealAwaiting } from "./commitFlourish";
 import { ACTION_ERROR_COPY, BUTTONS, CONNECTION, PHASE_BANNER } from "../uiText";
 import {
   BUILDING_COST,
@@ -63,7 +64,12 @@ export function BuildMenu({ provinceId, onClose }: BuildMenuProps): JSX.Element 
   if (!province || !my || province.ownerId !== myPlayerId) {
     return (
       <Modal title="Lay the Foundation" onClose={onClose}>
-        <p className="rubric">Can only build in owned provinces.</p>
+        {/* In-voice (register of ui-text §7 error 11); the engine's modern
+            string stays as the action_rejected fallback only. */}
+        <p className="rubric">
+          That province flies another&apos;s banner — the foundation must be
+          laid on your own ground.
+        </p>
         <div className="modal-actions">
           <Button variant="quiet" onClick={onClose}>
             {BUTTONS.close}
@@ -146,6 +152,10 @@ export function BuildMenu({ provinceId, onClose }: BuildMenuProps): JSX.Element 
 
   const seal = (): void => {
     if (choice === null) return;
+    // The commit flourish ("So it is written.") waits for the broadcast that
+    // chronicles the build; the watcher lives in ActionBar (this sheet closes
+    // on seal) — see ./commitFlourish.
+    sealAwaiting.current = true;
     dispatch(
       choice.kind === "building"
         ? { type: "BUILD", player: myPlayerId, provinceId, building: choice.building }

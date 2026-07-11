@@ -5,6 +5,8 @@
  *  - role="dialog" + aria-modal, labelled by its title
  *  - focus is trapped inside while open; Tab/Shift+Tab cycle
  *  - Escape closes (unless `dismissable={false}`), clicking the scrim closes
+ *  - modals may nest (e.g. a ConfirmModal atop a host dialog); Escape and the
+ *    focus trap apply to the TOPMOST open modal only
  *  - focus returns to the previously-focused element on close
  *
  * ConfirmModal is the destructive-confirmation variant: title, one line of
@@ -34,9 +36,17 @@ export interface ModalProps {
 export function Modal(props: ModalProps): JSX.Element {
   const { title, onClose, dismissable = true, wide, className, children } = props;
   const dialogRef = useRef<HTMLDivElement>(null);
+  const scrimRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<Element | null>(null);
 
-  // Trap focus, handle Escape, restore focus on unmount.
+  // Live refs so the keydown listener (registered once, on mount) always sees
+  // the latest props without re-subscribing.
+  const dismissableRef = useRef(dismissable);
+  const onCloseRef = useRef(onClose);
+  dismissableRef.current = dismissable;
+  onCloseRef.current = onClose;
+
+  // Trap focus, handle Escape (topmost modal only), restore focus on unmount.
   useEffect(() => {
     restoreRef.current = document.activeElement;
     const dialog = dialogRef.current;
@@ -46,9 +56,19 @@ export function Modal(props: ModalProps): JSX.Element {
     }
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && dismissable) {
+      // Only the TOPMOST open modal handles keys: every Modal registers a
+      // document-level keydown listener, and `stopPropagation` cannot silence
+      // sibling listeners on the same node — without this guard an Escape
+      // meant for a nested confirm would also dismiss its host dialog, and
+      // two focus traps would contend for Tab. "Topmost" is read from the
+      // DOM: all Modals portal a .modal-scrim into <body>, so the LAST scrim
+      // in document order is the one visually on top (a mount-order stack
+      // would get this wrong — child effects run before parent effects).
+      const scrims = document.querySelectorAll(".modal-scrim");
+      if (scrims[scrims.length - 1] !== scrimRef.current) return;
+      if (e.key === "Escape" && dismissableRef.current) {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab") return;
@@ -78,10 +98,11 @@ export function Modal(props: ModalProps): JSX.Element {
       const restore = restoreRef.current;
       if (restore instanceof HTMLElement) restore.focus();
     };
-  }, [dismissable, onClose]);
+  }, []);
 
   return createPortal(
     <div
+      ref={scrimRef}
       className="modal-scrim"
       onMouseDown={(e) => {
         if (dismissable && e.target === e.currentTarget) onClose();

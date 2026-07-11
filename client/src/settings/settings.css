@@ -21,6 +21,36 @@
   padding: var(--space-1) var(--space-2);
 }
 
+/* In the pre-game menu footer the door sits in flow, not over the map. */
+.set-door-slot.set-door-slot--inline {
+  position: static;
+}
+
+/* -- Menu footer (design/mockups/home.html zone 5) -------------------------- */
+/* Version line + settings gear, pinned under the pre-game screens so the
+   Steward's Chamber is reachable before a game starts (MenuFooter.tsx). */
+
+.set-menu-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--space-4);
+  border-top: 1px solid var(--gold);
+  font-size: var(--text-sm);
+}
+
+.set-menu-footer-line {
+  margin: 0;
+}
+
+.set-menu-footer-version {
+  font-family: var(--font-mono);
+}
+
 /* -- Chamber body ---------------------------------------------------------- */
 
 .set-subtitle {

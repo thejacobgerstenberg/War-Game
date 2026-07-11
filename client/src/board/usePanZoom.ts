@@ -69,6 +69,62 @@ export function usePanZoom(options?: PanZoomOptions): PanZoomApi {
       applyZoom(e.clientX, e.clientY, transformRef.current.scale * factor);
     };
 
+    // Keyboard pan/zoom (a11y finding: gestures were wheel/pointer-only).
+    // Bound on the viewport, so it also catches keys bubbling up from the
+    // focusable province shapes inside it. Modified keys are left alone
+    // (browser zoom, tab switching, etc.).
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const t = transformRef.current;
+      const step = 60;
+      switch (e.key) {
+        case "ArrowLeft":
+          t.x += step;
+          break;
+        case "ArrowRight":
+          t.x -= step;
+          break;
+        case "ArrowUp":
+          t.y += step;
+          break;
+        case "ArrowDown":
+          t.y -= step;
+          break;
+        case "+":
+        case "=":
+        case "-":
+        case "_": {
+          const rect = viewport.getBoundingClientRect();
+          const zoomIn = e.key === "+" || e.key === "=";
+          e.preventDefault();
+          applyZoom(
+            rect.left + rect.width / 2,
+            rect.top + rect.height / 2,
+            t.scale * (zoomIn ? 1.25 : 0.8),
+          );
+          return;
+        }
+        default:
+          return;
+      }
+      e.preventDefault();
+      scheduleWrite();
+    };
+
+    // Focusing an off-screen shape makes the browser scroll this
+    // overflow-hidden viewport to reveal it, which would silently desync
+    // the CSS transform. Fold that scroll into the pan instead, so
+    // keyboard focus pans the map like everyone else.
+    const onScroll = () => {
+      const t = transformRef.current;
+      if (viewport.scrollLeft === 0 && viewport.scrollTop === 0) return;
+      t.x -= viewport.scrollLeft;
+      t.y -= viewport.scrollTop;
+      viewport.scrollLeft = 0;
+      viewport.scrollTop = 0;
+      scheduleWrite();
+    };
+
     // Capture only once a drag is real: capturing on pointerdown would
     // retarget the synthesized click to the viewport and break selection.
     const capturePointer = (pointerId: number) => {
@@ -167,6 +223,8 @@ export function usePanZoom(options?: PanZoomOptions): PanZoomApi {
     // ≤ 4px, capture deferred for click synthesis) can end outside the
     // viewport, and its pointerup never reaches viewport listeners.
     viewport.addEventListener("wheel", onWheel, { passive: false });
+    viewport.addEventListener("keydown", onKeyDown);
+    viewport.addEventListener("scroll", onScroll);
     viewport.addEventListener("pointerdown", onPointerDown);
     viewport.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerEnd);
@@ -175,6 +233,8 @@ export function usePanZoom(options?: PanZoomOptions): PanZoomApi {
 
     return () => {
       viewport.removeEventListener("wheel", onWheel);
+      viewport.removeEventListener("keydown", onKeyDown);
+      viewport.removeEventListener("scroll", onScroll);
       viewport.removeEventListener("pointerdown", onPointerDown);
       viewport.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerEnd);

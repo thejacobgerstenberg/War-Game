@@ -22,10 +22,14 @@
  *      (so it is ready before the lobby→game crossfade), battle_drums
  *      idle-prefetched shortly after entering GAME;
  *   §8 loops: the five looping files play with loop=true; the two ambient
- *      loops (battle_distant, crowd_murmur) are state-bound and are stopped
- *      with a 50 ms fade when their owning modal closes (observed via the
- *      modal scrim, since the frozen playSfx API has no stop()) or when the
- *      music scene leaves BATTLE / returns to LOBBY.
+ *      loops (battle_distant, crowd_murmur) are state-bound: the modal that
+ *      starts one OWNS it and stops it from its unmount cleanup via
+ *      stopSfx() with the contractual 50 ms fade. The music machine also
+ *      stops battle_distant when the scene leaves BATTLE and both loops on
+ *      a return to LOBBY, and a DOM scrim observer remains as a last-resort
+ *      safety net for the no-modal-at-all case (it CANNOT replace owner
+ *      cleanup: overlay routing can swap one modal for another in a single
+ *      React commit, so a scrim may never be absent while ownership moves).
  *
  * The engine is a framework-free singleton; AudioProvider subscribes via
  * subscribe()/getSnapshot() (useSyncExternalStore-shaped).
@@ -242,10 +246,13 @@ export class AudioEngine {
     window.addEventListener("pointerdown", onGesture, true);
     window.addEventListener("keydown", onGesture, true);
 
-    // §8: ambient loops are state-bound to their owning modal. The frozen
-    // playSfx API has no stop(), so the engine watches the modal scrim
-    // (ui/Modal portals a .modal-scrim into <body>) and fades both loops
-    // out 50 ms after the last modal closes.
+    // §8 SAFETY NET (not the primary stop): loop owners stop their own loop
+    // via stopSfx() from unmount cleanup. This observer only covers the
+    // degenerate "no modal left at all" case — ui/Modal portals a
+    // .modal-scrim into <body>, so when the last scrim is gone no loop may
+    // survive. It deliberately does NOT try to arbitrate between modals:
+    // OverlayManager can replace one modal with another in a single commit
+    // (scrim never absent), which is exactly why owner cleanup exists.
     this.scrimObserver = new MutationObserver(() => {
       if (
         this.ambientLoops.size > 0 &&
@@ -363,16 +370,19 @@ export class AudioEngine {
     const ctx = this.ctx;
     if (ctx === null || !this.unlocked) return; // §5: no pre-unlock catch-up
 
+    // §8 loops are exempt from the §3 debounce: startAmbientLoop is already
+    // idempotent while running (the double-start the debounce guards
+    // against), and debouncing would wrongly drop an owner's immediate
+    // stop→restart (e.g. a React StrictMode remount of the owning modal).
+    if (LOOPING_SFX.has(name)) {
+      this.startAmbientLoop(name);
+      return;
+    }
+
     // §3 debounce: same file may not start twice within 80 ms — drop.
     const now = performance.now();
     const last = this.lastSfxStart.get(name);
     if (last !== undefined && now - last < SFX_DEBOUNCE_MS) return;
-
-    if (LOOPING_SFX.has(name)) {
-      this.startAmbientLoop(name);
-      this.lastSfxStart.set(name, now);
-      return;
-    }
 
     const buffer = this.sfxBuffers.get(name);
     if (buffer === undefined) return; // not decoded (yet, or failed): silence
@@ -383,6 +393,20 @@ export class AudioEngine {
     source.buffer = buffer;
     source.connect(bus);
     source.start();
+  }
+
+  /**
+   * Stop a state-bound ambient loop with the contractual 50 ms fade (§2/§8).
+   * Non-looping names are a no-op (a fired one-shot cannot be recalled).
+   * The component that STARTED a loop owns it and must call this from its
+   * unmount cleanup — AUDIO_DESIGN §2 "never leave an orphaned loop
+   * running". No DOM heuristic can substitute: OverlayManager may replace
+   * the owning modal with another (battle / auction) in the same commit,
+   * leaving a scrim present throughout.
+   */
+  stopSfx(name: SfxName): void {
+    if (!LOOPING_SFX.has(name)) return;
+    this.stopAmbientLoop(name);
   }
 
   /** Start a state-bound ambient loop (idempotent while running). */

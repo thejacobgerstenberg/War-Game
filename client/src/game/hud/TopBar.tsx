@@ -11,11 +11,13 @@
  * Data: useGame() -> gameState.round/era/phase + timer {deadline,
  * turnSeconds, activePlayerId}. Phase mapping: uiText.PHASE_STEP_INDEX /
  * PHASE_TRACK_STEPS. Audio: round start plays church_bell; an era change
- * plays horn_fanfare over the church_bell tail (audio/AUDIO_DESIGN.md §2).
+ * plays horn_fanfare over the church_bell tail; income collection plays
+ * coin_purse once per batch (audio/AUDIO_DESIGN.md §2).
  * Auto-yield at nought breaths is server-side — this bar only renders.
  */
 import { useEffect, useRef, useState } from "react";
 import { useGame } from "../GameProvider";
+import { useFreshLogEntries } from "../useFreshLog";
 import { useAudio } from "../../audio/AudioProvider";
 import { toRoman, eraLabel, Tooltip, ICON_URL, CREST_URL } from "../../ui";
 import type { IconName } from "../../ui";
@@ -152,6 +154,22 @@ export function TopBar({ className }: TopBarProps): JSX.Element {
       playSfx("church_bell");
     }
   }, [gameState.round, gameState.era, playSfx]);
+
+  // Income cue (AUDIO_DESIGN §2): "Income collected → coin_purse, sting once
+  // per collection". Treasuries are credited server-side when the Income
+  // phase resolves (economy.ts applyIncomePhase writes one "collects income"
+  // chronicle line per player, type "trade" with data.income), so the sting
+  // keys off the fresh chronicle entries in the next broadcast — never
+  // optimistically. §2's batch rule: all players collect simultaneously, so
+  // one sting per broadcast batch, not one per player. data.income is unique
+  // to this line; market CONVERT/ROUTE lines carry data.give / data.route and
+  // keep their own confirmation stings (MarketModal).
+  useFreshLogEntries((entries) => {
+    const collected = entries.some(
+      (e) => e.type === "trade" && e.data !== undefined && "income" in e.data,
+    );
+    if (collected) playSfx("coin_purse");
+  });
 
   // Whose turn: the transport timer is the authoritative live signal;
   // otherwise derive from turnOrder.

@@ -77,6 +77,35 @@
   min-width: 0;
 }
 
+/* Empty-state place picker (keyboard path to a FIRST selection). */
+.insp-picker { margin-top: var(--space-3); display: grid; gap: var(--space-1); }
+.insp-picker label {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  font-size: var(--text-xs);
+  color: color-mix(in srgb, var(--ink) 72%, var(--parchment));
+}
+.insp-picker input {
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--parchment) 88%, white);
+  border: 1px solid color-mix(in srgb, var(--ink) 35%, var(--parchment));
+  border-radius: 4px;
+  padding: 0.25em 0.5em;
+  min-width: 0;
+}
+.insp-picker input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+.insp-picker-list {
+  max-height: 14rem;
+  overflow-y: auto;
+  align-content: start;
+}
+
 /* Contextual orders (at most two; mockup .card-actions). */
 .insp-actions {
   display: grid;

@@ -7,6 +7,7 @@ import {
 } from "@imperium/shared";
 import { getSocket } from "./socket";
 import { clearSession, loadSession, saveSession } from "./session";
+import { lobbyErrorCopy } from "./lobbyErrorCopy";
 import { Home } from "./screens/Home";
 import { CreateJoin } from "./screens/CreateJoin";
 import { FactionPick } from "./screens/FactionPick";
@@ -15,6 +16,7 @@ import { GameBoard } from "./screens/GameBoard";
 import { GameProvider } from "./game/GameProvider";
 import { ToastProvider } from "./ui";
 import { AudioProvider } from "./audio/AudioProvider";
+import { MenuFooter } from "./settings/MenuFooter";
 import "./styles/tokens.css";
 import "./styles/base.css";
 
@@ -87,7 +89,9 @@ export function App() {
         rejoinPending.current = false;
         clearSession();
       }
-      setError(message);
+      // Pre-game errors arrive as raw server English (no machine code);
+      // translate known messages to the lore/ui-text.md §2 lines.
+      setError(lobbyErrorCopy(message));
     });
 
     socket.on("connect", attemptRejoin);
@@ -179,7 +183,14 @@ export function App() {
 
   return (
     <ToastProvider>
-      <AudioProvider>{renderScreen()}</AudioProvider>
+      <AudioProvider>
+        {renderScreen()}
+        {/* Pre-game footer (home.html zone 5): version line + settings gear,
+            so mute/volume/The Scribe's Aids are reachable before a game
+            starts — menu_theme plays out here too (AUDIO_DESIGN §5). In-game,
+            GameBoard docks its own door over the map. */}
+        {screen !== "game" && <MenuFooter />}
+      </AudioProvider>
     </ToastProvider>
   );
 }

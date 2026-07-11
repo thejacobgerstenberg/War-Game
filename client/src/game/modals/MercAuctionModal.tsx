@@ -22,7 +22,7 @@
  * the same company grid is reachable pre-auction from MarketModal's "The Free
  * Companies" leaf (this file exports the shared pieces).
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { MercCompanyOffer, Player, ResourceBundle } from "@imperium/shared";
 import { UnitType } from "@imperium/shared";
 import {
@@ -38,6 +38,7 @@ import {
 import { useAudio } from "../../audio/AudioProvider";
 import { useGame } from "../GameProvider";
 import { playerById } from "../selectors";
+import { useFreshLogEntries } from "../useFreshLog";
 import { BUTTONS, FACTION_NAME, TURN_BANNER_MINE, turnBannerFor } from "../uiText";
 // PROVENANCE: client/src/assets/market/company-card.svg is a byte copy of
 // art/cards/event-card.svg (the parchment/Greek-key card frame). Imported raw
@@ -265,6 +266,31 @@ export function FreeCompanies(props: {
   const gold = my?.treasury.gold ?? 0;
   const open = props.offers.filter((o) => !o.sold);
 
+  /* ---- confirmation flourish --------------------------------------------------
+   * dispatch() is fire-and-forget and a rival's raise may land first; the
+   * triumph toast and the coin_purse confirm the DEED, so they wait for the
+   * broadcast whose chronicle carries my bid (mercenaries.ts logs type
+   * "mercenary", my seat among the actors, data {companyId, bid} — the hire /
+   * disperse lines carry data.fielded and the pass line data.pass, excluded). */
+  const awaitingBid = useRef(false);
+  useFreshLogEntries((entries) => {
+    if (!awaitingBid.current) return;
+    for (const e of entries) {
+      if (
+        e.type === "mercenary" &&
+        e.actors.includes(myPlayerId) &&
+        typeof e.data?.bid === "number" &&
+        e.data?.pass === undefined &&
+        e.data?.fielded === undefined
+      ) {
+        awaitingBid.current = false;
+        playSfx("coin_purse");
+        toast.triumph("So it is written.");
+        break;
+      }
+    }
+  });
+
   const factionNameOf = (p: Player | null): string =>
     p ? (p.faction ? FACTION_NAME[p.faction] : p.name) : "another house";
 
@@ -283,21 +309,48 @@ export function FreeCompanies(props: {
   };
 
   const raise = (companyId: string, bid: number): void => {
+    // quill_scratch belongs to the press itself; coin_purse and the triumph
+    // toast wait for the server to chronicle the bid (see watcher above).
     playSfx("quill_scratch");
-    playSfx("coin_purse");
-    dispatch({ type: "MERC_BID", player: myPlayerId, companyId, bid });
-    toast.triumph("So it is written.");
+    awaitingBid.current = true;
+    // Correlation predicate for the pendingAction latch: rival-caused
+    // broadcasts land while my bid is in flight, and must not re-arm the
+    // button (double-click → two MERC_BIDs). The raise button is disabled
+    // while I already stand highest, so "I am the high bidder on this
+    // company" can only become true because THIS bid was applied.
+    dispatch(
+      { type: "MERC_BID", player: myPlayerId, companyId, bid },
+      {
+        resolvedWhen: (state) =>
+          state.mercMarket.some(
+            (o) => o.companyId === companyId && o.highBidderId === myPlayerId,
+          ),
+      },
+    );
   };
 
   const pass = (companyId: string): void => {
     setPassTarget(null);
-    dispatch({
-      type: "MERC_BID",
-      player: myPlayerId,
-      companyId,
-      bid: 0,
-      pass: true,
-    });
+    // Latch predicate: the engine records my pass in the offer's
+    // passedPlayerIds before any auction-close bookkeeping, so its presence
+    // (or the offer having resolved entirely) proves the pass was applied.
+    dispatch(
+      {
+        type: "MERC_BID",
+        player: myPlayerId,
+        companyId,
+        bid: 0,
+        pass: true,
+      },
+      {
+        resolvedWhen: (state) =>
+          state.mercMarket.some(
+            (o) =>
+              o.companyId === companyId &&
+              (o.sold || (o.passedPlayerIds ?? []).includes(myPlayerId)),
+          ),
+      },
+    );
   };
 
   return (

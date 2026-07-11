@@ -1,0 +1,164 @@
+/* objectives.css — "The Sealed Ambitions" door + panel
+ * (hidden-info/objectives area; tokens from styles/tokens.css = mockups.css).
+ * The door docks under the Steward's Chamber gear (settings/settings.css
+ * .set-door-slot: top/left var(--space-3)) in the same self-positioned slot
+ * pattern. */
+
+.obj-door-slot {
+  position: absolute;
+  top: calc(var(--space-3) + 3.4rem);
+  left: var(--space-3);
+  z-index: 60;
+}
+
+.obj-door {
+  font-size: var(--text-lg);
+}
+
+.obj-door img {
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.2em;
+}
+
+.obj-section + .obj-section {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--vellum-shade);
+}
+
+.obj-heading {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-md, 1rem);
+  letter-spacing: 0.04em;
+}
+
+.obj-rubric {
+  margin: 0 0 var(--space-3);
+}
+
+.obj-empty {
+  margin: 0;
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+/* --- My objectives ------------------------------------------------------ */
+
+.obj-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.obj-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--parchment);
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-1);
+}
+
+/* A face-down stub (defensive: mine arrive in full). */
+.obj-item--sealed .obj-desc {
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+.obj-item.is-fulfilled {
+  border-color: var(--laurel);
+}
+
+.obj-marks {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex: none;
+  white-space: nowrap;
+}
+
+.obj-fulfilled {
+  color: var(--laurel);
+  font-weight: 700;
+}
+
+.obj-worth {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-weight: 700;
+}
+
+.obj-worth img {
+  width: 1em;
+  height: 1em;
+  align-self: center;
+}
+
+/* --- Rivals ------------------------------------------------------------- */
+
+.obj-rivals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.obj-rival {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-2);
+}
+
+.obj-rival-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.obj-rival-crest {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+
+.obj-rival-names {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.obj-rival-faction {
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+}
+
+.obj-rival-name {
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.obj-rival-sealed {
+  margin-left: auto;
+  flex: none;
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+}
+
+/* Whisper intel (SpyMission.OBJECTIVE log lines, visible to me alone). */
+.obj-intel {
+  margin: var(--space-2) 0 0;
+  padding-left: calc(24px + var(--space-2));
+  font-style: italic;
+}

@@ -32,7 +32,7 @@ describe("legalMoveTargets — armies (province → province)", () => {
     }
   });
 
-  it("excludes sea zones even for a coastal province (no embarkation)", () => {
+  it("excludes sea zones for an army-only coastal province (armies never sail)", () => {
     const state = demoGameState();
     const seaNeighbors = neighborsOf("constantinople").filter(isSeaZoneId);
     expect(seaNeighbors.length).toBeGreaterThan(0); // sanity: it is coastal
@@ -54,31 +54,43 @@ describe("legalMoveTargets — armies (province → province)", () => {
   });
 });
 
-describe("legalMoveTargets — fleets (sea → sea)", () => {
-  it("returns only sea-zone neighbors for a sea zone holding a fleet", () => {
+describe("legalMoveTargets — fleets (province ↔ sea ↔ sea)", () => {
+  it("offers adjacent zones AND bordering harbors for a fleet at sea", () => {
     const state = demoGameState();
-    // f-gen-1 sits in the bosphorus, which also touches three provinces.
+    // f-gen-1 sits in the bosphorus, which also touches three provinces:
+    // the engine accepts both sea→sea and sea→province naval steps.
     const targets = legalMoveTargets(state, "bosphorus");
-    expect(targets).toEqual(["sea-of-marmara", "black-sea-west"]);
-    expect(targets.every(isSeaZoneId)).toBe(true);
+    expect(targets).toEqual(neighborsOf("bosphorus"));
+    expect(targets.some(isSeaZoneId)).toBe(true);
+    expect(targets.some((n) => !isSeaZoneId(n))).toBe(true);
   });
 
-  it("excludes adjacent land provinces (no disembarkation)", () => {
+  it("includes adjacent coastal provinces (a fleet may put into harbor)", () => {
     const state = demoGameState();
     const landNeighbors = neighborsOf("adriatic").filter((n) => !isSeaZoneId(n));
     expect(landNeighbors.length).toBeGreaterThan(0); // sanity: coast exists
     const targets = legalMoveTargets(state, "adriatic"); // f-ven-1
-    expect(targets).toEqual(["ionian"]);
-    for (const land of landNeighbors) expect(targets).not.toContain(land);
+    for (const land of landNeighbors) expect(targets).toContain(land);
+    expect(targets).toContain("ionian");
+  });
+
+  it("offers only sea zones for a fleet alone in port (fleets never march)", () => {
+    const state = demoGameState();
+    state.fleets[0].locationId = "ragusa"; // f-ven-1 puts into an empty harbor
+    expect(legalMoveTargets(state, "ragusa")).toEqual(
+      neighborsOf("ragusa").filter(isSeaZoneId),
+    );
   });
 });
 
-describe("legalMoveTargets — precedence and empty cases", () => {
-  it("army rule wins when both an army and a fleet share a location", () => {
+describe("legalMoveTargets — shared locations and empty cases", () => {
+  it("unions land and sea targets when an army and a fleet share a port", () => {
     const state = demoGameState();
-    state.armies[0].locationId = "adriatic"; // alongside f-ven-1
-    expect(legalMoveTargets(state, "adriatic")).toEqual(
-      neighborsOf("adriatic").filter((n) => !isSeaZoneId(n)),
+    state.fleets[0].locationId = "constantinople"; // f-ven-1 alongside a-byz-1
+    // The army's land neighbors AND the fleet's sea neighbors, in adjacency
+    // order — the fleet is no longer stranded by the garrison in its port.
+    expect(legalMoveTargets(state, "constantinople")).toEqual(
+      neighborsOf("constantinople"),
     );
   });
 

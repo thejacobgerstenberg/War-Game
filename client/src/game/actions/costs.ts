@@ -12,7 +12,7 @@
  * User-facing names/glosses quote docs/GAME_DESIGN.md (the canon tables) and
  * lore/ui-text.md §7 (the in-voice shortfall lines).
  */
-import { BuildingType, GreatWorkType, TaxPosture, UnitType } from "@imperium/shared";
+import { BuildingType, Faction, GreatWorkType, TaxPosture, UnitType } from "@imperium/shared";
 import type { ResourceBundle } from "@imperium/shared";
 
 export type CostBundle = Partial<ResourceBundle>;
@@ -97,6 +97,146 @@ export const NAVAL_UNITS: readonly UnitType[] = [UnitType.GALLEY, UnitType.WARSH
 /** Mercenary hire premium (balance.MERC_MARKET): ×1.5 gold, Genoa ×1.0. */
 export const MERC_HIRE_GOLD_MULTIPLIER = 1.5;
 export const MERC_GENOA_GOLD_MULTIPLIER = 1.0;
+
+// ---------------------------------------------------------------------------
+// Unique units (balance.ts UNIQUE_UNIT_OVERRIDES + factions.ts
+// FACTION_UNIQUE_UNITS prose, which quotes lore/factions/FACTIONS.md).
+//
+// The 10 recruitable faction signature units, in muster-roll order per
+// faction. A RECRUIT order names them via RecruitVariant {base, variant,
+// count}; the engine (applyRecruit) validates faction + recruitProvinces and
+// charges the BASE unit's cost (UNIT_STATS[base] — same table as UNIT_COST),
+// with the usual mercenary treatment (×1.5 gold — Genoa ×1.0 — 0 grain) when
+// hired as mercenaries. Deliberately ABSENT here because unrecruitable:
+// VARANGIAN_REMNANT (merc-auction only, recruitProvinces: []) and the Great
+// Bombard (enters play only via Omen #34; RECRUIT is rejected NOT_RECRUITABLE).
+// ---------------------------------------------------------------------------
+
+export interface UniqueUnitDisplay {
+  /** Key into balance.UNIQUE_UNIT_OVERRIDES (RecruitVariant.variant). */
+  variant: string;
+  /** The generic unit it is costed and stacked as. */
+  base: UnitType;
+  /** Canon display name (balance.UNIQUE_UNIT_OVERRIDES[variant].name). */
+  name: string;
+  faction: Faction;
+  /** Province ids where it may be raised (undefined = anywhere its base is legal). */
+  recruitProvinces?: readonly string[];
+  /** Role prose, verbatim from factions.ts FACTION_UNIQUE_UNITS (FACTIONS.md). */
+  role: string;
+}
+
+/** The 10 faction unique units (mirror; the server stays authoritative). */
+export const UNIQUE_UNITS: readonly UniqueUnitDisplay[] = [
+  {
+    variant: "VARANGIAN_GUARD",
+    base: UnitType.INFANTRY,
+    name: "Varangian Guard",
+    faction: Faction.BYZANTIUM,
+    recruitProvinces: ["constantinople"],
+    role:
+      "The emperor's axe-bearing elite guard. Very strong defending a walled " +
+      "city; may only be raised in constantinople, is expensive (gold+grain), " +
+      "and does not rout while the emperor lives.",
+  },
+  {
+    variant: "GREEK_FIRE_DROMON",
+    base: UnitType.GALLEY,
+    name: "Greek-Fire Dromon",
+    faction: Faction.BYZANTIUM,
+    recruitProvinces: ["constantinople", "thessalonica"],
+    role:
+      "Unique war galley carrying siphon fire: +combat versus enemy fleets and " +
+      "can burn a besieging fleet in a friendly port's sea zone. Built only at " +
+      "constantinople or thessalonica.",
+  },
+  {
+    variant: "JANISSARY",
+    base: UnitType.INFANTRY,
+    name: "Janissary",
+    faction: Faction.OTTOMAN,
+    recruitProvinces: ["edirne", "bursa"],
+    role:
+      "Elite slave-soldiers of the Porte: strong assaulting walls and in open " +
+      "battle, but paid only in gold (donative) — if unpaid they grow mutinous. " +
+      "Raised at edirne or bursa.",
+  },
+  {
+    variant: "GHAZI_AKINCI",
+    base: UnitType.CAVALRY,
+    name: "Ghazi Akıncı",
+    faction: Faction.OTTOMAN,
+    role:
+      "Cheap light raider cavalry: pillages an adjacent enemy or neutral " +
+      "province for gold, ignores rough-terrain movement penalties, and screens " +
+      "the main army.",
+  },
+  {
+    variant: "STRADIOTI",
+    base: UnitType.CAVALRY,
+    name: "Stradioti",
+    faction: Faction.VENICE,
+    role:
+      "Balkan marine light cavalry (Albanian/Greek horsemen) who embark on " +
+      "galleys to raid enemy coasts then re-embark. Excellent hit-and-run on " +
+      "ports; weak in a stand-up land battle.",
+  },
+  {
+    variant: "GREAT_GALLEY",
+    base: UnitType.WARSHIP,
+    name: "Great Galley (Galeazza)",
+    faction: Faction.VENICE,
+    recruitProvinces: ["venice"],
+    role:
+      "The Arsenal's masterwork heavy war galley (Galeazza): dominates a sea " +
+      "zone, +combat versus ordinary galleys, and carries a bombard for coastal " +
+      "siege support.",
+  },
+  {
+    variant: "GENOESE_CROSSBOWMEN",
+    base: UnitType.ARCHER,
+    name: "Genoese Crossbowmen",
+    faction: Faction.GENOA,
+    role:
+      "The most sought-after crossbows in Europe: strong ranged combat and wall " +
+      "defense. Genoa may sell them to any other faction or neutral for gold, " +
+      "earning income whenever they are hired.",
+  },
+  {
+    variant: "CARRACK",
+    base: UnitType.GALLEY,
+    name: "Carrack (Nave)",
+    faction: Faction.GENOA,
+    role:
+      "Heavy sailing merchantman (Nave): tough, long-range transport & trade " +
+      "ship that hauls more cargo and troops than a galley and can run a " +
+      "blockade on a die, keeping the Black Sea lifeline open.",
+  },
+  {
+    variant: "BLACK_ARMY",
+    base: UnitType.INFANTRY,
+    name: "Black Army (Fekete Sereg)",
+    faction: Faction.HUNGARY,
+    recruitProvinces: ["buda"],
+    role:
+      "Elite standing gunpowder infantry + handgunners (Fekete Sereg): very " +
+      "strong in open battle and assault, paid in gold (no gold, no Black Army).",
+  },
+  {
+    variant: "BANDERIAL_KNIGHTS",
+    base: UnitType.CAVALRY,
+    name: "Banderial Knights",
+    faction: Faction.HUNGARY,
+    role:
+      "The barons' armored heavy shock cavalry: devastating charge on plains, " +
+      "the map's premier cavalry; less effective in mountains and sieges.",
+  },
+];
+
+/** The signature units a faction's muster roll offers, in canon order. */
+export function factionUniqueUnits(faction: Faction | null): UniqueUnitDisplay[] {
+  return UNIQUE_UNITS.filter((u) => u.faction === faction);
+}
 
 // ---------------------------------------------------------------------------
 // Buildings (balance.ts BUILDING_COSTS/BUILDING_EFFECTS / GAME_DESIGN §9.1)
@@ -230,17 +370,25 @@ export const TAX_ORDER: readonly TaxPosture[] = [
   TaxPosture.HEAVY,
 ];
 
+/** One name per posture everywhere it shows (matches MarketModal's tithe leaf). */
 export const TAX_LABEL: Record<TaxPosture, string> = {
   [TaxPosture.LENIENT]: "Lenient",
-  [TaxPosture.NORMAL]: "Normal",
+  [TaxPosture.NORMAL]: "Customary",
   [TaxPosture.HEAVY]: "Heavy",
 };
 
-/** Posture lines from the GAME_DESIGN §4.2 table (gold modifier · risk). */
+/**
+ * Posture glosses narrating the GAME_DESIGN §4.2 table (0.75/1.0/1.5 gold,
+ * heavy revolt check, lenient unrest resistance) in chronicle voice — the
+ * same narration MarketModal's tithe leaf carries.
+ */
 export const TAX_GLOSS: Record<TaxPosture, string> = {
-  [TaxPosture.LENIENT]: "×0.75 gold · +1 unrest resistance",
-  [TaxPosture.NORMAL]: "×1.0 gold",
-  [TaxPosture.HEAVY]: "×1.5 gold · 1-in-6 province revolt check",
+  [TaxPosture.LENIENT]:
+    "Three parts in four are gathered; a gentle hand steadies restless provinces.",
+  [TaxPosture.NORMAL]:
+    "The full tithe, as custom sets it — neither grudged nor praised.",
+  [TaxPosture.HEAVY]:
+    "Half again the custom — and every province so wrung may rise in revolt.",
 };
 
 /** The standing action budget (balance.ACTIONS_PER_ROUND). */

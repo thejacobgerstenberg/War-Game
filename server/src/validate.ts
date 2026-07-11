@@ -206,6 +206,17 @@ export function parseGameActionPayload(
     if (action.player !== undefined && !isValidPlayerId(action.player)) {
       return fail("Invalid action player.");
     }
+    // Optional idempotency guard fields (the round/phase the client saw).
+    if (
+      action.fromRound !== undefined &&
+      (typeof action.fromRound !== "number" ||
+        !Number.isInteger(action.fromRound))
+    ) {
+      return fail("Malformed game action.");
+    }
+    if (action.fromPhase !== undefined && typeof action.fromPhase !== "string") {
+      return fail("Malformed game action.");
+    }
   } else if (!isValidPlayerId(action.player)) {
     return fail("A game action must name its player.");
   }

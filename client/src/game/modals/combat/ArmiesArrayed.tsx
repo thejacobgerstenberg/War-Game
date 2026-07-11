@@ -6,7 +6,7 @@
  * never color alone (mockup legend, callout 2).
  */
 import { Faction, UnitType } from "@imperium/shared";
-import { CREST_URL, ICON_URL, toRoman } from "../../../ui";
+import { CREST_URL, ICON_URL } from "../../../ui";
 import { FACTION_SLUG } from "../../../board/types";
 import { FACTION_NAME } from "../../uiText";
 
@@ -92,7 +92,10 @@ function ArmySide(props: ArmySideProps): JSX.Element {
               <span className="chip-icon">
                 <img src={unitIcon(r.type)} alt="" />
               </span>
-              <b className="value">{toRoman(r.count)}</b>
+              {/* ui-text preamble: "only counters, costs, and tallies wear bare
+                  numerals" — unit tallies are tallies (combat.html zone 2 shows
+                  "6 Levies"). Roman numerals stay reserved for Round/Era. */}
+              <b className="value">{r.count}</b>
               <span className="name">{UNIT_LABEL[r.type]}</span>
             </span>
           ))}

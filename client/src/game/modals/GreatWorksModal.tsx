@@ -23,7 +23,7 @@ import { Button, IconChip, Modal, toRoman, useToast } from "../../ui";
 import type { ResourceIconName } from "../../ui";
 import { useAudio } from "../../audio/AudioProvider";
 import { useGame } from "../GameProvider";
-import { isMyTurn, provinceById } from "../selectors";
+import { provinceById } from "../selectors";
 import { ACTION_ERROR_COPY, BUTTONS, FACTION_NAME } from "../uiText";
 import "./court.css";
 
@@ -116,7 +116,7 @@ export interface GreatWorksModalProps {
 }
 
 export function GreatWorksModal({ provinceId, onClose }: GreatWorksModalProps): JSX.Element {
-  const { gameState, myPlayerId, dispatch, pendingAction, timer } = useGame();
+  const { gameState, myPlayerId, dispatch, pendingAction } = useGame();
   const { playSfx } = useAudio();
   const toast = useToast();
 
@@ -133,20 +133,19 @@ export function GreatWorksModal({ provinceId, onClose }: GreatWorksModalProps): 
   });
   const site = siteId ? provinceById(gameState, siteId) : null;
 
-  /* ---- act gating: BUILD is a budgeted deed in the action window. ----------- */
-  const myTurn = isMyTurn(gameState, myPlayerId, timer);
+  /* ---- act gating: BUILD is a budgeted deed in the action window. Mirror the
+   * engine's spendAction rule exactly (phase + budget) — the action window is
+   * SIMULTANEOUS for all seats; there is no turn-ownership rule to enforce. */
   const inWindow =
     gameState.phase === GamePhase.RECRUITMENT ||
     gameState.phase === GamePhase.MOVEMENT ||
     gameState.phase === GamePhase.DIPLOMACY;
   const deeds = my?.actionsRemaining ?? 0;
-  const actReason = !myTurn
-    ? ACTION_ERROR_COPY.NOT_YOUR_TURN
-    : !inWindow
-      ? "You wait upon another court. Be patient."
-      : deeds <= 0
-        ? ACTION_ERROR_COPY.NO_ACTIONS
-        : undefined;
+  const actReason = !inWindow
+    ? "You wait upon another court. Be patient."
+    : deeds <= 0
+      ? ACTION_ERROR_COPY.NO_ACTIONS
+      : undefined;
 
   /* ---- progress bookkeeping -------------------------------------------------- */
   /** Provinces (anyone's) hosting this work, with invested deeds. */
@@ -176,12 +175,30 @@ export function GreatWorksModal({ provinceId, onClose }: GreatWorksModalProps): 
   const seal = (): void => {
     if (!chosenWork || !siteId) return;
     playSfx("quill_scratch");
-    dispatch({
-      type: "BUILD",
-      player: myPlayerId,
-      provinceId: siteId,
-      greatWork: chosenWork,
-    });
+    // Correlation predicate for the pendingAction latch: the action window is
+    // simultaneous, so rival-caused broadcasts land while this BUILD is in
+    // flight. Only MY deed can raise this work's progress at MY province, so
+    // "progress rose past what I saw when I sealed" proves the order was
+    // applied — until then the latch holds and the seal cannot double-fire
+    // (the double-BUILD double-spend). Rejection/timeout clear it otherwise.
+    const work = chosenWork;
+    const provId = siteId;
+    const progressAtSeal = siteProgress(work) ?? 0;
+    dispatch(
+      {
+        type: "BUILD",
+        player: myPlayerId,
+        provinceId: provId,
+        greatWork: work,
+      },
+      {
+        resolvedWhen: (state) => {
+          const prov = state.provinces.find((p) => p.id === provId);
+          const g = prov?.greatWorks.find((x) => x.type === work);
+          return (g?.progress ?? 0) > progressAtSeal;
+        },
+      },
+    );
   };
 
   /* ---- completion flourish: church_bell when MY work finishes (engine log). -- */

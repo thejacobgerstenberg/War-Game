@@ -98,7 +98,8 @@
   transform: none;
   filter: none;
 }
-.btn:hover:not(:disabled) {
+.btn:hover:not(:disabled),
+.btn:focus-visible {
   box-shadow: var(--shadow-1), 0 0 0 2px var(--gold);
   transform: none;
   filter: none;
@@ -134,6 +135,10 @@
    reachable by keyboard; they merely look and act disabled. */
 .btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 .btn[aria-disabled="true"]:hover { box-shadow: none; transform: none; }
+/* README §1: disabled = no interactive response — the seal must not come down. */
+.btn[aria-disabled="true"]:active { transform: none; box-shadow: none; }
+/* ...but keyboard focus stays visible so the in-voice reason is discoverable. */
+.btn[aria-disabled="true"]:focus-visible { box-shadow: 0 0 0 2px var(--gold); }
 
 .theme-night .btn--quiet,
 .dark .btn--quiet {
@@ -229,6 +234,10 @@
 /* --------------------------------------------------------------------------
    Toasts — heralds' notices. Rack fixed top-center, newest on top, max 3;
    errors persist until dismissed (ui/Toast.tsx enforces the behavior).
+   README §2: the rack sits BELOW the phase track. The `top` here is the
+   default for screens without a top bar (home, lobby — per mockups.css §10);
+   on the game screen ui/Toast.tsx measures the .gb-top header and overrides
+   `top` inline so persistent errors never occlude the phase track.
    -------------------------------------------------------------------------- */
 .toast-rack {
   position: fixed;

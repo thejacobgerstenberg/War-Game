@@ -16,17 +16,35 @@
  *    NORMAL x1.0, HEAVY x1.5 (each province checks revolt on d6 <= 1).
  *  - Trade routes live on state.activeModifiers (kind "trade_route"); the
  *    mockup's zone 8 strip lists the routes held and flags blockaded lanes
- *    (seaZones[].blockadedBy).
+ *    (seaZones[].blockadedBy). Beneath the strip a charter form dispatches
+ *    TRADE kind "ROUTE" (§5.1): both ends owned coastal ports, the sea-zone
+ *    path charted client-side over the board adjacency graph, one action,
+ *    and a GALLEY merchantman required (economy.ts assigns the first).
  *
  * Opened by OverlayManager on intent {type:"market"}.
  */
-import { useMemo, useState } from "react";
-import type { GameState, Player, ResourceBundle } from "@imperium/shared";
-import { BuildingType, Faction, GamePhase, GreatWorkType, TaxPosture } from "@imperium/shared";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { GameState, Player, Province, ResourceBundle } from "@imperium/shared";
+import {
+  BuildingType,
+  Faction,
+  GamePhase,
+  GreatWorkType,
+  TaxPosture,
+  UnitType,
+} from "@imperium/shared";
 import { Button, IconChip, Modal, useToast } from "../../ui";
 import { useAudio } from "../../audio/AudioProvider";
 import { useGame } from "../GameProvider";
-import { myBudgetRemaining, playerById, provinceById } from "../selectors";
+import { useFreshLogEntries } from "../useFreshLog";
+import {
+  isSeaZoneId,
+  myBudgetRemaining,
+  neighborsOf,
+  playerById,
+  provinceById,
+  seaZoneById,
+} from "../selectors";
 import { ACTION_ERROR_COPY, BUTTONS } from "../uiText";
 import {
   FreeCompanies,
@@ -36,6 +54,7 @@ import {
   TreasuryStrip,
 } from "./MercAuctionModal";
 import "./market.css";
+import "./market-routes.css";
 
 /* ---------------------------------------------------------------------------
  * Vendored trade math (client may not import server code).
@@ -65,16 +84,19 @@ interface TradeRates {
   specialties: ReadonlySet<TradeGood>;
 }
 
+/** A completed Grand Bazaar stands in this province. */
+function bazaarDone(p: Province): boolean {
+  return p.greatWorks.some(
+    (g) =>
+      g.type === GreatWorkType.GRAND_BAZAAR &&
+      g.progress >= GRAND_BAZAAR_ROUNDS,
+  );
+}
+
 function computeTradeRates(state: GameState, my: Player): TradeRates {
   const owned = state.provinces.filter((p) => p.ownerId === my.id);
   const maritime =
     my.faction === Faction.VENICE || my.faction === Faction.GENOA;
-  const bazaarDone = (p: (typeof owned)[number]): boolean =>
-    p.greatWorks.some(
-      (g) =>
-        g.type === GreatWorkType.GRAND_BAZAAR &&
-        g.progress >= GRAND_BAZAAR_ROUNDS,
-    );
 
   let general = 3; // MARKET_RATIOS.base
   if (owned.some((p) => p.buildings.includes(BuildingType.MARKET))) {
@@ -115,6 +137,92 @@ function computeTradeRates(state: GameState, my: Player): TradeRates {
     specialties.add(best);
   }
   return { general, specialties };
+}
+
+/* ---------------------------------------------------------------------------
+ * Charter a lane — TRADE kind "ROUTE" (economy.ts::applyTrade §5.1). The
+ * engine takes the two owned coastal ports and an ordered sea-zone path; the
+ * client charts the shortest path over the board's adjacency graph (the same
+ * MAP.md graph the server validates against).
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Shortest sea-zone path joining two coastal provinces, or null when no sea
+ * road connects them. BFS over BOARD_ADJACENCY restricted to sea zones; the
+ * returned path is ordered from the `fromId` shore to the `toId` shore, ready
+ * for TradeAction.trade.seaZonePath.
+ */
+function chartLane(fromId: string, toId: string): string[] | null {
+  const startZones = neighborsOf(fromId).filter(isSeaZoneId);
+  const goalZones = new Set(neighborsOf(toId).filter(isSeaZoneId));
+  if (startZones.length === 0 || goalZones.size === 0) return null;
+  // prev maps each reached zone to the zone it was reached from (null = start).
+  const prev = new Map<string, string | null>();
+  const queue: string[] = [];
+  for (const z of startZones) {
+    prev.set(z, null);
+    queue.push(z);
+  }
+  for (let i = 0; i < queue.length; i++) {
+    const zone = queue[i];
+    if (goalZones.has(zone)) {
+      const path: string[] = [];
+      for (let cur: string | null = zone; cur !== null; cur = prev.get(cur) ?? null) {
+        path.unshift(cur);
+      }
+      return path;
+    }
+    for (const n of neighborsOf(zone)) {
+      if (isSeaZoneId(n) && !prev.has(n)) {
+        prev.set(n, zone);
+        queue.push(n);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Projected gold of a charted lane each Income phase, before piracy/severing.
+ * PROVENANCE: server/src/engine/economy.ts::routeIncome + portTier and
+ * balance.ts TRADE { baseRouteGold: 2, controlledHopBonus: 1,
+ * blockadeMultiplier: 0.5, maritimeMultiplier: 1.5 } — re-copy when tuned.
+ * Simplification (matches the routes-held strip above): a hop counts as
+ * blockaded when blockadedBy is anyone but me; allied blockades and the
+ * severed-escort check are left to the server, hence the "~" in the copy.
+ */
+function projectedLaneGold(
+  state: GameState,
+  my: Player,
+  from: Province,
+  to: Province,
+  lane: readonly string[],
+): { gold: number; blockaded: boolean } {
+  // economy.ts::portTier — §5.2 port tiers off the highValue weight.
+  const tier = (p: Province): number => {
+    if (!p.coastal) return 0;
+    const hv = p.highValue ?? 0;
+    if (hv >= 4) return 3;
+    if (hv === 3) return 2;
+    return 1;
+  };
+  let controlled = 0;
+  let blockaded = false;
+  for (const zoneId of lane) {
+    const zone = seaZoneById(state, zoneId);
+    if (zone?.blockadedBy != null && zone.blockadedBy !== my.id) {
+      blockaded = true;
+    } else {
+      controlled += 1; // §5.2 +1 per unblockaded hop
+    }
+  }
+  let gold = 2 + tier(from) + tier(to) + controlled; // TRADE.baseRouteGold = 2
+  if (bazaarDone(from) || bazaarDone(to)) gold += 3; // §9 Grand Bazaar port
+  if (blockaded) gold = Math.floor(gold * 0.5); // TRADE.blockadeMultiplier
+  if (my.faction === Faction.VENICE || my.faction === Faction.GENOA) {
+    gold = Math.floor(gold * 1.5); // TRADE.maritimeMultiplier
+  }
+  return { gold: Math.max(0, gold), blockaded };
 }
 
 /* ---------------------------------------------------------------------------
@@ -165,6 +273,9 @@ function CountingHouse(props: {
   const { playSfx } = useAudio();
   const toast = useToast();
   const [posture, setPosture] = useState<TaxPosture | null>(null);
+  // Charter-a-lane picks (TRADE kind "ROUTE"): the two owned ports.
+  const [routeFrom, setRouteFrom] = useState<string>("");
+  const [routeTo, setRouteTo] = useState<string>("");
   const { bargain, onBargain } = props;
 
   const my = playerById(gameState, myPlayerId);
@@ -172,6 +283,49 @@ function CountingHouse(props: {
     () => (my ? computeTradeRates(gameState, my) : null),
     [gameState, my],
   );
+
+  /* ---- confirmation flourishes ------------------------------------------------
+   * dispatch() is fire-and-forget; the server may still refuse (stale turn,
+   * phase change). The triumph toast and the coin_purse are the mockup's
+   * confirmation of the DEED, so they wait for the state broadcast that
+   * chronicles it — mirroring GreatWorksModal's completion flourish. */
+  const awaitingTrade = useRef(false);
+  const awaitingRoute = useRef(false);
+  useFreshLogEntries((entries) => {
+    if (!awaitingTrade.current && !awaitingRoute.current) return;
+    for (const e of entries) {
+      if (e.type !== "trade" || !e.actors.includes(myPlayerId)) continue;
+      // The CONVERT chronicle line (economy.ts::applyTrade): type "trade",
+      // my seat among the actors, data {give, get, ratio}.
+      if (awaitingTrade.current && e.data?.give !== undefined) {
+        awaitingTrade.current = false;
+        playSfx("coin_purse");
+        toast.triumph("So it is written.");
+        onBargain(null);
+      }
+      // The ROUTE chronicle line: data {routeIncome, route: modifierId}.
+      if (awaitingRoute.current && e.data?.route !== undefined) {
+        awaitingRoute.current = false;
+        playSfx("coin_purse");
+        toast.triumph("The charter is sealed; the lane is open.");
+        setRouteFrom("");
+        setRouteTo("");
+      }
+    }
+  });
+
+  // SET_TAX writes no chronicle line (actions.ts): the confirmation is the
+  // posture itself coming back changed in the next broadcast.
+  const awaitingTax = useRef<TaxPosture | null>(null);
+  const myTax = my?.tax;
+  useEffect(() => {
+    if (awaitingTax.current !== null && myTax === awaitingTax.current) {
+      awaitingTax.current = null;
+      setPosture(null);
+      toast.triumph("So it is written.");
+    }
+  }, [myTax, toast]);
+
   if (!my || !rates) return null;
 
   const ratioFor = (good: TradeGood): number =>
@@ -192,8 +346,10 @@ function CountingHouse(props: {
     budget <= 0 ? ACTION_ERROR_COPY.NO_ACTIONS : undefined;
 
   const seal = (b: Bargain): void => {
+    // quill_scratch belongs to the seal-press itself (design contract); the
+    // coin_purse and the triumph toast wait for the server's chronicle line.
     playSfx("quill_scratch");
-    playSfx("coin_purse");
+    awaitingTrade.current = true;
     dispatch({
       type: "TRADE",
       player: myPlayerId,
@@ -203,8 +359,6 @@ function CountingHouse(props: {
         get: { [b.get]: b.lots },
       },
     });
-    toast.triumph("So it is written.");
-    onBargain(null);
   };
 
   // ---- Routes held (mockup zone 8) ----------------------------------------
@@ -225,6 +379,65 @@ function CountingHouse(props: {
     const to = toId ? provinceById(gameState, toId)?.name ?? toId : "?";
     return { id: m.id, from, to, blockaded };
   });
+
+  // ---- Charter a lane (TRADE kind "ROUTE") ---------------------------------
+  const myPorts = gameState.provinces
+    .filter((p) => p.ownerId === myPlayerId && p.coastal)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  // §5.1 a route needs a GALLEY merchantman (economy.ts assigns the first).
+  const hasMerchantman = gameState.fleets.some(
+    (f) =>
+      f.ownerId === myPlayerId && (f.units[UnitType.GALLEY] ?? 0) > 0,
+  );
+  const fromPort = routeFrom ? provinceById(gameState, routeFrom) : null;
+  const toPort = routeTo ? provinceById(gameState, routeTo) : null;
+  // Charted fresh each render: a BFS over the board's 12 sea zones is cheap,
+  // and a useMemo here would sit below the `!my` early return (hooks rule).
+  const lane =
+    routeFrom && routeTo && routeFrom !== routeTo
+      ? chartLane(routeFrom, routeTo)
+      : null;
+  const laneHeld = routes.some((m) => {
+    const a = m.data?.fromProvinceId;
+    const b = m.data?.toProvinceId;
+    return (
+      (a === routeFrom && b === routeTo) || (a === routeTo && b === routeFrom)
+    );
+  });
+  const projected =
+    lane && fromPort && toPort
+      ? projectedLaneGold(gameState, my, fromPort, toPort, lane)
+      : null;
+  const charterBar =
+    phaseBar ??
+    budgetBar ??
+    (!hasMerchantman
+      ? "No galley merchantman flies your colors; a lane needs a ship."
+      : !routeFrom || !routeTo
+        ? "Name both ports of the lane."
+        : laneHeld
+          ? "The house already keeps that lane."
+          : lane === null
+            ? "No sea road joins those two ports."
+            : undefined);
+
+  const sealCharter = (): void => {
+    if (!lane || !routeFrom || !routeTo) return;
+    // quill_scratch on the seal-press; the coin_purse and the herald's toast
+    // wait for the server's chronicle line, as with a bargain struck.
+    playSfx("quill_scratch");
+    awaitingRoute.current = true;
+    dispatch({
+      type: "TRADE",
+      player: myPlayerId,
+      trade: {
+        kind: "ROUTE",
+        fromProvinceId: routeFrom,
+        toProvinceId: routeTo,
+        seaZonePath: lane,
+      },
+    });
+  };
 
   return (
     <>
@@ -424,9 +637,10 @@ function CountingHouse(props: {
             onClick={() => {
               if (posture === null) return;
               playSfx("quill_scratch");
+              awaitingTax.current = posture;
               dispatch({ type: "SET_TAX", player: myPlayerId, posture });
-              toast.triumph("So it is written.");
-              setPosture(null);
+              // The triumph toast follows the broadcast that carries the new
+              // posture; a rejection surfaces GameProvider's error toast only.
             }}
           >
             Gather the Tithe
@@ -434,31 +648,121 @@ function CountingHouse(props: {
         </div>
       </section>
 
-      {/* ZONE 8 · The routes held */}
-      <div className="mkt-route-strip" aria-label="The routes held">
-        <span className="mkt-route-label">Routes held:</span>
-        {routeBits.length === 0 ? (
-          <span className="mkt-house-note" style={{ margin: 0 }}>
-            The house keeps no sea lanes this season.
-          </span>
+      {/* ZONE 8 · The routes held — and the charter that opens a new one */}
+      <section className="mkt-section" aria-label="The routes held">
+        <div className="mkt-route-strip">
+          <span className="mkt-route-label">Routes held:</span>
+          {routeBits.length === 0 ? (
+            <span className="mkt-house-note" style={{ margin: 0 }}>
+              The house keeps no sea lanes this season.
+            </span>
+          ) : (
+            <>
+              {routeBits.map((r) => (
+                <span
+                  key={r.id}
+                  className={r.blockaded ? "pill pill--crimson" : "pill pill--lapis"}
+                >
+                  {r.from} to {r.to}
+                  {r.blockaded ? " — the lane is blockaded" : ""}
+                </span>
+              ))}
+              <b className="mkt-route-total">
+                {numberWordCap(routeBits.length)}{" "}
+                {routeBits.length === 1 ? "route" : "routes"} held
+              </b>
+            </>
+          )}
+        </div>
+
+        {/* Charter a lane — the TRADE "ROUTE" order. */}
+        {myPorts.length < 2 ? (
+          <p className="mkt-house-note">
+            A charter asks two ports under your banner; the house cannot open
+            a lane from one shore alone.
+          </p>
         ) : (
-          <>
-            {routeBits.map((r) => (
-              <span
-                key={r.id}
-                className={r.blockaded ? "pill pill--crimson" : "pill pill--lapis"}
+          <div className="mkt-charter" aria-label="Charter a lane">
+            <span className="mkt-charter-label">Charter a lane:</span>
+            <label className="mkt-charter-label" htmlFor="mkt-charter-from">
+              from
+            </label>
+            <select
+              id="mkt-charter-from"
+              className="mkt-charter-field"
+              aria-label="The port the lane departs"
+              value={routeFrom}
+              onChange={(e) => setRouteFrom(e.target.value)}
+            >
+              <option value="">Choose a port</option>
+              {myPorts
+                .filter((p) => p.id !== routeTo)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
+            <label className="mkt-charter-label" htmlFor="mkt-charter-to">
+              to
+            </label>
+            <select
+              id="mkt-charter-to"
+              className="mkt-charter-field"
+              aria-label="The port the lane makes for"
+              value={routeTo}
+              onChange={(e) => setRouteTo(e.target.value)}
+            >
+              <option value="">Choose a port</option>
+              {myPorts
+                .filter((p) => p.id !== routeFrom)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
+            <span className="mkt-charter-seal">
+              <Button
+                variant="primary"
+                disabled={pendingAction}
+                disabledReason={charterBar}
+                onClick={sealCharter}
               >
-                {r.from} to {r.to}
-                {r.blockaded ? " — the lane is blockaded" : ""}
-              </span>
-            ))}
-            <b className="mkt-route-total">
-              {numberWordCap(routeBits.length)}{" "}
-              {routeBits.length === 1 ? "route" : "routes"} held
-            </b>
-          </>
+                {BUTTONS.setTheSeal}
+              </Button>
+            </span>
+            <p className="mkt-charter-lane" aria-live="polite">
+              {lane && projected ? (
+                <>
+                  The lane runs{" "}
+                  {lane
+                    .map((zoneId) => seaZoneById(gameState, zoneId)?.name ?? zoneId)
+                    .join(", then ")}
+                  {" — some "}
+                  {numberWord(projected.gold)} Gold at each Reckoning
+                  {projected.blockaded
+                    ? ", while a blockade sits upon the water"
+                    : ""}
+                  . The charter costs one deed and sets a galley merchantman
+                  upon the lane.
+                </>
+              ) : (
+                <>
+                  Name two of your ports and the house charts the sea road
+                  between them. A charter costs one deed and asks a galley
+                  merchantman; the lane pays gold at each Reckoning.
+                </>
+              )}
+            </p>
+            {charterBar !== undefined && routeFrom !== "" && routeTo !== "" && (
+              <p className="mkt-exchange-reason" style={{ flexBasis: "100%" }}>
+                {charterBar}
+              </p>
+            )}
+          </div>
         )}
-      </div>
+      </section>
     </>
   );
 }
