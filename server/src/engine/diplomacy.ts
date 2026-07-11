@@ -21,6 +21,7 @@
  * Inputs are treated as immutable (structuredClone), consistent with economy.ts.
  */
 import {
+  TerrainType,
   TreatyType,
   UnitType,
   type Army,
@@ -28,10 +29,11 @@ import {
   type GameState,
   type NpcMinor,
   type Player,
+  type Province,
   type ResourceBundle,
   type Treaty,
 } from "@imperium/shared";
-import { PRESTIGE_VALUES, VASSAL } from "./balance.js";
+import { PRESTIGE_VALUES, STACKING, VASSAL } from "./balance.js";
 import { appendLog } from "./logEntry.js";
 import { makeRng, type Rng } from "./rng.js";
 import { EngineError } from "./actions.js";
@@ -72,23 +74,23 @@ function requirePlayer(state: GameState, id: string): Player {
 }
 
 /**
- * §11.5 A player's "prestige-tier" for the vassalize roll: `⌊prestige ÷ 10⌋`.
- *
- * CANON DIVERGENCE (NEEDS-FROM-INTEGRATOR): the FINAL §11.5 now specifies this
- * tier is **capped at 2** (`⌊prestige ÷ 10⌋`, max 2) and pairs it with a
- * garrison-tier of `⌊garrison unit count ÷ 2⌋`. balance.VASSAL defines neither the
- * divisor/cap nor a garrison-tier formula (and this subsystem may not edit
- * balance.ts), and applying the cap would flip several existing "high prestige
- * guarantees the vassalize roll" fixtures (die + ⌊p÷10⌋ − tier, uncapped, is what
- * the 235-test baseline asserts). Left UNCAPPED here to preserve that baseline;
- * the balance/integrator pass should add `VASSAL.prestigeTierDivisor` (=10) +
- * `VASSAL.prestigeTierCap` (=2), apply the cap, and re-key the affected fixtures.
- * The garrison tier likewise reads the curated `NpcMinor.tier` (the shared type's
- * documented "garrison tier used in the vassalize roll"), which mapData authors
- * independently of ⌊garrison÷2⌋ — see the ambiguity list.
+ * §11.5 A player's "prestige-tier" for the vassalize roll: `⌊prestige ÷ 10⌋`,
+ * **capped at 2** (GAME_DESIGN §11.5, "capped at 2"; CANON §11.5). FL-16 — a
+ * high-prestige player still rolls rather than auto-succeeding. Uses
+ * VASSAL.prestigeTierCap (=2).
  */
 function prestigeTier(player: Player): number {
-  return Math.max(0, Math.floor(player.prestige / 10));
+  return Math.min(VASSAL.prestigeTierCap, Math.max(0, Math.floor(player.prestige / 10)));
+}
+
+/**
+ * §11.5 A minor's "garrison tier" used by BOTH the vassalize roll (subtracted)
+ * and the free-levy size (added per tier): `⌊garrison unit count ÷ 2⌋`
+ * (GAME_DESIGN §11.5; CANON §11.5). FL-05 / FL-17 — this supersedes the authored
+ * wall tier (`minor.tier`) the old baseline used. Uses VASSAL.garrisonTierDivisor.
+ */
+function garrisonTier(minor: NpcMinor): number {
+  return Math.floor(minor.garrison / VASSAL.garrisonTierDivisor);
 }
 
 /** §11 reputation: −1 to diplomacy rolls once a player has betrayed twice. */
@@ -277,6 +279,31 @@ function emptyUnits(): Record<UnitType, number> {
   const u = {} as Record<UnitType, number>;
   for (const t of Object.values(UnitType)) u[t] = 0;
   return u;
+}
+
+/** Live units (generic + variant) in an army — for §6.4 stacking checks. */
+function armyUnitCount(army: Army): number {
+  let n = 0;
+  for (const t of Object.values(UnitType)) n += army.units[t] ?? 0;
+  for (const v of army.variants ?? []) n += v.count;
+  return n;
+}
+
+/**
+ * §6.4 land-stacking capacity remaining for `ownerId` at province `provId`: the
+ * per-province cap (12 for a CITY/capital, else 8 land) minus the units the owner
+ * already has stacked there. Used to clamp the vassal free-levy so it never
+ * overflows the §6.4 limit (FL-02).
+ */
+function landStackingRoom(next: GameState, ownerId: string, provId: string): number {
+  const prov: Province | undefined = next.provinces.find((p) => p.id === provId);
+  const isCity =
+    !!prov && (prov.terrain === TerrainType.CITY || prov.isCapitalOf !== undefined);
+  const cap = isCity ? STACKING.city : STACKING.land;
+  const current = next.armies
+    .filter((a) => a.ownerId === ownerId && a.locationId === provId)
+    .reduce((acc, a) => acc + armyUnitCount(a), 0);
+  return Math.max(0, cap - current);
 }
 
 /**
@@ -591,8 +618,10 @@ export function applyVassalize(state: GameState, action: GameAction): GameState 
   const die = rng.rollD6();
   const marriageBonus = action.marriageBribe ? VASSAL.marriageBribeBonus : 0; // §11.5 +1
   const repPenalty = reputationPenalty(me); // §11 −1 if betrayed twice
-  // §11.5 roll = 1d6 + prestige-tier − garrison-tier (+ marriage bonus − rep).
-  const roll = die + prestigeTier(me) - tgt.tier + marriageBonus - repPenalty;
+  // §11.5 roll = 1d6 + prestige-tier − garrison-tier (+ marriage bonus − rep),
+  // where garrison-tier = ⌊garrison ÷ 2⌋ (GAME_DESIGN §11.5; CANON §11.5) — FL-05,
+  // NOT the authored wall tier (minor.tier).
+  const roll = die + prestigeTier(me) - garrisonTier(tgt) + marriageBonus - repPenalty;
   const success = roll >= VASSAL.rollTarget;
 
   if (success) {
@@ -687,21 +716,30 @@ export function runRevolts(state: GameState): GameState {
     const cooldown = minor.roundsUntilLevy ?? 0;
     let leviedCount = 0;
     if (cooldown <= 0) {
-      leviedCount = VASSAL.levyBase + VASSAL.levyPerTier * minor.tier;
+      // §11.5 free-levy SIZE = levyBase + levyPerTier × garrison-tier, where
+      // garrison-tier = ⌊garrison ÷ 2⌋ (GAME_DESIGN §11.5; CANON §11.5) — FL-17,
+      // NOT the authored wall tier (minor.tier).
+      const requested = VASSAL.levyBase + VASSAL.levyPerTier * garrisonTier(minor);
       const capital = minor.provinceIds[0];
-      let army: Army | undefined = next.armies.find(
-        (a) => a.ownerId === overlord.id && a.locationId === capital,
-      );
-      if (!army) {
-        army = {
-          id: `army-levy-${minor.id}-${next.round}`,
-          ownerId: overlord.id,
-          locationId: capital,
-          units: emptyUnits(),
-        };
-        next.armies = [...next.armies, army];
+      // §6.4 stacking: clamp the added LEVY to the overlord's remaining land-
+      // stacking room at the capital (12 city/capital, else 8) so a vassal levy
+      // can never push a stack over the §6.4 limit (FL-02).
+      leviedCount = Math.min(requested, landStackingRoom(next, overlord.id, capital));
+      if (leviedCount > 0) {
+        let army: Army | undefined = next.armies.find(
+          (a) => a.ownerId === overlord.id && a.locationId === capital,
+        );
+        if (!army) {
+          army = {
+            id: `army-levy-${minor.id}-${next.round}`,
+            ownerId: overlord.id,
+            locationId: capital,
+            units: emptyUnits(),
+          };
+          next.armies = [...next.armies, army];
+        }
+        army.units[UnitType.LEVY] = (army.units[UnitType.LEVY] ?? 0) + leviedCount;
       }
-      army.units[UnitType.LEVY] = (army.units[UnitType.LEVY] ?? 0) + leviedCount;
       minor.roundsUntilLevy = VASSAL.levyEveryRounds;
       minor.levyCooldown = VASSAL.levyEveryRounds;
     } else {

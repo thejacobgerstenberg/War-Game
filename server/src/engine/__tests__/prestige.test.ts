@@ -307,6 +307,230 @@ describe("scorePrestige — §13.3 secret objectives scored only at game end", (
 });
 
 // ---------------------------------------------------------------------------
+// FL-06/07/08 secret-objective predicates (FACTIONS.md / §13.1)
+// ---------------------------------------------------------------------------
+
+describe("scorePrestige — FL-06/07/08 secret-objective predicates", () => {
+  /** Wipe all ownership + every player's objectives (caller re-seeds a target). */
+  function blank(state: GameState): void {
+    for (const prov of state.provinces) prov.ownerId = null;
+    for (const player of state.players) player.objectives = [];
+  }
+  const own = (s: GameState, provId: string, pid: string): void => {
+    s.provinces.find((p) => p.id === provId)!.ownerId = pid;
+  };
+  const objsOf = (s: GameState, pid: string) =>
+    s.players.find((p) => p.id === pid)!.objectives;
+  const seededObj = (s: GameState, pid: string, id: string): SecretObjective =>
+    objsOf(s, pid).find((o) => o.id === id)!;
+  const setObjective = (s: GameState, pid: string, obj: SecretObjective): void => {
+    s.players.find((p) => p.id === pid)!.objectives = [obj];
+  };
+  const completed = (out: GameState, pid: string): boolean | undefined =>
+    out.players.find((p) => p.id === pid)!.objectives[0].completed;
+
+  // ---- FL-06 Restoration of the Empire (allOf + anyOf OR-clause) ----------
+  it("FL-06 Restoration: allOf held + one anyOf → completed at game end", () => {
+    const s = fresh();
+    const restoration = seededObj(s, "p1", "byz-restoration-of-the-empire");
+    // Seed is now an OR-clause, not an AND of all four provinces.
+    expect(restoration.allOf).toEqual(["thessalonica", "morea"]);
+    expect(restoration.anyOf).toEqual(["nicaea", "athens"]);
+    blank(s);
+    setObjective(s, "p1", restoration);
+    s.round = 16;
+    own(s, "thessalonica", "p1");
+    own(s, "morea", "p1");
+    own(s, "nicaea", "p1"); // one of the anyOf, but NOT athens
+    const out = scorePrestige(s);
+    expect(completed(out, "p1")).toBe(true);
+  });
+
+  it("FL-06 Restoration: allOf held but NEITHER anyOf → not completed", () => {
+    const s = fresh();
+    const restoration = seededObj(s, "p1", "byz-restoration-of-the-empire");
+    blank(s);
+    setObjective(s, "p1", restoration);
+    s.round = 16;
+    own(s, "thessalonica", "p1");
+    own(s, "morea", "p1"); // no nicaea / athens
+    const out = scorePrestige(s);
+    expect(completed(out, "p1")).toBeFalsy();
+  });
+
+  it("FL-06 Restoration: missing a required allOf province → not completed", () => {
+    const s = fresh();
+    const restoration = seededObj(s, "p1", "byz-restoration-of-the-empire");
+    blank(s);
+    setObjective(s, "p1", restoration);
+    s.round = 16;
+    own(s, "thessalonica", "p1"); // morea missing
+    own(s, "athens", "p1");
+    const out = scorePrestige(s);
+    expect(completed(out, "p1")).toBeFalsy();
+  });
+
+  // ---- FL-08 Faith of the Fathers (constantinople + HS + faith + refusal) -
+  it("FL-08 Faith of the Fathers: constantinople ownership ALONE no longer scores", () => {
+    const s = fresh();
+    const faith = seededObj(s, "p1", "byz-faith-of-the-fathers");
+    expect(faith.requiresHagiaSophia).toBe(true);
+    expect(faith.minFaith).toBe(15);
+    expect(faith.refusedChurchUnion).toBe(true);
+    blank(s);
+    setObjective(s, "p1", faith);
+    s.round = 16;
+    own(s, "constantinople", "p1");
+    s.players.find((p) => p.id === "p1")!.treasury.faith = 4; // < 15, no Hagia Sophia
+    const out = scorePrestige(s);
+    // Phantom +4 removed: ownership without the gate no longer completes it.
+    expect(completed(out, "p1")).toBeFalsy();
+  });
+
+  it("FL-08 Faith of the Fathers: full gate (HS intact + faith≥15 + Union refused) → completed", () => {
+    const s = fresh();
+    const faith = seededObj(s, "p1", "byz-faith-of-the-fathers");
+    blank(s);
+    setObjective(s, "p1", faith);
+    s.round = 16;
+    own(s, "constantinople", "p1");
+    s.provinces.find((p) => p.id === "constantinople")!.greatWorks = [
+      { type: GreatWorkType.HAGIA_SOPHIA, progress: 3 }, // complete = intact
+    ];
+    s.players.find((p) => p.id === "p1")!.treasury.faith = 15;
+    // No church_union acceptance marker ⇒ "refused" (the doc default).
+    const out = scorePrestige(s);
+    expect(completed(out, "p1")).toBe(true);
+  });
+
+  it("FL-08 Faith of the Fathers: faith below 15 → not completed", () => {
+    const s = fresh();
+    const faith = seededObj(s, "p1", "byz-faith-of-the-fathers");
+    blank(s);
+    setObjective(s, "p1", faith);
+    s.round = 16;
+    own(s, "constantinople", "p1");
+    s.provinces.find((p) => p.id === "constantinople")!.greatWorks = [
+      { type: GreatWorkType.HAGIA_SOPHIA, progress: 3 },
+    ];
+    s.players.find((p) => p.id === "p1")!.treasury.faith = 14; // one short
+    const out = scorePrestige(s);
+    expect(completed(out, "p1")).toBeFalsy();
+  });
+
+  it("FL-08 Faith of the Fathers: accepting Church Union blocks it", () => {
+    const s = fresh();
+    const faith = seededObj(s, "p1", "byz-faith-of-the-fathers");
+    blank(s);
+    setObjective(s, "p1", faith);
+    s.round = 16;
+    own(s, "constantinople", "p1");
+    s.provinces.find((p) => p.id === "constantinople")!.greatWorks = [
+      { type: GreatWorkType.HAGIA_SOPHIA, progress: 3 },
+    ];
+    s.players.find((p) => p.id === "p1")!.treasury.faith = 20;
+    // Persistent marker recording that Byzantium accepted the Union.
+    s.activeModifiers.push({
+      id: "cu-accept",
+      scope: "game",
+      kind: "church_union",
+      target: { faction: Faction.BYZANTIUM },
+      data: { accepted: true },
+    });
+    const out = scorePrestige(s);
+    expect(completed(out, "p1")).toBeFalsy();
+  });
+
+  // ---- FL-07 Ghazi Empire (minProvinces OR sackedHighValueCities) ---------
+  it("FL-07 Ghazi Empire: ≥15 provinces at game end → completed", () => {
+    const s = fresh();
+    const ghazi = seededObj(s, "p2", "ott-ghazi-empire");
+    expect(ghazi.provinceRefs).toEqual([]); // non-territorial: no longer unreachable
+    expect(ghazi.minProvinces).toBe(15);
+    expect(ghazi.sackedHighValueCities).toBe(3);
+    blank(s);
+    setObjective(s, "p2", ghazi);
+    s.round = 16;
+    const plains = s.provinces
+      .filter((p) => !p.isCapitalOf && !(p.highValue ?? 0))
+      .slice(0, 15);
+    expect(plains.length).toBe(15);
+    for (const p of plains) p.ownerId = "p2";
+    const out = scorePrestige(s);
+    expect(completed(out, "p2")).toBe(true);
+  });
+
+  it("FL-07 Ghazi Empire: sacking 3 HV cities → completed (province gate unmet)", () => {
+    const s = fresh();
+    const ghazi = seededObj(s, "p2", "ott-ghazi-empire");
+    blank(s);
+    setObjective(s, "p2", ghazi); // p2 owns nothing → minProvinces fails
+    s.round = 16;
+    const hv = s.provinces.filter((p) => (p.highValue ?? 0) >= 3).slice(0, 3);
+    expect(hv.length).toBe(3);
+    for (const prov of hv) {
+      pushLog(s, { type: "siege", actors: ["p2"], targets: [prov.id], data: { sacked: true } });
+    }
+    const out = scorePrestige(s);
+    expect(completed(out, "p2")).toBe(true);
+  });
+
+  it("FL-07 Ghazi Empire: neither gate met → not completed", () => {
+    const s = fresh();
+    const ghazi = seededObj(s, "p2", "ott-ghazi-empire");
+    blank(s);
+    setObjective(s, "p2", ghazi); // owns nothing, no sacks
+    s.round = 16;
+    const out = scorePrestige(s);
+    expect(completed(out, "p2")).toBeFalsy();
+  });
+
+  it("FL-07 Ghazi Empire: only 2 distinct HV sacks is not enough", () => {
+    const s = fresh();
+    const ghazi = seededObj(s, "p2", "ott-ghazi-empire");
+    blank(s);
+    setObjective(s, "p2", ghazi);
+    s.round = 16;
+    const hv = s.provinces.filter((p) => (p.highValue ?? 0) >= 3).slice(0, 2);
+    // Sack the same two cities twice each: still only 2 DISTINCT cities.
+    for (const prov of [...hv, ...hv]) {
+      pushLog(s, { type: "siege", actors: ["p2"], targets: [prov.id], data: { sacked: true } });
+    }
+    const out = scorePrestige(s);
+    expect(completed(out, "p2")).toBeFalsy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FL-20 Uncontested capture of a capital → −3 lose-capital penalty (§13.1)
+// ---------------------------------------------------------------------------
+
+describe("scorePrestige — FL-20 uncontested capital occupation", () => {
+  it("§13.1 an unopposed march into an enemy CAPITAL applies −3 to its owner", () => {
+    const s = fresh();
+    isolate(s, { edirne: "p1" }); // p1 occupies the (empty) Ottoman capital
+    // Occupation log as actions.ts::relocate emits it: attacker only, no
+    // defender, `occupied:true`, no winnerId (the real integration contract).
+    pushLog(s, { type: "battle", actors: ["p1"], targets: ["edirne"], data: { occupied: true } });
+    const out = scorePrestige(s);
+    // p2 (Ottoman) is dispossessed of its capital → −3.
+    expect(prestigeOf(out, "p2")).toBe(PRESTIGE_VALUES.loseCapital);
+    // p1 still accrues the +3 enemy-capital hold (no prestige_pending in this fixture).
+    expect(prestigeOf(out, "p1")).toBe(PRESTIGE_VALUES.holdEnemyCapitalPerRound);
+  });
+
+  it("§13.1 an unopposed occupation of a NON-capital applies no −3", () => {
+    const s = fresh();
+    const plain = plainId(s);
+    isolate(s, { [plain]: "p1" });
+    pushLog(s, { type: "battle", actors: ["p1"], targets: [plain], data: { occupied: true } });
+    const out = scorePrestige(s);
+    expect(prestigeOf(out, "p1")).toBe(0);
+    expect(prestigeOf(out, "p2")).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Coordination boundary — sources owned by OTHER subsystems (no double count)
 // ---------------------------------------------------------------------------
 

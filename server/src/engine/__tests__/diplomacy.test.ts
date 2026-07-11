@@ -219,13 +219,15 @@ describe("applyDiplomacy — §11 betrayal threshold", () => {
   });
 
   it("the reputation −1 penalty lowers the vassalize roll below the base case", () => {
-    // Ragusa: tier 2, garrison 1. Give p1 tier-5 prestige so the roll is
-    // die + 5 − 2 (+/− modifiers); a 2-betrayal player rolls one lower.
+    // Ragusa: garrison 1 → garrison-tier ⌊1/2⌋ = 0 (CANON §11.5). p1 prestige 50 →
+    // prestige-tier ⌊50/10⌋ capped at 2, so the base roll is die + 2 − 0; a
+    // 2-betrayal player rolls one lower.
     const base = fresh();
     base.players[0].prestige = 50;
     base.players[0].treasury.gold = 100;
     const die = nextDie(base); // both branches share the same next cursor
-    const cleanRoll = die + 5 - minorById(base, "ragusa").tier;
+    const cleanRoll =
+      die + 2 - Math.floor(minorById(base, "ragusa").garrison / 2); // die + 2 − 0
 
     const rep = structuredClone(base);
     rep.players[0].betrayals = 2;
@@ -266,7 +268,8 @@ describe("applyVassalize — §11.5 bribe & roll", () => {
       VASSAL.bribeBase + VASSAL.bribePerGarrison * 1 + VASSAL.marriageBribeGold; // 16
     expect(out.players[0].treasury.gold).toBe(100 - expectedBribe);
     const logged = [...out.log].reverse().find((l) => l.type === "diplomacy");
-    expect(logged?.data?.roll).toBe(die + 5 - 2 + VASSAL.marriageBribeBonus);
+    // §11.5 (CANON): prestige-tier ⌊50/10⌋ capped at 2; ragusa garrison-tier ⌊1/2⌋ = 0.
+    expect(logged?.data?.roll).toBe(die + 2 - 0 + VASSAL.marriageBribeBonus);
   });
 
   it("on success binds the minor and advances the RNG cursor (§11.5)", () => {
@@ -280,11 +283,15 @@ describe("applyVassalize — §11.5 bribe & roll", () => {
   });
 
   it("on failure half-refunds the bribe and leaves the minor free (§11.5)", () => {
-    // Rhodes: tier 3, garrison 3, bribe = 8 + 12 = 20. With prestige 0 the roll is
-    // die − 3 ≤ 3 < rollTarget(4), so failure is guaranteed.
+    // Rhodes: garrison 3 → garrison-tier ⌊3/2⌋ = 1 (CANON §11.5), bribe = 8 + 12 = 20.
+    // With prestige 0 the roll is die − 1; seed 12345's next die is 3 → roll 2 <
+    // rollTarget(4), a guaranteed failure. (Old baseline used the wall tier 3.)
     const s = fresh();
     s.players[0].prestige = 0;
     s.players[0].treasury.gold = 100;
+    const die = nextDie(s);
+    const roll = die - Math.floor(minorById(s, "rhodes").garrison / 2); // die − 1
+    expect(roll).toBeLessThan(VASSAL.rollTarget); // pin the guaranteed-failure setup
     const bribe = VASSAL.bribeBase + VASSAL.bribePerGarrison * 3; // 20
     const out = applyVassalize(s, { type: "VASSALIZE", player: "p1", minorId: "rhodes" });
     expect(minorById(out, "rhodes").vassalOf).toBeNull();
@@ -340,10 +347,13 @@ describe("runRevolts — §11.5 vassal benefits", () => {
   });
 
   it("raises a free 2 + garrison-tier LEVY stack when the levy call is due", () => {
-    const s = withVassalRagusa(fresh()); // ragusa tier 2
+    const s = withVassalRagusa(fresh()); // ragusa garrison 1 → garrison-tier ⌊1/2⌋ = 0
     const out = runRevolts(s);
     const army = out.armies.find((a) => a.ownerId === "p1" && a.locationId === "ragusa");
-    const expected = VASSAL.levyBase + VASSAL.levyPerTier * minorById(s, "ragusa").tier; // 2 + 2
+    // §11.5 (CANON): size = levyBase + levyPerTier × ⌊garrison/2⌋ = 2 + 1×0 = 2
+    // (NOT the authored wall tier 2). Clamped to §6.4 stacking room (ample here).
+    const expected =
+      VASSAL.levyBase + VASSAL.levyPerTier * Math.floor(minorById(s, "ragusa").garrison / 2);
     expect(army?.units[UnitType.LEVY]).toBe(expected);
     // Cadence resets; no second levy next round.
     expect(minorById(out, "ragusa").roundsUntilLevy).toBe(VASSAL.levyEveryRounds);
@@ -355,6 +365,35 @@ describe("runRevolts — §11.5 vassal benefits", () => {
     const out = runRevolts(s);
     expect(out.armies.some((a) => a.locationId === "ragusa")).toBe(false);
     expect(minorById(out, "ragusa").roundsUntilLevy).toBe(1);
+  });
+
+  it("§6.4 clamps the free levy to remaining stacking room at the capital (FL-02)", () => {
+    // Ragusa is a CITY (cap 12). Pre-stack p1 to one below the cap so only 1 slot
+    // remains; the 2-unit levy must clamp to 1 and never breach the §6.4 limit.
+    const zeroUnits = () =>
+      Object.fromEntries(Object.values(UnitType).map((t) => [t, 0])) as Record<
+        UnitType,
+        number
+      >;
+    const s = withVassalRagusa(fresh());
+    s.armies = [
+      ...s.armies,
+      {
+        id: "pre",
+        ownerId: "p1",
+        locationId: "ragusa",
+        units: { ...zeroUnits(), [UnitType.INFANTRY]: 11 },
+      },
+    ];
+    const out = runRevolts(s);
+    const total = out.armies
+      .filter((a) => a.ownerId === "p1" && a.locationId === "ragusa")
+      .reduce(
+        (acc, a) => acc + Object.values(a.units).reduce((n, c) => n + c, 0),
+        0,
+      );
+    expect(total).toBe(12); // exactly the city cap — never 13
+    expect(total).toBeLessThanOrEqual(12);
   });
 });
 

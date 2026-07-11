@@ -8,7 +8,6 @@
  * and never mutated; the advanced rng cursor is written onto the returned state.
  */
 import {
-  BuildingType,
   Faction,
   TerrainType,
   UnitType,
@@ -95,6 +94,13 @@ interface BattleCtx {
   /** Wall HP standing at the point of resolution (0 = none / breached). */
   wallsHp: number;
   wallDefBonus: number;
+  /**
+   * §8.4 assault row / §8.2 step 4 (FL-13): flat attacker bonus contributed by
+   * storming SIEGE units (and an emplaced Great Bombard) vs a STANDING wall
+   * during a siege assault. Applied by {@link attackerFlat} only while wallsHp>0;
+   * absent for field/naval battles (SIEGE lends no field dice, §6.1).
+   */
+  siegeAssaultBonus?: number;
   amphibious: boolean;
   /** Unit types that fire in the pre-melee ranged step. */
   rangedTypes: UnitType[];
@@ -220,12 +226,34 @@ function attackerFlat(
   let m = 0;
   if (ctx.amphibious) m += COMBAT_MODS.amphibiousAttacker; // §7.3 amphibious −1
   if (ctx.wallsHp > 0) m += COMBAT_MODS.escalade; // §7.3 escalade −1 vs un-breached walls
+  // §8.4 assault row / §8.2 step 4 (FL-13): storming SIEGE units (incl. an
+  // emplaced Great Bombard) add the standard SIEGE +3 vs a STANDING wall.
+  if (ctx.wallsHp > 0 && ctx.siegeAssaultBonus) m += ctx.siegeAssaultBonus;
   // §7.3 outnumber ≥2:1 → larger side +1
   if (defTotal > 0 && atkTotal >= COMBAT_MODS.outnumberRatio * defTotal) {
     m += COMBAT_MODS.outnumber;
   }
   m += tacticMod(state, ctx.attackerFaction, ctx.provinceId, ctx.seaZoneId);
   return m;
+}
+
+/**
+ * §7.7 / EVENT_CARDS #36 / CONTRACT2 §12.10 (FL-18): the defender's effective
+ * wall bonus after `wall_mod` effects. A `wallBonusZero` modifier (the
+ * `bribed-gatekeeper` tactic) nulls the bonus outright for this assault; the
+ * summed signed values (EVENT_CARDS #36 "old-style walls −1 tier") shift it,
+ * clamped ≥ 0. Read against the defender's faction + province so global (#36),
+ * province-scoped (bribed-gatekeeper) and faction+province (chain) modifiers all
+ * match. Called only while wallsHp > 0.
+ */
+function effectiveWallDefBonus(state: GameState, ctx: BattleCtx): number {
+  const mods = getModifiers(state, "wall_mod", {
+    faction: ctx.defenderFaction ?? undefined,
+    provinceId: ctx.provinceId,
+  });
+  if (mods.some((m) => m.data?.wallBonusZero === true)) return 0;
+  const delta = mods.reduce((acc, m) => acc + (m.value ?? 0), 0);
+  return Math.max(0, ctx.wallDefBonus + delta);
 }
 
 /** Signed flat modifier applied to the defending side this step. */
@@ -244,8 +272,10 @@ function defenderFlat(
   ) {
     m += COMBAT_MODS.defensiveTerrain;
   }
-  // §7.3 city walls +2/+3/+4 while HP > 0.
-  if (ctx.wallsHp > 0) m += ctx.wallDefBonus;
+  // §7.3 city walls +1…+4 while HP > 0, adjusted by any `wall_mod` in force
+  // (FL-18): EVENT_CARDS #36 Gunpowder Revolution (old-style walls −1 tier) and
+  // the `bribed-gatekeeper` tactic (wallBonusZero). Effective bonus clamped ≥ 0.
+  if (ctx.wallsHp > 0) m += effectiveWallDefBonus(state, ctx);
   // §7.3 outnumber ≥2:1 → larger side +1
   if (atkTotal > 0 && defTotal >= COMBAT_MODS.outnumberRatio * atkTotal) {
     m += COMBAT_MODS.outnumber;
@@ -659,6 +689,36 @@ export function resolveBattle(
 
   const emptyReport: CasualtyReport = { losses: {}, routed: [] };
 
+  // §7.7 Chain Across the Horn (FL-18 / CONTRACT2 §12.10): a coastal province the
+  // defender holds cannot be the target of an amphibious assault while a
+  // `wall_mod{amphibiousImmune}` is in force. The amphibious approach is repelled
+  // without resolving — no dice, no capture (mirrors the freeze_sea guard).
+  if ((battle.amphibious ?? false) && prov) {
+    const defFac = factionOf(next, battle.defenderId);
+    const immune = getModifiers(next, "wall_mod", {
+      faction: defFac ?? undefined,
+      provinceId: prov.id,
+    }).some((m) => m.data?.amphibiousImmune === true);
+    if (immune) {
+      const out = appendLog(next, {
+        round: next.round,
+        phase: next.phase,
+        type: "battle",
+        actors: [battle.attackerId, ...(battle.defenderId ? [battle.defenderId] : [])],
+        targets: [prov.id],
+        message: `The chain across the harbour bars an amphibious assault on ${prov.name}.`,
+        data: { rounds: 0, amphibiousBarred: true },
+      });
+      return {
+        state: { ...out, rngCursor: rng.cursor },
+        winnerId: null,
+        rounds: 0,
+        attacker: emptyReport,
+        defender: emptyReport,
+      };
+    }
+  }
+
   // Uncontested move → occupation (§6.4); no dice consumed.
   if (defenders.length === 0 || sideTotal(defenders) === 0) {
     if (prov && sideTotal(attackers) > 0) {
@@ -775,10 +835,12 @@ export function resolveBattle(
       );
       pending.outnumberedWin = CONQUEST_PRESTIGE.outnumberedWin;
     }
-    // §13.1 take a walled city (T1+) by storm → +2, or +3 at HP-tier ≥ 2 (MAP T4–T5).
+    // §13.1 take a walled city (T1+) by storm → +2, or +3 at MAP tier ≥ 4 (T4–T5).
+    // FL-14: with the restored 5-tier keyspace, "high tier" is tier ≥ 4 (was ≥ 2
+    // under the collapsed 4-HP-tier model).
     if (captured && capturedTier > 0) {
       const award =
-        capturedTier >= 2
+        capturedTier >= 4
           ? CONQUEST_PRESTIGE.takeWalledCityHighTier
           : CONQUEST_PRESTIGE.takeWalledCity;
       post = postPrestigePending(post, winnerFaction, award, "take_walled_city", provPost?.id);
@@ -1030,14 +1092,9 @@ export function resolveSiege(
 
   // 2. Bombardment (§8.2.2 / §8.4) — generic SIEGE units roll 1 die each; a Great
   // Bombard (§8.4) rolls GREAT_BOMBARD.bombardDice dice when its owner has it
-  // unlocked, ignoring the Theodosian masonry cap / auto-repel.
+  // unlocked, and lifts the §8.3 T5 masonry cap for the whole train.
   const defenderFaction = factionOf(next, prov.ownerId);
   const besiegerFaction = factionOf(next, siege.besiegerId);
-  // §8.3 Byzantine Theodosian Walls auto-repel the first rounds of ORDINARY bombardment.
-  const autoRepel =
-    defenderFaction === Faction.BYZANTIUM &&
-    prov.walls.tier === 3 &&
-    live.roundsElapsed <= SIEGE.byzantineAutoRepelRounds;
   // §8.4 CONTRACT2 §12.6: enhanced fire only if the besieger has the Bombard unlocked.
   const bombardUnlocked = greatBombardUnlocked(next, siege.besiegerId);
   let genericGuns = 0;
@@ -1051,13 +1108,22 @@ export function resolveSiege(
       else genericGuns += v.count;
     }
   }
-  // Generic guns roll first (keeps the deterministic bombardment RNG order); the
-  // Theodosian auto-repel nullifies their damage but still consumes their dice.
+  // Generic guns roll first (keeps the deterministic bombardment RNG order).
   let genericDamage = 0;
   if (genericGuns > 0) {
     for (const roll of rng.rollDice(genericGuns)) genericDamage += SIEGE.bombardDamage[roll] ?? 0;
   }
-  if (autoRepel) genericDamage = 0;
+  // §8.3 T5 masonry cap (FL-01): against an INTACT tier-T5 (Theodosian) wall an
+  // ORDINARY siege train inflicts at most SIEGE.t5MasonryCapPerRound Wall-HP per
+  // round IN TOTAL (not per unit). This is a property of the intact wall, NOT of
+  // the defender's faction — a non-Byzantine holder of Constantinople is equally
+  // protected. An emplaced UNLOCKED Great Bombard lifts the cap for the WHOLE
+  // besieging train (§8.4). `greatBombards` is > 0 only when unlocked.
+  const intactT5Wall = prov.walls.tier === 5 && prov.walls.hp > 0;
+  const masonryCapLifted = greatBombards > 0;
+  if (intactT5Wall && !masonryCapLifted) {
+    genericDamage = Math.min(genericDamage, SIEGE.t5MasonryCapPerRound);
+  }
   // §8.4 Great Bombard: bombardDice per piece, capped per round, ignores the cap.
   let greatBombardDamage = 0;
   for (let i = 0; i < greatBombards; i += 1) {
@@ -1082,11 +1148,6 @@ export function resolveSiege(
   live.phase = live.breached ? "assault" : "bombard";
   live.roundsBesieged = live.roundsElapsed;
 
-  // 3. Garrison starvation (§8.2.3) — hold `base (+2 Granary)` rounds, then starve.
-  const hasGranary = prov.buildings.includes(BuildingType.GRANARY);
-  const holdout = SIEGE.baseHoldoutRounds + (hasGranary ? SIEGE.granaryBonusRounds : 0);
-  if (live.grainStores > 0) live.grainStores -= 1;
-
   // Assemble the garrison defenders (real stacks + synthetic province garrison).
   const defenders: Working[] = next.armies
     .filter((a) => a.ownerId === prov.ownerId && a.locationId === prov.id)
@@ -1104,14 +1165,43 @@ export function resolveSiege(
     });
   }
 
+  // 3. Garrison starvation (§8.2 step 3, FL-12) — driven off live.grainStores.
+  // The Granary's +2 is folded into the INITIAL grainStores at siege creation
+  // (§9.1), NOT a parallel holdout constant. Each blockaded round with no
+  // store-preserving effect depletes 1 store; once stores hit 0 the garrison
+  // loses SIEGE.starvationLossPerRound/round (weakest first).
+  //
   // CANON sea-resupply (GD §8.2): a COASTAL city with an open (friendly/neutral)
-  // adjacent sea lane cannot be starved — only a fully enemy-controlled sea allows it.
+  // adjacent sea lane never depletes or hungers — only a fully enemy-controlled
+  // sea allows it to starve.
   const resupplied = seaResupplyActive(next, prov, prov.ownerId);
+  // §7.7 defender-side store-preserving siege_mods (Night Sortie / Sails from the
+  // West): `noDepletion` halts depletion & hunger this round; `restoreGrain`
+  // (Sails) returns depleted stores even under full blockade; `besiegerLoses`
+  // (Night Sortie) costs the besieger units.
+  const storeMods = defenderFaction
+    ? getModifiers(next, "siege_mod", { faction: defenderFaction, provinceId: prov.id })
+    : [];
+  const noDepletion = storeMods.some((m) => m.data?.noDepletion === true);
+  const restoreGrain = storeMods.reduce(
+    (acc, m) => acc + (typeof m.data?.restoreGrain === "number" ? (m.data.restoreGrain as number) : 0),
+    0,
+  );
+  const besiegerLoses = storeMods.reduce(
+    (acc, m) => acc + (typeof m.data?.besiegerLoses === "number" ? (m.data.besiegerLoses as number) : 0),
+    0,
+  );
+  if (restoreGrain > 0) live.grainStores += restoreGrain; // §7.7 Sails from the West
+  if (besiegerLoses > 0) removeCasualties(besiegers, besiegerLoses); // §7.7 Night Sortie
   let starved = 0;
-  if (live.roundsElapsed > holdout && !resupplied) {
-    starved = SIEGE.starvationLossPerRound;
-    removeCasualties(defenders, starved); // §8.2.3 weakest first
-    live.starvationCounter = (live.starvationCounter ?? 0) + 1;
+  if (!resupplied && !noDepletion) {
+    if (live.grainStores <= 0) {
+      starved = SIEGE.starvationLossPerRound;
+      removeCasualties(defenders, starved); // §8.2 step 3 weakest first
+      live.starvationCounter = (live.starvationCounter ?? 0) + 1;
+    } else {
+      live.grainStores -= 1;
+    }
   }
 
   // 4. Assault (§8.2.4): besieger storms the garrison, walls + escalade if standing.
@@ -1133,6 +1223,23 @@ export function resolveSiege(
   } else if (assaultTroops === 0) {
     // No storming troops: no assault this round (walls/garrison untouched by combat).
   } else {
+    // §8.4 assault row / §8.2 step 4 (FL-13): storming SIEGE units (and an
+    // emplaced Great Bombard) lend the standard SIEGE +3 vs a standing wall.
+    const hasBombardSupport = besiegers.some((w) =>
+      w.variants.some((v) => v.variant === GREAT_BOMBARD.variant && v.count > 0),
+    );
+    const hasGenericSiegeSupport = besiegers.some(
+      (w) =>
+        (w.units[UnitType.SIEGE] ?? 0) > 0 ||
+        w.variants.some(
+          (v) => v.base === UnitType.SIEGE && v.variant !== GREAT_BOMBARD.variant && v.count > 0,
+        ),
+    );
+    const siegeAssaultBonus = hasBombardSupport
+      ? GREAT_BOMBARD.bombardVsWalls
+      : hasGenericSiegeSupport
+        ? SIEGE.bombardVsWalls
+        : 0;
     const ctx: BattleCtx = {
       attackers: besiegers,
       defenders,
@@ -1141,6 +1248,7 @@ export function resolveSiege(
       terrain: prov.terrain,
       wallsHp: prov.walls.hp, // §8.2.4 wall bonus + escalade only while HP > 0
       wallDefBonus: WALL_TIERS[prov.walls.tier]?.defBonus ?? 0,
+      siegeAssaultBonus,
       amphibious: false,
       rangedTypes: [UnitType.ARCHER],
       isNaval: false,
@@ -1186,10 +1294,11 @@ export function resolveSiege(
     // §13.1 storming a defended city is a decisive result → +1.
     scored = postPrestigePending(scored, bf, CONQUEST_PRESTIGE.decisiveBattle, "decisive_battle", prov.id);
     pending.decisiveBattle = CONQUEST_PRESTIGE.decisiveBattle;
-    // §13.1 take a walled city (T1+) by siege → +2, or +3 at HP-tier ≥ 2 (MAP T4–T5).
+    // §13.1 take a walled city (T1+) by siege → +2, or +3 at MAP tier ≥ 4 (T4–T5).
+    // FL-14: "high tier" is tier ≥ 4 under the restored 5-tier keyspace.
     if (capturedTier > 0) {
       const award =
-        capturedTier >= 2
+        capturedTier >= 4
           ? CONQUEST_PRESTIGE.takeWalledCityHighTier
           : CONQUEST_PRESTIGE.takeWalledCity;
       scored = postPrestigePending(scored, bf, award, "take_walled_city", prov.id);

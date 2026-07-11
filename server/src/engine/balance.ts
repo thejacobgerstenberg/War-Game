@@ -268,6 +268,24 @@ export const UNIQUE_UNIT_OVERRIDES: Record<string, UniqueUnitDef> = {
     atkMod: 1,
     abilities: ["premier-charge", "weak-mountains", "weak-siege"],
   },
+  /**
+   * FL-10 — the Varangian Remnant free company's elite heads (§6.3). NOT one of
+   * the 10 faction uniques: it is the stat-override backing the `VARANGIAN_REMNANT`
+   * variant that `MERC_COMPANIES.VARANGIAN_REMNANT` fields. `defMod:+1` reaches
+   * combat's effective-stat lookup (combat.ts uses `def.defMod` on DEFENCE only —
+   * `atkMod` is absent, so no attack bonus). `recruitProvinces: []` makes it
+   * unrecruitable (fielded via the merc auction only, never RECRUIT). BYZANTIUM is
+   * flavour metadata; the auction is faction-agnostic.
+   */
+  VARANGIAN_REMNANT: {
+    variant: "VARANGIAN_REMNANT",
+    base: UnitType.INFANTRY,
+    name: "Varangian Remnant",
+    faction: Faction.BYZANTIUM,
+    defMod: 1,
+    abilities: ["elite-mercenary", "wall-defense", "no-rout"],
+    recruitProvinces: [],
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -367,35 +385,54 @@ export interface WallTier {
 }
 
 /**
- * HP wall model (§8.1), keyed by HP-model tier:
- *   0 none, 1 Walls Lv1, 2 Walls Lv2, 3 Theodosian.
- * See MAP_WALL_TIER for the MAP.md T1–T5 → HP-tier mapping.
+ * Five-tier wall model (§8.1 / CANON #4 — supersedes the previously-frozen
+ * collapsed 4-HP-tier model in CONTRACT §9(5)). Keyed directly by the MAP.md
+ * siege tier T0..T5, each mapping to a DISTINCT (hp, defBonus):
+ *   T0 none, T1 3/+1, T2 6/+2, T3 10/+3, T4 13/+4, T5 16/+4 (Theodosian).
+ * The "Walls Lv1 / Lv2" buildings correspond to T2 / T3 (CANON #4). Because the
+ * keyspace is now the MAP tier itself, {@link MAP_WALL_TIER} is the identity map
+ * and `WallState.tier` stores the MAP tier directly.
  */
 export const WALL_TIERS: Record<number, WallTier> = {
   0: { hp: 0, defBonus: 0 },
-  1: { hp: 6, defBonus: 2 },
-  2: { hp: 10, defBonus: 3 },
-  3: { hp: 16, defBonus: 4 },
+  1: { hp: 3, defBonus: 1 },
+  2: { hp: 6, defBonus: 2 },
+  3: { hp: 10, defBonus: 3 },
+  4: { hp: 13, defBonus: 4 },
+  5: { hp: 16, defBonus: 4 }, // T5 Theodosian (Constantinople)
 };
 
 /**
- * MAP.md siege tiers T1–T5 → HP-model tier (see CONTRACT.md "wall model").
- * T5 (Constantinople) is the Theodosian tier that the Great Bombard targets.
+ * MAP.md siege tiers T0..T5 → wall-model tier. Now the IDENTITY map: all five
+ * ratified MAP tiers keep their own distinct (hp, defBonus) rather than being
+ * folded into 4 HP-tiers (CANON #4 supersedes CONTRACT §9(5)). Kept as an
+ * explicit table so `mapData.ts::wall()` and `factions.ts::startingWallState`
+ * continue to compose MAP_WALL_TIER → WALL_TIERS unchanged.
+ * T5 (Constantinople) is the Theodosian tier that the Great Bombard targets;
+ * high-tier prestige (§13.1) is T4–T5 ⇔ tier ≥ 4.
  */
 export const MAP_WALL_TIER: Record<number, number> = {
   0: 0,
   1: 1,
-  2: 1,
-  3: 2,
-  4: 2,
-  5: 3,
+  2: 2,
+  3: 3,
+  4: 4,
+  5: 5,
 };
 
-/** Cost to build/upgrade walls to a given HP-model tier (§9). */
+/**
+ * Cost to build/upgrade walls to a given wall-model tier (§9). Keyed by the
+ * 5-tier keyspace; the WALLS building reaches the Lv1/Lv2 tiers (T2/T3) and the
+ * two great-fortress tiers (T4/T5) are authored on the map / raised as the
+ * Theodosian great work. (Tier progression/gating is subsystem logic in
+ * economy.ts — this table only supplies the costs.)
+ */
 export const WALL_BUILD_COST: Record<number, Partial<ResourceBundle>> = {
-  1: { gold: 5, marble: 4 },
-  2: { gold: 8, marble: 6 },
-  3: { gold: 15, marble: 12 }, // Theodosian (also a great work)
+  1: { gold: 4, marble: 3 },
+  2: { gold: 5, marble: 4 },
+  3: { gold: 8, marble: 6 },
+  4: { gold: 12, marble: 9 },
+  5: { gold: 15, marble: 12 }, // Theodosian (also a great work)
 };
 
 // ---------------------------------------------------------------------------
@@ -466,7 +503,20 @@ export const SIEGE = {
   granaryBonusRounds: 2,
   /** Units lost per round once starving. */
   starvationLossPerRound: 1,
-  /** Byzantine Theodosian Walls auto-repel this many siege rounds. */
+  /**
+   * §8.3 masonry cap: max total Wall-HP an ORDINARY siege train (no unlocked
+   * Great Bombard) may inflict per round against an INTACT T5/Theodosian wall
+   * (whole train, not per unit). A Great Bombard emplaced in the besieging train
+   * lifts this cap (see {@link GREAT_BOMBARD.ignoresMasonryCap}). This is a
+   * property of the intact wall, NOT of the defender's faction (FL-01).
+   */
+  t5MasonryCapPerRound: 1,
+  /**
+   * @deprecated FL-01 / CANON #4: T5 protection is the masonry cap
+   * ({@link SIEGE.t5MasonryCapPerRound}), a property of the intact wall — NOT a
+   * Byzantine-faction 2-round auto-repel. Retained only so combat.ts still
+   * typechecks until the combat agent removes its use; do not key new logic on it.
+   */
   byzantineAutoRepelRounds: 2,
   /** Ottoman Great Bombard damages up to this many T5 wall tiers per round. */
   greatBombardTierDamage: 2,
@@ -549,7 +599,15 @@ export const MERC_COMPANIES: Record<string, MercCompanyDef> = {
   },
   VARANGIAN_REMNANT: {
     name: "Varangian Remnant",
-    roster: { [UnitType.INFANTRY]: 4, [UnitType.CAVALRY]: 2 },
+    // FL-10: the whole company is elite — fielded as named `VARANGIAN_REMNANT`
+    // variant stacks (not plain roster units) so combat applies the +1 DEF from
+    // UNIQUE_UNIT_OVERRIDES.VARANGIAN_REMNANT. Roster is empty to avoid
+    // double-counting; `rosterSize` still totals 6 heads via `variants`.
+    roster: {},
+    variants: [
+      { base: UnitType.INFANTRY, variant: "VARANGIAN_REMNANT", count: 4 },
+      { base: UnitType.CAVALRY, variant: "VARANGIAN_REMNANT", count: 2 },
+    ],
     minBid: 16,
     goldMultiplier: 1.5,
   },
@@ -629,6 +687,19 @@ export const VASSAL = {
   bribePerGarrison: 4,
   /** Vassal on 1d6 + prestige-tier − garrison-tier >= rollTarget. */
   rollTarget: 4,
+  /**
+   * §11.5 garrison tier = ⌊garrison-unit-count ÷ garrisonTierDivisor⌋ (FL-05/FL-17).
+   * The vassalize roll subtracts this garrison tier, and the free-levy size adds
+   * `levyPerTier` per garrison tier — both computed from the divisor, NOT from the
+   * authored wall (`minor.tier`) which CANON §11.5 supersedes.
+   */
+  garrisonTierDivisor: 2,
+  /**
+   * §11.5 prestige tier = min(prestigeTierCap, ⌊prestige ÷ 10⌋) (FL-16). The
+   * vassalize roll adds the CAPPED prestige tier so high-prestige players still
+   * roll rather than auto-succeed.
+   */
+  prestigeTierCap: 2,
   /** Standing NAP or marriage bribe grants +1 to the roll. */
   napBonus: 1,
   marriageBribeBonus: 1,
@@ -683,7 +754,11 @@ export const PRESTIGE_VALUES = {
 export const CONQUEST_PRESTIGE = {
   /** Take a walled city (T1+) by storm or siege. */
   takeWalledCity: 2,
-  /** A taken city that is T4–T5 scores this instead (HP-tier ≥ 2 / MAP T4–T5). */
+  /**
+   * A taken city that is T4–T5 scores this instead. With the 5-tier keyspace
+   * (CANON #4) `WallState.tier` IS the MAP tier, so "high tier" ⇔ `walls.tier >= 4`
+   * (was HP-tier ≥ 2 under the old collapsed model). §13.1 high-tier prestige.
+   */
   takeWalledCityHighTier: 3,
   /** Win a decisive battle (attacker or defender wipes/routs the enemy). */
   decisiveBattle: 1,
@@ -717,9 +792,16 @@ export const ERA_BOUNDARIES: Record<1 | 2 | 3, [number, number]> = {
   3: [11, 16],
 };
 
-/** Base action budget per player per round (§10.0); University/card → +1. */
+/** Base action budget per player per round (§10.0); only certain CARDS → 5. */
 export const ACTIONS_PER_ROUND = 4;
-export const UNIVERSITY_ACTION_BONUS = 1;
+/**
+ * @deprecated FL-11 / CANON #2 — the University grants a +1 TACTIC-CARD DRAW
+ * (see {@link TACTIC.universityDrawBonus}), NOT a 5th action. Only card-posted
+ * `action_bonus` modifiers may raise the budget to 5. This constant is now 0 so
+ * the still-present `resetActionBudgets` branch in roundLoop.ts is a no-op; the
+ * roundLoop agent should delete that branch + this export (one-line removal).
+ */
+export const UNIVERSITY_ACTION_BONUS = 0;
 
 /**
  * Omen draw counts (resolves the circular §12/EVENT_CARDS gap). One shared

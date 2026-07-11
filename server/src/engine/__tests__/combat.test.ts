@@ -202,7 +202,8 @@ describe("resolveBattle (§7)", () => {
   it("an overwhelming attacker captures a walled city (walls + escalade, §7.3/§8.1)", () => {
     const state = makeState({
       provinces: [
-        province("city", { ownerId: "p2", terrain: TerrainType.CITY, walls: { tier: 1, hp: 6 } }),
+        // FL-14: restored 5-tier model — T1 = 3 HP / +1 (was 6 HP under the collapsed model).
+        province("city", { ownerId: "p2", terrain: TerrainType.CITY, walls: { tier: 1, hp: 3 } }),
       ],
       armies: [
         army("a1", "p1", "city", { [UnitType.INFANTRY]: 20 }),
@@ -269,7 +270,7 @@ function bombardOnlyState(overrides: Partial<Province> = {}): GameState {
       province("keep", {
         ownerId: "p2",
         terrain: TerrainType.CITY,
-        walls: { tier: 2, hp: 10 },
+        walls: { tier: 3, hp: 10 }, // FL-14: 10 HP is T3 (10/+3) in the restored 5-tier model
         garrison: 2,
         ...overrides,
       }),
@@ -303,31 +304,37 @@ describe("resolveSiege (§8)", () => {
     expect(res.captured).toBe(false);
   });
 
-  it("Byzantine Theodosian Walls auto-repel the first rounds of bombardment (§8.3)", () => {
-    // Theodosian = HP tier 3; defender is BYZANTIUM (p2) → auto-repel while
-    // roundsElapsed <= SIEGE.byzantineAutoRepelRounds.
-    let state = makeState({
-      provinces: [
-        province("constantinople", {
-          ownerId: "p2",
-          terrain: TerrainType.CITY,
-          walls: { tier: 3, hp: 16 },
-          garrison: 1,
-        }),
-      ],
-      // Many bombards so the besieger survives the token garrison's sorties
-      // across the whole auto-repel window.
-      armies: [army("s1", "p1", "constantinople", { [UnitType.SIEGE]: 40 })],
-      siegeStates: [siegeState({ provinceId: "constantinople" })],
-    });
-    for (let round = 0; round < SIEGE.byzantineAutoRepelRounds; round += 1) {
-      const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
-      expect(res.wallHpRemaining).toBe(16); // no damage while auto-repelling
-      state = res.state;
-    }
-    // Once past the auto-repel window, bombardment bites.
-    const after = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
-    expect(after.wallHpRemaining).toBeLessThan(16);
+  it("caps an ordinary siege train to 1 Wall-HP/round vs an intact T5 wall, regardless of holder (FL-01, §8.3)", () => {
+    // T5 Theodosian = tier 5 (16 HP / +4). A 40-gun train would roll dozens of HP
+    // uncapped; the masonry cap holds ordinary bombardment to 1 HP/round IN TOTAL.
+    // The cap is a property of the intact wall, NOT the defender's faction — a
+    // non-Byzantine holder of the City is equally protected.
+    const runFor = (holder: Faction): number[] => {
+      let state = makeState({
+        players: [player("p1", Faction.OTTOMAN), player("p2", holder)],
+        provinces: [
+          province("constantinople", {
+            ownerId: "p2",
+            terrain: TerrainType.CITY,
+            walls: { tier: 5, hp: 16 },
+            garrison: 1,
+          }),
+        ],
+        armies: [army("s1", "p1", "constantinople", { [UnitType.SIEGE]: 40 })],
+        siegeStates: [siegeState({ provinceId: "constantinople" })],
+      });
+      const hps: number[] = [];
+      for (let round = 0; round < 3; round += 1) {
+        const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
+        hps.push(res.wallHpRemaining);
+        state = res.state;
+      }
+      return hps;
+    };
+    // 16 → 15 → 14 → 13: exactly the SIEGE.t5MasonryCapPerRound each round.
+    const capped = [16, 15, 14].map((h) => h - SIEGE.t5MasonryCapPerRound);
+    expect(runFor(Faction.BYZANTIUM)).toEqual(capped);
+    expect(runFor(Faction.VENICE)).toEqual(capped); // non-Byzantine holder equally protected
   });
 
   it("garrison holds the default 3 rounds then starves 1/round (§8.2.3)", () => {
@@ -338,7 +345,9 @@ describe("resolveSiege (§8)", () => {
         province("keep", { ownerId: "p2", walls: { tier: 0, hp: 0 }, garrison: 5 }),
       ],
       armies: [army("s1", "p1", "keep", { [UnitType.SIEGE]: 30 })],
-      siegeStates: [siegeState({ grainStores: 99 })],
+      // FL-12: starvation is driven off grainStores. No Granary → initial stores =
+      // baseHoldoutRounds; each round depletes 1, hunger begins once stores hit 0.
+      siegeStates: [siegeState({ grainStores: SIEGE.baseHoldoutRounds })],
     });
     const garrisonAfter = (n: number): number => {
       for (let i = 0; i < n; i += 1) {
@@ -347,7 +356,7 @@ describe("resolveSiege (§8)", () => {
       }
       return state.provinces[0].garrison ?? 0;
     };
-    // baseHoldoutRounds = 3: garrison intact through round 3.
+    // baseHoldoutRounds = 3 stores: garrison intact through round 3.
     expect(garrisonAfter(SIEGE.baseHoldoutRounds)).toBe(5);
     // the very next round begins starvation.
     expect(garrisonAfter(1)).toBe(5 - SIEGE.starvationLossPerRound);
@@ -364,7 +373,10 @@ describe("resolveSiege (§8)", () => {
         }),
       ],
       armies: [army("s1", "p1", "keep", { [UnitType.SIEGE]: 30 })],
-      siegeStates: [siegeState({ grainStores: 99 })],
+      // FL-12: the Granary's +2 is folded into the INITIAL grainStores at siege
+      // creation (not a parallel holdout constant), so a Granary city starts with
+      // base + granary stores. combat.ts drives starvation purely off grainStores.
+      siegeStates: [siegeState({ grainStores: SIEGE.baseHoldoutRounds + SIEGE.granaryBonusRounds })],
     });
     const holdout = SIEGE.baseHoldoutRounds + SIEGE.granaryBonusRounds;
     const garrisonAfter = (n: number): number => {
@@ -394,7 +406,8 @@ describe("resolveSiege (§8)", () => {
   it("an intact wall (HP>0) with escalade repels a token assault (§8.2.4)", () => {
     const state = makeState({
       provinces: [
-        province("keep", { ownerId: "p2", terrain: TerrainType.CITY, walls: { tier: 3, hp: 16 }, garrison: 10 }),
+        // FL-14: Theodosian = tier 5 (16 HP / +4) in the restored 5-tier model.
+        province("keep", { ownerId: "p2", terrain: TerrainType.CITY, walls: { tier: 5, hp: 16 }, garrison: 10 }),
       ],
       // A lone LEVY cannot storm Theodosian walls (defender +4, escalade −1).
       armies: [army("s1", "p1", "keep", { [UnitType.LEVY]: 1 })],
@@ -409,7 +422,8 @@ describe("resolveSiege (§8)", () => {
   it("relief lifts the siege and walls repair +1/round (§8.2.5)", () => {
     const state = makeState({
       provinces: [
-        province("keep", { ownerId: "p2", walls: { tier: 1, hp: 5 } }),
+        // FL-14: T2 = 6 HP / +2 in the restored 5-tier model (was T1 under the collapsed model).
+        province("keep", { ownerId: "p2", walls: { tier: 2, hp: 5 } }),
       ],
       // besieging army was wiped by a relief force → no units remain
       armies: [army("s1", "p1", "keep", {})],
@@ -417,7 +431,7 @@ describe("resolveSiege (§8)", () => {
     });
     const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
     expect(res.captured).toBe(false);
-    // tier-1 max HP is 6; repair +1 from 5 → 6 (capped).
+    // tier-2 max HP is 6; repair +1 from 5 → 6 (capped).
     expect(res.wallHpRemaining).toBe(6);
     expect(res.state.siegeStates).toHaveLength(0);
     expect(res.state.provinces[0].siege).toBeUndefined();
@@ -544,7 +558,7 @@ describe("Great Bombard (§8.4)", () => {
         province("keep", {
           ownerId: "p2",
           terrain: TerrainType.CITY,
-          walls: { tier: 2, hp: 10 },
+          walls: { tier: 3, hp: 10 }, // FL-14: 10 HP is T3 (10/+3) in the restored 5-tier model
           garrison: 1,
         }),
       ],
@@ -571,7 +585,7 @@ describe("Great Bombard (§8.4)", () => {
         province("keep", {
           ownerId: "p2",
           terrain: TerrainType.CITY,
-          walls: { tier: 2, hp: 10 },
+          walls: { tier: 3, hp: 10 }, // FL-14: 10 HP is T3 (10/+3) in the restored 5-tier model
           garrison: 1,
         }),
       ],
@@ -583,7 +597,7 @@ describe("Great Bombard (§8.4)", () => {
     expect(res.wallHpRemaining).toBe(10 - singleDie);
   });
 
-  it("an UNLOCKED Great Bombard cracks Theodosian walls despite Byzantine auto-repel (§8.3/§8.4)", () => {
+  it("an UNLOCKED Great Bombard cracks Theodosian walls despite the T5 masonry cap (§8.3/§8.4)", () => {
     const p1 = { ...player("p1", Faction.OTTOMAN), greatBombardUnlocked: true };
     const state = makeState({
       players: [p1, player("p2", Faction.BYZANTIUM)],
@@ -591,15 +605,15 @@ describe("Great Bombard (§8.4)", () => {
         province("constantinople", {
           ownerId: "p2",
           terrain: TerrainType.CITY,
-          walls: { tier: 3, hp: 16 },
+          walls: { tier: 5, hp: 16 }, // FL-14: T5 Theodosian in the restored 5-tier model
           garrison: 1,
         }),
       ],
       armies: [bombardArmy("gb", "p1", "constantinople")],
       siegeStates: [siegeState({ provinceId: "constantinople", besiegingArmyIds: ["gb"] })],
     });
-    // Round 1 is inside the auto-repel window (a plain siege would deal 0), but the
-    // Bombard ignores the masonry cap → the walls still take damage.
+    // An ordinary train would be held to SIEGE.t5MasonryCapPerRound, but an unlocked
+    // Bombard lifts the cap for the whole train → the walls take real damage.
     const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
     expect(res.wallHpRemaining).toBeLessThan(16);
   });
@@ -624,7 +638,8 @@ describe("sea-resupply siege rule (GD §8.2, CANON)", () => {
       // SIEGE-only besieger: no assault troops, so the garrison can only starve.
       armies: [army("s1", "p1", "constantinople", { [UnitType.SIEGE]: 30 })],
       seaZones: [{ id: "sea-of-marmara", name: "sea-of-marmara", position: { x: 0, y: 0 }, blockadedBy: seaOwner }],
-      siegeStates: [siegeState({ provinceId: "constantinople", grainStores: 99 })],
+      // FL-12: initial stores = baseHoldoutRounds; an open lane preserves them.
+      siegeStates: [siegeState({ provinceId: "constantinople", grainStores: SIEGE.baseHoldoutRounds })],
     });
     for (let i = 0; i < rounds; i += 1) {
       const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
@@ -655,7 +670,7 @@ describe("multi-round siege progression (§8)", () => {
         province("keep", {
           ownerId: "p2",
           terrain: TerrainType.CITY,
-          walls: { tier: 2, hp: 10 },
+          walls: { tier: 3, hp: 10 }, // FL-14: 10 HP is T3 (10/+3) in the restored 5-tier model
           garrison: 3,
         }),
       ],
@@ -687,7 +702,8 @@ describe("multi-round siege progression (§8)", () => {
         province("keep", { ownerId: "p2", walls: { tier: 0, hp: 0 }, garrison: 6 }),
       ],
       armies: [army("s1", "p1", "keep", { [UnitType.SIEGE]: 30 })],
-      siegeStates: [siegeState({ besiegingArmyIds: ["s1"], grainStores: 99 })],
+      // FL-12: no Granary → initial stores = baseHoldoutRounds; two ticks after it empties.
+      siegeStates: [siegeState({ besiegingArmyIds: ["s1"], grainStores: SIEGE.baseHoldoutRounds })],
     });
     for (let i = 0; i < SIEGE.baseHoldoutRounds + 2; i += 1) {
       const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
@@ -772,7 +788,7 @@ describe("combat modifier readers (§7.3/§7.5, CONTRACT2 §12.10)", () => {
         province("keep", {
           ownerId: "p2",
           terrain: TerrainType.CITY,
-          walls: { tier: 2, hp: 10 },
+          walls: { tier: 3, hp: 10 }, // FL-14: 10 HP is T3 (10/+3) in the restored 5-tier model
           garrison: 2,
         }),
       ],
@@ -892,7 +908,8 @@ describe("prestige signals (§13, CONTRACT2 §12.8)", () => {
         province("keep", {
           ownerId: "p2",
           terrain: TerrainType.PLAINS,
-          walls: { tier: 3, hp: 0 }, // already breached → field-odds assault
+          // FL-14: high-tier award is MAP tier ≥ 4 (T4–T5). tier 4 = great fortress.
+          walls: { tier: 4, hp: 0 }, // already breached → field-odds assault
           garrison: 1,
         }),
       ],

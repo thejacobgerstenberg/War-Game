@@ -30,8 +30,15 @@
  * key cities held, trade monopoly, the lose-capital penalty, the sudden-death
  * tracker, the prestige_pending consumption, and the game-end objective reveal.
  */
-import { GamePhase, type Faction, type GameState, type Player } from "@imperium/shared";
-import { PRESTIGE_THRESHOLDS, PRESTIGE_VALUES, ROUNDS } from "./balance.js";
+import {
+  GamePhase,
+  GreatWorkType,
+  type Faction,
+  type GameState,
+  type Player,
+  type SecretObjective,
+} from "@imperium/shared";
+import { GREAT_WORK_COSTS, PRESTIGE_THRESHOLDS, PRESTIGE_VALUES, ROUNDS } from "./balance.js";
 import { appendLog } from "./logEntry.js";
 import { neighborsOf } from "./adjacency.js";
 
@@ -91,6 +98,123 @@ function hasTradeMonopoly(state: GameState, playerId: string): boolean {
     if (mine * 2 > portOwners.length) return true; // strict majority
   }
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// Secret-objective predicate evaluation (FACTIONS.md / §13.1) — FL-06/07/08
+// ---------------------------------------------------------------------------
+
+/**
+ * FL-08 (FACTIONS Byz #3): "Hagia Sophia intact" — the player controls a
+ * province holding a COMPLETED (progress ≥ required rounds) HAGIA_SOPHIA great
+ * work. Destruction is not separately modelled, so a completed work is "intact".
+ * NOTE (see NEEDS-FROM-INTEGRATOR): Byzantium's start does NOT seed constantinople
+ * with a HAGIA_SOPHIA great work (it is a faction power), so today this gate only
+ * passes once the great work is built; gameState should seed it (or this check
+ * needs a faction-power fallback).
+ */
+function hasIntactHagiaSophia(state: GameState, player: Player): boolean {
+  const need = GREAT_WORK_COSTS[GreatWorkType.HAGIA_SOPHIA].rounds;
+  return state.provinces.some(
+    (p) =>
+      p.ownerId === player.id &&
+      p.greatWorks.some(
+        (gw) => gw.type === GreatWorkType.HAGIA_SOPHIA && gw.progress >= need,
+      ),
+  );
+}
+
+/**
+ * FL-08 (FACTIONS Byz #3): did this faction resolve Council of Florence in the
+ * Union's favour? Recorded as a persistent/game-scoped `church_union` modifier
+ * with `data.accepted === true` targeting the faction. Absence ⇒ the faction
+ * never accepted (i.e. "refused"), which is the doc default. NOTE (see
+ * NEEDS-FROM-INTEGRATOR): events/cards.ts `e17` ACCEPT must post this marker;
+ * it currently does not, so acceptance is not yet distinguishable and this
+ * defaults to "refused".
+ */
+function acceptedChurchUnion(state: GameState, faction: Faction | null): boolean {
+  if (!faction) return false;
+  return state.activeModifiers.some(
+    (m) =>
+      m.kind === "church_union" &&
+      m.data?.accepted === true &&
+      (m.target?.faction === faction || m.data?.faction === faction),
+  );
+}
+
+/**
+ * FL-07 (FACTIONS Ottoman #3): count DISTINCT high-value (HV ≥ 3) cities this
+ * player has sacked over the game. Derived from the chronicle: a sack is logged
+ * with `data.sacked === true`, the sacker as `actors[0]`, and the sacked
+ * province in `targets[0]`. NOTE (see NEEDS-FROM-INTEGRATOR): combat does not yet
+ * emit `data.sacked`, so this reads 0 until that log flag is added.
+ */
+function countSackedHighValueCities(state: GameState, playerId: string): number {
+  const sacked = new Set<string>();
+  for (const entry of state.log) {
+    if (entry.data?.sacked !== true) continue;
+    if (entry.actors[0] !== playerId) continue;
+    const provId = entry.targets?.[0];
+    if (!provId) continue;
+    const prov = state.provinces.find((p) => p.id === provId);
+    if (prov && (prov.highValue ?? 0) >= 3) sacked.add(provId);
+  }
+  return sacked.size;
+}
+
+/**
+ * Evaluate a secret objective's completion predicate (FACTIONS.md / §13.1),
+ * supporting the extended SecretObjective model (FL-06/07/08). All present clause
+ * groups must hold (AND between groups), EXCEPT:
+ *  - `anyOf` is an OR *within* its own territorial group (FL-06);
+ *  - the "imperial scale" gates `minProvinces` / `sackedHighValueCities` are
+ *    ALTERNATIVES to each other (FL-07: ≥15 provinces OR ≥3 HV cities sacked).
+ * Legacy `provinceRefs` is treated as an implicit all-of group. Read-only.
+ */
+function objectiveSatisfied(state: GameState, player: Player, obj: SecretObjective): boolean {
+  const owns = (id: string): boolean =>
+    state.provinces.find((p) => p.id === id)?.ownerId === player.id;
+
+  // Territorial all-of (FL-06): legacy provinceRefs + explicit allOf — all held.
+  const allRefs = [...(obj.provinceRefs ?? []), ...(obj.allOf ?? [])];
+  if (allRefs.length > 0 && !allRefs.every(owns)) return false;
+
+  // Territorial or-clause (FL-06): at least one of anyOf held.
+  const hasAnyOf = (obj.anyOf?.length ?? 0) > 0;
+  if (hasAnyOf && !obj.anyOf!.some(owns)) return false;
+
+  // Faith threshold (FL-08): finish with ≥ minFaith banked.
+  if (obj.minFaith !== undefined && (player.treasury.faith ?? 0) < obj.minFaith) {
+    return false;
+  }
+
+  // Hagia Sophia intact in a held province (FL-08).
+  if (obj.requiresHagiaSophia && !hasIntactHagiaSophia(state, player)) return false;
+
+  // Refused Church Union (FL-08): never resolved Council of Florence for the Union.
+  if (obj.refusedChurchUnion && acceptedChurchUnion(state, player.faction)) return false;
+
+  // Imperial-scale gates (FL-07) — ALTERNATIVES (OR) to one another.
+  const scaleGates: boolean[] = [];
+  if (obj.minProvinces !== undefined) {
+    const count = state.provinces.filter((p) => p.ownerId === player.id).length;
+    scaleGates.push(count >= obj.minProvinces);
+  }
+  if (obj.sackedHighValueCities !== undefined) {
+    scaleGates.push(countSackedHighValueCities(state, player.id) >= obj.sackedHighValueCities);
+  }
+  if (scaleGates.length > 0 && !scaleGates.some(Boolean)) return false;
+
+  // A degenerate objective with no clauses at all never auto-completes.
+  const hasClause =
+    allRefs.length > 0 ||
+    hasAnyOf ||
+    obj.minFaith !== undefined ||
+    obj.requiresHagiaSophia === true ||
+    obj.refusedChurchUnion === true ||
+    scaleGates.length > 0;
+  return hasClause;
 }
 
 // ---------------------------------------------------------------------------
@@ -255,6 +379,22 @@ export function scorePrestige(state: GameState): GameState {
         captorId = winnerId;
         dispossessedId = entry.actors[1]; // the defender (previous owner)
       }
+    } else if (
+      // §13.1 (FL-20): an UNCONTESTED occupation — the attacker marched into an
+      // undefended province (no defender, no winnerId). It is still a capture, so
+      // the dispossessed capital owner must take the −3. The producer
+      // (actions.ts::relocate) tags the log `data.occupied === true`; the older
+      // synthetic form used `data.rounds === 0` — accept either discriminator.
+      entry.type === "battle" &&
+      entry.data?.winnerId === undefined &&
+      (entry.data?.occupied === true || entry.data?.rounds === 0) &&
+      entry.targets !== undefined &&
+      entry.targets.length > 0 &&
+      entry.actors.length > 0
+    ) {
+      capturedProvId = entry.targets[0];
+      captorId = entry.actors[0];
+      dispossessedId = entry.actors[1]; // usually undefined (no defender named)
     } else if (entry.type === "siege" && entry.data?.captured === true) {
       capturedProvId = entry.targets?.[0];
       captorId = entry.actors[0];
@@ -308,11 +448,11 @@ export function scorePrestige(state: GameState): GameState {
     for (const player of next.players) {
       for (const obj of player.objectives) {
         if (obj.completed) continue;
-        if (obj.provinceRefs.length === 0) continue;
-        const satisfied = obj.provinceRefs.every(
-          (ref) => next.provinces.find((p) => p.id === ref)?.ownerId === player.id,
-        );
-        if (!satisfied) continue;
+        // FL-06/07/08: evaluate the full predicate (territorial all-of/any-of +
+        // the non-territorial minProvinces/Hagia-Sophia/faith/church-union/sack
+        // gates), not a bare provinceRefs.every() — the latter skipped
+        // non-territorial objectives entirely and mis-scored OR-clauses.
+        if (!objectiveSatisfied(next, player, obj)) continue;
         obj.completed = true; // revealed & scored once, at game end
         award(player.id, "secretObjective", obj.prestige);
         revealedObjectives.push({ playerId: player.id, objectiveId: obj.id, prestige: obj.prestige });

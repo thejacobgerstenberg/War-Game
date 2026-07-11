@@ -66,7 +66,11 @@ function eraForRound(round: number): 1 | 2 | 3 {
  * Rounds-scoped expiry itself is driven by roundLoop cleanup — see the
  * NEEDS-FROM-INTEGRATOR note.
  */
-function buildCardModifiers(card: EventCard, state: GameState): ActiveModifier[] {
+function buildCardModifiers(
+  card: EventCard,
+  state: GameState,
+  targetFaction: Faction | null = null,
+): ActiveModifier[] {
   const round = state.round;
   const d = card.effects.durationRounds ?? 0;
   const expires = round + Math.max(1, d) - 1;
@@ -112,7 +116,15 @@ function buildCardModifiers(card: EventCard, state: GameState): ActiveModifier[]
         },
       ];
     // #28 Papal Interdict — PERSISTENT 2 rounds: faith income 0, no crusade.
+    // EVENT_CARDS.md Era II #28 ("Target loses all ✝️ income for 2 rounds"):
+    // the interdict falls on the INTERDICTED (target) faction ALONE, not every
+    // seated player. Scope the faith_income modifier to `target:{faction}` so
+    // economy's faith reader (getModifiers 'faith_income' filtered by faction)
+    // zeroes only that faction — an untargeted modifier is treated as global by
+    // appliesTo() and would wrongly zero everyone. On the neutral/no-target omen
+    // path (no interdicted player) post nothing at all.
     case 28:
+      if (!targetFaction) return [];
       return [
         {
           id: mid("faith"),
@@ -120,6 +132,7 @@ function buildCardModifiers(card: EventCard, state: GameState): ActiveModifier[]
           scope: "persistent",
           kind: "faith_income",
           value: 0,
+          target: { faction: targetFaction },
           expiresRound: expires,
           data: { multiplier: 0, noCrusade: true },
         },
@@ -321,8 +334,18 @@ export function resolveCard(state: GameState, cardId: string): GameState {
   let next = effect(state, ctx);
   next = { ...next, rngCursor: rng.cursor };
 
+  // EVENT_CARDS.md Era II #28 (Papal Interdict): the interdict targets a single
+  // player (ctx.targetPlayerId). Resolve that player's faction so the durable
+  // faith_income modifier can be scoped to it — untargeted → economy zeroes
+  // every faction. When no interdicted player is supplied the effect fn takes
+  // the neutral-omen path and buildCardModifiers posts nothing for #28.
+  const targetFaction =
+    ctx.targetPlayerId != null
+      ? (next.players.find((p) => p.id === ctx.targetPlayerId)?.faction ?? null)
+      : null;
+
   if (hasTarget) {
-    for (const mod of buildCardModifiers(card, next)) {
+    for (const mod of buildCardModifiers(card, next, targetFaction)) {
       next = addModifier(next, mod);
     }
   }

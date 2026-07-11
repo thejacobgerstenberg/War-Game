@@ -10,13 +10,14 @@
  * Pure: the COMBAT phase owns a single RNG stream (seed+cursor from state) and
  * writes the advanced cursor back into the returned state.
  */
-import { BuildingType, GamePhase, type Faction, type GameState } from "@imperium/shared";
 import {
-  ACTIONS_PER_ROUND,
-  ERA_BOUNDARIES,
-  ROUNDS,
-  UNIVERSITY_ACTION_BONUS,
-} from "./balance.js";
+  GamePhase,
+  type Faction,
+  type GameState,
+  type UnitType,
+  type UnitVariantStack,
+} from "@imperium/shared";
+import { ACTIONS_PER_ROUND, ERA_BOUNDARIES, ROUNDS } from "./balance.js";
 import { makeRng } from "./rng.js";
 import { drawOmen } from "./events/index.js";
 import { applyIncomePhase } from "./economy.js";
@@ -37,20 +38,17 @@ export function eraForRound(round: number): 1 | 2 | 3 {
 }
 
 /**
- * Reset every player's per-round action budget (§10.0): 4 base, +1 if the player
- * owns a University province, +1 per card-posted 'action_bonus' modifier.
+ * Reset every player's per-round action budget (§9.1 / §10.0): base 4, +1 per
+ * card-posted 'action_bonus' modifier. Only "certain cards" may raise the budget
+ * to 5 (§10.0). FL-11 / CANON #2: the University does NOT grant a 5th action — its
+ * documented effect (§9.1) is a +1 tactic-card DRAW, implemented in tactics.ts
+ * (`universityDrawBonus`); the former University action bonus here was a fabricated
+ * rule and has been removed.
  */
 function resetActionBudgets(state: GameState): GameState {
   const bonusFor = (playerId: string, faction: Faction | null): number => {
     let bonus = 0;
-    // §10.0 a University raises the budget to 5.
-    const hasUniversity = state.provinces.some(
-      (prov) =>
-        prov.ownerId === playerId &&
-        prov.buildings.includes(BuildingType.UNIVERSITY),
-    );
-    if (hasUniversity) bonus += UNIVERSITY_ACTION_BONUS;
-    // §10.0 certain cards can also grant an extra action (side-channel).
+    // §10.0 certain cards can grant an extra action (side-channel).
     for (const mod of state.activeModifiers) {
       if (mod.kind !== "action_bonus") continue;
       if (
@@ -88,6 +86,46 @@ function sortTurnOrder(state: GameState): GameState {
     return a < b ? -1 : a > b ? 1 : 0;
   });
   return { ...state, turnOrder, activePlayerIndex: 0 };
+}
+
+/**
+ * §6.4 / §10 phase-5 deferred occupation flip. When a stack marches unopposed
+ * into an empty enemy/neutral province, `actions.ts::relocate` moves the stack
+ * WITHOUT flipping `ownerId` and records a `pendingOccupations` entry. At END
+ * cleanup we flip `ownerId` to the occupant for every entry that is still
+ * occupied-and-uncontested (occupant still has live units there and no rival
+ * stack contests the tile), then clear the queue. A contested tile would have
+ * queued a battle resolved in COMBAT, so by cleanup an uncontested hold flips.
+ */
+function flipPendingOccupations(state: GameState): GameState {
+  const pending = state.pendingOccupations ?? [];
+  if (pending.length === 0) return state;
+
+  const stackCount = (
+    units: Record<UnitType, number>,
+    variants?: UnitVariantStack[],
+  ): number =>
+    Object.values(units).reduce((s, n) => s + (n ?? 0), 0) +
+    (variants?.reduce((s, v) => s + v.count, 0) ?? 0);
+
+  const provinces = state.provinces.map((prov) => {
+    const entry = pending.find((e) => e.provinceId === prov.id);
+    if (!entry) return prov;
+    // Still occupied: the occupant has at least one live unit in the province.
+    const occupantHolds = state.armies.some(
+      (a) => a.ownerId === entry.occupantId && a.locationId === prov.id && stackCount(a.units, a.variants) > 0,
+    );
+    // Uncontested: no rival (non-occupant) stack contests the tile.
+    const contested = state.armies.some(
+      (a) => a.ownerId !== entry.occupantId && a.locationId === prov.id && stackCount(a.units, a.variants) > 0,
+    );
+    if (!occupantHolds || contested) return prov;
+    // §6.4 occupation of an undefended enemy/neutral tile resolves at cleanup.
+    return { ...prov, ownerId: entry.occupantId, garrison: 0 };
+  });
+
+  // Clear the queue — every pending occupation is resolved (flipped or dropped).
+  return { ...state, provinces, pendingOccupations: [] };
 }
 
 /** Resolve every pending battle, naval engagement and siege for the round. */
@@ -167,8 +205,12 @@ export function advancePhase(state: GameState): GameState {
       // §10 phase 5 cleanup, ordered so `prestige_pending` is CONSUMED before it
       // EXPIRES (no double-count, CONTRACT2 §12.8): scorePrestige → runRevolts →
       // checkVictory → expireRoundModifiers. Tactic hands are pruned here too (§7.7).
+      // 0) §6.4 / §10 phase-5: flip ownership of provinces still occupied-and-
+      //    uncontested BEFORE scoring, so newly-held tiles count toward prestige
+      //    and victory this cleanup. (MOVE-time deferral lives in actions.ts.)
+      let next = flipPendingOccupations(state);
       // 1) §13.1 score per-round prestige + consume conquest-track prestige_pending.
-      let next = scorePrestige(state);
+      next = scorePrestige(next);
       // 2) §11.5 conquered-minor / heavy-tax revolts.
       next = runRevolts(next);
       // 3) §7.7 cleanup: discard each hand down to TACTIC_HAND_LIMIT.
