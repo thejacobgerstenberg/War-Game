@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="phase-action-icon" role="img" aria-labelledby="phase-action-title">
+  <title id="phase-action-title">Action phase — hanging war banner with forked tail</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — phase icon: ACTION
+       A gonfalon: war banner hung from a horizontal bar with round
+       finials, three hanging tabs, swallow-tailed cloth bearing a
+       cut-out Byzantine cross. Single-color silhouette; the cross
+       and hanging slots are negative space.
+       ============================================================ -->
+
+  <!-- == suspension bar, finials, and three hanging tabs == -->
+  <g fill="currentColor">
+    <rect x="8" y="7" width="48" height="4" rx="2"/>
+    <circle cx="8" cy="9" r="3.5"/>
+    <circle cx="56" cy="9" r="3.5"/>
+    <rect x="17" y="9" width="4.5" height="8"/>
+    <rect x="29.75" y="9" width="4.5" height="8"/>
+    <rect x="42.5" y="9" width="4.5" height="8"/>
+  </g>
+
+  <!-- == the cloth ==
+       subpath 1: banner field, swallowtail forked at (32,37) with
+         tail points at (15,53) and (49,53)
+       subpath 2: cut-out Greek cross centered (32,26), arm width
+         4.5, span 15 -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M15 15 H49 V53 L32 37 L15 53 Z
+    M29.75 18.5 H34.25 V23.75 H39.5 V28.25 H34.25 V33.5 H29.75 V28.25 H24.5 V23.75 H29.75 Z"/>
+</svg>

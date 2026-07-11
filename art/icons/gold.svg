@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="gold-icon" role="img" aria-labelledby="gold-title">
+  <title id="gold-title">Gold — coin with laurel ring</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — resource icon: GOLD
+       A hyperpyron-style coin: solid disc, cut-out rim channel,
+       a ring of twelve cut-out laurel leaves, and a cut-out
+       Byzantine cross at center. Single-color silhouette:
+       one currentColor path, all detail via evenodd negative space.
+       ============================================================ -->
+
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M32 5 A27 27 0 1 0 32 59 A27 27 0 1 0 32 5 Z
+
+    M32 8.5 A23.5 23.5 0 1 1 32 55.5 A23.5 23.5 0 1 1 32 8.5 Z
+    M32 10.5 A21.5 21.5 0 1 0 32 53.5 A21.5 21.5 0 1 0 32 10.5 Z
+
+    M28.81 15.34 Q33.09 13.49 35.19 17.66 Q30.91 19.51 28.81 15.34 Z
+    M37.56 15.97 Q42.2 16.52 41.94 21.18 Q37.3 20.63 37.56 15.97 Z
+    M44.83 20.9 Q48.57 23.69 46.01 27.6 Q42.27 24.81 44.83 20.9 Z
+    M48.66 28.81 Q50.51 33.09 46.34 35.19 Q44.49 30.91 48.66 28.81 Z
+    M48.03 37.56 Q47.48 42.2 42.82 41.94 Q43.37 37.3 48.03 37.56 Z
+    M43.1 44.83 Q40.31 48.57 36.4 46.01 Q39.19 42.27 43.1 44.83 Z
+    M35.19 48.66 Q30.91 50.51 28.81 46.34 Q33.09 44.49 35.19 48.66 Z
+    M26.44 48.03 Q21.8 47.48 22.06 42.82 Q26.7 43.37 26.44 48.03 Z
+    M19.17 43.1 Q15.43 40.31 17.99 36.4 Q21.73 39.19 19.17 43.1 Z
+    M15.34 35.19 Q13.49 30.91 17.66 28.81 Q19.51 33.09 15.34 35.19 Z
+    M15.97 26.44 Q16.52 21.8 21.18 22.06 Q20.63 26.7 15.97 26.44 Z
+    M20.9 19.17 Q23.69 15.43 27.6 17.99 Q24.81 21.73 20.9 19.17 Z
+
+    M30.4 25.5 H33.6 V30.4 H38.5 V33.6 H33.6 V38.5 H30.4 V33.6 H25.5 V30.4 H30.4 Z"/>
+  <!-- subpath order above:
+       1. coin disc r=27
+       2-3. rim channel, cut ring r 21.5..23.5
+       4-15. twelve laurel leaves at r=15.5, tilted off tangent
+       16. Byzantine cross, arm width 3.2, span 13 -->
+</svg>

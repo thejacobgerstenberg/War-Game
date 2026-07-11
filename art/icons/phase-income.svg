@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="phase-income-icon" role="img" aria-labelledby="phase-income-title">
+  <title id="phase-income-title">Income phase — three overlapping coins</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — phase icon: INCOME
+       Three overlapping hyperpyra (r 13) cascading from top-left
+       (17,17) through (32,30) to the front coin at (46,42.5).
+       Each covered coin is authored as a crescent — its circle
+       minus the next coin expanded by a 2.7-unit keyline gap — so
+       the stack reads as three separate coins in one color. Rim
+       channels and the front cross are cut-out negative space
+       (fill-rule evenodd).
+       ============================================================ -->
+
+  <!-- == back coin, top-left: crescent with partial rim channel == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M16.3 29.98 A13 13 0 1 1 29.75 14.46 A15.7 15.7 0 0 0 16.3 29.98 Z
+    M16.03 26.75 A9.8 9.8 0 1 1 26.51 14.65 L24.38 15.18 A7.6 7.6 0 1 0 16.25 24.56 Z"/>
+
+  <!-- == middle coin: crescent behind the front coin == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M30.3 42.89 A13 13 0 1 1 44.62 26.86 A15.7 15.7 0 0 0 30.3 42.89 Z
+    M29.96 39.59 A9.8 9.8 0 1 1 41.29 26.89 L39.21 27.59 A7.6 7.6 0 1 0 30.42 37.43 Z"/>
+
+  <!-- == front coin ==
+       subpath 1: disc r 13
+       subpaths 2-3: rim channel, cut ring r 7.6..9.8
+       subpath 4: Byzantine cross, arm width 3.2, span 9 -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M46 29.5 A13 13 0 1 0 46 55.5 A13 13 0 1 0 46 29.5 Z
+    M46 32.7 A9.8 9.8 0 1 1 46 52.3 A9.8 9.8 0 1 1 46 32.7 Z
+    M46 34.9 A7.6 7.6 0 1 0 46 50.1 A7.6 7.6 0 1 0 46 34.9 Z
+    M44.4 38 H47.6 V40.9 H50.5 V44.1 H47.6 V47 H44.4 V44.1 H41.5 V40.9 H44.4 Z"/>
+</svg>
