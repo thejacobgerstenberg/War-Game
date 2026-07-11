@@ -266,15 +266,43 @@ export interface TacticCard {
   data?: Record<string, unknown>;
 }
 
-/** A hidden victory goal dealt to a player (3 per faction, scored at game end). */
+/**
+ * A hidden victory goal dealt to a player (3 per faction, scored at game end).
+ *
+ * The legacy `provinceRefs` model (all-of, evaluated with `.every(owned)`) cannot
+ * express OR-clauses or non-territorial conditions, so several ratified objectives
+ * were mis-scored (FL-06 Restoration OR-clause, FL-07 Ghazi non-territorial,
+ * FL-08 Faith-of-the-Fathers gated). The optional predicate fields below let
+ * prestige.ts evaluate richer completion tests and factions.ts re-seed them.
+ * All fields are optional and additive — an objective using only `provinceRefs`
+ * keeps its original meaning (backward-compatible). When both `provinceRefs` and
+ * the structured fields are present, the structured fields are the intended test.
+ */
 export interface SecretObjective {
   id: string;
   description: string;
-  /** Province ids referenced by the objective's completion test. */
+  /**
+   * Province ids ALL required by the objective (the original all-of test). Still
+   * valid on its own; treated as an implicit `allOf` when the fields below are set.
+   */
   provinceRefs: string[];
   /** Prestige awarded on completion. */
   prestige: number;
   completed?: boolean;
+  /** Province ids that must ALL be controlled (explicit all-of group; FL-06). */
+  allOf?: string[];
+  /** Province ids of which at LEAST ONE must be controlled (or-clause; FL-06). */
+  anyOf?: string[];
+  /** Minimum number of provinces controlled at game end (FL-07 threshold). */
+  minProvinces?: number;
+  /** Requires Hagia Sophia present/intact in a held province (FL-08). */
+  requiresHagiaSophia?: boolean;
+  /** Minimum faith the player must finish with (FL-08). */
+  minFaith?: number;
+  /** Requires the player to have refused Church Union (FL-08 flag). */
+  refusedChurchUnion?: boolean;
+  /** Minimum count of high-value cities sacked over the game (FL-07 alternative). */
+  sackedHighValueCities?: number;
 }
 
 /** An active diplomatic agreement. */
@@ -396,7 +424,10 @@ export interface PendingBattle {
  *
  * `kind` is an open string so subsystems can add their own effect classes;
  * conventional values: 'combat_mod' | 'move_mod' | 'upkeep_mod' | 'faith_income'
- * | 'trade_mod' | 'freeze_sea' | 'no_recruit' | 'no_build' | 'siege_mod' | 'morale'.
+ * | 'trade_mod' | 'freeze_sea' | 'no_recruit' | 'no_build' | 'siege_mod' | 'morale'
+ * | 'income' | 'plague' | 'wall_mod' | 'unlock' | 'prestige_pending'. (FL-04/FL-19:
+ * 'income' and 'plague' are ordinary open-string kinds — economy.ts reads them in
+ * applyIncomePhase/computeIncome; no new type is required.)
  */
 export interface ActiveModifier {
   /** Stable id (e.g. `<cardId>:<kind>` or an engine counter). */
@@ -566,6 +597,22 @@ export interface GameState {
   siegeStates: SiegeState[];
   /** Active states of war (casus-belli, "win a war +3 prestige", peace checks). */
   wars: WarState[];
+  /**
+   * FL-21 — deferred occupations (§6.4 / §10 phase-5). When a stack marches
+   * unopposed into an empty enemy/neutral province, `actions.ts::relocate` moves
+   * the stack WITHOUT flipping `Province.ownerId` and records the pending
+   * occupation here; the roundLoop END/cleanup step flips `ownerId` to
+   * `occupantId` for entries still occupied-and-uncontested, then clears them.
+   * `sinceRound` lets cleanup tell a fresh occupation from one that has stood.
+   * Optional so hand-built GameState fixtures stay valid; `createInitialState`
+   * initialises it to `[]`. THIS is the chosen deferred-occupation field (not
+   * `Province.pendingOwnerId`) — actions.ts and roundLoop.ts must both use it.
+   */
+  pendingOccupations?: {
+    provinceId: string;
+    occupantId: string;
+    sinceRound: number;
+  }[];
   /** Round/persistent effect side-channel posted by cards, read by subsystems. */
   activeModifiers: ActiveModifier[];
   /** Constantinople sudden-death tracker. */

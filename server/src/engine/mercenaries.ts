@@ -137,12 +137,23 @@ function fieldCompany(state: GameState, companyId: string): GameState {
   }
   if (!army.mercenaries) army.mercenaries = {};
 
+  // Generic roster heads: field as plain units and tag them mercenary for the
+  // §4.4 ×2 / desert-first upkeep the mercenaries map drives (economy.mercCount).
   for (const [key, count] of Object.entries(def.roster)) {
     const u = key as UnitType;
     const c = count ?? 0;
     army.units[u] = (army.units[u] ?? 0) + c;
     army.mercenaries[u] = (army.mercenaries[u] ?? 0) + c;
   }
+  // §6.3 (GD line 304) FL-10: elite companies (the Varangian Remnant) field as
+  // named UnitVariantStack heads, NOT plain roster units, so combat's variant
+  // effective-CV lookup applies the +1 DEF from UNIQUE_UNIT_OVERRIDES on defence
+  // (combat.ts reads def.defMod on the defender role). These heads ARE mercenaries
+  // for §4.4 (double upkeep / desert-first): their variant carries the
+  // `elite-mercenary` ability tag. The current `mercenaries` map is keyed by
+  // UnitType and clamped to generic `units`, so it cannot tag variant heads —
+  // economy must recognise `elite-mercenary` variants as mercenaries for §4.4.
+  // See NEEDS-FROM-INTEGRATOR (economy.ts grainDue / upkeep desertion).
   for (const v of def.variants ?? []) {
     army.variants = army.variants ?? [];
     army.variants.push({ ...v });

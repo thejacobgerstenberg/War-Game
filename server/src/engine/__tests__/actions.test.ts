@@ -125,6 +125,30 @@ describe("MOVE / ATTACK", () => {
     expect(next.pendingBattles).toHaveLength(0);
   });
 
+  it("§6.4/§10 defers occupation of an empty enemy tile (no inline ownerId flip)", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    // Make the adjacent selymbria an UNDEFENDED enemy province (Ottoman-held, no
+    // garrison, no defending stack) so the march is unopposed.
+    const prov = s.provinces.find((p) => p.id === "selymbria")!;
+    prov.ownerId = "p2";
+    prov.garrison = 0;
+    s.armies = s.armies.filter(
+      (a) => !(a.locationId === "selymbria" && a.ownerId === "p2"),
+    );
+    const next = applyAction(s, move({ toId: "selymbria" }));
+    // The stack relocates...
+    expect(next.armies.find((a) => a.id === BYZ_ARMY)!.locationId).toBe("selymbria");
+    // ...but ownership does NOT flip inline (§6.4: flips at cleanup unless contested).
+    expect(next.provinces.find((p) => p.id === "selymbria")!.ownerId).toBe("p2");
+    // The occupation is recorded for the roundLoop END/cleanup flip.
+    expect(next.pendingOccupations).toContainEqual(
+      expect.objectContaining({ provinceId: "selymbria", occupantId: "p1" }),
+    );
+    // Undefended → no battle queued.
+    expect(next.pendingBattles).toHaveLength(0);
+  });
+
   it("§7 queues a PendingBattle when entering a defended enemy tile", () => {
     const s = fresh();
     s.phase = GamePhase.MOVEMENT;
@@ -526,6 +550,23 @@ describe("LEVY_CALL (§11.5)", () => {
     expect(army.units[UnitType.LEVY]).toBe(4); // 1 starting + (2 base + 1 tier-1)
     // Cooldown re-armed so runRevolts won't double-levy this cadence.
     expect(next.minors.find((m) => m.id === "m-serbia")!.roundsUntilLevy).toBe(2);
+  });
+
+  it("§6.4 clamps the levy to the remaining land-stacking capacity at the capital", () => {
+    const s = withVassal(fresh());
+    s.phase = GamePhase.DIPLOMACY;
+    // Fill p1's stack at the vassal capital (selymbria) to 7 land units, one shy
+    // of the §6.4 land cap (8). A 3-unit levy must be trimmed to 1, not 3.
+    const army = s.armies.find(
+      (a) => a.ownerId === "p1" && a.locationId === "selymbria",
+    )!;
+    army.units[UnitType.LEVY] = 7;
+    const next = applyAction(s, { type: "LEVY_CALL", player: "p1", minorId: "m-serbia" });
+    const after = next.armies.find(
+      (a) => a.ownerId === "p1" && a.locationId === "selymbria",
+    )!;
+    // 7 + min(3, 8 - 7) = 8, never 10 — stacking invariant preserved (§6.4).
+    expect(after.units[UnitType.LEVY]).toBe(8);
   });
 
   it("§11.5 rejects a levy call still on cooldown (LEVY_COOLDOWN)", () => {

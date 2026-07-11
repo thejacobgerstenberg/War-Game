@@ -11,6 +11,7 @@ import {
   Faction,
   GreatWorkType,
   TaxPosture,
+  TerrainType,
   UnitType,
   type Army,
   type Fleet,
@@ -194,10 +195,11 @@ function addRoute(
 describe("trade routes — §5.2 formula", () => {
   it("scores base + portTier(A) + portTier(B) + controlledHops", () => {
     const state = fresh();
-    // constantinople portTier=3 (highValue 5 clamped), selymbria=0, 0 hops.
+    // §5.2 band map (FL-09): constantinople HV5 → portTier 3; selymbria is a
+    // coastal port with no HV flag → portTier 1 (any other port); 0 hops.
     addRoute(state, "p1", "constantinople", "selymbria", []);
-    // 2 + 3 + 0 + 0 = 5 gold route income added to the 13 province gold.
-    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 5);
+    // 2 + 3 + 1 + 0 = 6 gold route income added to the 13 province gold.
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 6);
   });
 
   it("halves (floor) route income when a hop is blockaded but escorted", () => {
@@ -205,8 +207,8 @@ describe("trade routes — §5.2 formula", () => {
     state.seaZones.find((z) => z.id === "bosphorus")!.blockadedBy = "p2"; // enemy fleet
     state.fleets = [galleyFleet("p1", "bosphorus")]; // friendly escort → not severed
     addRoute(state, "p1", "constantinople", "selymbria", ["bosphorus"]);
-    // base 5 (blockaded hop not counted as controlled) × 0.5 = 2.
-    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 2);
+    // base 6 (blockaded hop not counted as controlled) × 0.5 = 3.
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 3);
   });
 
   it("severs route income to 0 when a blockaded hop has no escort", () => {
@@ -221,8 +223,8 @@ describe("trade routes — §5.2 formula", () => {
     const state = fresh();
     state.players[0].faction = Faction.VENICE; // maritime merchant bonus
     addRoute(state, "p1", "constantinople", "selymbria", []);
-    // floor(5 × 1.5) = 7.
-    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 7);
+    // floor(6 × 1.5) = 9.
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 9);
   });
 
   it("establishes a route via applyTrade ROUTE with a merchant galley", () => {
@@ -276,6 +278,25 @@ describe("applyIncomePhase — §5.3 piracy", () => {
       expect(routeGone).toBe(false);
       expect(fleet?.units[UnitType.GALLEY]).toBe(1);
     }
+  });
+
+  it("a friendly GALLEY war fleet in the lane escorts and prevents piracy (§5.3, FL-15)", () => {
+    const state = fresh();
+    state.fleets = [
+      galleyFleet("p1", "constantinople"), // merchantman (id f-p1), off-lane
+      {
+        id: "escort",
+        ownerId: "p1",
+        locationId: "bosphorus",
+        units: { ...emptyUnits(), [UnitType.GALLEY]: 1 }, // GALLEY, not WARSHIP
+      },
+    ];
+    addRoute(state, "p1", "constantinople", "selymbria", ["bosphorus"], "f-p1");
+    const out = applyIncomePhase(state);
+    // A galley (war fleet per §5.3) escorting the hop prevents the sink outright,
+    // regardless of the piracy die → route stays intact and no galley is lost.
+    expect(out.activeModifiers.some((m) => m.kind === "trade_route")).toBe(true);
+    expect(out.fleets.find((f) => f.id === "f-p1")?.units[UnitType.GALLEY]).toBe(1);
   });
 
   it("advances and persists the RNG cursor (determinism)", () => {
@@ -366,14 +387,15 @@ describe("applyBuild — §9.2 great works", () => {
     expect(r2.players[0].treasury.gold).toBe(30 - 16);
   });
 
-  it("sets Theodosian Walls to tier 3 / 16 HP on completion", () => {
+  it("sets Theodosian Walls to tier 5 / 16 HP on completion", () => {
     const state = fresh();
     state.players[0].treasury = { gold: 40, grain: 0, timber: 0, marble: 40, faith: 0 };
     const gw = { greatWork: GreatWorkType.THEODOSIAN_WALLS }; // rounds 2
     const r1 = applyBuild(state, build("p1", "selymbria", gw));
     const r2 = applyBuild(r1, build("p1", "selymbria", gw));
     const prov = r2.provinces.find((p) => p.id === "selymbria")!;
-    expect(prov.walls.tier).toBe(3);
+    // CANON #4: Theodosian = T5 = 16 HP / +4 under the restored 5-tier keyspace.
+    expect(prov.walls.tier).toBe(5);
     expect(prov.walls.hp).toBe(16);
   });
 
@@ -468,10 +490,58 @@ describe("economy modifier readers — §4/§5", () => {
 
   it("'trade_mod' adjusts trade-route gold (§5.2, e.g. #18 Venetian–Genoese War −2)", () => {
     const state = fresh();
-    addRoute(state, "p1", "constantinople", "selymbria", []); // base route gold 5
+    addRoute(state, "p1", "constantinople", "selymbria", []); // base route gold 6
     addMod(state, "trade_mod", { value: -2, target: { faction: Faction.BYZANTIUM } });
-    // 13 province gold + max(0, 5 − 2) = 13 + 3.
-    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 3);
+    // 13 province gold + max(0, 6 − 2) = 13 + 4.
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 4);
+  });
+
+  it("'income' pays a flat per-round gold to the controller of a targeted province (#9 Alum)", () => {
+    const state = fresh();
+    const base = computeIncome(state).perPlayer.p1.gold; // 13
+    const p2Base = computeIncome(state).perPlayer.p2.gold;
+    // selymbria is Byzantium-controlled: a standing +2 gold/round dye monopoly.
+    addMod(state, "income", {
+      value: 2,
+      target: { provinceId: "selymbria" },
+      data: { perRoundGold: 2 },
+      scope: "game",
+    });
+    const out = computeIncome(state);
+    expect(out.perPlayer.p1.gold).toBe(base + 2); // fires EVERY income phase
+    expect(out.perPlayer.p2.gold).toBe(p2Base); // only the controller collects
+  });
+
+  it("'income' pays a flat per-round gold to a targeted faction (#39 pilgrimage)", () => {
+    const state = fresh();
+    const base = computeIncome(state).perPlayer.p1.gold;
+    addMod(state, "income", {
+      value: 1,
+      target: { faction: Faction.BYZANTIUM },
+      data: { perRoundGold: 1 },
+      scope: "game",
+    });
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(base + 1);
+  });
+
+  it("'plague' subtracts −1 grain/−1 gold per controlled CITY/high-value province (#35)", () => {
+    const state = fresh();
+    const baseGold = computeIncome(state).perPlayer.p1.gold;
+    const baseGrain = computeIncome(state).perPlayer.p1.grain;
+    const qualifying = state.provinces.filter(
+      (p) =>
+        p.ownerId === "p1" &&
+        (p.terrain === TerrainType.CITY || (p.highValue ?? 0) > 0),
+    ).length;
+    expect(qualifying).toBeGreaterThan(0); // Byzantium holds Constantinople
+    // As events/index.ts case 35 posts it: kind:'plague', data:{grain:-1,gold:-1}.
+    addMod(state, "plague", {
+      data: { grain: -1, gold: -1, cullRatio: 3 },
+      scope: "persistent",
+    });
+    const out = computeIncome(state);
+    expect(out.perPlayer.p1.gold).toBe(Math.max(0, baseGold - qualifying));
+    expect(out.perPlayer.p1.grain).toBe(Math.max(0, baseGrain - qualifying));
   });
 
   it("'upkeep_mod' changes the grain a faction owes at upkeep (§4.4)", () => {

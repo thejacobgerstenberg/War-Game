@@ -167,6 +167,7 @@ export function createInitialState(
     pendingBattles: [],
     siegeStates: [],
     wars: [],
+    pendingOccupations: [],
     activeModifiers: [],
     constantinopleHold: { faction: null, rounds: 0 },
     rngSeed,

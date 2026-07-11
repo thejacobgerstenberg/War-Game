@@ -198,6 +198,24 @@ describe("resolveCard — representative card effects", () => {
     expect(after.log.some((e) => /auction|highest bidder/i.test(e.message))).toBe(true);
   });
 
+  it("#28 Papal Interdict does NOT post a global faith modifier (EVENT_CARDS Era II #28 targets one faction)", () => {
+    // Without an interdicted target (ctx.targetPlayerId), the neutral-omen path
+    // must leave NO faith_income modifier on the board — the pre-fix bug posted
+    // an untargeted faith_income {value:0, multiplier:0} that economy read as
+    // global and used to zero every seated faction's faith income.
+    const after = resolveCard(fresh(seats4), omenCardId(28));
+    const faithMod = after.activeModifiers.find(
+      (m) => m.sourceCardId === omenCardId(28) && m.kind === "faith_income",
+    );
+    expect(faithMod).toBeUndefined();
+    // Any faith_income modifier that ever IS posted for #28 must be faction-scoped.
+    expect(
+      after.activeModifiers.some(
+        (m) => m.kind === "faith_income" && m.target?.faction === undefined,
+      ),
+    ).toBe(false);
+  });
+
   it("#46 The Fall of Constantinople awards +5 prestige to the Byzantine holder and arms sudden death", () => {
     const s = fresh(seats4); // Byzantium (p1) still holds Constantinople
     const after = resolveCard(s, omenCardId(46));

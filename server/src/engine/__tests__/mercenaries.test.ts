@@ -22,7 +22,11 @@ import { createInitialState, type SeatInput } from "../gameState.js";
 import { applyMercBid, refreshMercMarket } from "../mercenaries.js";
 import { EngineError } from "../actions.js";
 import { makeRng } from "../rng.js";
-import { MERC_COMPANIES, MERC_MARKET } from "../balance.js";
+import {
+  MERC_COMPANIES,
+  MERC_MARKET,
+  UNIQUE_UNIT_OVERRIDES,
+} from "../balance.js";
 
 type MercTagged = { mercenaries?: Partial<Record<UnitType, number>> };
 
@@ -235,6 +239,58 @@ describe("applyMercBid — §6.3 fielding the winner", () => {
     expect(byzPaid).toBe(12);
     expect(genPaid).toBe(12);
     expect(genPaid).toBe(byzPaid);
+  });
+
+  it("fields the Varangian Remnant as VARANGIAN_REMNANT variant heads carrying the elite +1 DEF (§6.3, FL-10)", () => {
+    // §6.3 (GD line 304): the Varangian Remnant is elite — it must field as named
+    // UnitVariantStack heads (base INFANTRY×4 + CAVALRY×2) so combat applies the
+    // +1 DEF from UNIQUE_UNIT_OVERRIDES.VARANGIAN_REMNANT, NOT as plain roster
+    // units (which would be byte-identical to ordinary troops, losing the bonus).
+    const s = game(byzOtt);
+    s.players[0].treasury.gold = 100;
+    s.players[1].treasury.gold = 5; // cannot afford 16 + minBidRaise → auction closes
+    s.mercMarket = [offer("VARANGIAN_REMNANT")]; // minBid 16, all-variant roster
+
+    // The Byzantine capital already holds a starting army (INF×2 + a Varangian
+    // GUARD variant); capture its generic counts so we can prove the Remnant adds
+    // ZERO plain units — every hired head lands in `variants`.
+    const capital = s.provinces.find(
+      (p) => p.isCapitalOf === Faction.BYZANTIUM && p.ownerId === "p1",
+    )!;
+    const before = s.armies.find(
+      (a) => a.ownerId === "p1" && a.locationId === capital.id,
+    );
+    const infBefore = before?.units[UnitType.INFANTRY] ?? 0;
+    const cavBefore = before?.units[UnitType.CAVALRY] ?? 0;
+
+    const out = applyMercBid(s, bid("p1", "VARANGIAN_REMNANT", 16));
+
+    const o = out.mercMarket.find((x) => x.companyId === "VARANGIAN_REMNANT")!;
+    expect(o.sold).toBe(true);
+    expect(out.players[0].treasury.gold).toBe(100 - 16); // face-value gold sink
+
+    const army = out.armies.find(
+      (a) => a.ownerId === "p1" && a.locationId === capital.id,
+    ) as (Army & MercTagged) | undefined;
+    expect(army).toBeDefined();
+
+    // Fielded as VARANGIAN_REMNANT variant heads (INFANTRY×4 + CAVALRY×2), not
+    // generic units.
+    const varangians = (army!.variants ?? []).filter(
+      (v) => v.variant === "VARANGIAN_REMNANT",
+    );
+    const inf = varangians.find((v) => v.base === UnitType.INFANTRY);
+    const cav = varangians.find((v) => v.base === UnitType.CAVALRY);
+    expect(inf?.count).toBe(4);
+    expect(cav?.count).toBe(2);
+
+    // The variant's stat override carries the elite +1 defensive CV (applied on
+    // defence by combat's variant effective-stat lookup, combat.ts).
+    expect(UNIQUE_UNIT_OVERRIDES.VARANGIAN_REMNANT.defMod).toBe(1);
+
+    // No plain INFANTRY/CAVALRY heads were added — the Remnant is all-variant.
+    expect(army!.units[UnitType.INFANTRY] ?? 0).toBe(infBefore);
+    expect(army!.units[UnitType.CAVALRY] ?? 0).toBe(cavBefore);
   });
 
   it("rejects a bid the player cannot cover in gold (§6.3)", () => {

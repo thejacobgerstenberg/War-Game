@@ -266,20 +266,30 @@ export const FACTION_STARTS: Record<Faction, FactionStart> = {
         prestige: OBJECTIVE_PRESTIGE,
       },
       {
+        // FL-06 (FACTIONS Byz #2 / §13.1): OR-clause, NOT an AND of all four.
+        // Requires thessalonica AND morea, plus at LEAST ONE of nicaea / athens.
         id: "byz-restoration-of-the-empire",
         description:
           "Restoration of the Empire: simultaneously control thessalonica, morea, and at " +
           "least one of nicaea / athens.",
-        provinceRefs: ["thessalonica", "morea", "nicaea", "athens"],
+        provinceRefs: [],
+        allOf: ["thessalonica", "morea"],
+        anyOf: ["nicaea", "athens"],
         prestige: OBJECTIVE_PRESTIGE,
       },
       {
+        // FL-08 (FACTIONS Byz #3 / §13.1): holding constantinople is necessary but
+        // NOT sufficient — also gate on Hagia Sophia intact, ≥15 faith banked, and
+        // Church Union refused.
         id: "byz-faith-of-the-fathers",
         description:
           "Faith of the Fathers: hold constantinople (Hagia Sophia intact), finish with >= 15 " +
           "faith banked, having refused Church Union (never resolved Council of Florence in the " +
           "Union's favor).",
         provinceRefs: ["constantinople"],
+        requiresHagiaSophia: true,
+        minFaith: 15,
+        refusedChurchUnion: true,
         prestige: OBJECTIVE_PRESTIGE,
       },
     ],
@@ -359,11 +369,16 @@ export const FACTION_STARTS: Record<Faction, FactionStart> = {
         prestige: OBJECTIVE_PRESTIGE,
       },
       {
+        // FL-07 (FACTIONS Ottoman #3 / §13.1): non-territorial — ≥15 provinces at
+        // game end OR ≥3 high-value (HV3+) cities sacked over the game. The two
+        // gates are ALTERNATIVES (evaluated as an OR in prestige.objectiveSatisfied).
         id: "ott-ghazi-empire",
         description:
           "Ghazi Empire: control >= 15 provinces at game end, or sack three high-value cities " +
           "(HV(3)+ nodes) over the course of the game.",
         provinceRefs: [],
+        minProvinces: 15,
+        sackedHighValueCities: 3,
         prestige: OBJECTIVE_PRESTIGE,
       },
     ],
@@ -693,6 +708,9 @@ export function startingObjectives(faction: Faction): SecretObjective[] {
   return FACTION_STARTS[faction].objectives.map((o) => ({
     ...o,
     provinceRefs: [...o.provinceRefs],
+    // FL-06/07: clone the extended predicate arrays so no two players share a ref.
+    ...(o.allOf ? { allOf: [...o.allOf] } : {}),
+    ...(o.anyOf ? { anyOf: [...o.anyOf] } : {}),
     completed: false,
   }));
 }

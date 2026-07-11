@@ -11,6 +11,7 @@ import {
   Faction,
   GreatWorkType,
   TaxPosture,
+  TerrainType,
   TreatyType,
   UnitType,
   type Army,
@@ -82,12 +83,19 @@ function isMaritimeFaction(faction: Faction | null): boolean {
 }
 
 /**
- * Port tier 0..3 used by the trade-route formula (§5.2). No dedicated port-tier
- * field exists on Province, so it is derived from `highValue` (the prestige-node
- * weight), clamped to [0, TRADE.maxPortTier]. See NEEDS-FROM-INTEGRATOR.
+ * Port tier 0..3 used by the trade-route formula (§5.2). Derived from the port's
+ * MAP HV flag per the §5.2 band table: HV(4)+ port = 3, HV(3) port = 2, any other
+ * (coastal) port = 1; a non-port (non-coastal) province scores 0. Replaces the old
+ * `clamp(highValue, 0, 3)`, which over-counted HV3 ports (3 vs doc 2) and
+ * under-counted ordinary ports (0 vs doc 1) — see FL-09 / the §5.2 Venice↔Crete
+ * worked example.
  */
 function portTier(prov: Province): number {
-  return Math.max(0, Math.min(TRADE.maxPortTier, prov.highValue ?? 0));
+  if (!prov.coastal) return 0; // §5.2: only ports carry a tier; guard non-ports
+  const hv = prov.highValue ?? 0;
+  if (hv >= 4) return 3; // §5.2 HV(4)+ port
+  if (hv === 3) return 2; // §5.2 HV(3) port
+  return 1; // §5.2 any other port
 }
 
 /** A great work counts as completed once its progress reaches its round count. */
@@ -132,6 +140,70 @@ function faithModifiers(
     mults.push(m.value ?? 1);
   }
   return { add, mults };
+}
+
+/**
+ * Flat per-round gold from `kind:'income'` modifiers this player collects
+ * (EVENT_CARDS #9 Discovery of Alum +2 🪙/round; #39 Relic Discovered +1 🪙/round
+ * pilgrimage; CONTRACT2 §12.10 `income → economy`). These modifiers are meant to
+ * fire EVERY Income phase (a permanent per-round yield), not once on the draw
+ * round — no subsystem read them before, so the bonus applied only once.
+ *
+ * A province-targeted modifier (#9 targets `chios`) pays the province's current
+ * controller; a faction-targeted modifier pays that faction. Untargeted income
+ * modifiers are ignored (no global-income grant is defined; see
+ * NEEDS-FROM-INTEGRATOR re: #39 posting no target). Applied post-tax as a flat
+ * monopoly/pilgrimage yield (a fixed +N gold/round, not scaled by tax posture).
+ */
+function incomeModifierGold(state: GameState, player: Player): number {
+  let gold = 0;
+  for (const m of getModifiers(state, "income")) {
+    const t = m.target;
+    if (t?.provinceId) {
+      const prov = state.provinces.find((p) => p.id === t.provinceId);
+      if (!prov || prov.ownerId !== player.id) continue; // controller only
+    } else if (t?.faction) {
+      if (!player.faction || t.faction !== player.faction) continue;
+    } else {
+      continue; // untargeted income modifier: no global grant defined
+    }
+    const perRound = (m.data?.perRoundGold as number | undefined) ?? m.value ?? 0;
+    gold += perRound;
+  }
+  return gold;
+}
+
+/**
+ * Plague penalty to a player's income this Income phase (EVENT_CARDS #35 Black
+ * Death Returns: for 2 rounds every CITY and high-value province produces −1 🌾
+ * and −1 🪙; CONTRACT2 §12.10 `plague → economy`). The `kind:'plague'` modifier
+ * (`data:{grain:-1,gold:-1}`, `expiresRound = round+1`) had no reader, so only the
+ * card's draw-round hit landed and the 2nd round was silently dropped (FL-19).
+ *
+ * Each live plague modifier applies its `data.grain`/`data.gold` delta once per
+ * qualifying province the player controls (terrain CITY or highValue > 0). Deltas
+ * are signed (already negative for the penalty), so callers ADD them to income.
+ */
+function plaguePenalty(
+  state: GameState,
+  player: Player,
+): { grain: number; gold: number } {
+  const mods = getModifiers(state, "plague");
+  if (mods.length === 0) return { grain: 0, gold: 0 };
+  let qualifying = 0;
+  for (const prov of ownedProvinces(state, player.id)) {
+    if (prov.terrain === TerrainType.CITY || (prov.highValue ?? 0) > 0) {
+      qualifying += 1;
+    }
+  }
+  if (qualifying === 0) return { grain: 0, gold: 0 };
+  let grain = 0;
+  let gold = 0;
+  for (const m of mods) {
+    grain += ((m.data?.grain as number | undefined) ?? 0) * qualifying;
+    gold += ((m.data?.gold as number | undefined) ?? 0) * qualifying;
+  }
+  return { grain, gold };
 }
 
 // ---------------------------------------------------------------------------
@@ -237,14 +309,19 @@ function tradeRoutesFor(state: GameState, ownerId: string): TradeRoute[] {
   return out;
 }
 
-/** True when the route owner has a friendly war fleet (WARSHIP) escorting a hop. */
+/**
+ * True when the route owner has a friendly war fleet escorting a hop. §5.3 defines
+ * a war fleet as GALLEY *or* WARSHIP, so a galley escort also prevents piracy
+ * (FL-15) — aligned to the severed-escort check below, which already accepts both.
+ */
 function routeEscorted(state: GameState, route: TradeRoute): boolean {
   return state.fleets.some(
     (f) =>
       route.seaZonePath.includes(f.locationId) &&
       (f.ownerId === route.ownerId ||
         areAllied(state, route.ownerId, f.ownerId)) &&
-      (f.units[UnitType.WARSHIP] ?? 0) > 0,
+      ((f.units[UnitType.WARSHIP] ?? 0) > 0 ||
+        (f.units[UnitType.GALLEY] ?? 0) > 0),
   );
 }
 
@@ -403,6 +480,22 @@ export function computeIncome(state: GameState): IncomeResult {
 
     // §4.2 taxation multiplier applies to gold only (floor fractional gold).
     income.gold = Math.floor(income.gold * TAX_MULTIPLIERS[player.tax]);
+
+    // §4.1 permanent per-round income modifiers (#9 Discovery of Alum, #39 Relic
+    // pilgrimage): flat +N gold/round, applied post-tax (EVENT_CARDS #9/#39).
+    income.gold += incomeModifierGold(state, player);
+
+    // EVENT_CARDS #35 Black Death: −1 grain/−1 gold per controlled CITY/high-value
+    // province, each round the plague modifier is live (both rounds now land).
+    const plague = plaguePenalty(state, player);
+    income.gold += plague.gold;
+    income.grain += plague.grain;
+
+    // §4.1 income is a non-negative yield: the plague penalty reduces production
+    // down to (never below) zero, so a credited bundle can never drive a treasury
+    // negative outside the documented debt rule.
+    income.gold = Math.max(0, income.gold);
+    income.grain = Math.max(0, income.grain);
 
     perPlayer[player.id] = income;
     // Grain shortfall after adding this income to current stores (§4.4).
@@ -918,8 +1011,10 @@ function completeGreatWork(
   p.prestigeThisRound = (p.prestigeThisRound ?? 0) + def.prestige;
 
   // §9.2 Theodosian Walls completion sets the province to the top wall tier.
+  // CANON #4 / FIX-PREP 5-tier keyspace: Theodosian = T5 (16 HP / +4), not the
+  // collapsed HP-tier 3 (now 10 HP under the restored 5-tier table).
   if (type === GreatWorkType.THEODOSIAN_WALLS) {
-    province.walls = { tier: 3, hp: WALL_TIERS[3].hp };
+    province.walls = { tier: 5, hp: WALL_TIERS[5].hp };
   }
 
   return appendLog(next, {

@@ -547,16 +547,24 @@ function applyMove(state: GameState, action: GameAction): GameState {
     });
   }
 
-  // §6.4 empty tile → relocate; flip an empty enemy/neutral province.
+  // §6.4 empty tile → relocate; an empty enemy/neutral tile is a DEFERRED
+  // occupation (ownership flips at cleanup unless contested — see relocate).
   return relocate(state, action, player, ownerHostile || prov.ownerId === null);
 }
 
-/** Clone, relocate the moving stack, optionally flip an empty province (§6.4). */
+/**
+ * Clone and relocate the moving stack. For an unopposed march into an empty
+ * enemy/neutral province the ownership flip is DEFERRED, not applied inline
+ * (§6.4 "occupation → ownership flips at cleanup unless contested"; §10 phase-5
+ * "Flip contested ownership"): record the occupation in `pendingOccupations`
+ * WITHOUT touching `ownerId`, and let the roundLoop END/cleanup step perform the
+ * flip for entries still occupied-and-uncontested.
+ */
 function relocate(
   state: GameState,
   action: MoveAction,
   player: Player,
-  flipOwnership: boolean,
+  occupy: boolean,
 ): GameState {
   const isNaval = action.naval === true;
   const next = structuredClone(state) as GameState;
@@ -566,9 +574,16 @@ function relocate(
 
   const prov = next.provinces.find((p) => p.id === action.toId);
   let occupied = false;
-  if (!isNaval && prov && flipOwnership && prov.ownerId !== player.id) {
-    prov.ownerId = player.id; // §6.4 occupation of an undefended enemy/neutral tile
-    prov.garrison = 0;
+  if (!isNaval && prov && occupy && prov.ownerId !== player.id) {
+    // §6.4 / §10 phase-5: mark the province pending-occupation but do NOT flip
+    // `ownerId` (nor clear the garrison) here — roundLoop END flips it if the
+    // occupation still stands uncontested at cleanup. One pending occupant per
+    // province: a later entrant replaces any prior pending claim.
+    const existing = next.pendingOccupations ?? [];
+    next.pendingOccupations = [
+      ...existing.filter((o) => o.provinceId !== prov.id),
+      { provinceId: prov.id, occupantId: player.id, sinceRound: next.round },
+    ];
     occupied = true;
   }
 
@@ -717,7 +732,16 @@ function applyLevyCall(state: GameState, action: GameAction): GameState {
     throw new EngineError("BAD_LEVY", `${minor.name} holds no province to raise levies in.`);
   }
   // §11.5 levy size = 2 base + 1 per garrison tier.
-  const levied = VASSAL.levyBase + VASSAL.levyPerTier * minor.tier;
+  const requested = VASSAL.levyBase + VASSAL.levyPerTier * minor.tier;
+  // §6.4 stacking limit — the free levy may not push the caller's stack at the
+  // vassal capital past the land (8) / city (12) cap; trim the excess (mirrors
+  // the clamp diplomacy.runRevolts applies on the automatic levy path). This is
+  // the only levy path that adds units, so clamping here keeps the §6.4
+  // invariant that no location ever exceeds 8 land / 12 city for one player.
+  const capProv = state.provinces.find((p) => p.id === capital);
+  const cap = capProv && isCityProvince(capProv) ? STACKING.city : STACKING.land;
+  const already = ownUnitsAt(state, actor.id, capital, false);
+  const levied = Math.max(0, Math.min(requested, cap - already));
 
   const next = structuredClone(state) as GameState;
   const m = next.minors.find((x) => x.id === action.minorId)!;
@@ -746,7 +770,7 @@ function applyLevyCall(state: GameState, action: GameAction): GameState {
     actors: [action.player],
     targets: [m.id],
     message: `${actor.name} calls up ${levied} levies from ${m.name} at ${capital}.`,
-    data: { minorId: m.id, levies: levied, location: capital },
+    data: { minorId: m.id, levies: levied, requested, location: capital },
   });
 }
 
