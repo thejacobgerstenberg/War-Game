@@ -29,6 +29,7 @@ import {
   FACTION_LEVY_ECONOMY,
   GREAT_WORK_COSTS,
   MARKET_RATIOS,
+  MAX_BUILDABLE_WALL_TIER,
   MERC_REVOLT_PILLAGE,
   MERC_UPKEEP_MULTIPLIER,
   TAX_MULTIPLIERS,
@@ -39,6 +40,7 @@ import {
   WALL_BUILD_COST,
   WALL_TIERS,
 } from "./balance.js";
+import { areAdjacent } from "./adjacency.js";
 import { appendLog } from "./logEntry.js";
 import { getModifiers, removeModifier, sumModifierValues } from "./modifiers.js";
 import { makeRng } from "./rng.js";
@@ -313,18 +315,33 @@ function tradeRoutesFor(state: GameState, ownerId: string): TradeRoute[] {
 }
 
 /**
+ * True when `ownerId` (or an ally) has a war fleet — GALLEY or WARSHIP, §5.3 —
+ * physically present in the given sea zone. Shared predicate for escort checks
+ * AND the §5.2 controlled-hop bonus (marshal economy major: "control" of a sea
+ * hop requires a friendly fleet PRESENT, never nominal control of empty water).
+ */
+function friendlyWarFleetInZone(
+  state: GameState,
+  ownerId: string,
+  zoneId: string,
+): boolean {
+  return state.fleets.some(
+    (f) =>
+      f.locationId === zoneId &&
+      (f.ownerId === ownerId || areAllied(state, ownerId, f.ownerId)) &&
+      ((f.units[UnitType.WARSHIP] ?? 0) > 0 ||
+        (f.units[UnitType.GALLEY] ?? 0) > 0),
+  );
+}
+
+/**
  * True when the route owner has a friendly war fleet escorting a hop. §5.3 defines
  * a war fleet as GALLEY *or* WARSHIP, so a galley escort also prevents piracy
  * (FL-15) — aligned to the severed-escort check below, which already accepts both.
  */
 function routeEscorted(state: GameState, route: TradeRoute): boolean {
-  return state.fleets.some(
-    (f) =>
-      route.seaZonePath.includes(f.locationId) &&
-      (f.ownerId === route.ownerId ||
-        areAllied(state, route.ownerId, f.ownerId)) &&
-      ((f.units[UnitType.WARSHIP] ?? 0) > 0 ||
-        (f.units[UnitType.GALLEY] ?? 0) > 0),
+  return route.seaZonePath.some((zoneId) =>
+    friendlyWarFleetInZone(state, route.ownerId, zoneId),
   );
 }
 
@@ -351,17 +368,13 @@ function routeIncome(state: GameState, route: TradeRoute): number {
     if (enemyBlock) {
       anyBlockaded = true;
       // §5.2 severed = enemy fleet on the hop with no friendly escort.
-      const escortHere = state.fleets.some(
-        (f) =>
-          f.locationId === zoneId &&
-          (f.ownerId === route.ownerId ||
-            areAllied(state, route.ownerId, f.ownerId)) &&
-          ((f.units[UnitType.WARSHIP] ?? 0) > 0 ||
-            (f.units[UnitType.GALLEY] ?? 0) > 0),
-      );
-      if (!escortHere) anySevered = true;
-    } else {
-      // §5.2 +1 per sea zone you or an ally control.
+      if (!friendlyWarFleetInZone(state, route.ownerId, zoneId)) {
+        anySevered = true;
+      }
+    } else if (friendlyWarFleetInZone(state, route.ownerId, zoneId)) {
+      // §5.2 +1 per CONTROLLED sea hop (marshal economy major): control demands
+      // a friendly (own or allied) war fleet PRESENT in the zone — empty,
+      // unblockaded water is merely open sea and pays no bonus.
       controlled += 1;
     }
   }
@@ -540,14 +553,16 @@ export function computeIncome(state: GameState): IncomeResult {
         const bonus = BUILDING_EFFECTS[b].yieldBonus;
         if (bonus) addInto(income, bonus);
       }
-      // §9.2 Hagia Sophia (RULING 1): the great church stands INTACT at
-      // Constantinople from round 1 — a STANDING +2 faith/round source, on top of
-      // the province's listed yield, INDEPENDENT of the HAGIA_SOPHIA great work
-      // (which is a prestige-only restoration/endowment, NOT the source of this
-      // faith). "Intact" = Constantinople has not been SACKED (captured by
-      // assault); a starvation-surrender does NOT sack, so a peaceful new owner
-      // keeps the yield. See scratchpad/CONTRACT.md RATIFY-PREP.
-      if (prov.id === "constantinople" && !prov.sacked) {
+      // §9.2/FACTIONS §Hagia Sophia (RULING 1, aligned per the marshal
+      // answer-key major "RULING 1 over-reaches ratified"): the great church
+      // STARTS INTACT and Constantinople yields a STANDING +2 faith/round from
+      // round 1, on top of its listed yield, INDEPENDENT of the HAGIA_SOPHIA
+      // great work (which is a prestige-only restoration/endowment, NOT the
+      // source of this faith). The ratified "never sacked" condition gates ONLY
+      // the "Faith of the Fathers" secret OBJECTIVE (prestige.ts) — it does NOT
+      // gate this income, so the previous `!prov.sacked` gate here was an
+      // over-reach and is removed.
+      if (prov.id === "constantinople") {
         income.faith += 2;
       }
     }
@@ -968,6 +983,22 @@ export function applyTrade(state: GameState, action: GameAction): GameState {
   const trade = action.trade;
 
   if (trade.kind === "CONVERT") {
+    // AUTHORITY MAJOR (marshal review: "TRADE CONVERT accepts negative
+    // components — mints faith / negative treasuries"): every component of give
+    // AND get must be a non-negative integer. A negative give component would be
+    // CREDITED to the treasury (`treasury -= give`), letting a client mint faith
+    // (which the >0 faith gate below never sees) or gold while the signed totals
+    // still balance; fractional amounts would corrupt integer treasuries.
+    for (const k of RESOURCE_KEYS) {
+      const g = trade.give[k] ?? 0;
+      const r = trade.get[k] ?? 0;
+      if (!Number.isInteger(g) || g < 0 || !Number.isInteger(r) || r < 0) {
+        throw new EngineError(
+          "BAD_TRADE",
+          `Trade components must be non-negative integers (${k}).`,
+        );
+      }
+    }
     // §4.3 faith is non-tradeable.
     if ((trade.give.faith ?? 0) > 0 || (trade.get.faith ?? 0) > 0) {
       throw new EngineError(
@@ -1039,19 +1070,84 @@ export function applyTrade(state: GameState, action: GameAction): GameState {
   if (!from.coastal || !to.coastal) {
     throw new EngineError("BAD_TRADE", "Route endpoints must be coastal ports.");
   }
-  for (const zoneId of trade.seaZonePath) {
+  // B1 (§5.2, marshal blocker): the seaZonePath MUST be validated before a
+  // route is created — an unvalidated path let a client mint unbounded route
+  // income (+1/zone, ×1.5 Venice/Genoa) from fabricated geography.
+  const path = trade.seaZonePath;
+  // B1(a-pre): a sea route sails through at least one real sea zone.
+  if (path.length === 0) {
+    throw new EngineError(
+      "BAD_ROUTE_PATH",
+      "A trade route needs at least one sea zone in its path.",
+    );
+  }
+  for (const zoneId of path) {
     if (!state.seaZones.some((z) => z.id === zoneId)) {
-      throw new EngineError("BAD_TRADE", `Unknown sea zone: ${zoneId}.`);
+      throw new EngineError("BAD_ROUTE_PATH", `Unknown sea zone: ${zoneId}.`);
     }
   }
-  // §5.1 a route needs a merchantman (GALLEY) assigned.
-  const merchant = state.fleets.find(
+  // B1(b): the from-port must border the FIRST zone, the to-port the LAST.
+  if (!areAdjacent(trade.fromProvinceId, path[0])) {
+    throw new EngineError(
+      "BAD_ROUTE_PATH",
+      `${from.name} does not border the sea zone ${path[0]}.`,
+    );
+  }
+  if (!areAdjacent(trade.toProvinceId, path[path.length - 1])) {
+    throw new EngineError(
+      "BAD_ROUTE_PATH",
+      `${to.name} does not border the sea zone ${path[path.length - 1]}.`,
+    );
+  }
+  // B1(a): the zones form a connected chain — each consecutive pair must share
+  // a sea adjacency edge (mapData §7 "Connects To" straits).
+  for (let i = 1; i < path.length; i += 1) {
+    if (!areAdjacent(path[i - 1], path[i])) {
+      throw new EngineError(
+        "BAD_ROUTE_PATH",
+        `Sea zones ${path[i - 1]} and ${path[i]} are not connected.`,
+      );
+    }
+  }
+  // B1(c): reject a duplicate route for the same {from,to} port pair (in either
+  // direction — A→B and B→A are the same trade lane).
+  for (const mod of getModifiers(state, "trade_route")) {
+    const d = mod.data ?? {};
+    const sameForward =
+      d.fromProvinceId === trade.fromProvinceId &&
+      d.toProvinceId === trade.toProvinceId;
+    const sameReversed =
+      d.fromProvinceId === trade.toProvinceId &&
+      d.toProvinceId === trade.fromProvinceId;
+    if (sameForward || sameReversed) {
+      throw new EngineError(
+        "DUP_ROUTE",
+        `A trade route between ${from.name} and ${to.name} already exists.`,
+      );
+    }
+  }
+  // B1(d): every route must be backed by a DISTINCT friendly GALLEY fleet. The
+  // backing fleetId is recorded on the route modifier; a galley fleet already
+  // backing another route (any owner's — ids are global) cannot back a second.
+  const busyFleetIds = new Set<string>();
+  for (const mod of getModifiers(state, "trade_route")) {
+    const fid = mod.data?.fleetId;
+    if (fid) busyFleetIds.add(String(fid));
+  }
+  const galleyFleets = state.fleets.filter(
     (f) => f.ownerId === player.id && (f.units[UnitType.GALLEY] ?? 0) > 0,
   );
+  if (galleyFleets.length === 0) {
+    throw new EngineError(
+      "NO_GALLEY",
+      "A GALLEY merchantman is required to run a trade route.",
+    );
+  }
+  const merchant = galleyFleets.find((f) => !busyFleetIds.has(f.id));
   if (!merchant) {
     throw new EngineError(
-      "INSUFFICIENT_RESOURCES",
-      "A GALLEY merchantman is required to run a trade route.",
+      "GALLEY_BUSY",
+      "Every GALLEY fleet already backs another trade route; a distinct galley is required per route.",
     );
   }
 
@@ -1129,8 +1225,19 @@ export function applyBuild(state: GameState, action: GameAction): GameState {
   // --- Ordinary building (or walls upgrade) -------------------------------
   if (action.building) {
     if (action.building === BuildingType.WALLS) {
-      // §8.1/§9 walls upgrade the fortification tier (0→1→2→3).
+      // §8.1/§9.1 walls upgrade the fortification tier one step at a time.
       const nextTier = province.walls.tier + 1;
+      // §9.1 (marshal economy major "ordinary BUILD raises walls to T4/T5"): the
+      // ordinary BUILD ladder tops out at Walls Lv2 = T3. T4 is authored map
+      // data only (belgrade/rome); T5 is the Theodosian Walls GREAT WORK only
+      // (§9.2, completeGreatWork below). WALL_BUILD_COST rows 4/5 exist solely
+      // for event/great-work rebuild pricing, never for the client BUILD action.
+      if (nextTier > MAX_BUILDABLE_WALL_TIER) {
+        throw new EngineError(
+          "WALL_TIER_CAP",
+          `Ordinary construction cannot raise walls above tier ${MAX_BUILDABLE_WALL_TIER} (§9.1); T5 is the Theodosian Walls great work.`,
+        );
+      }
       const cost = WALL_BUILD_COST[nextTier];
       if (!cost) {
         throw new EngineError("BAD_BUILD", "Walls are already at the maximum tier.");

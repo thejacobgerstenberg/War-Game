@@ -13,6 +13,7 @@ import {
   Faction,
   GamePhase,
   TerrainType,
+  TreatyType,
   UnitType,
   asTacticCardId,
   type Army,
@@ -24,7 +25,7 @@ import {
 import { createInitialState, type SeatInput } from "../gameState.js";
 import { applyAction, EngineError } from "../actions.js";
 import { advancePhase } from "../roundLoop.js";
-import { omenCardId } from "../events/index.js";
+import { omenCardId, resolveCard } from "../events/index.js";
 import {
   UNJUSTIFIED_WAR_PRESTIGE,
   UNIQUE_UNIT_OVERRIDES,
@@ -312,6 +313,10 @@ describe("determinism", () => {
       let s = fresh(4242);
       s.phase = GamePhase.RECRUITMENT;
       s = applyAction(s, recruit({ units: { [UnitType.INFANTRY]: 1 } }));
+      // ADVANCE_PHASE gating (actions major): the window only closes once every
+      // player is done, so both players PASS before the driver advances.
+      s = applyAction(s, { type: "PASS", player: "p1" });
+      s = applyAction(s, { type: "PASS", player: "p2" });
       // Advance through a whole round (COMBAT consumes the shared RNG stream).
       for (let i = 0; i < 6; i += 1) s = applyAction(s, { type: "ADVANCE_PHASE" });
       return s;
@@ -557,9 +562,10 @@ describe("PLAY_TACTIC (§7.7)", () => {
 // PLAY_CARD (§10.6): hand verification + discard
 // ---------------------------------------------------------------------------
 
-describe("PLAY_CARD (§10.6)", () => {
+describe("PLAY_CARD (§10.6 / marshal B2 + B8)", () => {
   it("§10.6 rejects playing a card not in hand (NOT_IN_HAND)", () => {
     const s = fresh();
+    s.phase = GamePhase.RECRUITMENT; // B2: must be inside the action window
     s.players.find((p) => p.id === "p1")!.hand = [];
     expect(() =>
       applyAction(s, { type: "PLAY_CARD", player: "p1", cardId: "omen-1" }),
@@ -568,12 +574,57 @@ describe("PLAY_CARD (§10.6)", () => {
 
   it("§10.6 discards the played card from hand after resolving", () => {
     const s = fresh();
+    s.phase = GamePhase.RECRUITMENT; // B2: PLAY_CARD is window-only now
     // A non-event id makes resolveCard a no-op; we assert only the hand-discard.
     s.players.find((p) => p.id === "p1")!.hand = [
       { id: "held-card-x", name: "Held Card", description: "", cost: {} },
     ];
     const next = applyAction(s, { type: "PLAY_CARD", player: "p1", cardId: "held-card-x" });
     expect(next.players.find((p) => p.id === "p1")!.hand).toHaveLength(0);
+  });
+
+  it("B2 §10.0/§10.6 PLAY_CARD during INCOME is rejected (WRONG_PHASE) even with the card in hand", () => {
+    const s = fresh(); // INCOME — outside the action window
+    s.players.find((p) => p.id === "p1")!.hand = [
+      { id: "held-card-x", name: "Held Card", description: "", cost: {} },
+    ];
+    expect(() =>
+      applyAction(s, { type: "PLAY_CARD", player: "p1", cardId: "held-card-x" }),
+    ).toThrowError(expect.objectContaining({ code: "WRONG_PHASE" }));
+    // Nothing was resolved or discarded (a thrown EngineError never mutates).
+    expect(s.players.find((p) => p.id === "p1")!.hand).toHaveLength(1);
+  });
+
+  it("B2 §10.0/§10.6 the phase/budget gate runs BEFORE the hand lookup", () => {
+    // Card NOT in hand + outside the window: the rejection must be WRONG_PHASE
+    // (spendAction first), not NOT_IN_HAND — pinning the B2 ordering.
+    const s = fresh(); // INCOME
+    s.players.find((p) => p.id === "p1")!.hand = [];
+    expect(() =>
+      applyAction(s, { type: "PLAY_CARD", player: "p1", cardId: "omen-1" }),
+    ).toThrowError(expect.objectContaining({ code: "WRONG_PHASE" }));
+  });
+
+  it("B2 §10.0/§10.6 PLAY_CARD consumes 1 of the 4 actions", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    const p1 = s.players.find((p) => p.id === "p1")!;
+    p1.hand = [{ id: "held-card-x", name: "Held Card", description: "", cost: {} }];
+    expect(p1.actionsRemaining).toBe(4);
+    const next = applyAction(s, { type: "PLAY_CARD", player: "p1", cardId: "held-card-x" });
+    expect(next.players.find((p) => p.id === "p1")!.actionsRemaining).toBe(3); // 4 − 1
+  });
+
+  it("B2 §10.0/§10.6 PLAY_CARD with an exhausted budget is rejected (NO_ACTIONS), hand untouched", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    const p1 = s.players.find((p) => p.id === "p1")!;
+    p1.hand = [{ id: "held-card-x", name: "Held Card", description: "", cost: {} }];
+    p1.actionsRemaining = 0;
+    expect(() =>
+      applyAction(s, { type: "PLAY_CARD", player: "p1", cardId: "held-card-x" }),
+    ).toThrowError(expect.objectContaining({ code: "NO_ACTIONS" }));
+    expect(s.players.find((p) => p.id === "p1")!.hand).toHaveLength(1); // no free dump
   });
 
   it("FL-03 threads targetPlayerId into resolveCard (#28 Papal Interdict hits the target alone)", () => {
@@ -584,6 +635,7 @@ describe("PLAY_CARD (§10.6)", () => {
     // neutral (no-target) path posts NOTHING — so the modifier's presence AND its
     // Ottoman-scoped target together prove the target reached the events layer.
     const s = fresh(); // p1 = Byzantium, p2 = Ottoman
+    s.phase = GamePhase.RECRUITMENT; // B2: PLAY_CARD is window-only now
     const interdict = omenCardId(28);
     s.players.find((p) => p.id === "p1")!.hand = [
       { id: interdict, name: "Papal Interdict", description: "", cost: {} },
@@ -601,6 +653,48 @@ describe("PLAY_CARD (§10.6)", () => {
     expect(faithMod!.target?.faction).toBe(Faction.OTTOMAN); // scoped to the target, not global
     // The played copy is still discarded from hand.
     expect(next.players.find((p) => p.id === "p1")!.hand).toHaveLength(0);
+  });
+
+  it("B8 a later-seat acting player is the card's BENEFICIARY (#5 coronation pays who played it)", () => {
+    // Marshal B8: the effect used to be credited to turnOrder[activePlayerIndex]
+    // (pinned at 0), so p2's coronation paid p1. Now: p1 (turn head) passes, the
+    // pointer advances to p2, p2 plays #5 Imperial Coronation (+2 prestige,
+    // +2 gold to the DRAWER) — and p2, the acting player, receives the effect.
+    const s = fresh(); // turnOrder = [p1, p2], activePlayerIndex 0
+    s.phase = GamePhase.RECRUITMENT;
+    const coronation = omenCardId(5);
+    s.players.find((p) => p.id === "p2")!.hand = [
+      { id: coronation, name: "Imperial Coronation", description: "", cost: {} },
+    ];
+    const afterPass = applyAction(s, { type: "PASS", player: "p1" });
+    expect(afterPass.activePlayerIndex).toBe(1); // p2 now holds the window
+    const p1Before = afterPass.players.find((p) => p.id === "p1")!;
+    const p2Before = afterPass.players.find((p) => p.id === "p2")!;
+
+    const next = applyAction(afterPass, { type: "PLAY_CARD", player: "p2", cardId: coronation });
+
+    const p1After = next.players.find((p) => p.id === "p1")!;
+    const p2After = next.players.find((p) => p.id === "p2")!;
+    // THE PLAYER WHO PLAYED receives the effect (B8)...
+    expect(p2After.prestige).toBe(p2Before.prestige + 2);
+    expect(p2After.treasury.gold).toBe(p2Before.treasury.gold + 2);
+    // ...and the turn-order HEAD gets nothing (the old wrong beneficiary).
+    expect(p1After.prestige).toBe(p1Before.prestige);
+    expect(p1After.treasury.gold).toBe(p1Before.treasury.gold);
+    // B2: the play cost p2 one action; the copy left p2's hand.
+    expect(p2After.actionsRemaining).toBe(p2Before.actionsRemaining - 1);
+    expect(p2After.hand).toHaveLength(0);
+  });
+
+  it("B8 resolveCard honours ctx.playerId over turnOrder[activePlayerIndex]", () => {
+    // Direct unit pin of the thread itself: with the pointer still on p1
+    // (index 0), an explicit ctx.playerId of p2 makes p2 the beneficiary.
+    const s = fresh(); // activePlayerIndex 0 → active is p1
+    const p1Before = s.players.find((p) => p.id === "p1")!.prestige;
+    const p2Before = s.players.find((p) => p.id === "p2")!.prestige;
+    const next = resolveCard(s, omenCardId(5), { playerId: "p2" });
+    expect(next.players.find((p) => p.id === "p2")!.prestige).toBe(p2Before + 2);
+    expect(next.players.find((p) => p.id === "p1")!.prestige).toBe(p1Before);
   });
 });
 
@@ -831,5 +925,349 @@ describe("LEVY_CALL (§11.5)", () => {
     expect(() =>
       applyAction(s, { type: "LEVY_CALL", player: "p1", minorId: "m-serbia" }),
     ).toThrowError(expect.objectContaining({ code: "NOT_OWNER" }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TURN ORDER (marshal actions MAJOR: OUT_OF_TURN gate + pointer advance)
+// ---------------------------------------------------------------------------
+
+/** Total LEVY count across a player's armies at a location. */
+function levyAt(s: GameState, owner: string, loc: string): number {
+  return s.armies
+    .filter((a) => a.ownerId === owner && a.locationId === loc)
+    .reduce((n, a) => n + (a.units[UnitType.LEVY] ?? 0), 0);
+}
+
+describe("turn order (marshal actions major: OUT_OF_TURN + pointer)", () => {
+  it("rejects an out-of-turn RECRUIT by a non-active player (OUT_OF_TURN)", () => {
+    const s = fresh(); // turnOrder [p1, p2], activePlayerIndex 0 → p1 active
+    s.phase = GamePhase.RECRUITMENT;
+    expect(() =>
+      applyAction(s, {
+        type: "RECRUIT",
+        player: "p2",
+        provinceId: "edirne",
+        units: { [UnitType.LEVY]: 1 },
+      }),
+    ).toThrowError(expect.objectContaining({ code: "OUT_OF_TURN" }));
+    // Nothing changed for the queue-jumper (thrown EngineError never mutates).
+    expect(s.players.find((p) => p.id === "p2")!.actionsRemaining).toBe(4);
+  });
+
+  it("advances the pointer to the next player with budget when the active player PASSes", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    const next = applyAction(s, { type: "PASS", player: "p1" });
+    expect(next.players.find((p) => p.id === "p1")!.actionsRemaining).toBe(0);
+    expect(next.activePlayerIndex).toBe(1); // p2 (budget 4) now holds the window
+  });
+
+  it("advances the pointer when the active player EXHAUSTS the budget — and the next player can act", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    s.players.find((p) => p.id === "p1")!.actionsRemaining = 1; // last action
+    const p2 = s.players.find((p) => p.id === "p2")!;
+    p2.treasury.gold = 10;
+    p2.treasury.grain = 10;
+
+    const spent = applyAction(s, recruit({ units: { [UnitType.INFANTRY]: 1 } }));
+    expect(spent.players.find((p) => p.id === "p1")!.actionsRemaining).toBe(0);
+    expect(spent.activePlayerIndex).toBe(1); // exhaustion hands the window to p2
+
+    // p2 is now active and takes a REAL budget action (recruit at the Ottoman
+    // capital) — asserting the state delta, not just the absence of a throw.
+    const before = levyAt(spent, "p2", "edirne");
+    const after = applyAction(spent, {
+      type: "RECRUIT",
+      player: "p2",
+      provinceId: "edirne",
+      units: { [UnitType.LEVY]: 1 },
+    });
+    expect(levyAt(after, "p2", "edirne")).toBe(before + 1);
+    expect(after.players.find((p) => p.id === "p2")!.actionsRemaining).toBe(3);
+  });
+
+  it("a mid-budget action does NOT move the pointer (the active player keeps acting)", () => {
+    const s = fresh(); // p1 active with 4 actions
+    s.phase = GamePhase.RECRUITMENT;
+    const next = applyAction(s, recruit({ units: { [UnitType.INFANTRY]: 1 } }));
+    expect(next.players.find((p) => p.id === "p1")!.actionsRemaining).toBe(3);
+    expect(next.activePlayerIndex).toBe(0); // still p1's window
+  });
+
+  it("wraps past the end of turnOrder to an earlier seat that still has budget", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    s.activePlayerIndex = 1; // p2 (last seat) holds the window; p1 still has 4
+    const next = applyAction(s, { type: "PASS", player: "p2" });
+    expect(next.activePlayerIndex).toBe(0); // wrapped to p1
+  });
+
+  it("skips players already done: when nobody has budget the pointer parks", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    s.activePlayerIndex = 1; // p2 active
+    s.players.find((p) => p.id === "p1")!.actionsRemaining = 0; // p1 already done
+    const next = applyAction(s, { type: "PASS", player: "p2" });
+    // Does NOT wrap onto the budget-less p1 — the window is simply complete.
+    expect(next.activePlayerIndex).toBe(1);
+    // ...and the completed window may now be advanced.
+    expect(applyAction(next, { type: "ADVANCE_PHASE" }).phase).toBe(GamePhase.MOVEMENT);
+  });
+});
+
+describe("turn-order exemptions (documented at requireActiveTurn)", () => {
+  it("MERC_BID by a non-active player is NOT turn-gated (auction round-robin owns sequencing)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT; // window; active = p1
+    s.mercMarket = [
+      { companyId: "CATALAN", currentBid: 0, highBidderId: null, sold: false },
+    ];
+    const next = applyAction(s, {
+      type: "MERC_BID",
+      player: "p2",
+      companyId: "CATALAN",
+      bid: 0,
+      pass: true,
+    });
+    expect(next.mercMarket[0].passedPlayerIds ?? []).toContain("p2"); // reached the handler
+  });
+
+  it("PLAY_TACTIC by the non-active DEFENDER is NOT turn-gated (battle-scoped declaration)", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT; // window; active = p1
+    const battleId = seedBattle(s); // p1 attacker, p2 defender
+    s.players.find((p) => p.id === "p2")!.tacticHand = [VETERANS];
+    const next = applyAction(s, { type: "PLAY_TACTIC", player: "p2", battleId, cardId: VETERANS });
+    const battle = next.pendingBattles.find((b) => b.id === battleId)!;
+    expect(battle.defenderTactics).toContain(VETERANS); // queued for the defender
+    expect(next.players.find((p) => p.id === "p2")!.tacticHand).toHaveLength(0);
+  });
+
+  it("DIPLOMACY ACCEPT by the non-active responder is NOT turn-gated and stays free", () => {
+    const s = fresh();
+    s.phase = GamePhase.DIPLOMACY; // window; active = p1
+    const proposed = applyAction(s, {
+      type: "DIPLOMACY",
+      player: "p1",
+      diplomacy: { kind: "PROPOSE", treatyType: TreatyType.NAP, targetPlayerId: "p2" },
+    });
+    // p1 remains the active player (3 actions left) — p2 responds anyway.
+    const accepted = applyAction(proposed, {
+      type: "DIPLOMACY",
+      player: "p2",
+      diplomacy: { kind: "ACCEPT", treatyType: TreatyType.NAP, targetPlayerId: "p1" },
+    });
+    const p2 = accepted.players.find((p) => p.id === "p2")!;
+    expect(p2.treaties.some((t) => t.type === TreatyType.NAP)).toBe(true); // treaty concluded
+    expect(p2.actionsRemaining).toBe(4); // responder pays no action (§10.0)
+    expect(accepted.activePlayerIndex).toBe(0); // pointer untouched by the response
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ADVANCE_PHASE window gating (marshal actions MAJOR "ADVANCE_PHASE
+// unbudgeted/unauthorized")
+// ---------------------------------------------------------------------------
+
+describe("ADVANCE_PHASE gating (marshal actions major)", () => {
+  it("rejects advancing a window phase while ANY player still holds actions (WINDOW_NOT_DONE)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT; // both players hold 4 actions
+    expect(() => applyAction(s, { type: "ADVANCE_PHASE" })).toThrowError(
+      expect.objectContaining({ code: "WINDOW_NOT_DONE" }),
+    );
+    expect(s.phase).toBe(GamePhase.RECRUITMENT); // no phase slip
+  });
+
+  it("rejects the advance when only SOME players are done", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    s.players.find((p) => p.id === "p1")!.actionsRemaining = 0;
+    // p2 still holds 4 — the window cannot be slammed shut on them.
+    expect(() => applyAction(s, { type: "ADVANCE_PHASE" })).toThrowError(
+      expect.objectContaining({ code: "WINDOW_NOT_DONE" }),
+    );
+  });
+
+  it("advances a window phase once EVERY player is done (0 actions / passed)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    s.players.forEach((p) => (p.actionsRemaining = 0)); // all passed/exhausted
+    const next = applyAction(s, { type: "ADVANCE_PHASE" });
+    expect(next.phase).toBe(GamePhase.MOVEMENT);
+  });
+
+  it("non-window phases stay driver-advanceable regardless of budgets (INCOME → RECRUITMENT)", () => {
+    const s = fresh(); // INCOME; both players hold their full 4 actions
+    const next = applyAction(s, { type: "ADVANCE_PHASE" });
+    expect(next.phase).toBe(GamePhase.RECRUITMENT);
+  });
+
+  it("non-window phases stay driver-advanceable regardless of budgets (COMBAT → END)", () => {
+    const s = fresh();
+    s.phase = GamePhase.COMBAT; // budgets untouched (4 each)
+    const next = applyAction(s, { type: "ADVANCE_PHASE" });
+    expect(next.phase).toBe(GamePhase.END);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// COUNT GUARDS (marshal authority MAJOR: Number.isInteger ≥ 1 recruit counts)
+// ---------------------------------------------------------------------------
+
+describe("recruit count guards (marshal authority major, BAD_COUNT)", () => {
+  it("rejects a NEGATIVE unit count (BAD_COUNT), treasury untouched", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    const goldBefore = s.players.find((p) => p.id === "p1")!.treasury.gold;
+    expect(() =>
+      applyAction(s, recruit({ units: { [UnitType.INFANTRY]: -3 } })),
+    ).toThrowError(expect.objectContaining({ code: "BAD_COUNT" }));
+    expect(s.players.find((p) => p.id === "p1")!.treasury.gold).toBe(goldBefore);
+  });
+
+  it("rejects a FRACTIONAL unit count (BAD_COUNT) — no 0.5 infantry on the board", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    expect(() =>
+      applyAction(s, recruit({ units: { [UnitType.INFANTRY]: 1.5 } })),
+    ).toThrowError(expect.objectContaining({ code: "BAD_COUNT" }));
+    // The stack was never touched (previously 1.5 leaked into the merge).
+    const army = s.armies.find((a) => a.id === BYZ_ARMY)!;
+    expect(Number.isInteger(army.units[UnitType.INFANTRY])).toBe(true);
+  });
+
+  it("rejects a bad count even when mixed with valid entries (whole order rejected)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    expect(() =>
+      applyAction(
+        s,
+        recruit({ units: { [UnitType.LEVY]: 2, [UnitType.INFANTRY]: -1 } }),
+      ),
+    ).toThrowError(expect.objectContaining({ code: "BAD_COUNT" }));
+    expect(s.armies.find((a) => a.id === BYZ_ARMY)!.units[UnitType.LEVY]).toBe(0);
+  });
+
+  it("rejects a NEGATIVE/FRACTIONAL variant count (BAD_COUNT)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    expect(() =>
+      applyAction(
+        s,
+        recruit({
+          units: {},
+          variants: [{ base: UnitType.INFANTRY, variant: "VARANGIAN_GUARD", count: -2 }],
+        }),
+      ),
+    ).toThrowError(expect.objectContaining({ code: "BAD_COUNT" }));
+    expect(() =>
+      applyAction(
+        s,
+        recruit({
+          units: {},
+          variants: [{ base: UnitType.INFANTRY, variant: "VARANGIAN_GUARD", count: 0.5 }],
+        }),
+      ),
+    ).toThrowError(expect.objectContaining({ code: "BAD_COUNT" }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TYPED MOVE GATING (marshal map MAJOR: army↛sea, fleet↛land, BAD_DESTINATION)
+// ---------------------------------------------------------------------------
+
+const BYZ_FLEET = "fleet-p1-constantinople"; // 1 WARSHIP (canonical starting navy)
+
+describe("typed land/sea move gating (marshal map major, BAD_DESTINATION)", () => {
+  it("an ARMY move into a SEA ZONE is rejected cleanly (BAD_DESTINATION, no TypeError)", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    // sea-of-marmara IS adjacent to constantinople, so only the domain check
+    // stands between the army and the old `prov.ownerId`-on-undefined crash.
+    try {
+      applyAction(s, move({ toId: "sea-of-marmara" }));
+      throw new Error("expected throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(EngineError); // NOT a TypeError crash
+      expect((err as EngineError).code).toBe("BAD_DESTINATION");
+    }
+    // The army never left port.
+    expect(s.armies.find((a) => a.id === BYZ_ARMY)!.locationId).toBe("constantinople");
+  });
+
+  it("a FLEET sails from port into an adjacent SEA ZONE (legal)", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    const next = applyAction(s, {
+      type: "MOVE",
+      player: "p1",
+      stackId: BYZ_FLEET,
+      toId: "sea-of-marmara",
+      naval: true,
+    });
+    expect(next.fleets.find((f) => f.id === BYZ_FLEET)!.locationId).toBe("sea-of-marmara");
+  });
+
+  it("a FLEET puts in at a COASTAL province from an adjacent sea zone (legal port call)", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    const atSea = applyAction(s, {
+      type: "MOVE",
+      player: "p1",
+      stackId: BYZ_FLEET,
+      toId: "sea-of-marmara",
+      naval: true,
+    });
+    const docked = applyAction(atSea, {
+      type: "MOVE",
+      player: "p1",
+      stackId: BYZ_FLEET,
+      toId: "selymbria", // coastal, adjacent to sea-of-marmara
+      naval: true,
+    });
+    expect(docked.fleets.find((f) => f.id === BYZ_FLEET)!.locationId).toBe("selymbria");
+  });
+
+  it("a FLEET may NOT hop port-to-port over a land edge (must sail via the sea zone)", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    // constantinople↔selymbria is a LAND adjacency between two coastal ports.
+    expect(() =>
+      applyAction(s, {
+        type: "MOVE",
+        player: "p1",
+        stackId: BYZ_FLEET,
+        toId: "selymbria",
+        naval: true,
+      }),
+    ).toThrowError(expect.objectContaining({ code: "BAD_DESTINATION" }));
+    expect(s.fleets.find((f) => f.id === BYZ_FLEET)!.locationId).toBe("constantinople");
+  });
+
+  it("a FLEET may NOT enter a LANDLOCKED province (BAD_DESTINATION)", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    // Force selymbria landlocked; even arriving from the adjacent sea zone the
+    // port call is now illegal.
+    s.provinces.find((p) => p.id === "selymbria")!.coastal = false;
+    const atSea = applyAction(s, {
+      type: "MOVE",
+      player: "p1",
+      stackId: BYZ_FLEET,
+      toId: "sea-of-marmara",
+      naval: true,
+    });
+    expect(() =>
+      applyAction(atSea, {
+        type: "MOVE",
+        player: "p1",
+        stackId: BYZ_FLEET,
+        toId: "selymbria",
+        naval: true,
+      }),
+    ).toThrowError(expect.objectContaining({ code: "BAD_DESTINATION" }));
   });
 });

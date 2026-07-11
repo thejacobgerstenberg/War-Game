@@ -14,12 +14,16 @@ import {
   GamePhase,
   GreatWorkType,
   TreatyType,
+  UnitType,
   type GameLogEntry,
   type GameState,
   type SecretObjective,
+  type SecretObjectiveClause,
 } from "@imperium/shared";
-import { createInitialState, type SeatInput } from "../gameState.js";
+import { createInitialState, emptyUnits, type SeatInput } from "../gameState.js";
 import { scorePrestige, checkVictory } from "../prestige.js";
+import { FACTION_STARTS } from "../factions.js";
+import { PROVINCES, SEA_ZONES } from "../mapData.js";
 import {
   MONOPOLY_PRESTIGE,
   PRESTIGE_THRESHOLDS,
@@ -883,5 +887,495 @@ describe("checkVictory — §13.3 round-16 endgame & tiebreaks", () => {
     s.round = 10;
     s.players.find((p) => p.id === "p1")!.prestige = 20; // below 25
     expect(checkVictory(s)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Marshal review B4/B5 + the 4 OR/count majors — re-encoded secret objectives
+// ---------------------------------------------------------------------------
+
+const seats5: SeatInput[] = [
+  ...seats4,
+  { id: "p5", name: "Doria", faction: Faction.GENOA, isHost: false },
+];
+
+describe("scorePrestige — B4/B5 re-encoded secret objectives (marshal review)", () => {
+  /** Wipe all ownership + every player's objectives (caller re-seeds a target). */
+  function blank(state: GameState): void {
+    for (const prov of state.provinces) prov.ownerId = null;
+    for (const player of state.players) player.objectives = [];
+  }
+  const own = (s: GameState, provId: string, pid: string): void => {
+    s.provinces.find((p) => p.id === provId)!.ownerId = pid;
+  };
+  const seededObj = (s: GameState, pid: string, id: string): SecretObjective =>
+    s.players.find((p) => p.id === pid)!.objectives.find((o) => o.id === id)!;
+
+  /**
+   * STATE-DELTA scorer: score the state twice — once with `obj` as `pid`'s sole
+   * objective, once with none — and return the prestige DELTA plus the revealed
+   * `completed` flag. The delta isolates the objective's own +4 from the
+   * incidental §13.1 accruals (capitals / key cities / sea-majority monopolies)
+   * that the same ownership fixture produces, so a passing test proves the
+   * objective itself SCORED, not merely that something was posted.
+   */
+  function scoreObjective(
+    s: GameState,
+    pid: string,
+    obj: SecretObjective,
+  ): { delta: number; completed: boolean } {
+    const prestigeAt = (st: GameState): number =>
+      st.players.find((p) => p.id === pid)!.prestige;
+    const withObj = structuredClone(s);
+    withObj.players.find((p) => p.id === pid)!.objectives = [structuredClone(obj)];
+    const without = structuredClone(s);
+    without.players.find((p) => p.id === pid)!.objectives = [];
+    const scored = scorePrestige(withObj);
+    return {
+      delta: prestigeAt(scored) - prestigeAt(scorePrestige(without)),
+      completed:
+        scored.players.find((p) => p.id === pid)!.objectives[0].completed === true,
+    };
+  }
+
+  // ---- ven-stato-da-mar (count major: "8 ports" clause was dropped) --------
+  it("ven-stato-da-mar (FACTIONS L176): 8 ports incl. the 3 mandatory → scores +4 at game end", () => {
+    const s = fresh(seats3);
+    const obj = seededObj(s, "p3", "ven-stato-da-mar");
+    expect(obj.minPorts).toBe(8); // the restored count clause
+    expect(obj.provinceRefs).toEqual(["crete", "negroponte", "corfu"]);
+    blank(s);
+    s.round = 16;
+    const ports = ["crete", "negroponte", "corfu", "modon", "dalmatia", "athens", "smyrna", "cyprus"];
+    for (const id of ports) own(s, id, "p3");
+    const r = scoreObjective(s, "p3", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("ven-stato-da-mar: only 7 ports (mandatory 3 held) → count clause unmet, no +4", () => {
+    const s = fresh(seats3);
+    const obj = seededObj(s, "p3", "ven-stato-da-mar");
+    blank(s);
+    s.round = 16;
+    for (const id of ["crete", "negroponte", "corfu", "modon", "dalmatia", "athens", "smyrna"]) {
+      own(s, id, "p3"); // 7 coastal ports — one short of 8
+    }
+    const r = scoreObjective(s, "p3", obj);
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+
+  // ---- ven-monopoly-of-the-straits (B4: sea-zone id in provinceRefs) -------
+  it("ven-monopoly-of-the-straits (B4, FACTIONS L177-178): a fleet in the bosphorus SEA ZONE + any 3 Aegean islands → +4 (was unsatisfiable)", () => {
+    const s = fresh(seats3);
+    const obj = seededObj(s, "p3", "ven-monopoly-of-the-straits");
+    // B4 root cause fixed at the seed: no sea-zone id left in provinceRefs.
+    expect(obj.provinceRefs).toEqual([]);
+    expect(obj.minOfProvinces).toEqual([
+      { provinceIds: ["lemnos", "lesbos", "chios", "naxos", "negroponte"], min: 3 },
+    ]);
+    blank(s);
+    s.round = 16;
+    // 3 of the 5 named islands (deliberately NOT constantinople/pera)…
+    for (const id of ["lemnos", "lesbos", "naxos"]) own(s, id, "p3");
+    // …and a Venetian fleet stack located IN the bosphorus sea zone.
+    s.fleets.push({
+      id: "fleet-p3-bosphorus",
+      ownerId: "p3",
+      locationId: "bosphorus",
+      units: { ...emptyUnits(), [UnitType.WARSHIP]: 1 },
+    });
+    const r = scoreObjective(s, "p3", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("ven-monopoly-of-the-straits (B4): fleet parked elsewhere and no constantinople/pera → straits branch unmet", () => {
+    const s = fresh(seats3);
+    const obj = seededObj(s, "p3", "ven-monopoly-of-the-straits");
+    blank(s);
+    s.round = 16;
+    for (const id of ["lemnos", "lesbos", "naxos"]) own(s, id, "p3");
+    s.fleets.push({
+      id: "fleet-p3-aegean",
+      ownerId: "p3",
+      locationId: "aegean", // NOT the bosphorus
+      units: { ...emptyUnits(), [UnitType.WARSHIP]: 1 },
+    });
+    const r = scoreObjective(s, "p3", obj);
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+
+  it("ven-monopoly-of-the-straits: holding pera satisfies the straits branch without any fleet", () => {
+    const s = fresh(seats3);
+    const obj = seededObj(s, "p3", "ven-monopoly-of-the-straits");
+    blank(s);
+    s.round = 16;
+    for (const id of ["pera", "chios", "naxos", "negroponte"]) own(s, id, "p3");
+    const r = scoreObjective(s, "p3", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("ven-monopoly-of-the-straits: straits branch met but only 2 islands → count clause fails", () => {
+    const s = fresh(seats3);
+    const obj = seededObj(s, "p3", "ven-monopoly-of-the-straits");
+    blank(s);
+    s.round = 16;
+    for (const id of ["constantinople", "lemnos", "lesbos"]) own(s, id, "p3");
+    const r = scoreObjective(s, "p3", obj);
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+
+  // ---- ven-queen-of-the-adriatic (B4: 'adriatic' sea-zone id + OR branch) --
+  it("ven-queen-of-the-adriatic (B4, FACTIONS L179-180): 4 Adriatic ports + a destroyed Genoese fleet → +4 (was unsatisfiable)", () => {
+    const s = fresh(seats3);
+    const obj = seededObj(s, "p3", "ven-queen-of-the-adriatic");
+    expect(obj.provinceRefs).toEqual([]); // the 'adriatic' sea-zone id is gone
+    expect(obj.allOf).toEqual(["venice", "dalmatia", "corfu", "ragusa"]);
+    blank(s);
+    s.round = 16;
+    for (const id of ["venice", "dalmatia", "corfu", "ragusa"]) own(s, id, "p3");
+    // combat.ts counter: one Genoese fleet wiped at sea over the game.
+    s.players.find((p) => p.id === "p3")!.fleetsDestroyed = { [Faction.GENOA]: 1 };
+    const r = scoreObjective(s, "p3", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("ven-queen-of-the-adriatic: seizing a Genoese colony instead of sinking a fleet also completes it", () => {
+    const s = fresh(seats3);
+    const obj = seededObj(s, "p3", "ven-queen-of-the-adriatic");
+    blank(s);
+    s.round = 16;
+    for (const id of ["venice", "dalmatia", "corfu", "ragusa", "kaffa"]) own(s, id, "p3");
+    const r = scoreObjective(s, "p3", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("ven-queen-of-the-adriatic: all 4 Adriatic ports but NEITHER or-branch → not completed", () => {
+    const s = fresh(seats3);
+    const obj = seededObj(s, "p3", "ven-queen-of-the-adriatic");
+    blank(s);
+    s.round = 16;
+    for (const id of ["venice", "dalmatia", "corfu", "ragusa"]) own(s, id, "p3");
+    const r = scoreObjective(s, "p3", obj); // no fleet kill, no colony
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+
+  // ---- gen-dominium-maris (B4: black-sea-* sea-zone ids in provinceRefs) ---
+  it("gen-dominium-maris (B4, FACTIONS L220-221): kaffa+chios+another port, Black Sea unblockaded → +4 (was unsatisfiable)", () => {
+    const s = fresh(seats5);
+    const obj = seededObj(s, "p5", "gen-dominium-maris");
+    // B4 root cause fixed at the seed: only PROVINCE ids remain in provinceRefs;
+    // the zones moved to the naval blockade predicate.
+    expect(obj.provinceRefs).toEqual(["kaffa", "chios"]);
+    expect(obj.zonesNotEnemyBlockaded).toEqual(["black-sea-west", "black-sea-east"]);
+    blank(s);
+    s.round = 16;
+    for (const id of ["kaffa", "chios", "lesbos"]) own(s, id, "p5");
+    const r = scoreObjective(s, "p5", obj); // no blockades anywhere
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("gen-dominium-maris (B4): a RIVAL blockade on black-sea-west fails it at game end", () => {
+    const s = fresh(seats5);
+    const obj = seededObj(s, "p5", "gen-dominium-maris");
+    blank(s);
+    s.round = 16;
+    for (const id of ["kaffa", "chios", "lesbos"]) own(s, id, "p5");
+    s.seaZones.find((z) => z.id === "black-sea-west")!.blockadedBy = "p3"; // Venice blockades
+    const r = scoreObjective(s, "p5", obj);
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+
+  it("gen-dominium-maris (B4): the player's OWN blockade of the zone does not fail it", () => {
+    const s = fresh(seats5);
+    const obj = seededObj(s, "p5", "gen-dominium-maris");
+    blank(s);
+    s.round = 16;
+    for (const id of ["kaffa", "chios", "lesbos"]) own(s, id, "p5");
+    s.seaZones.find((z) => z.id === "black-sea-west")!.blockadedBy = "p5"; // self
+    const r = scoreObjective(s, "p5", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("gen-dominium-maris: kaffa+chios but no OTHER Black Sea/Aegean port → not completed", () => {
+    const s = fresh(seats5);
+    const obj = seededObj(s, "p5", "gen-dominium-maris");
+    blank(s);
+    s.round = 16;
+    for (const id of ["kaffa", "chios"]) own(s, id, "p5");
+    const r = scoreObjective(s, "p5", obj);
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+
+  // ---- gen-bankers-of-kings (B5: had NO machine-checkable clause) ----------
+  it("gen-bankers-of-kings (B5): strictly most gold of any player at game end → +4 (was never awardable)", () => {
+    const s = fresh(seats5);
+    const obj = seededObj(s, "p5", "gen-bankers-of-kings");
+    expect(obj.anyOfClauses).toEqual([{ minGold: 25, minDebtors: 2 }, { mostGold: true }]);
+    blank(s);
+    s.round = 16;
+    for (const p of s.players) p.treasury.gold = 5;
+    s.players.find((p) => p.id === "p5")!.treasury.gold = 12; // strictly richest
+    const r = scoreObjective(s, "p5", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("gen-bankers-of-kings (B5): a gold TIE fails mostGold (strictly-highest, per the marshal ruling)", () => {
+    const s = fresh(seats5);
+    const obj = seededObj(s, "p5", "gen-bankers-of-kings");
+    blank(s);
+    s.round = 16;
+    for (const p of s.players) p.treasury.gold = 5;
+    s.players.find((p) => p.id === "p5")!.treasury.gold = 12;
+    s.players.find((p) => p.id === "p3")!.treasury.gold = 12; // Venice ties
+    const r = scoreObjective(s, "p5", obj);
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+
+  it("gen-bankers-of-kings (B5): ≥25 gold + 2 debtors completes even when NOT the richest", () => {
+    const s = fresh(seats5);
+    const obj = seededObj(s, "p5", "gen-bankers-of-kings");
+    blank(s);
+    s.round = 16;
+    for (const p of s.players) p.treasury.gold = 5;
+    const genoa = s.players.find((p) => p.id === "p5")!;
+    genoa.treasury.gold = 25;
+    genoa.debtors = ["p1", "p2"]; // two factions in debt to Genoa
+    s.players.find((p) => p.id === "p3")!.treasury.gold = 40; // Venice richer → mostGold fails
+    const r = scoreObjective(s, "p5", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("gen-bankers-of-kings (B5): ≥25 gold but only ONE debtor and not richest → not completed", () => {
+    const s = fresh(seats5);
+    const obj = seededObj(s, "p5", "gen-bankers-of-kings");
+    blank(s);
+    s.round = 16;
+    for (const p of s.players) p.treasury.gold = 5;
+    const genoa = s.players.find((p) => p.id === "p5")!;
+    genoa.treasury.gold = 25;
+    genoa.debtors = ["p1"];
+    s.players.find((p) => p.id === "p3")!.treasury.gold = 40;
+    const r = scoreObjective(s, "p5", obj);
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+
+  // ---- gen-overshadow-the-lion (OR major: both branches were AND-ed) -------
+  it("gen-overshadow-the-lion (FACTIONS L224-225): strictly more ports than Venice → +4 without any colony", () => {
+    const s = fresh(seats5);
+    const obj = seededObj(s, "p5", "gen-overshadow-the-lion");
+    expect(obj.provinceRefs).toEqual([]); // no longer an all-of of 5 colonies
+    blank(s);
+    s.round = 16;
+    for (const id of ["kaffa", "chios"]) own(s, id, "p5"); // 2 Genoese ports
+    own(s, "crete", "p3"); // Venice holds only 1 port
+    const r = scoreObjective(s, "p5", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("gen-overshadow-the-lion: a port TIE with Venice and no colony → not completed (strict)", () => {
+    const s = fresh(seats5);
+    const obj = seededObj(s, "p5", "gen-overshadow-the-lion");
+    blank(s);
+    s.round = 16;
+    own(s, "kaffa", "p5"); // 1 port each — tie
+    own(s, "crete", "p3");
+    const r = scoreObjective(s, "p5", obj);
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+
+  it("gen-overshadow-the-lion: capturing ONE Venetian colony completes it even with fewer ports", () => {
+    const s = fresh(seats5);
+    const obj = seededObj(s, "p5", "gen-overshadow-the-lion");
+    blank(s);
+    s.round = 16;
+    own(s, "modon", "p5"); // a single captured Venetian colony (1 port)
+    for (const id of ["crete", "negroponte", "corfu"]) own(s, id, "p3"); // Venice keeps 3
+    const r = scoreObjective(s, "p5", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  // ---- hun-crusader (count major: "three of four" was AND-ed as all four) --
+  it("hun-crusader (FACTIONS L264-265): varna + any 3 of the 4 Balkan neutrals → +4", () => {
+    const s = fresh(seats4);
+    const obj = seededObj(s, "p4", "hun-crusader");
+    expect(obj.provinceRefs).toEqual(["varna"]);
+    expect(obj.minOfProvinces).toEqual([
+      { provinceIds: ["serbia", "bosnia", "wallachia", "albania"], min: 3 },
+    ]);
+    blank(s);
+    s.round = 16;
+    for (const id of ["varna", "serbia", "bosnia", "wallachia"]) own(s, id, "p4"); // NOT albania
+    const r = scoreObjective(s, "p4", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("hun-crusader: varna + only 2 neutrals → count clause unmet", () => {
+    const s = fresh(seats4);
+    const obj = seededObj(s, "p4", "hun-crusader");
+    blank(s);
+    s.round = 16;
+    for (const id of ["varna", "serbia", "bosnia"]) own(s, id, "p4");
+    const r = scoreObjective(s, "p4", obj);
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+
+  it("hun-crusader: all 4 neutrals without varna → front proxy unmet", () => {
+    const s = fresh(seats4);
+    const obj = seededObj(s, "p4", "hun-crusader");
+    blank(s);
+    s.round = 16;
+    for (const id of ["serbia", "bosnia", "wallachia", "albania"]) own(s, id, "p4");
+    const r = scoreObjective(s, "p4", obj);
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+
+  // ---- hun-defender-of-the-faith (OR major: pure OR was AND-ed as 4 ids) ---
+  it("hun-defender-of-the-faith (FACTIONS L266-267): holding edirne ALONE completes it (+4)", () => {
+    const s = fresh(seats4);
+    const obj = seededObj(s, "p4", "hun-defender-of-the-faith");
+    expect(obj.provinceRefs).toEqual([]); // old seed AND-ed edirne+sofia+bursa+constantinople
+    blank(s);
+    s.round = 16;
+    own(s, "edirne", "p4"); // one captured Muslim-held city — nothing else
+    const r = scoreObjective(s, "p4", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("hun-defender-of-the-faith: holding constantinople alone satisfies the second OR branch", () => {
+    const s = fresh(seats4);
+    const obj = seededObj(s, "p4", "hun-defender-of-the-faith");
+    blank(s);
+    s.round = 16;
+    own(s, "constantinople", "p4");
+    const r = scoreObjective(s, "p4", obj);
+    expect(r.completed).toBe(true);
+    expect(r.delta).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  it("hun-defender-of-the-faith: neither branch held → not completed", () => {
+    const s = fresh(seats4);
+    const obj = seededObj(s, "p4", "hun-defender-of-the-faith");
+    blank(s);
+    s.round = 16;
+    const r = scoreObjective(s, "p4", obj);
+    expect(r.completed).toBe(false);
+    expect(r.delta).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// B4 GUARD — every seeded objective id must resolve on the canonical board
+// ---------------------------------------------------------------------------
+
+describe("seeded secret objectives — id-resolution guard (B4 regression lock)", () => {
+  const provinceIds = new Set(PROVINCES.map((p) => p.id));
+  const seaZoneIds = new Set(SEA_ZONES.map((z) => z.id));
+
+  /** The objective's base clause plus every anyOfClauses OR-group. */
+  const clausesOf = (obj: SecretObjective): SecretObjectiveClause[] => [
+    obj,
+    ...(obj.anyOfClauses ?? []),
+  ];
+  const allObjectives = Object.values(FACTION_STARTS).flatMap((start) =>
+    start.objectives.map((obj) => ({ faction: start.faction, obj })),
+  );
+
+  it("covers all 5 factions × 3 objectives", () => {
+    expect(allObjectives.length).toBe(15);
+  });
+
+  it("B4: every province ref in every seeded objective resolves in PROVINCES (a sea-zone id can never sneak back in)", () => {
+    for (const { obj } of allObjectives) {
+      for (const id of obj.provinceRefs) {
+        expect(provinceIds.has(id), `${obj.id}: provinceRefs "${id}" not in PROVINCES`).toBe(true);
+      }
+      for (const clause of clausesOf(obj)) {
+        for (const id of clause.allOf ?? []) {
+          expect(provinceIds.has(id), `${obj.id}: allOf "${id}" not in PROVINCES`).toBe(true);
+        }
+        for (const id of clause.anyOf ?? []) {
+          expect(provinceIds.has(id), `${obj.id}: anyOf "${id}" not in PROVINCES`).toBe(true);
+        }
+        for (const entry of clause.minOfProvinces ?? []) {
+          for (const id of entry.provinceIds) {
+            expect(provinceIds.has(id), `${obj.id}: minOfProvinces "${id}" not in PROVINCES`).toBe(true);
+          }
+          // A count clause must also be satisfiable: 0 < min <= pool size.
+          expect(entry.min, `${obj.id}: minOfProvinces min must be > 0`).toBeGreaterThan(0);
+          expect(
+            entry.min,
+            `${obj.id}: minOfProvinces min exceeds its province pool`,
+          ).toBeLessThanOrEqual(entry.provinceIds.length);
+        }
+      }
+    }
+  });
+
+  it("B4: every sea-zone predicate id resolves in SEA_ZONES (and never in PROVINCES)", () => {
+    for (const { obj } of allObjectives) {
+      for (const clause of clausesOf(obj)) {
+        const zoneIds = [
+          ...(clause.fleetsInZone ?? []).map((e) => e.seaZoneId),
+          ...(clause.zonesNotEnemyBlockaded ?? []),
+        ];
+        for (const id of zoneIds) {
+          expect(seaZoneIds.has(id), `${obj.id}: sea-zone id "${id}" not in SEA_ZONES`).toBe(true);
+          expect(provinceIds.has(id), `${obj.id}: "${id}" is a province, not a sea zone`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("B5: every seeded objective carries at least one machine-checkable clause (never dead like gen-bankers-of-kings was)", () => {
+    const hasContent = (c: SecretObjectiveClause): boolean =>
+      Boolean(
+        c.allOf?.length ||
+          c.anyOf?.length ||
+          c.minProvinces !== undefined ||
+          c.requiresHagiaSophia ||
+          c.minFaith !== undefined ||
+          c.refusedChurchUnion ||
+          c.sackedHighValueCities !== undefined ||
+          c.minPorts !== undefined ||
+          c.minOfProvinces?.length ||
+          c.fleetsInZone?.length ||
+          c.zonesNotEnemyBlockaded?.length ||
+          c.minGold !== undefined ||
+          c.mostGold ||
+          c.minDebtors !== undefined ||
+          c.morePortsThan !== undefined ||
+          c.destroyedFleetOf !== undefined,
+      );
+    for (const { obj } of allObjectives) {
+      const checkable =
+        obj.provinceRefs.length > 0 ||
+        hasContent(obj) ||
+        (obj.anyOfClauses ?? []).some(hasContent);
+      expect(checkable, `${obj.id} has no machine-checkable clause (B5 failure mode)`).toBe(true);
+    }
   });
 });

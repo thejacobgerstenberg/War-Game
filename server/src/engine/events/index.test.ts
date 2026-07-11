@@ -11,9 +11,11 @@
  * ActiveModifier on the side-channel. Cited card numbers reference EVENT_CARDS.md.
  */
 import { describe, it, expect } from "vitest";
-import { Faction, UnitType, type GameState } from "@imperium/shared";
+import { Faction, TerrainType, UnitType, type GameState } from "@imperium/shared";
 import { createInitialState, type SeatInput } from "../gameState.js";
 import { neighborsOf } from "../adjacency.js";
+import { applyIncomePhase } from "../economy.js";
+import { WALL_TIERS } from "../balance.js";
 import { drawOmen, resolveCard } from "./index.js";
 import { omenCardId, OMEN_CARD_BY_ID } from "./cards.js";
 
@@ -62,21 +64,26 @@ function landUnitsAt(state: GameState, ownerId: string, provId: string): number 
   return n;
 }
 
-/** Pack the Ottoman (p2) capital edirne to the §6.4 city/capital cap of 12. */
-function withFullOttomanCapital(state: GameState): GameState {
+/** Pack `provId` with `n` p2 levies (replacing p2's armies there) — §6.4 fixture. */
+function packProvince(state: GameState, provId: string, n: number): GameState {
   return {
     ...state,
     armies: [
-      ...state.armies.filter((a) => !(a.ownerId === "p2" && a.locationId === "edirne")),
+      ...state.armies.filter((a) => !(a.ownerId === "p2" && a.locationId === provId)),
       {
-        id: "fill-edirne",
+        id: `fill-${provId}`,
         ownerId: "p2",
-        locationId: "edirne",
-        units: unitsWith({ [UnitType.LEVY]: 12 }),
+        locationId: provId,
+        units: unitsWith({ [UnitType.LEVY]: n }),
         variants: [],
       },
     ],
   };
+}
+
+/** Pack the Ottoman (p2) capital edirne to the §6.4 city/capital cap of 12. */
+function withFullOttomanCapital(state: GameState): GameState {
+  return packProvince(state, "edirne", 12);
 }
 
 // ---------------------------------------------------------------------------
@@ -216,7 +223,7 @@ describe("resolveCard — representative card effects", () => {
     expect(player(after, "p2").treasury.faith).toBe(ottFaith); // Ottoman unchanged
   });
 
-  // delta 3 (CORRECTED CANON — BALANCE_DELTAS.md "GREAT BOMBARD MODEL", GD §8.4,
+  // delta 3 (CORRECTED CANON — merged PR #17 rules-delta docs "GREAT BOMBARD MODEL", GD §8.4,
   // EVENT_CARDS #34): #34 SPAWNS the Great Bombard immediately + free onto the
   // GameState.greatBombard singleton — no "unlock then RECRUIT" modifier any more.
   it("#34 with the Ottoman in play spawns the Great Bombard FREE in the Ottoman capital (edirne), inPlay + emplacedRound set", () => {
@@ -293,22 +300,27 @@ describe("resolveCard — representative card effects", () => {
   });
 
   // §6.4 over-stacking guard (regression: the forge used to over-stack a full
-  // capital 12→13). When the Ottoman capital is at the §6.4 cap, the gun must be
-  // emplaced in an adjacent OWNED province with room, never on top of the cap.
-  it("#34 forge with the Ottoman capital FULL (12/12) emplaces the gun in an adjacent owned province, leaving the capital at 12", () => {
+  // capital 12→13) + GD §8.4 placement widening (marshal answer-key major): canon
+  // reads "capital (or any owned CITY)". When the Ottoman capital is at the §6.4
+  // cap, the gun must be emplaced in an OWNED CITY-terrain province with room —
+  // Nicaea, the Ottomans' only owned CITY — never on top of the cap.
+  it("#34 forge with the Ottoman capital FULL (12/12) emplaces the gun in an owned CITY (nicaea), leaving the capital at 12 (§8.4 capital-OR-owned-CITY)", () => {
     const s = withFullOttomanCapital(fresh(seats4)); // Ottoman = p2, capital edirne
     s.round = 11;
     expect(landUnitsAt(s, "p2", "edirne")).toBe(12); // capital packed to the §6.4 cap
     const after = resolveCard(s, omenCardId(34));
     expect(after.greatBombard!.inPlay).toBe(true);
     expect(after.greatBombard!.ownerId).toBe("p2");
-    // Placed in an owned province ADJACENT to the full capital, NOT in the capital.
+    // §8.4 "or any owned CITY": placed in Nicaea (owned, CITY terrain) — the CITY
+    // preference beats mere capital-adjacency (nicaea is NOT an edirne neighbour).
     const dest = after.greatBombard!.provinceId!;
-    expect(dest).not.toBe("edirne");
-    expect(neighborsOf("edirne")).toContain(dest);
+    expect(dest).toBe("nicaea");
+    expect(after.provinces.find((p) => p.id === dest)!.terrain).toBe(TerrainType.CITY);
+    expect(after.provinces.find((p) => p.id === dest)!.ownerId).toBe("p2");
+    expect(neighborsOf("edirne")).not.toContain(dest);
     expect(player(after, "p2").faction).toBe(Faction.OTTOMAN);
-    // §6.4 respected everywhere: the destination stays within its land cap (8)...
-    expect(landUnitsAt(after, "p2", dest)).toBeLessThanOrEqual(8);
+    // §6.4 respected everywhere: the CITY destination stays within its cap (12)...
+    expect(landUnitsAt(after, "p2", dest)).toBeLessThanOrEqual(12);
     // ...and the capital is NOT over-stacked — it stays at 12 (the pre-fix bug → 13).
     expect(landUnitsAt(after, "p2", "edirne")).toBe(12);
     // The one GREAT_BOMBARD piece sits at the destination, not the capital.
@@ -317,6 +329,23 @@ describe("resolveCard — representative card effects", () => {
     );
     expect(piece!.locationId).toBe(dest);
     expect(piece!.locationId).not.toBe("edirne");
+  });
+
+  // §6.4 safety fallback below the two printed homes (§8.4): capital AND every
+  // owned CITY full → an owned province adjacent to the capital with the most
+  // room (tie → lowest id: gallipoli/philippopolis both hold 1 starting levy).
+  it("#34 forge with the capital AND the only owned CITY full falls back to an adjacent owned province (gallipoli)", () => {
+    let s = withFullOttomanCapital(fresh(seats4));
+    s = packProvince(s, "nicaea", 12); // fill the only Ottoman-owned CITY to its cap
+    s.round = 11;
+    const after = resolveCard(s, omenCardId(34));
+    expect(after.greatBombard!.inPlay).toBe(true);
+    const dest = after.greatBombard!.provinceId!;
+    expect(dest).toBe("gallipoli");
+    expect(neighborsOf("edirne")).toContain(dest);
+    // Neither printed home was over-stacked past §6.4.
+    expect(landUnitsAt(after, "p2", "edirne")).toBe(12);
+    expect(landUnitsAt(after, "p2", "nicaea")).toBe(12);
   });
 
   it("#34 forge with room in the capital still emplaces the gun in the capital (behaviour unchanged)", () => {
@@ -328,7 +357,7 @@ describe("resolveCard — representative card effects", () => {
     expect(after.greatBombard!.provinceId).toBe("edirne"); // capital, as before
   });
 
-  it("#34 forge placement is deterministic — same seed/state → same emplacement province (lowest-id tiebreak)", () => {
+  it("#34 forge placement is deterministic — same seed/state → same emplacement province", () => {
     const build = () => {
       const s = withFullOttomanCapital(fresh(seats4));
       s.round = 11;
@@ -336,8 +365,8 @@ describe("resolveCard — representative card effects", () => {
     };
     const first = build();
     expect(build()).toBe(first);
-    // gallipoli and philippopolis both tie on room (7); lowest province id wins.
-    expect(first).toBe("gallipoli");
+    // §8.4 capital-OR-owned-CITY: the full capital defers to the one owned CITY.
+    expect(first).toBe("nicaea");
   });
 
   it("#28 Papal Interdict does NOT post a global faith modifier (EVENT_CARDS Era II #28 targets one faction)", () => {
@@ -478,5 +507,153 @@ describe("resolveCard — durable cards register an ActiveModifier", () => {
   it("an Immediate card (#1 Bumper Harvest) posts no durable modifier", () => {
     const after = resolveCard(fresh(seats4), omenCardId(1));
     expect(after.activeModifiers.some((m) => m.sourceCardId === omenCardId(1))).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Marshal events-major fixes: #25 5-tier wall shift, #11 corsair predicate,
+// #17/#29 faith effects CONSUMED by economy (EVENT_CARDS.md #25/#11/#17/#29)
+// ---------------------------------------------------------------------------
+
+describe("#25 Earthquake — wall shifts move exactly the printed amount in the 5-tier model (GD §8.1)", () => {
+  it("drops Constantinople's T5 Theodosian walls ONE tier (5→4), not two (pre-fix clamp bug)", () => {
+    const s = fresh(seats4);
+    const before = s.provinces.find((p) => p.id === "constantinople")!;
+    expect(before.walls.tier).toBe(5); // T5 Theodosian, 16 HP (CANON #4)
+    expect(before.walls.hp).toBe(WALL_TIERS[5].hp);
+    const after = resolveCard(s, omenCardId(25), { choice: "constantinople" });
+    const prov = after.provinces.find((p) => p.id === "constantinople")!;
+    // Printed effect: "wall tier −1". The old clamp pinned to the retired 4-tier
+    // model's tier 3, so a T5 wall dropped TWO tiers (5→3).
+    expect(prov.walls.tier).toBe(4);
+    expect(prov.walls.hp).toBe(WALL_TIERS[4].hp);
+  });
+});
+
+describe("#11 Corsair Raid — victim predicate selects a named-sea shore province (EVENT_CARDS #11)", () => {
+  it("raids an OWNED coastal province bordering the raided corsair sea — never Constantinople (pre-fix vacuous predicate)", () => {
+    const s = fresh(seats4);
+    const after = resolveCard(s, omenCardId(11));
+    const entry = after.log.find((e) => /Corsair Raid/.test(e.message))!;
+    expect(entry).toBeDefined();
+    const zone = entry.data!.seaZone as string;
+    const victimId = entry.data!.province as string;
+    expect(["sicilian-channel", "eastern-mediterranean", "aegean"]).toContain(zone);
+    // The victim fronts the raided sea (province↔sea ADJACENCY edge) …
+    expect(victimId).toBeDefined();
+    expect(neighborsOf(victimId)).toContain(zone);
+    const victim = s.provinces.find((p) => p.id === victimId)!;
+    expect(victim.coastal).toBe(true);
+    expect(victim.ownerId).not.toBeNull();
+    // … which Constantinople (Marmara/Bosphorus) does not — the pre-fix predicate
+    // was vacuously true and ALWAYS struck Constantinople.
+    expect(victimId).not.toBe("constantinople");
+    // STATE delta, not just a log: the victim's owner lost exactly 2 gold.
+    expect(player(after, victim.ownerId!).treasury.gold).toBe(
+      player(s, victim.ownerId!).treasury.gold - 2,
+    );
+  });
+
+  it("is deterministic — same seed/state raids the same province and sea", () => {
+    const run = () => {
+      const after = resolveCard(fresh(seats4), omenCardId(11));
+      const entry = after.log.find((e) => /Corsair Raid/.test(e.message))!;
+      return `${entry.data!.province}@${entry.data!.seaZone}`;
+    };
+    expect(run()).toBe(run());
+  });
+});
+
+describe("#17 Council of Florence — faith effect CONSUMED by economy (EVENT_CARDS #17)", () => {
+  it("ACCEPT posts a BYZANTIUM-targeted faith_income −2 (2 rounds) with no immediate treasury hit", () => {
+    const s = fresh(seats4); // Byzantium = p1, round 1
+    const faithBefore = player(s, "p1").treasury.faith;
+    const accepted = resolveCard(s, omenCardId(17), { choice: "ACCEPT" });
+    // No immediate treasury hit — the recurrence is delivered by the modifier
+    // (FL-04 pattern; the omen resolves at the front of INCOME).
+    expect(player(accepted, "p1").treasury.faith).toBe(faithBefore);
+    const mod = accepted.activeModifiers.find(
+      (m) => m.sourceCardId === omenCardId(17) && m.kind === "faith_income",
+    )!;
+    expect(mod).toBeDefined();
+    expect(mod.value).toBe(-2);
+    expect(mod.target!.faction).toBe(Faction.BYZANTIUM);
+    // durationRounds 2, posted round 1 → live rounds 1..2, lapses at round 2 cleanup.
+    expect(mod.expiresRound).toBe(2);
+  });
+
+  it("CONSUMPTION: after ACCEPT the next Income phase credits Byzantium −2 faith; the Ottoman is untouched", () => {
+    const s = fresh(seats4);
+    const base = applyIncomePhase(s);
+    const byzBaseGain = player(base, "p1").treasury.faith - player(s, "p1").treasury.faith;
+    const ottBaseGain = player(base, "p2").treasury.faith - player(s, "p2").treasury.faith;
+    expect(byzBaseGain).toBeGreaterThan(2); // Byzantium is the faith faction
+    const accepted = resolveCard(s, omenCardId(17), { choice: "ACCEPT" });
+    const income = applyIncomePhase(accepted);
+    const byzGain =
+      player(income, "p1").treasury.faith - player(accepted, "p1").treasury.faith;
+    const ottGain =
+      player(income, "p2").treasury.faith - player(accepted, "p2").treasury.faith;
+    // The printed −2 ✝️/round actually lands on Byzantium's income…
+    expect(byzGain).toBe(byzBaseGain - 2);
+    // …and ONLY on Byzantium (the modifier is faction-targeted).
+    expect(ottGain).toBe(ottBaseGain);
+  });
+
+  it("REFUSE posts no faith modifier and leaves Byzantine faith income whole", () => {
+    const s = fresh(seats4);
+    const refused = resolveCard(s, omenCardId(17), { choice: "REFUSE" });
+    expect(
+      refused.activeModifiers.some(
+        (m) => m.sourceCardId === omenCardId(17) && m.kind === "faith_income",
+      ),
+    ).toBe(false);
+    const base = applyIncomePhase(s);
+    const income = applyIncomePhase(refused);
+    const baseGain = player(base, "p1").treasury.faith - player(s, "p1").treasury.faith;
+    const gain = player(income, "p1").treasury.faith - player(refused, "p1").treasury.faith;
+    expect(gain).toBe(baseGain);
+  });
+});
+
+describe("#29 Schism — faith halving CONSUMED by economy (EVENT_CARDS #29)", () => {
+  it("posts a faction-targeted faith_mult ×0.5 for EVERY seated faction, round-scoped", () => {
+    const s = fresh(seats4);
+    const after = resolveCard(s, omenCardId(29));
+    const mods = after.activeModifiers.filter(
+      (m) => m.sourceCardId === omenCardId(29) && m.kind === "faith_mult",
+    );
+    expect(mods).toHaveLength(4);
+    for (const mod of mods) {
+      expect(mod.value).toBe(0.5);
+      expect(mod.scope).toBe("round"); // lapses at this round's cleanup
+    }
+    const targeted = new Set(mods.map((m) => m.target!.faction));
+    expect(targeted).toEqual(
+      new Set([Faction.BYZANTIUM, Faction.OTTOMAN, Faction.VENICE, Faction.GENOA]),
+    );
+  });
+
+  it("CONSUMPTION: the Income phase after the Schism credits every faction HALF its faith (floored)", () => {
+    const s = fresh(seats4);
+    const base = applyIncomePhase(s);
+    const schism = resolveCard(s, omenCardId(29));
+    const income = applyIncomePhase(schism);
+    for (const id of ["p1", "p2", "p3", "p4"]) {
+      const baseGain = player(base, id).treasury.faith - player(s, id).treasury.faith;
+      const gain = player(income, id).treasury.faith - player(schism, id).treasury.faith;
+      // "All ✝️ income halved" actually lands in the treasury (state delta).
+      expect(gain).toBe(Math.floor(baseGain * 0.5));
+    }
+    // The halving is a real cut for the faith faction, not a vacuous 0 → 0.
+    const byzBaseGain = player(base, "p1").treasury.faith - player(s, "p1").treasury.faith;
+    expect(byzBaseGain).toBeGreaterThan(Math.floor(byzBaseGain * 0.5));
+  });
+
+  it("still applies the printed −1 prestige to the faith-reliant factions", () => {
+    const s = fresh(seats4);
+    const after = resolveCard(s, omenCardId(29));
+    expect(player(after, "p1").prestige).toBe(-1); // Byzantium
+    expect(player(after, "p3").prestige).toBe(0); // Venice not faith-reliant
   });
 });

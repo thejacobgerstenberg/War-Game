@@ -450,6 +450,18 @@ export const WALL_BUILD_COST: Record<number, Partial<ResourceBundle>> = {
   5: { gold: 15, marble: 12 }, // Theodosian (also a great work)
 };
 
+/**
+ * Highest wall tier an ORDINARY Build action may raise a province to
+ * (marshal-review of PR #10, MAJOR "economy: ordinary BUILD raises walls to
+ * T4/T5" / GD §9.1: the buildable ladder tops out at "Walls Lv2" = T3). Tiers
+ * ABOVE this cap enter play only as authored map data (T4 great fortresses,
+ * e.g. `belgrade`/`rome`) or via the Theodosian Walls GREAT WORK (T5, §9.2) —
+ * never through the client BUILD action. economy.ts's BUILD validator must
+ * reject any wall upgrade targeting a tier > this cap; the T4/T5 rows of
+ * {@link WALL_BUILD_COST} remain only for event/great-work rebuild pricing.
+ */
+export const MAX_BUILDABLE_WALL_TIER = 3;
+
 // ---------------------------------------------------------------------------
 // §7 Combat modifiers
 // ---------------------------------------------------------------------------

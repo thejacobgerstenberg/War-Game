@@ -276,28 +276,18 @@ export interface TacticCard {
 }
 
 /**
- * A hidden victory goal dealt to a player (3 per faction, scored at game end).
+ * One conjunctive group of machine-checkable objective predicates. Every field
+ * PRESENT in a clause must hold for the clause to be satisfied (AND between
+ * fields), with one documented exception: `minProvinces` and
+ * `sackedHighValueCities` in the SAME clause are ALTERNATIVES to each other
+ * (FL-07: ≥15 provinces OR ≥3 HV cities sacked). Absent fields are ignored.
  *
- * The legacy `provinceRefs` model (all-of, evaluated with `.every(owned)`) cannot
- * express OR-clauses or non-territorial conditions, so several ratified objectives
- * were mis-scored (FL-06 Restoration OR-clause, FL-07 Ghazi non-territorial,
- * FL-08 Faith-of-the-Fathers gated). The optional predicate fields below let
- * prestige.ts evaluate richer completion tests and factions.ts re-seed them.
- * All fields are optional and additive — an objective using only `provinceRefs`
- * keeps its original meaning (backward-compatible). When both `provinceRefs` and
- * the structured fields are present, the structured fields are the intended test.
+ * A {@link SecretObjective} carries these fields directly (its base clause) and
+ * may additionally carry `anyOfClauses` — an OR over further clause groups —
+ * which is how disjunctive objective texts ("X and Y, OR simply Z") are encoded
+ * (marshal-review B4/B5: the Venice/Genoa sea-zone + banking objectives).
  */
-export interface SecretObjective {
-  id: string;
-  description: string;
-  /**
-   * Province ids ALL required by the objective (the original all-of test). Still
-   * valid on its own; treated as an implicit `allOf` when the fields below are set.
-   */
-  provinceRefs: string[];
-  /** Prestige awarded on completion. */
-  prestige: number;
-  completed?: boolean;
+export interface SecretObjectiveClause {
   /** Province ids that must ALL be controlled (explicit all-of group; FL-06). */
   allOf?: string[];
   /** Province ids of which at LEAST ONE must be controlled (or-clause; FL-06). */
@@ -312,6 +302,59 @@ export interface SecretObjective {
   refusedChurchUnion?: boolean;
   /** Minimum count of high-value cities sacked over the game (FL-07 alternative). */
   sackedHighValueCities?: number;
+  /** Controls at least this many PORT provinces (§5.2 port = coastal province) (B4; ven-stato-da-mar "8 ports"). */
+  minPorts?: number;
+  /** For EACH entry, controls at least `min` of the listed province ids (count-clause; B4 "any 3 Aegean islands"). */
+  minOfProvinces?: { provinceIds: string[]; min: number }[];
+  /** For EACH entry, the player has at least `minFleets` of their fleets located in the sea zone (B4; e.g. a fleet kept in `bosphorus`). */
+  fleetsInZone?: { seaZoneId: string; minFleets: number }[];
+  /** NONE of the listed sea-zone ids is blockaded by a RIVAL (SeaZone.blockadedBy absent/null/self all pass) (B4; gen-dominium-maris). */
+  zonesNotEnemyBlockaded?: string[];
+  /** Finishes with at least this much gold banked (treasury.gold) (B5; gen-bankers-of-kings "≥ 25 gold"). */
+  minGold?: number;
+  /** STRICTLY highest treasury gold of any player at game end — ties fail (B5; gen-bankers-of-kings alternative). */
+  mostGold?: boolean;
+  /** At least this many DISTINCT other players currently in this player's `Player.debtors` (outstanding loans owed to the player) (B5). */
+  minDebtors?: number;
+  /** Controls STRICTLY more PORT (coastal) provinces than the named faction's player — ties fail (gen-overshadow-the-lion). */
+  morePortsThan?: Faction;
+  /** Has destroyed at least one FLEET belonging to the named faction over the game (reads `Player.fleetsDestroyed`) (ven-queen-of-the-adriatic). */
+  destroyedFleetOf?: Faction;
+}
+
+/**
+ * A hidden victory goal dealt to a player (3 per faction, scored at game end).
+ *
+ * The legacy `provinceRefs` model (all-of, evaluated with `.every(owned)`) cannot
+ * express OR-clauses or non-territorial conditions, so several ratified objectives
+ * were mis-scored (FL-06 Restoration OR-clause, FL-07 Ghazi non-territorial,
+ * FL-08 Faith-of-the-Fathers gated; marshal-review B4/B5 sea-zone + banking
+ * objectives). The optional predicate fields inherited from
+ * {@link SecretObjectiveClause} (plus `anyOfClauses` below) let prestige.ts
+ * evaluate richer completion tests and factions.ts re-seed them.
+ * All fields are optional and additive — an objective using only `provinceRefs`
+ * keeps its original meaning (backward-compatible). When both `provinceRefs` and
+ * the structured fields are present, the structured fields are the intended test.
+ */
+export interface SecretObjective extends SecretObjectiveClause {
+  id: string;
+  description: string;
+  /**
+   * Province ids ALL required by the objective (the original all-of test). Still
+   * valid on its own; treated as an implicit `allOf` when the fields below are set.
+   * MUST contain only PROVINCE ids — sea-zone ids never resolve here (B4).
+   */
+  provinceRefs: string[];
+  /** Prestige awarded on completion. */
+  prestige: number;
+  completed?: boolean;
+  /**
+   * OR-branch clause groups: satisfied iff AT LEAST ONE listed group's fields all
+   * hold; the result is ANDed with the objective's own base-clause fields. Encodes
+   * disjunctive texts, e.g. bankers-of-kings = base {} + anyOfClauses
+   * [{minGold:25, minDebtors:2}, {mostGold:true}] (B4/B5). Groups do not nest.
+   */
+  anyOfClauses?: SecretObjectiveClause[];
 }
 
 /** An active diplomatic agreement. */
@@ -592,6 +635,22 @@ export interface Player {
    * in `createInitialState`; treat absent as 0.
    */
   sackedHighValueCities?: number;
+  /**
+   * B4 (Venice secret objective "Queen of the Adriatic") — count of enemy FLEETS
+   * this player has destroyed over the game, keyed by the victim's faction.
+   * combat.ts increments the victim-faction entry when a fleet it owns is wiped in
+   * sea combat; prestige.ts reads it for the `destroyedFleetOf` objective
+   * predicate. Absent map / absent key = 0.
+   */
+  fleetsDestroyed?: Partial<Record<Faction, number>>;
+  /**
+   * B5 (Genoa secret objective "Bankers of Kings" / Banco di San Giorgio) — ids
+   * of OTHER players who currently owe this player an outstanding loan. The
+   * banking/diplomacy subsystem adds a debtor when a loan is extended and removes
+   * it when repaid/called in; prestige.ts reads its length for the `minDebtors`
+   * objective predicate. Absent = no debtors; entries are distinct player ids.
+   */
+  debtors?: string[];
 }
 
 /**

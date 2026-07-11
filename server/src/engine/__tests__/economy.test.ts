@@ -55,6 +55,32 @@ function galleyFleet(ownerId: string, locationId: string, count = 1): Fleet {
   return { id: `f-${ownerId}`, ownerId, locationId, units: { ...emptyUnits(), [UnitType.GALLEY]: count } };
 }
 
+/** Build a TRADE/ROUTE action (B1 §5.2 validation fixtures). */
+function route(
+  player: string,
+  fromProvinceId: string,
+  toProvinceId: string,
+  seaZonePath: string[],
+): TradeAction {
+  return {
+    type: "TRADE",
+    player,
+    trade: { kind: "ROUTE", fromProvinceId, toProvinceId, seaZonePath },
+  };
+}
+
+/** Assert fn throws an EngineError carrying EXACTLY the given code. */
+function expectEngineCode(fn: () => unknown, code: string): void {
+  let thrown: unknown;
+  try {
+    fn();
+  } catch (e) {
+    thrown = e;
+  }
+  expect(thrown, `expected EngineError(${code}) to be thrown`).toBeInstanceOf(EngineError);
+  expect((thrown as EngineError).code).toBe(code);
+}
+
 // ---------------------------------------------------------------------------
 // §4.2 Taxation multipliers
 // ---------------------------------------------------------------------------
@@ -244,37 +270,29 @@ describe("trade routes — §5.2 formula", () => {
     expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 9);
   });
 
-  it("establishes a route via applyTrade ROUTE with a merchant galley", () => {
+  it("establishes a route via applyTrade ROUTE and records the backing galley's fleetId (B1d)", () => {
     const state = fresh();
     state.fleets = [galleyFleet("p1", "constantinople")];
-    const action: TradeAction = {
-      type: "TRADE",
-      player: "p1",
-      trade: {
-        kind: "ROUTE",
-        fromProvinceId: "constantinople",
-        toProvinceId: "selymbria",
-        seaZonePath: ["bosphorus"],
-      },
-    };
-    const out = applyTrade(state, action);
-    expect(out.activeModifiers.some((m) => m.kind === "trade_route")).toBe(true);
+    // B1(a/b): constantinople and selymbria BOTH border sea-of-marmara — a
+    // valid single-hop path (the old ["bosphorus"] fixture is now rejected:
+    // selymbria does not border the bosphorus; see the rejection suite below).
+    const out = applyTrade(state, route("p1", "constantinople", "selymbria", ["sea-of-marmara"]));
+    const mod = out.activeModifiers.find((m) => m.kind === "trade_route");
+    expect(mod).toBeDefined();
+    // B1(d): the backing merchantman is recorded on the route modifier.
+    expect(mod!.data?.fleetId).toBe("f-p1");
+    // OUTCOME: the persisted route actually pays at the next income projection
+    // (base 2 + portTier(cple)=3 + portTier(selymbria)=1 + 0 controlled hops).
+    expect(computeIncome(out).perPlayer.p1.gold).toBe(13 + 6);
   });
 
-  it("rejects a route with no merchant galley (§5.1)", () => {
+  it("rejects a route with no merchant galley (§5.1/B1d, NO_GALLEY)", () => {
     const state = fresh();
     state.fleets = [];
-    const action: TradeAction = {
-      type: "TRADE",
-      player: "p1",
-      trade: {
-        kind: "ROUTE",
-        fromProvinceId: "constantinople",
-        toProvinceId: "selymbria",
-        seaZonePath: [],
-      },
-    };
-    expect(() => applyTrade(state, action)).toThrow(EngineError);
+    expectEngineCode(
+      () => applyTrade(state, route("p1", "constantinople", "selymbria", ["sea-of-marmara"])),
+      "NO_GALLEY",
+    );
   });
 });
 
@@ -996,5 +1014,316 @@ describe("applyTrade CONVERT — §4.3 gold→resource direction (turtle archety
     const m = applyTrade(t, convert("p1", { gold: 3 }, { marble: 1 }));
     expect(m.players[0].treasury.marble).toBe(1);
     expect(m.players[0].treasury.gold).toBe(6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// B1 (§5.2, marshal blocker) — TRADE/ROUTE seaZonePath validation:
+// connectivity, endpoint attachment, duplicates, distinct galley backing.
+// ---------------------------------------------------------------------------
+
+describe("applyTrade ROUTE — B1 §5.2 seaZonePath validation", () => {
+  function withGalley(state: GameState): GameState {
+    state.fleets = [galleyFleet("p1", "constantinople")];
+    return state;
+  }
+
+  it("rejects an EMPTY seaZonePath (BAD_ROUTE_PATH)", () => {
+    const state = withGalley(fresh());
+    expectEngineCode(
+      () => applyTrade(state, route("p1", "constantinople", "selymbria", [])),
+      "BAD_ROUTE_PATH",
+    );
+    // No route was minted — computeIncome carries no route gold.
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(13);
+  });
+
+  it("rejects an unknown sea zone in the path (BAD_ROUTE_PATH)", () => {
+    const state = withGalley(fresh());
+    expectEngineCode(
+      () => applyTrade(state, route("p1", "constantinople", "selymbria", ["sea-of-nowhere"])),
+      "BAD_ROUTE_PATH",
+    );
+  });
+
+  it("rejects a path whose FIRST zone does not border the from-port (BAD_ROUTE_PATH)", () => {
+    const state = withGalley(fresh());
+    // thessalonica borders the aegean only — starting in the bosphorus is fabricated geography.
+    expectEngineCode(
+      () => applyTrade(state, route("p1", "thessalonica", "lemnos", ["bosphorus", "sea-of-marmara", "aegean"])),
+      "BAD_ROUTE_PATH",
+    );
+  });
+
+  it("rejects a path whose LAST zone does not border the to-port (BAD_ROUTE_PATH)", () => {
+    const state = withGalley(fresh());
+    // The pre-B1 fixture: selymbria borders sea-of-marmara, NOT the bosphorus.
+    expectEngineCode(
+      () => applyTrade(state, route("p1", "constantinople", "selymbria", ["bosphorus"])),
+      "BAD_ROUTE_PATH",
+    );
+  });
+
+  it("rejects a DISCONNECTED zone chain (BAD_ROUTE_PATH)", () => {
+    const state = withGalley(fresh());
+    // bosphorus and aegean share no strait (sea-of-marmara lies between them),
+    // yet the endpoints attach: cple↔bosphorus, thessalonica↔aegean. Only the
+    // chain check catches this — the pre-B1 exploit minted +1/zone off it.
+    expectEngineCode(
+      () => applyTrade(state, route("p1", "constantinople", "thessalonica", ["bosphorus", "aegean"])),
+      "BAD_ROUTE_PATH",
+    );
+  });
+
+  it("accepts a CONNECTED multi-hop chain and the route then actually pays income", () => {
+    const state = withGalley(fresh());
+    const before = computeIncome(state).perPlayer.p1.gold; // 13, no routes
+    // cple↔sea-of-marmara, marmara↔aegean (Dardanelles), aegean↔thessalonica.
+    const out = applyTrade(state, route("p1", "constantinople", "thessalonica", ["sea-of-marmara", "aegean"]));
+    const mod = out.activeModifiers.find((m) => m.kind === "trade_route");
+    expect(mod?.data?.seaZonePath).toEqual(["sea-of-marmara", "aegean"]);
+    // OUTCOME delta: base 2 + portTier(cple HV5)=3 + portTier(thessalonica HV3)=2
+    // + 0 controlled hops (no friendly fleet in either zone) = 7 gold/round.
+    expect(computeIncome(out).perPlayer.p1.gold).toBe(before + 7);
+  });
+
+  it("rejects a duplicate route for the same {from,to} pair (DUP_ROUTE)", () => {
+    const state = withGalley(fresh());
+    const first = applyTrade(state, route("p1", "constantinople", "selymbria", ["sea-of-marmara"]));
+    expectEngineCode(
+      () => applyTrade(first, route("p1", "constantinople", "selymbria", ["sea-of-marmara"])),
+      "DUP_ROUTE",
+    );
+    // Still exactly ONE route modifier — the duplicate never landed.
+    expect(first.activeModifiers.filter((m) => m.kind === "trade_route")).toHaveLength(1);
+  });
+
+  it("rejects the REVERSED pair too — A→B and B→A are the same lane (DUP_ROUTE)", () => {
+    const state = withGalley(fresh());
+    const first = applyTrade(state, route("p1", "constantinople", "selymbria", ["sea-of-marmara"]));
+    expectEngineCode(
+      () => applyTrade(first, route("p1", "selymbria", "constantinople", ["sea-of-marmara"])),
+      "DUP_ROUTE",
+    );
+  });
+
+  it("rejects a second route when the only galley already backs one (GALLEY_BUSY)", () => {
+    const state = withGalley(fresh()); // exactly one galley fleet
+    const first = applyTrade(state, route("p1", "constantinople", "selymbria", ["sea-of-marmara"]));
+    // A DIFFERENT port pair, so the dup check passes — but the sole galley is taken.
+    expectEngineCode(
+      () => applyTrade(first, route("p1", "thessalonica", "lemnos", ["aegean"])),
+      "GALLEY_BUSY",
+    );
+    expect(first.activeModifiers.filter((m) => m.kind === "trade_route")).toHaveLength(1);
+  });
+
+  it("backs each route with a DISTINCT galley fleet (B1d): two galleys → two routes, different fleetIds", () => {
+    const state = fresh();
+    state.fleets = [
+      { id: "merchant-1", ownerId: "p1", locationId: "constantinople", units: { ...emptyUnits(), [UnitType.GALLEY]: 1 } },
+      { id: "merchant-2", ownerId: "p1", locationId: "thessalonica", units: { ...emptyUnits(), [UnitType.GALLEY]: 1 } },
+    ];
+    const first = applyTrade(state, route("p1", "constantinople", "selymbria", ["sea-of-marmara"]));
+    const second = applyTrade(first, route("p1", "thessalonica", "lemnos", ["aegean"]));
+    const mods = second.activeModifiers.filter((m) => m.kind === "trade_route");
+    expect(mods).toHaveLength(2);
+    const backing = mods.map((m) => m.data?.fleetId);
+    expect(new Set(backing).size).toBe(2); // distinct galley per route
+    expect(backing).toContain("merchant-1");
+    expect(backing).toContain("merchant-2");
+  });
+
+  it("does not let a rival's galley back the route (NO_GALLEY when only enemy galleys exist)", () => {
+    const state = fresh();
+    state.fleets = [galleyFleet("p2", "sea-of-marmara")]; // p2's merchantman, not p1's
+    expectEngineCode(
+      () => applyTrade(state, route("p1", "constantinople", "selymbria", ["sea-of-marmara"])),
+      "NO_GALLEY",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §5.2 controlled-hop bonus (marshal economy major) — the +1 per controlled sea
+// hop requires a FRIENDLY FLEET PRESENT in the zone, not nominal control of
+// empty water.
+// ---------------------------------------------------------------------------
+
+describe("trade routes — §5.2 controlled hop requires a friendly fleet present", () => {
+  it("pays NO hop bonus for empty, unblockaded water", () => {
+    const state = fresh();
+    state.fleets = []; // nobody at sea
+    addRoute(state, "p1", "constantinople", "selymbria", ["sea-of-marmara"]);
+    // base 2 + 3 + 1 + 0 controlled = 6 — the empty hop contributes nothing.
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 6);
+  });
+
+  it("pays the +1 hop bonus when a friendly war fleet holds the zone", () => {
+    const state = fresh();
+    state.fleets = [galleyFleet("p1", "sea-of-marmara")]; // friendly galley ON the hop
+    addRoute(state, "p1", "constantinople", "selymbria", ["sea-of-marmara"]);
+    // base 2 + 3 + 1 + 1 controlled (fleet present) = 7.
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 7);
+  });
+
+  it("a RIVAL fleet in the zone does not count as the owner's control", () => {
+    const state = fresh();
+    state.fleets = [galleyFleet("p2", "sea-of-marmara")]; // enemy fleet, zone NOT blockaded
+    addRoute(state, "p1", "constantinople", "selymbria", ["sea-of-marmara"]);
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 6); // no +1 for p1
+  });
+
+  it("a blockaded-but-escorted hop is halved and still earns no control bonus", () => {
+    const state = fresh();
+    state.seaZones.find((z) => z.id === "sea-of-marmara")!.blockadedBy = "p2";
+    state.fleets = [galleyFleet("p1", "sea-of-marmara")]; // escort prevents severing
+    addRoute(state, "p1", "constantinople", "selymbria", ["sea-of-marmara"]);
+    // base 6, blockaded hop never controlled → floor(6 × 0.5) = 3.
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(13 + 3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AUTHORITY MAJOR (marshal review) — TRADE/CONVERT must reject negative or
+// fractional components on BOTH sides (the faith-mint / negative-treasury exploit).
+// ---------------------------------------------------------------------------
+
+describe("applyTrade CONVERT — negative/fractional component guard (authority major)", () => {
+  it("rejects the faith-mint exploit: a NEGATIVE faith give would CREDIT faith (BAD_TRADE)", () => {
+    const state = fresh();
+    state.players[0].treasury = { gold: 20, grain: 0, timber: 0, marble: 0, faith: 0 };
+    // Pre-guard: giveTotal = 12 − 9 = 3 satisfies the 3:1 ratio for 1 grain, the
+    // faith>0 gate never sees a negative, and `treasury.faith -= (−9)` MINTS 9 faith.
+    expectEngineCode(
+      () => applyTrade(state, convert("p1", { gold: 12, faith: -9 }, { grain: 1 })),
+      "BAD_TRADE",
+    );
+    // OUTCOME: nothing minted, nothing spent — the input state is untouched.
+    expect(state.players[0].treasury.faith).toBe(0);
+    expect(state.players[0].treasury.gold).toBe(20);
+  });
+
+  it("rejects a NEGATIVE get component (would drain a resource below zero) (BAD_TRADE)", () => {
+    const state = fresh();
+    state.players[0].treasury = { gold: 20, grain: 0, timber: 5, marble: 0, faith: 0 };
+    // getTotal = 4 − 3 = 1 clears the old ratio check while timber goes negative.
+    expectEngineCode(
+      () => applyTrade(state, convert("p1", { gold: 3 }, { grain: 4, timber: -3 })),
+      "BAD_TRADE",
+    );
+    expect(state.players[0].treasury.timber).toBe(5);
+  });
+
+  it("rejects FRACTIONAL amounts on either side (BAD_TRADE)", () => {
+    const state = fresh();
+    state.players[0].treasury = { gold: 20, grain: 0, timber: 0, marble: 0, faith: 0 };
+    expectEngineCode(
+      () => applyTrade(state, convert("p1", { gold: 1.5 }, { grain: 0.5 })),
+      "BAD_TRADE",
+    );
+    expectEngineCode(
+      () => applyTrade(state, convert("p1", { gold: 3 }, { grain: 0.5 })),
+      "BAD_TRADE",
+    );
+    expect(state.players[0].treasury.gold).toBe(20);
+  });
+
+  it("still accepts an honest all-positive integer conversion", () => {
+    const state = fresh();
+    state.players[0].treasury = { gold: 20, grain: 0, timber: 0, marble: 0, faith: 0 };
+    const out = applyTrade(state, convert("p1", { gold: 3 }, { grain: 1 }));
+    expect(out.players[0].treasury.gold).toBe(17);
+    expect(out.players[0].treasury.grain).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §9.1 wall BUILD cap (marshal economy major) — ordinary BUILD tops out at T3;
+// T5 remains the Theodosian Walls GREAT WORK's exclusive path.
+// ---------------------------------------------------------------------------
+
+describe("applyBuild WALLS — §9.1 MAX_BUILDABLE_WALL_TIER cap", () => {
+  it("still allows the ordinary ladder up to T3 (Walls Lv2)", () => {
+    const state = fresh();
+    state.players[0].treasury = { gold: 50, grain: 0, timber: 0, marble: 50, faith: 0 };
+    const prov = state.provinces.find((p) => p.id === "selymbria")!;
+    prov.walls = { tier: 2, hp: 6 };
+    const out = applyBuild(state, build("p1", "selymbria", { building: BuildingType.WALLS }));
+    const walls = out.provinces.find((p) => p.id === "selymbria")!.walls;
+    expect(walls.tier).toBe(3);
+    expect(walls.hp).toBe(10); // WALL_TIERS[3].hp under the 5-tier keyspace
+  });
+
+  it("rejects raising T3 walls to T4 by ordinary BUILD (WALL_TIER_CAP)", () => {
+    const state = fresh();
+    state.players[0].treasury = { gold: 50, grain: 0, timber: 0, marble: 50, faith: 0 };
+    const prov = state.provinces.find((p) => p.id === "selymbria")!;
+    prov.walls = { tier: 3, hp: 10 };
+    expectEngineCode(
+      () => applyBuild(state, build("p1", "selymbria", { building: BuildingType.WALLS })),
+      "WALL_TIER_CAP",
+    );
+    // OUTCOME: the walls did not move and nothing was paid.
+    expect(state.provinces.find((p) => p.id === "selymbria")!.walls.tier).toBe(3);
+    expect(state.players[0].treasury.gold).toBe(50);
+  });
+
+  it("the Theodosian Walls GREAT WORK still reaches T5 — and further BUILD is capped", () => {
+    const state = fresh();
+    state.players[0].treasury = { gold: 80, grain: 0, timber: 0, marble: 80, faith: 0 };
+    const gw = { greatWork: GreatWorkType.THEODOSIAN_WALLS }; // rounds 2
+    const r1 = applyBuild(state, build("p1", "selymbria", gw));
+    const r2 = applyBuild(r1, build("p1", "selymbria", gw));
+    const prov = r2.provinces.find((p) => p.id === "selymbria")!;
+    expect(prov.walls.tier).toBe(5); // §9.2 great-work path unaffected by the cap
+    expect(prov.walls.hp).toBe(16);
+    // Ordinary BUILD can never push beyond the great work's T5 either.
+    expectEngineCode(
+      () => applyBuild(r2, build("p1", "selymbria", { building: BuildingType.WALLS })),
+      "WALL_TIER_CAP",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RULING 1 alignment (answer-key major "RULING 1 over-reaches ratified") —
+// Hagia Sophia STARTS INTACT: +2 faith standing from round 1, NOT gated on
+// sacked (never-sacked gates only the secret OBJECTIVE, scored in prestige.ts),
+// and the HAGIA_SOPHIA great work is prestige-only (adds no faith).
+// ---------------------------------------------------------------------------
+
+describe("computeIncome — Hagia Sophia standing +2 faith (RULING 1, ratified reading)", () => {
+  it("pays the +2 from ROUND 1 with no great work built (Byzantium faith 9)", () => {
+    const state = fresh();
+    // constantinople 4 (+2 Hagia Sophia) + thessalonica 2 + morea 1 = 9.
+    expect(computeIncome(state).perPlayer.p1.faith).toBe(9);
+  });
+
+  it("keeps paying the +2 even after Constantinople is SACKED — never-sacked gates only the objective", () => {
+    const state = fresh();
+    state.provinces.find((p) => p.id === "constantinople")!.sacked = true;
+    // RULING 1: the ratified text gates ONLY the "Faith of the Fathers"
+    // OBJECTIVE on never-sacked; the standing income carries no such gate.
+    expect(computeIncome(state).perPlayer.p1.faith).toBe(9);
+  });
+
+  it("completing the HAGIA_SOPHIA great work adds NO further faith (prestige-only)", () => {
+    const state = fresh();
+    const cple = state.provinces.find((p) => p.id === "constantinople")!;
+    cple.greatWorks.push({ type: GreatWorkType.HAGIA_SOPHIA, progress: 3 }); // complete (rounds 3)
+    // Still 9 — no double-count: the great work is a prestige-only endowment.
+    expect(computeIncome(state).perPlayer.p1.faith).toBe(9);
+  });
+
+  it("the +2 follows Constantinople's controller (standing province yield)", () => {
+    const state = fresh();
+    const p2Before = computeIncome(state).perPlayer.p2.faith;
+    state.provinces.find((p) => p.id === "constantinople")!.ownerId = "p2";
+    const out = computeIncome(state);
+    // p2 gains the listed faith 4 PLUS the standing Hagia Sophia +2.
+    expect(out.perPlayer.p2.faith).toBe(p2Before + 4 + 2);
+    // p1 loses the whole Constantinople faith stream.
+    expect(out.perPlayer.p1.faith).toBe(9 - 4 - 2);
   });
 });

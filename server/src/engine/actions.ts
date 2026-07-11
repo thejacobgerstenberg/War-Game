@@ -97,6 +97,56 @@ function requirePlayer(state: GameState, playerId: string): Player {
   return player;
 }
 
+/**
+ * TURN ORDER (marshal-review actions MAJOR "turn order never enforced —
+ * activePlayerIndex dead"; GD §10.0/§13.4): during the action-window phases only
+ * the ACTIVE player — `turnOrder[state.activePlayerIndex]` — may take
+ * budget-costing actions or PASS; anyone else is rejected with OUT_OF_TURN.
+ * Deliberate EXEMPTIONS (response/auction/battle flows with their own
+ * sequencing, never window turns):
+ *   - DIPLOMACY ACCEPT — the RESPONDER answers a standing proposal (free, §10.0);
+ *   - MERC_BID — the auction owns its own round-robin (`passedPlayerIds` /
+ *     `activeBidderId`, DA-3), not the window pointer;
+ *   - PLAY_TACTIC — a battle-scoped declaration by either belligerent (§7.7);
+ *   - SET_TAX (free knob) and ADVANCE_PHASE (its own WINDOW_NOT_DONE gate).
+ * Defensive: an empty `turnOrder` / out-of-range pointer (hand-built fixtures)
+ * disables the gate rather than deadlocking the game.
+ */
+function requireActiveTurn(state: GameState, playerId: string): void {
+  const activeId = state.turnOrder[state.activePlayerIndex];
+  if (activeId !== undefined && activeId !== playerId) {
+    throw new EngineError(
+      "OUT_OF_TURN",
+      `It is not ${playerId}'s turn to act (active player: ${activeId}).`,
+    );
+  }
+}
+
+/**
+ * TURN ORDER (marshal actions major, pointer half): once the active player is
+ * DONE — they PASSed (PASS zeroes the budget) or spent their last action —
+ * advance `activePlayerIndex` to the next player in `turnOrder` who still has
+ * budget, SKIPPING players already done and WRAPPING past the end of the order.
+ * While the active player still holds budget, or when nobody does (the window
+ * is complete and ADVANCE_PHASE becomes legal), the pointer stays put. Outside
+ * the action window this is a no-op.
+ */
+function advanceTurnPointer(state: GameState): GameState {
+  if (!ACTION_PHASES.has(state.phase)) return state;
+  const order = state.turnOrder;
+  if (order.length === 0) return state;
+  const budgetOf = (id: string | undefined): number =>
+    id === undefined
+      ? 0
+      : (state.players.find((p) => p.id === id)?.actionsRemaining ?? 0);
+  if (budgetOf(order[state.activePlayerIndex]) > 0) return state; // still acting
+  for (let step = 1; step <= order.length; step += 1) {
+    const idx = (state.activePlayerIndex + step) % order.length;
+    if (budgetOf(order[idx]) > 0) return { ...state, activePlayerIndex: idx };
+  }
+  return state; // everyone done — window complete, pointer parks
+}
+
 /** Assert the game is in an action phase and the player has budget; deduct one. */
 function spendAction(state: GameState, playerId: string): GameState {
   if (!ACTION_PHASES.has(state.phase)) {
@@ -105,6 +155,8 @@ function spendAction(state: GameState, playerId: string): GameState {
       `Cannot act during the ${state.phase} phase.`,
     );
   }
+  // TURN ORDER major: every budget-costing action is gated on the window turn.
+  requireActiveTurn(state, playerId);
   const player = requirePlayer(state, playerId);
   if (player.actionsRemaining <= 0) {
     throw new EngineError("NO_ACTIONS", `${player.name} has no actions left.`);
@@ -222,6 +274,34 @@ function applyRecruit(state: GameState, action: GameAction): GameState {
 
   const variants = action.variants ?? [];
   const mercenary = action.mercenary === true;
+
+  // AUTHORITY MAJOR (marshal "Number.isInteger ≥ 0 guards on give/get + recruit
+  // counts"): every count PRESENT on the order must be a POSITIVE INTEGER.
+  // A fractional count previously leaked straight into the cost maths and the
+  // stack merge (0.5 infantry on the board); negatives were silently skipped.
+  // Both now reject with BAD_COUNT before any tallying or payment. (MOVE carries
+  // NO counts — a MOVE always relocates the whole stack, CONTRACT §2 — so the
+  // recruit order is the only unit-count surface in this file.)
+  for (const [type, n] of Object.entries(action.units) as [
+    UnitType,
+    number | undefined,
+  ][]) {
+    if (n === undefined) continue;
+    if (!Number.isInteger(n) || n < 1) {
+      throw new EngineError(
+        "BAD_COUNT",
+        `Recruit count for ${type} must be a positive integer (got ${n}).`,
+      );
+    }
+  }
+  for (const v of variants) {
+    if (!Number.isInteger(v.count) || v.count < 1) {
+      throw new EngineError(
+        "BAD_COUNT",
+        `Recruit count for ${v.variant} must be a positive integer (got ${v.count}).`,
+      );
+    }
+  }
 
   // Tally requested land/naval counts and validate variant legality (§6.2/§FACTIONS).
   let landCount = 0;
@@ -451,6 +531,41 @@ function applyMove(state: GameState, action: GameAction): GameState {
     throw new EngineError("BAD_MOVE", `Unknown destination: ${action.toId}.`);
   }
 
+  // MAP MAJOR (marshal "untyped adjacency lets fleets cross land / army MOVE
+  // into a sea zone crashes (TypeError)"): ADJACENCY is one untyped graph (land
+  // edges, port↔sea-zone edges, sea↔sea straits), so land/sea domain legality
+  // is enforced HERE, typed by destination:
+  if (!isNaval && destZone) {
+    // An ARMY can never END a move in open water. Crossing water is the
+    // amphibious TRANSPORT path (`transportFleetId`), whose destination is
+    // still a coastal PROVINCE (§6.4). Rejecting cleanly replaces the old
+    // TypeError crash (`prov.ownerId` on `destProv!` = undefined) with a typed
+    // BAD_DESTINATION rejection.
+    throw new EngineError(
+      "BAD_DESTINATION",
+      `${destZone.name} is a sea zone; an army cannot enter open water.`,
+    );
+  }
+  if (isNaval && destProv) {
+    // A FLEET sails on water: legal destinations are sea zones, plus the one
+    // legal PORT interaction — putting in at a COASTAL province arrived at FROM
+    // an adjacent sea zone. A landlocked destination and a port-to-port hop
+    // over a land edge (a fleet "marching" along a coastline) are rejected.
+    if (!destProv.coastal) {
+      throw new EngineError(
+        "BAD_DESTINATION",
+        `${destProv.name} is landlocked; a fleet cannot enter it.`,
+      );
+    }
+    const fromSea = state.seaZones.some((z) => z.id === stack.locationId);
+    if (!fromSea) {
+      throw new EngineError(
+        "BAD_DESTINATION",
+        `A fleet must put in at ${destProv.name} from an adjacent sea zone, not overland from ${stack.locationId}.`,
+      );
+    }
+  }
+
   // §3.1/§6.4 movement allowance (READING — resolves the flagged ambiguity):
   // GD §6.4 says a unit "moves up to its Move value in province move-cost". A
   // single MOVE action is ONE adjacency step (the payload carries one `toId`), so
@@ -497,7 +612,11 @@ function applyMove(state: GameState, action: GameAction): GameState {
     );
     if (enemyFleets.length > 0) {
       return queueBattle(state, action, player, {
-        seaZoneId: action.toId,
+        // MAP major (typed gating audit): a naval clash keys the battle on the
+        // ACTUAL location type — a sea zone at sea, a provinceId for the legal
+        // port-call interaction (previously a port battle mis-filed the port's
+        // province id under seaZoneId).
+        ...(destZone ? { seaZoneId: action.toId } : { provinceId: action.toId }),
         defenderId: enemyFleets[0].ownerId,
         defenderStackIds: enemyFleets.map((f) => f.id),
         isNaval: true,
@@ -866,9 +985,27 @@ function applyLevyCall(state: GameState, action: GameAction): GameState {
  */
 export function applyAction(state: GameState, action: GameAction): GameState {
   switch (action.type) {
-    case "ADVANCE_PHASE":
-      // Phase advancement is not budgeted; host/engine driven.
+    case "ADVANCE_PHASE": {
+      // ACTIONS MAJOR (marshal "ADVANCE_PHASE unbudgeted/unauthorized"): during
+      // the action-window phases the phase may only advance once EVERY player is
+      // done — 0 actionsRemaining. (PASS zeroes the passer's budget, so "has
+      // passed" is subsumed by the same check.) Otherwise the advance is
+      // rejected with WINDOW_NOT_DONE so no caller can slam the window shut on
+      // players still holding actions. Non-window phases (LOBBY/INCOME/COMBAT/
+      // END) stay advanceable as today — the driver/host advances them.
+      if (ACTION_PHASES.has(state.phase)) {
+        const waiting = state.players.filter((p) => p.actionsRemaining > 0);
+        if (waiting.length > 0) {
+          throw new EngineError(
+            "WINDOW_NOT_DONE",
+            `Cannot advance out of ${state.phase}: ${waiting
+              .map((p) => p.name)
+              .join(", ")} still hold actions (spend or PASS them).`,
+          );
+        }
+      }
       return advancePhase(state);
+    }
 
     case "SET_TAX": {
       const player = requirePlayer(state, action.player);
@@ -886,6 +1023,10 @@ export function applyAction(state: GameState, action: GameAction): GameState {
 
     case "PASS": {
       const player = requirePlayer(state, action.player);
+      // TURN ORDER major: inside the window only the ACTIVE player may PASS
+      // (a rival "passing" for someone else would scramble the pointer);
+      // outside the window PASS stays the harmless budget-zeroing no-op.
+      if (ACTION_PHASES.has(state.phase)) requireActiveTurn(state, action.player);
       // §10 forfeit remaining actions this turn (yield the budget).
       const next = {
         ...state,
@@ -893,7 +1034,7 @@ export function applyAction(state: GameState, action: GameAction): GameState {
           p.id === action.player ? { ...p, actionsRemaining: 0 } : p,
         ),
       };
-      return appendLog(next, {
+      const logged = appendLog(next, {
         round: next.round,
         phase: next.phase,
         type: "phase",
@@ -901,6 +1042,8 @@ export function applyAction(state: GameState, action: GameAction): GameState {
         message: `${player.name} passes and yields the remaining actions.`,
         data: {},
       });
+      // TURN ORDER major: the pass hands the window to the next undone player.
+      return advanceTurnPointer(logged);
     }
 
     case "MERC_BID":
@@ -915,14 +1058,24 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       // one non-passed bidder remains (a raise is dispatched unchanged). actions.ts
       // does NOT interpret the pass itself; it is the dispatch/validation half of
       // DA-3, the mercenaries round-robin is the resolution half.
+      // TURN ORDER exemption (documented at requireActiveTurn): the auction's
+      // own round-robin (`activeBidderId`) sequences bidders — the window
+      // pointer never gates a MERC_BID.
       requirePlayer(state, action.player);
       return applyMercBid(state, action);
 
+    // Every budget-costing branch below wraps its result in advanceTurnPointer
+    // (TURN ORDER major): when the spend was the active player's LAST action the
+    // window pointer moves on to the next player still holding budget.
     case "RECRUIT":
-      return applyRecruit(spendAction(state, action.player), action);
+      return advanceTurnPointer(
+        applyRecruit(spendAction(state, action.player), action),
+      );
 
     case "MOVE":
-      return applyMove(spendAction(state, action.player), action);
+      return advanceTurnPointer(
+        applyMove(spendAction(state, action.player), action),
+      );
 
     case "BUILD": {
       const next = spendAction(state, action.player);
@@ -932,38 +1085,45 @@ export function applyAction(state: GameState, action: GameAction): GameState {
           "BUILD requires a building or greatWork.",
         );
       }
-      return applyBuild(next, action);
+      return advanceTurnPointer(applyBuild(next, action));
     }
 
     case "TRADE": {
       const next = spendAction(state, action.player);
-      return applyTrade(next, action);
+      return advanceTurnPointer(applyTrade(next, action));
     }
 
     case "DIPLOMACY": {
-      // Propose/accept cost the initiator an action; responder is free (§10.0).
-      const next =
-        action.diplomacy.kind === "ACCEPT"
-          ? state
-          : spendAction(state, action.player);
-      return applyDiplomacy(next, action);
+      // Propose/renounce cost the initiator an action; responder is free (§10.0).
+      // ACCEPT is also EXEMPT from the turn-order gate (see requireActiveTurn):
+      // the responder answers whenever the proposal stands, budget untouched —
+      // so the window pointer is only advanced on the budgeted kinds.
+      if (action.diplomacy.kind === "ACCEPT") {
+        return applyDiplomacy(state, action);
+      }
+      const next = spendAction(state, action.player);
+      return advanceTurnPointer(applyDiplomacy(next, action));
     }
 
     case "VASSALIZE": {
       const next = spendAction(state, action.player);
-      return applyVassalize(next, action);
+      return advanceTurnPointer(applyVassalize(next, action));
     }
 
     case "SPY": {
       const next = spendAction(state, action.player);
-      return applySpy(next, action);
+      return advanceTurnPointer(applySpy(next, action));
     }
 
     case "PLAY_CARD": {
-      // §10.6 Play a held political/event card. Not budget-gated by phase (§8);
-      // verify the card is actually in hand, resolve its effect via the events
-      // subsystem, then discard the played copy from hand.
-      const player = requirePlayer(state, action.player);
+      // B2 (marshal BLOCKER; §10.0/§10.6): playing a held political/event card
+      // COSTS 1 ACTION and is legal ONLY inside the action-window phases —
+      // routed through spendAction BEFORE the hand lookup, so an out-of-window
+      // (WRONG_PHASE), out-of-budget (NO_ACTIONS) or out-of-turn (OUT_OF_TURN)
+      // play is rejected up front. (Previously the branch mis-cited "§8", spent
+      // nothing and was playable in any phase — a free card dump.)
+      const spent = spendAction(state, action.player);
+      const player = requirePlayer(spent, action.player);
       const idx = player.hand.findIndex((c) => c.id === action.cardId);
       if (idx < 0) {
         throw new EngineError(
@@ -979,7 +1139,13 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       // faction's faith instead of only the interdicted one. `targetProvinceId`
       // and `choice` (PLAY_CARD payload, CONTRACT §2) are forwarded too for the
       // province-scoped / choice-driven cards.
-      let next = resolveCard(state, action.cardId, {
+      // B8 (marshal BLOCKER): also thread the ACTING player (`playerId`) so the
+      // card's BENEFICIARY is the player who PLAYED it — resolveCard resolves
+      // its drawer/beneficiary as `ctx.playerId ?? turnOrder[activePlayerIndex]`,
+      // so a coronation/marriage/indulgence played by a later-seat player pays
+      // THAT player, never whoever the window pointer happens to rest on.
+      let next = resolveCard(spent, action.cardId, {
+        playerId: action.player,
         targetPlayerId: action.targetPlayerId,
         targetProvinceId: action.targetProvinceId,
         choice: action.choice,
@@ -999,13 +1165,17 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       // flag + RECRUIT. Omen #34 resolution (inside `resolveCard`) spawns the
       // piece directly onto `GameState.greatBombard`, so PLAY_CARD no longer needs
       // to mirror any unlock modifier onto `Player.greatBombardUnlocked`.
-      return next;
+      // B2/TURN ORDER: the spend above may have been the last action.
+      return advanceTurnPointer(next);
     }
 
     case "PLAY_TACTIC": {
       // §7.7 Play a tactic card into a pending battle. Free (not budget-gated by
       // phase, per CONTRACT2 §12.4); the ≤1/side/battle-round cap and the actual
       // effect are enforced in the tactic subsystem / combat.
+      // TURN ORDER exemption (documented at requireActiveTurn): a battle-scoped
+      // declaration — EITHER belligerent (e.g. the non-active defender) may
+      // queue a tactic; the window pointer never gates it.
       const player = requirePlayer(state, action.player);
       const battle = state.pendingBattles.find((b) => b.id === action.battleId);
       if (!battle) {
@@ -1033,13 +1203,13 @@ export function applyAction(state: GameState, action: GameAction): GameState {
     case "DECLARE_WAR": {
       // §11 A deliberate political act taken in the action window (costs 1 action).
       const next = spendAction(state, action.player);
-      return applyDeclareWar(next, action);
+      return advanceTurnPointer(applyDeclareWar(next, action));
     }
 
     case "LEVY_CALL": {
       // §11.5 Calling up a vassal's levy is a Diplomacy-window action (costs 1).
       const next = spendAction(state, action.player);
-      return applyLevyCall(next, action);
+      return advanceTurnPointer(applyLevyCall(next, action));
     }
 
     default: {

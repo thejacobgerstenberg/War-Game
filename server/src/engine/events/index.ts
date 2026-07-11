@@ -71,6 +71,7 @@ function buildCardModifiers(
   card: EventCard,
   state: GameState,
   targetFaction: Faction | null = null,
+  choice?: string,
 ): ActiveModifier[] {
   const round = state.round;
   const d = card.effects.durationRounds ?? 0;
@@ -109,6 +110,29 @@ function buildCardModifiers(
           data: { napRounds: 2, vassalTributeDiscount: 0.5 },
         },
       ];
+    // #17 Council of Florence — Byzantium ACCEPTS Union: "−2 ✝️/round for 2
+    // rounds" (EVENT_CARDS.md Era II #17). MARSHAL FIX (events major "#17 faith
+    // effect posts no modifier"): posted as an ADDITIVE `faith_income` −2
+    // TARGETED at BYZANTIUM (economy faithModifiers reads faith_income filtered
+    // by target.faction), live rounds R..R+1 so it bites BOTH Income phases.
+    // The effect fn no longer applies an immediate treasury hit (FL-04 pattern —
+    // omens resolve at the front of INCOME, so an immediate hit would stack a
+    // third −2 on the draw round). REFUSE (or no choice) posts nothing:
+    // Byzantium keeps its faith income per the printed Refuse branch.
+    case 17:
+      if (choice !== "ACCEPT") return [];
+      return [
+        {
+          id: mid("faith"),
+          sourceCardId: card.id,
+          scope: "persistent",
+          kind: "faith_income",
+          value: -2,
+          target: { faction: Faction.BYZANTIUM },
+          expiresRound: expires, // durationRounds 2 → round..round+1
+          data: { faithPerRound: -2 },
+        },
+      ];
     // #18 Venetian–Genoese War — STANDING 2 rounds: forced fights, −2 trade each.
     case 18:
       return [
@@ -144,6 +168,26 @@ function buildCardModifiers(
           data: { multiplier: 0, noCrusade: true },
         },
       ];
+    // #29 Schism — "All ✝️ income halved next round" (EVENT_CARDS.md Era II #29).
+    // MARSHAL FIX (events major "#29 faith effect posts no modifier"): one
+    // multiplicative `faith_mult` ×0.5 per SEATED faction — economy's
+    // faithModifiers reader consumes `faith_mult` filtered by target.faction and
+    // floors the product (CONTRACT2 §12.10), so every faction's faith income is
+    // actually halved. Omens resolve at the front of INCOME, so the halving
+    // bites the Income phase that immediately follows the draw ("next round" in
+    // card terms) and lapses at this round's cleanup (scope 'round' →
+    // expireRoundModifiers).
+    case 29:
+      return state.players
+        .filter((p) => p.faction != null)
+        .map((p) => ({
+          id: mid(`faith:${p.faction}`),
+          sourceCardId: card.id,
+          scope: "round" as const,
+          kind: "faith_mult",
+          value: 0.5,
+          target: { faction: p.faction! },
+        }));
     // #32 Hexamilion Rebuilt — STANDING: +1 defence at Morea vs Athens.
     case 32:
       return [
@@ -157,8 +201,8 @@ function buildCardModifiers(
           data: { vs: "athens" },
         },
       ];
-    // #34 The Great Bombard Forged — delta 3 (CANON correction, BALANCE_DELTAS.md /
-    // GD §8.4 / EVENT_CARDS #34): the retired "unlock then RECRUIT" model is GONE.
+    // #34 The Great Bombard Forged — rules-delta 3 (CANON correction, GD §8.4 /
+    // EVENT_CARDS #34): the retired "unlock then RECRUIT" model is GONE.
     // No `kind:"unlock"` modifier is posted any more — the effect fn (cards.e34)
     // SPAWNS the piece directly onto the GameState.greatBombard singleton (Ottoman
     // capital, else auctioned). Hence #34 posts NO durable modifier here.
@@ -325,14 +369,26 @@ export function drawOmen(state: GameState): GameState {
 export function resolveCard(
   state: GameState,
   cardId: string,
-  ctxInput: { targetPlayerId?: string; targetProvinceId?: string; choice?: string } = {},
+  // B8 (marshal blocker): `playerId` = the ACTING player when the card arrives
+  // via PLAY_CARD (actions.ts threads action.player); it becomes the card's
+  // drawer/BENEFICIARY. The Omen-draw path passes no ctx, so the active player
+  // fallback below keeps drawOmen behaviour unchanged.
+  ctxInput: {
+    playerId?: string;
+    targetPlayerId?: string;
+    targetProvinceId?: string;
+    choice?: string;
+  } = {},
 ): GameState {
   const card = EVENT_CARD_BY_ID[cardId];
   const effect = EVENT_EFFECT_BY_ID[cardId];
   if (!card || !effect) return state;
 
   const rng = makeRng(state.rngSeed, state.rngCursor);
-  const activeId = state.turnOrder[state.activePlayerIndex] ?? null;
+  // B8: beneficiary = the player who PLAYED the card, falling back to the
+  // window-active player only on the neutral draw path.
+  const activeId =
+    ctxInput.playerId ?? state.turnOrder[state.activePlayerIndex] ?? null;
   // FL-03 (EVENT_CARDS.md #28 Papal Interdict + other targeted cards): the
   // PLAY_CARD action layer (actions.ts) threads `targetPlayerId`/`targetProvinceId`/
   // `choice` here (PLAY_CARD carries them per CONTRACT §2). The Omen-draw path
@@ -366,7 +422,9 @@ export function resolveCard(
       : null;
 
   if (hasTarget) {
-    for (const mod of buildCardModifiers(card, next, targetFaction)) {
+    // ctx.choice is threaded so choice-gated durable effects post only for the
+    // branch actually taken (#17 Council of Florence ACCEPT — EVENT_CARDS #17).
+    for (const mod of buildCardModifiers(card, next, targetFaction, ctx.choice)) {
       next = addModifier(next, mod);
     }
   }

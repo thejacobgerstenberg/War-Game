@@ -443,25 +443,55 @@ export const FACTION_STARTS: Record<Faction, FactionStart> = {
     ],
     objectives: [
       {
+        // OR/count major (FACTIONS.md L176 "Control 8 ports, mandatorily including
+        // crete, negroponte, and corfu"): the old seed encoded ONLY the 3 mandatory
+        // ports, silently dropping the "8 ports" count clause. minPorts (STAGE-A-PREP;
+        // port = coastal province per §5.2) restores the count; the 3 mandatory
+        // inclusions stay as the implicit all-of provinceRefs.
         id: "ven-stato-da-mar",
         description: "Stato da Màr: control 8 ports, mandatorily including crete, negroponte, and corfu.",
         provinceRefs: ["crete", "negroponte", "corfu"],
+        minPorts: 8,
         prestige: OBJECTIVE_PRESTIGE,
       },
       {
+        // B4 (FACTIONS.md L177-178): the old seed listed the SEA-ZONE id `bosphorus`
+        // in provinceRefs (resolved against state.provinces → always false, objective
+        // unsatisfiable) and AND-ed all 5 Aegean islands + constantinople + pera.
+        // Re-encoded per the text: (hold constantinople/pera OR keep a fleet in the
+        // bosphorus) AND control any 3 of lemnos/lesbos/chios/naxos/negroponte —
+        // fleetsInZone/minOfProvinces/anyOfClauses per STAGE-A-PREP.
         id: "ven-monopoly-of-the-straits",
         description:
           "Monopoly of the Straits: control or blockade the bosphorus (hold constantinople/pera, or " +
           "keep a fleet there) and control any 3 Aegean islands (lemnos/lesbos/chios/naxos/negroponte).",
-        provinceRefs: ["bosphorus", "constantinople", "pera", "lemnos", "lesbos", "chios", "naxos", "negroponte"],
+        provinceRefs: [],
+        minOfProvinces: [
+          { provinceIds: ["lemnos", "lesbos", "chios", "naxos", "negroponte"], min: 3 },
+        ],
+        anyOfClauses: [
+          { anyOf: ["constantinople", "pera"] },
+          { fleetsInZone: [{ seaZoneId: "bosphorus", minFleets: 1 }] },
+        ],
         prestige: OBJECTIVE_PRESTIGE,
       },
       {
+        // B4 (FACTIONS.md L179-180): the old seed listed the SEA-ZONE id `adriatic`
+        // in provinceRefs (never resolves → always false) and AND-ed the Genoese
+        // colonies onto the Adriatic ports. Re-encoded per the text: control ALL of
+        // venice/dalmatia/corfu/ragusa AND (destroy a Genoese fleet OR seize one
+        // Genoese colony pera/chios/lesbos/kaffa) — destroyedFleetOf reads the
+        // Player.fleetsDestroyed counter (STAGE-A-PREP).
         id: "ven-queen-of-the-adriatic",
         description:
           "Queen of the Adriatic: control every port on the adriatic (venice, dalmatia, corfu, ragusa) " +
           "and either destroy a Genoese fleet or seize a Genoese colony (pera/chios/lesbos/kaffa).",
-        provinceRefs: ["adriatic", "venice", "dalmatia", "corfu", "ragusa", "pera", "chios", "lesbos", "kaffa"],
+        provinceRefs: [],
+        allOf: ["venice", "dalmatia", "corfu", "ragusa"],
+        anyOfClauses: [
+          { destroyedFleetOf: Faction.GENOA },
+          { anyOf: ["pera", "chios", "lesbos", "kaffa"] },
+        ],
         prestige: OBJECTIVE_PRESTIGE,
       },
     ],
@@ -522,27 +552,65 @@ export const FACTION_STARTS: Record<Faction, FactionStart> = {
     ],
     objectives: [
       {
+        // B4 (FACTIONS.md L220-221): the old seed listed the SEA-ZONE ids
+        // `black-sea-west`/`black-sea-east` in provinceRefs (resolved against
+        // state.provinces → always false, Genoa −4 vs the 71-78 thresholds).
+        // Re-encoded per the text: control kaffa AND chios (implicit all-of
+        // provinceRefs) AND at least one OTHER Black Sea/Aegean port (anyOf — the
+        // coastal provinces bordering black-sea-west/black-sea-east/aegean on the
+        // canonical map, excl. the mandatory kaffa/chios), while NEITHER Black Sea
+        // zone is blockaded by a rival at game end (zonesNotEnemyBlockaded reads
+        // SeaZone.blockadedBy; STAGE-A-PREP).
         id: "gen-dominium-maris",
         description:
           "Dominium Maris (Black Sea): control kaffa and chios and at least one other Black Sea/Aegean " +
           "port, while keeping black-sea-west/black-sea-east free of enemy blockade at game end.",
-        provinceRefs: ["kaffa", "chios", "black-sea-west", "black-sea-east"],
+        provinceRefs: ["kaffa", "chios"],
+        anyOf: [
+          "varna",
+          "sinope",
+          "trebizond",
+          "gallipoli",
+          "thessalonica",
+          "athens",
+          "smyrna",
+          "lesbos",
+          "lemnos",
+          "negroponte",
+          "naxos",
+        ],
+        zonesNotEnemyBlockaded: ["black-sea-west", "black-sea-east"],
         prestige: OBJECTIVE_PRESTIGE,
       },
       {
+        // B5 (FACTIONS.md L222-223): the old seed carried NO machine-checkable
+        // clause at all — prestige.objectiveSatisfied could never award it (Genoa
+        // #2 dead). Faithful two-branch encoding per STAGE-A-PREP: (>= 25 gold
+        // banked AND >= 2 other players in debt to you) OR strictly-most gold of
+        // any player at game end (mostGold — ties fail).
         id: "gen-bankers-of-kings",
         description:
           "Bankers of Kings: finish with >= 25 gold banked and have at least two other factions in debt " +
           "to you (outstanding loans), or simply hold the most gold of any player at game end.",
         provinceRefs: [],
+        anyOfClauses: [{ minGold: 25, minDebtors: 2 }, { mostGold: true }],
         prestige: OBJECTIVE_PRESTIGE,
       },
       {
+        // OR/count major (FACTIONS.md L224-225): the old seed AND-ed ALL FIVE
+        // Venetian colonies (harder than Venice's own colonial objective) and
+        // dropped the "more ports than Venice" branch entirely. Re-encoded per the
+        // text as a pure OR: strictly more ports than Venice (morePortsThan — ties
+        // fail) OR capture ANY ONE Venetian colony (STAGE-A-PREP).
         id: "gen-overshadow-the-lion",
         description:
           "Overshadow the Lion: hold more ports than Venice at game end, or capture any Venetian colony " +
           "(crete/negroponte/corfu/modon/dalmatia).",
-        provinceRefs: ["crete", "negroponte", "corfu", "modon", "dalmatia"],
+        provinceRefs: [],
+        anyOfClauses: [
+          { morePortsThan: Faction.VENICE },
+          { anyOf: ["crete", "negroponte", "corfu", "modon", "dalmatia"] },
+        ],
         prestige: OBJECTIVE_PRESTIGE,
       },
     ],
@@ -607,19 +675,40 @@ export const FACTION_STARTS: Record<Faction, FactionStart> = {
         prestige: OBJECTIVE_PRESTIGE,
       },
       {
+        // OR/count major (FACTIONS.md L264-265): the old seed AND-ed varna + ALL
+        // FOUR Balkan neutrals; the text asks for THREE of the four (count-clause →
+        // minOfProvinces, STAGE-A-PREP). "Win a major battle against the Ottomans at
+        // varna (or another Balkan front)" has no battles-won predicate in the
+        // SecretObjectiveClause vocabulary yet, so control of varna (the named
+        // front, taken from its garrison) stands in as the machine-checkable proxy —
+        // see NEEDS-FROM-INTEGRATOR (a `wonBattleVs?: Faction` clause field would
+        // make it exact).
         id: "hun-crusader",
         description:
           "Crusader: win a major battle against the Ottomans at varna (or another Balkan front) and " +
           "control three Balkan neutral provinces (serbia, bosnia, wallachia, albania).",
-        provinceRefs: ["varna", "serbia", "bosnia", "wallachia", "albania"],
+        provinceRefs: ["varna"],
+        minOfProvinces: [
+          { provinceIds: ["serbia", "bosnia", "wallachia", "albania"], min: 3 },
+        ],
         prestige: OBJECTIVE_PRESTIGE,
       },
       {
+        // OR/count major (FACTIONS.md L266-267): the old seed AND-ed all four ids —
+        // demanding Hungary hold edirne AND sofia AND bursa AND constantinople,
+        // where the text is a pure OR of two branches. Branch 1: capture a
+        // Muslim-held city — hold any one of edirne/sofia/bursa (all Ottoman-held at
+        // start) at game end. Branch 2: "constantinople remains in Christian hands"
+        // is approximated as Hungary itself holding the City (sufficient — Hungary
+        // is Christian — but narrower than the text, which is satisfied by ANY
+        // Christian holder incl. Byzantium; an exact `heldByAnyFaction`-style clause
+        // field is NEEDS-FROM-INTEGRATOR).
         id: "hun-defender-of-the-faith",
         description:
           "Defender of the Faith: lead a Crusade that captures a Muslim-held city (edirne/sofia/bursa), " +
           "or ensure constantinople remains in Christian hands at game end.",
-        provinceRefs: ["edirne", "sofia", "bursa", "constantinople"],
+        provinceRefs: [],
+        anyOfClauses: [{ anyOf: ["edirne", "sofia", "bursa"] }, { anyOf: ["constantinople"] }],
         prestige: OBJECTIVE_PRESTIGE,
       },
     ],
@@ -706,14 +795,19 @@ export function buildFactionForces(
   return { armies, fleets };
 }
 
-/** Deep-clone a faction's three secret objectives for a fresh player. */
+/**
+ * Deep-clone a faction's three secret objectives for a fresh player.
+ *
+ * B4/B5 (marshal review): the objective model now carries NESTED predicate
+ * structures (anyOfClauses groups, minOfProvinces entries, fleetsInZone entries,
+ * zonesNotEnemyBlockaded lists) in addition to the flat FL-06/07 arrays, so the
+ * old field-by-field spread would leak shared references between players.
+ * structuredClone copies the whole authored objective — every predicate field,
+ * incl. B5's mostGold/minGold/minDebtors branches — with no aliasing.
+ */
 export function startingObjectives(faction: Faction): SecretObjective[] {
   return FACTION_STARTS[faction].objectives.map((o) => ({
-    ...o,
-    provinceRefs: [...o.provinceRefs],
-    // FL-06/07: clone the extended predicate arrays so no two players share a ref.
-    ...(o.allOf ? { allOf: [...o.allOf] } : {}),
-    ...(o.anyOf ? { anyOf: [...o.anyOf] } : {}),
+    ...structuredClone(o),
     completed: false,
   }));
 }

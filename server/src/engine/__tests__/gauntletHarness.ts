@@ -505,19 +505,34 @@ export function runGame(opts: RunOptions): GameReport {
     }
 
     // --- Action window: resolve budgeted actions once, at RECRUITMENT. ---------
+    // TURN ORDER (marshal actions major): applyAction now gates every budgeted
+    // action on `turnOrder[activePlayerIndex]` (OUT_OF_TURN) and the pointer
+    // advances on exhaustion/PASS. The driver therefore follows the ENGINE'S
+    // OWN pointer instead of iterating seats: on each iteration the ACTIVE
+    // player either applies one legal budgeted action or PASSes to yield the
+    // window. The loop (and thus the phase advance below) only ends once every
+    // budget is 0 — exactly the reducer's WINDOW_NOT_DONE condition for
+    // ADVANCE_PHASE. Deterministic: same pointer walk + same rng stream.
     if (state.phase === GamePhase.RECRUITMENT) {
-      for (const seatId of state.turnOrder) {
-        let safety = 0;
-        // Spend down this player's shared per-round budget.
-        while (playerById(state, seatId).actionsRemaining > 0) {
-          safety += 1;
-          if (safety > 60) {
-            deadlock = `player ${seatId} action loop exceeded 60 iterations (budget stuck at ${playerById(state, seatId).actionsRemaining})`;
-            break;
-          }
-          const player = playerById(state, seatId);
+      // Each iteration spends 1 action or zeroes one player's budget via PASS,
+      // so the window is bounded by total budget + seats; cap with slack.
+      const windowCap = state.players.length * 60;
+      let safety = 0;
+      while (state.players.some((p) => p.actionsRemaining > 0)) {
+        safety += 1;
+        if (safety > windowCap) {
+          deadlock = `action window exceeded ${windowCap} iterations (budgets stuck: ${state.players.map((p) => `${p.id}=${p.actionsRemaining}`).join(" ")})`;
+          break;
+        }
+        const activeId = state.turnOrder[state.activePlayerIndex];
+        if (activeId === undefined) {
+          deadlock = `window pointer out of range (activePlayerIndex=${state.activePlayerIndex}, turnOrder=${state.turnOrder.join(",")})`;
+          break;
+        }
+        const player = playerById(state, activeId);
+        let applied = false;
+        if (player.actionsRemaining > 0) {
           const candidates = pickActions(state, player, opts.strategy, rng);
-          let applied = false;
           for (const cand of candidates) {
             let nextState: GameState;
             try {
@@ -545,19 +560,51 @@ export function runGame(opts: RunOptions): GameReport {
             applied = true;
             break;
           }
-          if (crash) break;
-          if (!applied) break; // no legal budgeted action → effectively PASS
         }
-        if (crash || deadlock) break;
+        if (crash) break;
+        if (!applied) {
+          // No legal budgeted action left → the active player PASSes, zeroing
+          // their budget and handing the window pointer to the next undone seat.
+          const pass: GameAction = { type: "PASS", player: activeId };
+          let nextState: GameState;
+          try {
+            nextState = applyAction(state, pass);
+          } catch (e) {
+            crash = {
+              where: "applyAction",
+              errorName: (e as Error)?.name ?? "Error",
+              message: (e as Error)?.message ?? String(e),
+              stack: (e as Error)?.stack,
+              phase: state.phase,
+              round: state.round,
+              action: labelAction(pass),
+            };
+            break;
+          }
+          if (doInv) violations.push(...checkInvariants(state, nextState, { step: steps, action: pass }));
+          state = nextState;
+          actionsApplied += 1;
+        }
       }
       if (crash) break;
     }
 
     // --- Advance the phase machine. -------------------------------------------
+    // Window phases advance through the REDUCER's ADVANCE_PHASE so its
+    // WINDOW_NOT_DONE gate is exercised (satisfied here — the drain above spent
+    // or PASSed every budget; an unexpected rejection is a real bug and is
+    // recorded as a crash). Non-window phases advance via the phase machine
+    // directly, as the driver/host does.
+    const isWindowPhase =
+      state.phase === GamePhase.RECRUITMENT ||
+      state.phase === GamePhase.MOVEMENT ||
+      state.phase === GamePhase.DIPLOMACY;
     const before = { phase: state.phase, round: state.round };
     let advanced: GameState;
     try {
-      advanced = advancePhase(state);
+      advanced = isWindowPhase
+        ? applyAction(state, { type: "ADVANCE_PHASE" })
+        : advancePhase(state);
     } catch (e) {
       crash = {
         where: "advancePhase",

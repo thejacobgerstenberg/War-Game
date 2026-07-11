@@ -350,8 +350,11 @@ export const PROVINCES: MapProvince[] = [
   {
     id: "tunis",
     name: "Tunis",
-    terrain: TerrainType.DESERT,
-    // Hafsid corsair nest: desert base gold1 + caravan gold, +1 grain
+    // Marshal map MINOR (PR #10 review): was mis-authored DESERT; MAP.md §3
+    // registry row `tunis` reads terrain "coast" (Hafsid corsair nest, Y, T1).
+    terrain: TerrainType.COAST,
+    // Hafsid corsair nest: coast base (gold1/grain1) + corsair-lane +1 gold
+    // (registry primary gold, secondary grain)
     yields: { gold: 2, grain: 1, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 10, y: 62 },
@@ -581,8 +584,13 @@ export const PROVINCES: MapProvince[] = [
   {
     id: "cairo",
     name: "Cairo",
-    terrain: TerrainType.DESERT,
-    // Mamluk capital HV(3): desert base gold1 + +3 gold, +1 grain, +2 faith
+    // Marshal map MAJOR (PR #10 review): was mis-authored DESERT; MAP.md §3
+    // registry row `cairo` reads terrain "city" (Mamluk capital, T2, HV(3)).
+    // As DESERT it could never be besieged (actions.ts keys isSiege on CITY)
+    // and lost every city behaviour (recruit site, merc hosting, city stacking).
+    terrain: TerrainType.CITY,
+    // Mamluk capital HV(3): city base (gold3/faith1) + +1 gold, +1 grain,
+    // +1 faith — the same HV(3) bonus shape as thessalonica/trebizond.
     yields: { gold: 4, grain: 1, timber: 0, marble: 0, faith: 2 },
     coastal: false,
     position: { x: 72, y: 72 },

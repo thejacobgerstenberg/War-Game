@@ -36,6 +36,7 @@ import {
   type GameState,
   type Player,
   type SecretObjective,
+  type SecretObjectiveClause,
 } from "@imperium/shared";
 import {
   MONOPOLY_PRESTIGE,
@@ -157,28 +158,83 @@ function countSackedHighValueCities(player: Player): number {
 }
 
 /**
- * Evaluate a secret objective's completion predicate (FACTIONS.md / §13.1),
- * supporting the extended SecretObjective model (FL-06/07/08). All present clause
- * groups must hold (AND between groups), EXCEPT:
- *  - `anyOf` is an OR *within* its own territorial group (FL-06);
- *  - the "imperial scale" gates `minProvinces` / `sackedHighValueCities` are
- *    ALTERNATIVES to each other (FL-07: ≥15 provinces OR ≥3 HV cities sacked).
- * Legacy `provinceRefs` is treated as an implicit all-of group. Read-only.
+ * B4 (STAGE-A-PREP): number of PORT provinces a player controls. A "port" is a
+ * coastal province (`Province.coastal === true`), matching economy.ts portTier
+ * (§5.2). Feeds the `minPorts` and `morePortsThan` clause predicates.
  */
-function objectiveSatisfied(state: GameState, player: Player, obj: SecretObjective): boolean {
+function portCount(state: GameState, playerId: string): number {
+  return state.provinces.filter((p) => p.ownerId === playerId && p.coastal).length;
+}
+
+/**
+ * Does a clause carry at least ONE machine-checkable predicate field? Used by
+ * the degenerate-objective guard (STAGE-A-PREP §5: an objective/group whose only
+ * content is e.g. `mostGold` must still count as clause-ful, and an EMPTY group
+ * must never auto-satisfy an objective — the B5 root cause was a clause-less
+ * objective that could never award).
+ */
+function clauseHasContent(clause: SecretObjectiveClause): boolean {
+  return (
+    (clause.allOf?.length ?? 0) > 0 ||
+    (clause.anyOf?.length ?? 0) > 0 ||
+    clause.minProvinces !== undefined ||
+    clause.requiresHagiaSophia === true ||
+    clause.minFaith !== undefined ||
+    clause.refusedChurchUnion === true ||
+    clause.sackedHighValueCities !== undefined ||
+    clause.minPorts !== undefined ||
+    (clause.minOfProvinces?.length ?? 0) > 0 ||
+    (clause.fleetsInZone?.length ?? 0) > 0 ||
+    (clause.zonesNotEnemyBlockaded?.length ?? 0) > 0 ||
+    clause.minGold !== undefined ||
+    clause.mostGold === true ||
+    clause.minDebtors !== undefined ||
+    clause.morePortsThan !== undefined ||
+    clause.destroyedFleetOf !== undefined
+  );
+}
+
+/**
+ * Evaluate ONE conjunctive clause group (SecretObjectiveClause): every predicate
+ * field PRESENT must hold (AND between fields), with the single preserved
+ * exception that `minProvinces` / `sackedHighValueCities` in the SAME clause are
+ * ALTERNATIVES to each other (FL-07). `extraAllOf` lets the caller fold the
+ * objective's legacy `provinceRefs` into the base clause's all-of. Read-only.
+ *
+ * B4/B5 leaf predicates (STAGE-A-PREP):
+ *  - minPorts / morePortsThan count coastal provinces (§5.2 "port"); morePortsThan
+ *    is STRICT (ties fail) and, when NO player is seated as the named faction,
+ *    degrades to "any port count > 0" (evaluator's call per STAGE-A-PREP — a
+ *    rival that never sat down cannot be out-ported except by holding nothing).
+ *  - fleetsInZone counts the player's own Fleet stacks whose locationId is the
+ *    named SEA-ZONE id (B4: ven-monopoly-of-the-straits "keep a fleet there").
+ *  - zonesNotEnemyBlockaded fails iff any listed sea zone has `blockadedBy` set
+ *    to a RIVAL player id — absent zone, null/undefined, or the player's own
+ *    blockade all pass (B4: gen-dominium-maris).
+ *  - minGold / mostGold read treasury.gold; mostGold is STRICTLY highest of any
+ *    player — ties fail (B5: gen-bankers-of-kings).
+ *  - minDebtors counts DISTINCT other players in `Player.debtors` (B5).
+ *  - destroyedFleetOf reads the `Player.fleetsDestroyed` per-victim-faction
+ *    counter (ven-queen-of-the-adriatic).
+ */
+function clauseSatisfied(
+  state: GameState,
+  player: Player,
+  clause: SecretObjectiveClause,
+  extraAllOf: readonly string[] = [],
+): boolean {
   const owns = (id: string): boolean =>
     state.provinces.find((p) => p.id === id)?.ownerId === player.id;
 
   // Territorial all-of (FL-06): legacy provinceRefs + explicit allOf — all held.
-  const allRefs = [...(obj.provinceRefs ?? []), ...(obj.allOf ?? [])];
+  const allRefs = [...extraAllOf, ...(clause.allOf ?? [])];
   if (allRefs.length > 0 && !allRefs.every(owns)) return false;
 
   // Territorial or-clause (FL-06): at least one of anyOf held.
-  const hasAnyOf = (obj.anyOf?.length ?? 0) > 0;
-  if (hasAnyOf && !obj.anyOf!.some(owns)) return false;
+  if ((clause.anyOf?.length ?? 0) > 0 && !clause.anyOf!.some(owns)) return false;
 
   // Faith threshold (FL-08): finish with ≥ minFaith banked.
-  if (obj.minFaith !== undefined && (player.treasury.faith ?? 0) < obj.minFaith) {
+  if (clause.minFaith !== undefined && (player.treasury.faith ?? 0) < clause.minFaith) {
     return false;
   }
 
@@ -186,32 +242,112 @@ function objectiveSatisfied(state: GameState, player: Player, obj: SecretObjecti
   // it was never sacked (assault-captured). The requiresHagiaSophia flag is retained
   // as the switch for this gate; its meaning is now "Constantinople not sacked", NOT
   // completion of the HAGIA_SOPHIA great work (great-work gate removed).
-  if (obj.requiresHagiaSophia && !constantinopleIntact(state, player)) return false;
+  if (clause.requiresHagiaSophia && !constantinopleIntact(state, player)) return false;
 
   // Refused Church Union (FL-08): never resolved Council of Florence for the Union
   // (reads Prep4's Player.acceptedChurchUnion; undefined/false = refused).
-  if (obj.refusedChurchUnion && acceptedChurchUnion(player)) return false;
+  if (clause.refusedChurchUnion && acceptedChurchUnion(player)) return false;
 
   // Imperial-scale gates (FL-07) — ALTERNATIVES (OR) to one another.
   const scaleGates: boolean[] = [];
-  if (obj.minProvinces !== undefined) {
+  if (clause.minProvinces !== undefined) {
     const count = state.provinces.filter((p) => p.ownerId === player.id).length;
-    scaleGates.push(count >= obj.minProvinces);
+    scaleGates.push(count >= clause.minProvinces);
   }
-  if (obj.sackedHighValueCities !== undefined) {
-    scaleGates.push(countSackedHighValueCities(player) >= obj.sackedHighValueCities);
+  if (clause.sackedHighValueCities !== undefined) {
+    scaleGates.push(countSackedHighValueCities(player) >= clause.sackedHighValueCities);
   }
   if (scaleGates.length > 0 && !scaleGates.some(Boolean)) return false;
 
-  // A degenerate objective with no clauses at all never auto-completes.
-  const hasClause =
-    allRefs.length > 0 ||
-    hasAnyOf ||
-    obj.minFaith !== undefined ||
-    obj.requiresHagiaSophia === true ||
-    obj.refusedChurchUnion === true ||
-    scaleGates.length > 0;
-  return hasClause;
+  // B4 minPorts (ven-stato-da-mar "control 8 ports"): ports = coastal provinces.
+  if (clause.minPorts !== undefined && portCount(state, player.id) < clause.minPorts) {
+    return false;
+  }
+
+  // B4 minOfProvinces count-clauses ("any 3 Aegean islands"): EACH entry must hit
+  // its own minimum.
+  for (const entry of clause.minOfProvinces ?? []) {
+    if (entry.provinceIds.filter(owns).length < entry.min) return false;
+  }
+
+  // B4 fleetsInZone ("keep a fleet in the bosphorus"): EACH entry needs at least
+  // minFleets of the player's OWN fleet stacks located in that sea zone.
+  for (const entry of clause.fleetsInZone ?? []) {
+    const fleets = state.fleets.filter(
+      (f) => f.ownerId === player.id && f.locationId === entry.seaZoneId,
+    ).length;
+    if (fleets < entry.minFleets) return false;
+  }
+
+  // B4 zonesNotEnemyBlockaded (gen-dominium-maris): NONE of the listed sea zones
+  // may be blockaded by a RIVAL (absent/null/own blockade all pass).
+  for (const zoneId of clause.zonesNotEnemyBlockaded ?? []) {
+    const zone = state.seaZones.find((z) => z.id === zoneId);
+    const blockader = zone?.blockadedBy;
+    if (blockader != null && blockader !== player.id) return false;
+  }
+
+  // B5 minGold (gen-bankers-of-kings "≥ 25 gold banked").
+  if (clause.minGold !== undefined && player.treasury.gold < clause.minGold) return false;
+
+  // B5 mostGold: STRICTLY highest treasury gold of any player — ties FAIL.
+  if (
+    clause.mostGold === true &&
+    !state.players.every((p) => p.id === player.id || p.treasury.gold < player.treasury.gold)
+  ) {
+    return false;
+  }
+
+  // B5 minDebtors: distinct OTHER players owing this player an outstanding loan.
+  if (clause.minDebtors !== undefined) {
+    const debtors = new Set((player.debtors ?? []).filter((id) => id !== player.id));
+    if (debtors.size < clause.minDebtors) return false;
+  }
+
+  // morePortsThan (gen-overshadow-the-lion): strictly more ports than the named
+  // faction's player; ties fail. Unseated rival ⇒ any port count > 0 satisfies.
+  if (clause.morePortsThan !== undefined) {
+    const rival = playerByFaction(state, clause.morePortsThan);
+    const mine = portCount(state, player.id);
+    if (rival ? mine <= portCount(state, rival.id) : mine <= 0) return false;
+  }
+
+  // destroyedFleetOf (ven-queen-of-the-adriatic): at least one fleet of the named
+  // faction destroyed over the game (combat.ts increments Player.fleetsDestroyed).
+  if (
+    clause.destroyedFleetOf !== undefined &&
+    (player.fleetsDestroyed?.[clause.destroyedFleetOf] ?? 0) < 1
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Evaluate a secret objective's completion predicate (FACTIONS.md / §13.1),
+ * supporting the extended SecretObjective model (FL-06/07/08 + marshal B4/B5).
+ * The objective's own fields form its BASE conjunctive clause (legacy
+ * `provinceRefs` folded in as an implicit all-of); `anyOfClauses`, when present,
+ * is an OR over further clause groups whose result is ANDed with the base clause
+ * (STAGE-A-PREP — how disjunctive texts like "X and Y, or simply Z" are encoded).
+ * A degenerate objective with no machine-checkable content anywhere (the B5
+ * failure mode) never auto-completes; empty OR-groups are ignored rather than
+ * trivially satisfied. Read-only.
+ */
+function objectiveSatisfied(state: GameState, player: Player, obj: SecretObjective): boolean {
+  // Base clause: the objective's own predicate fields + legacy provinceRefs.
+  if (!clauseSatisfied(state, player, obj, obj.provinceRefs ?? [])) return false;
+
+  // anyOfClauses OR-branches (B4/B5): at least one CONTENTFUL group must hold.
+  const groups = (obj.anyOfClauses ?? []).filter(clauseHasContent);
+  if (groups.length > 0 && !groups.some((g) => clauseSatisfied(state, player, g))) {
+    return false;
+  }
+
+  // Degenerate guard (B5 root cause): an objective with no checkable clause at
+  // all — base clause empty AND no contentful OR-group — never auto-completes.
+  return (obj.provinceRefs?.length ?? 0) > 0 || clauseHasContent(obj) || groups.length > 0;
 }
 
 // ---------------------------------------------------------------------------

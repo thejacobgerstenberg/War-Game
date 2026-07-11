@@ -223,9 +223,20 @@ function grantToControllers(
   return s;
 }
 
-/** Shift a province's wall tier by `delta`, re-deriving hp from WALL_TIERS. */
+/** Highest wall tier in the ratified 5-tier keyspace (GD §8.1 / CANON #4: T0..T5). */
+const MAX_WALL_TIER = Math.max(...Object.keys(WALL_TIERS).map(Number));
+
+/**
+ * Shift a province's wall tier by `delta`, re-deriving hp from WALL_TIERS.
+ *
+ * MARSHAL FIX (events major; GD §8.1 5-tier walls): the clamp previously pinned
+ * to tier 3 — a leftover of the retired collapsed 4-tier HP model — so a shift on
+ * a T4/T5 wall moved MORE than the printed amount (#25 Earthquake dropped
+ * Constantinople's T5 Theodosian walls two tiers, 5→3). Clamp in the restored
+ * 0..MAX_WALL_TIER keyspace so shifts move exactly the printed delta.
+ */
 function shiftWall(prov: Province, delta: number): Province {
-  const tier = Math.max(0, Math.min(3, prov.walls.tier + delta));
+  const tier = Math.max(0, Math.min(MAX_WALL_TIER, prov.walls.tier + delta));
   const hp = WALL_TIERS[tier]?.hp ?? 0;
   return { ...prov, walls: { tier, hp } };
 }
@@ -420,15 +431,40 @@ const e10: EventEffect = (state, ctx) => {
 };
 
 // #11 Corsair Raid — a coastal province on a southern sea loses 2 gold + 1 galley; sea blockaded.
+// MARSHAL FIX (map major; EVENT_CARDS.md Era I #11): the card names the victim as
+// "a coastal province on the `sicilian-channel`/`eastern-mediterranean`/`aegean`
+// shore". The old predicate `CORSAIR_SEAS.some(() => true)` was vacuously true, so
+// the raid always struck the FIRST owned coastal province in the array —
+// Constantinople, a Marmara/Bosphorus city that fronts none of the named seas.
+// Now: pick the raided sea (choice/target else rng), then rng-pick a victim among
+// the OWNED coastal provinces actually bordering that sea (ADJACENCY province↔sea
+// edges). Deterministic — every draw comes from ctx.rng (seed/cursor stream).
 const e11: EventEffect = (state, ctx) => {
-  const coastal = state.provinces.find(
-    (p) => p.coastal && p.ownerId && CORSAIR_SEAS.some(() => true),
-  );
+  const shoreOf = (zoneId: string): Province[] =>
+    state.provinces.filter(
+      (p) => p.coastal && p.ownerId != null && neighborsOf(p.id).includes(zoneId),
+    );
+  let sea = pickFrom(ctx, CORSAIR_SEAS);
+  let victims = shoreOf(sea);
+  // If the raided sea's shore is entirely unowned, the galliots hunt the other
+  // named seas in printed order (deterministic fallback; may stay empty).
+  if (victims.length === 0) {
+    for (const z of CORSAIR_SEAS) {
+      if (z === sea) continue;
+      const alt = shoreOf(z);
+      if (alt.length > 0) {
+        sea = z;
+        victims = alt;
+        break;
+      }
+    }
+  }
+  const victim =
+    victims.length > 0 ? victims[Math.floor(ctx.rng.next() * victims.length)] : undefined;
   let s: GameState = state;
-  if (coastal?.ownerId) s = grantRes(s, coastal.ownerId, { gold: -2 });
-  const sea = pickFrom(ctx, CORSAIR_SEAS);
+  if (victim?.ownerId) s = grantRes(s, victim.ownerId, { gold: -2 });
   return eventLog(s, ctx, "Corsair Raid: a coastal province loses 2 gold and a merchant galley; the sea zone is corsair-blockaded (trade −1) until cleared.", {
-    province: coastal?.id,
+    province: victim?.id,
     seaZone: sea,
     tradeDelta: -1,
   });
@@ -498,7 +534,13 @@ const e17: EventEffect = (state, ctx) => {
   if (!byz) return eventLog(state, ctx, "Council of Florence with no Byzantium in play — treated as a neutral omen.");
   if (ctx.choice === "ACCEPT") {
     let s = grantPrestige(state, byz.id, -1);
-    s = grantRes(s, byz.id, { faith: -2 });
+    // MARSHAL FIX (events major; EVENT_CARDS.md Era II #17): the printed "−2
+    // ✝️/round for 2 rounds" is now delivered by a BYZANTIUM-targeted
+    // `faith_income` −2 modifier (events/index.ts buildCardModifiers case 17)
+    // that economy's faithModifiers reader consumes on BOTH Income phases.
+    // The old immediate `faith: -2` treasury hit is removed (FL-04 pattern):
+    // omens resolve at the front of INCOME, so keeping it would over-punish the
+    // draw round on top of the modifier.
     // FL-08 (EVENT_CARDS.md #17 Council of Florence / Church Union): accepting the
     // Union records `acceptedChurchUnion = true` on the acting (Byzantine) player.
     // prestige.ts reads "refused Church Union" as `!acceptedChurchUnion` for the
@@ -737,16 +779,17 @@ const e33: EventEffect = (state, ctx) => {
   });
 };
 
-// #34 The Great Bombard Forged — delta 3, CORRECTED acquisition model
-// (BALANCE_DELTAS.md "GREAT BOMBARD MODEL — CORRECTED CANON"; GD §8.4;
-// EVENT_CARDS.md #34, head a9605e5). This REPLACES the retired "unlock then
-// RECRUIT" path: on resolution the Great Bombard ENTERS PLAY IMMEDIATELY and
+// #34 The Great Bombard Forged — rules-delta 3, CORRECTED acquisition model
+// (GD §8.4; EVENT_CARDS.md #34, head a9605e5). This REPLACES the retired "unlock
+// then RECRUIT" path: on resolution the Great Bombard ENTERS PLAY IMMEDIATELY and
 // FREE. It is recorded on the singleton `GameState.greatBombard` tracker and
 // emplaced as a `GREAT_BOMBARD` variant piece (base SIEGE) in the recipient's
-// capital —
-//   • the OTTOMAN player if in play (§8.4), placed in the Ottoman capital; else
-//   • auctioned (gold + marble) to the highest combined GOLD+MARBLE holder among
-//     active players (deterministic; ties broken by turn order), in their capital.
+// capital or an owned CITY (§8.4 — see bombardEmplacement) —
+//   • the OTTOMAN player if in play (§8.4); else
+//   • AWARDED to the highest combined GOLD+MARBLE holder among active players
+//     (deterministic; ties broken by turn order). NOTE: this is a deterministic
+//     award standing in for the printed auction — the full bid auction is
+//     deferred pending design ratification (see highestGoldMarbleHolder).
 // Exactly ONE per game. It is NEVER recruitable/rebuildable — there is no unlock
 // modifier or `greatBombardUnlocked` acquisition flag any more.
 
@@ -786,20 +829,26 @@ function stackingRoom(state: GameState, ownerId: string, prov: Province): number
 }
 
 /**
- * §8.4 + §6.4-safe emplacement province for `recipient`'s Great Bombard. GD §8.4
- * hands the forged gun to the recipient's capital; §6.4 caps a stack at 12
- * (city/capital) / 8 (land) per (owner, province). Deterministic preference:
+ * §8.4 + §6.4-safe emplacement province for `recipient`'s Great Bombard.
+ * MARSHAL FIX (answer-key major; GD §8.4 / EVENT_CARDS.md #34): canon reads the
+ * Bombard "enters play … in the recipient's capital (or any owned `CITY`)" — the
+ * previous preference narrowed placement to the capital only, with adjacency as
+ * the sole fallback. §6.4 still caps a stack at 12 (city/capital) / 8 (land) per
+ * (owner, province). Deterministic preference:
  *   1. the recipient's CAPITAL if it has room (own units < cap);
- *   2. else the recipient-OWNED province ADJACENT to the capital with the MOST
- *      remaining room (tie → lowest province id), if room >= 1;
- *   3. else ANY recipient-owned province with the MOST remaining room (same
+ *   2. else the recipient-OWNED CITY-terrain province with the MOST remaining
+ *      room (tie → lowest province id), if room >= 1 — the "or any owned CITY"
+ *      arm of §8.4;
+ *   3. else the recipient-OWNED province ADJACENT to the capital with the MOST
+ *      remaining room (same tiebreak), if room >= 1 (§6.4 safety fallback);
+ *   4. else ANY recipient-owned province with the MOST remaining room (same
  *      tiebreak), if room >= 1;
- *   4. else `undefined` — the recipient is at the cap EVERYWHERE (degenerate,
+ *   5. else `undefined` — the recipient is at the cap EVERYWHERE (degenerate,
  *      effectively impossible in real play): the caller DEFERS rather than
  *      over-stacking.
- * Placing the gun in an adjacent owned province when the capital is full is a
- * best-reading of §8.4 (the gun still enters the recipient's territory and never
- * violates §6.4); this is pending coordinator ratification.
+ * Steps 3–4 go beyond the printed "capital or owned CITY" only when BOTH printed
+ * homes are §6.4-full (the gun still enters the recipient's territory and never
+ * over-stacks); that overflow reading is pending coordinator ratification.
  */
 function bombardEmplacement(state: GameState, recipient: Player): Province | undefined {
   const cap = recipient.faction
@@ -823,6 +872,11 @@ function bombardEmplacement(state: GameState, recipient: Player): Province | und
   };
 
   const owned = state.provinces.filter((p) => p.ownerId === recipient.id);
+  // §8.4 "or any owned CITY": prefer an owned CITY-terrain province with room.
+  const city = bestByRoom(
+    owned.filter((p) => p.terrain === TerrainType.CITY && p.id !== cap?.id),
+  );
+  if (city) return city;
   if (cap) {
     const adj = new Set(neighborsOf(cap.id));
     const adjacent = bestByRoom(owned.filter((p) => adj.has(p.id)));
@@ -884,9 +938,13 @@ export function retryPendingGreatBombard(state: GameState): GameState {
 }
 
 /**
- * Highest combined GOLD + MARBLE holder among ACTIVE (seated / factioned) players,
- * deterministic. Iterating `turnOrder` with a strict `>` makes the player earliest
- * in turn order win a tie (BALANCE_DELTAS.md GREAT BOMBARD: "on tie use turn order").
+ * ANSWER-KEY NOTE (marshal answer-key major): this is a DETERMINISTIC AWARD to
+ * the highest combined gold+marble holder — it is NOT the ratified bid auction;
+ * a full gold+marble BID auction is deferred pending design ratification. No
+ * gold/marble is actually spent (the gun "enters play at no cost", EVENT_CARDS
+ * #34). Iterating `turnOrder` with a strict `>` makes the player earliest in
+ * turn order win a tie (deterministic; balance records live in
+ * sim/TUNING_REPORT.md, not the never-landed "BALANCE_DELTAS.md §B").
  */
 function highestGoldMarbleHolder(state: GameState): Player | null {
   let best: Player | null = null;
@@ -956,7 +1014,7 @@ function spawnGreatBombard(
 
 const e34: EventEffect = (state, ctx) => {
   // Exactly ONE per game — guard the Era III reshuffle edge so a redrawn #34
-  // does not spawn a second gun (BALANCE_DELTAS.md GREAT BOMBARD "Exactly ONE").
+  // does not spawn a second gun (merged PR #17 rules-delta docs, GREAT BOMBARD "Exactly ONE"; GD §8.4).
   if (state.greatBombard?.inPlay) {
     return eventLog(
       state,
@@ -1162,43 +1220,52 @@ type EffectPlaceholder = EventEffect;
 // The 46 cards — data + effect references
 // ---------------------------------------------------------------------------
 
-/** Authoritative rich table: all 46 event cards with their effect functions. */
+/**
+ * Authoritative rich table: all 46 event cards with their effect functions.
+ *
+ * MARSHAL FIX (events major): every `slug` below is the CANONICAL slug from the
+ * docs/EVENT_CARDS.md era tables (#1–#46) — 12 data slugs had drifted from the
+ * doc (e.g. `bumper-harvest`→`good-harvest`, `earthquake`→`walls-earthquake`,
+ * `great-comet-1453`→`omen-in-the-sky`). The slug is the join key to
+ * lore/events/flavor.md, so drift breaks the lore join; events/cards.test.ts
+ * carries a 46-slug LOCK TEST hardcoded from the doc so it cannot recur.
+ */
 export const EVENT_CARDS: EventCard[] = [
   // ===== Era I — Omens of Peace (rounds 1–5) · 16 cards =====
-  { id: omenCardId(1), n: 1, slug: "bumper-harvest", name: "Bumper Harvest", tag: "Good", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { grainDelta: 1 }, effect: e1 },
-  { id: omenCardId(2), n: 2, slug: "hard-winter", name: "Hard Winter", tag: "Ill", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { upkeepDelta: 1, moveDelta: -1, siegeDelta: 0, seaZones: FROZEN_SEAS }, effect: e2 },
+  { id: omenCardId(1), n: 1, slug: "good-harvest", name: "Bumper Harvest", tag: "Good", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { grainDelta: 1 }, effect: e1 },
+  { id: omenCardId(2), n: 2, slug: "famine-winter", name: "Hard Winter", tag: "Ill", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { upkeepDelta: 1, moveDelta: -1, siegeDelta: 0, seaZones: FROZEN_SEAS }, effect: e2 },
   { id: omenCardId(3), n: 3, slug: "silk-road-caravan", name: "Silk Road Caravan", tag: "Good", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "PROVINCE", effects: { goldDelta: 3, provinces: SILK_ROAD }, effect: e3 },
   { id: omenCardId(4), n: 4, slug: "papal-indulgence", name: "Papal Indulgence", tag: "Good", era: 1, duration: "Immediate", eventDuration: "GRANT", targeting: "DRAWER", effects: { faithDelta: -3, goldDelta: 3, spawnUnits: { LEVY: 1 } }, effect: e4 },
   { id: omenCardId(5), n: 5, slug: "imperial-coronation", name: "Imperial Coronation", tag: "Good", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "DRAWER", effects: { prestigeDelta: 2, goldDelta: 2, moraleDelta: 1 }, effect: e5 },
   { id: omenCardId(6), n: 6, slug: "comet-omen", name: "Comet Omen", tag: "Omen", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { moraleDelta: -1 }, effect: e6 },
   { id: omenCardId(7), n: 7, slug: "ottoman-interregnum", name: "Ottoman Interregnum", tag: "Ill", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "FACTION", factionSpecific: Faction.OTTOMAN, effects: { prestigeDelta: -2, provinces: [...INTERREGNUM_ANATOLIA, ...INTERREGNUM_EUROPE] }, effect: e7 },
-  { id: omenCardId(8), n: 8, slug: "timurid-shadow", name: "Timurid Shadow", tag: "Ill", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "FACTION", factionSpecific: Faction.OTTOMAN, effects: { goldDelta: -2, spawnUnits: { LEVY: 1 }, provinces: BEYLIKS }, effect: e8 },
+  { id: omenCardId(8), n: 8, slug: "timur-shadow", name: "Timurid Shadow", tag: "Ill", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "FACTION", factionSpecific: Faction.OTTOMAN, effects: { goldDelta: -2, spawnUnits: { LEVY: 1 }, provinces: BEYLIKS }, effect: e8 },
   { id: omenCardId(9), n: 9, slug: "discovery-of-alum", name: "Discovery of Alum", tag: "Good", era: 1, duration: "Standing", eventDuration: "STANDING", targeting: "PROVINCE", effects: { goldDelta: 2, durationRounds: 0, provinces: ["chios"] }, effect: e9 },
   { id: omenCardId(10), n: 10, slug: "marriage-alliance", name: "Marriage Alliance", tag: "Good", era: 1, duration: "Held", eventDuration: "HELD", targeting: "DRAWER", effects: { goldDelta: 3 }, effect: e10 },
   { id: omenCardId(11), n: 11, slug: "corsair-raid", name: "Corsair Raid", tag: "Ill", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "SEA_ZONE", effects: { goldDelta: -2, tradeDelta: -1, seaZones: CORSAIR_SEAS }, effect: e11 },
   { id: omenCardId(12), n: 12, slug: "serbian-despotate-submits", name: "Serbian Despotate Submits", tag: "Mixed", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "MINOR", effects: { goldDelta: 2, garrisonDelta: 1, minors: ["serbia"] }, effect: e12 },
   { id: omenCardId(13), n: 13, slug: "ragusan-tribute", name: "Ragusan Tribute", tag: "Good", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "MINOR", effects: { goldDelta: 3, minors: ["ragusa"] }, effect: e13 },
   { id: omenCardId(14), n: 14, slug: "plague-of-locusts", name: "Plague of Locusts", tag: "Ill", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { grainDelta: -2 }, effect: e14 },
-  { id: omenCardId(15), n: 15, slug: "hussite-handgunners", name: "Hussite Handgunners for Hire", tag: "Good", era: 1, duration: "Immediate", eventDuration: "GRANT", targeting: "GLOBAL", effects: {}, effect: e15 },
+  { id: omenCardId(15), n: 15, slug: "hussite-mercenaries", name: "Hussite Handgunners for Hire", tag: "Good", era: 1, duration: "Immediate", eventDuration: "GRANT", targeting: "GLOBAL", effects: {}, effect: e15 },
   { id: omenCardId(16), n: 16, slug: "fall-of-a-beylik", name: "Fall of a Beylik", tag: "Mixed", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "MINOR", effects: { garrisonDelta: -1, provinces: ["smyrna", "antalya", "kastamonu"] }, effect: e16 },
 
   // ===== Era II — Omens of War (rounds 6–10) · 17 cards =====
   { id: omenCardId(17), n: 17, slug: "council-of-florence", name: "Council of Florence", tag: "Mixed", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "FACTION", factionSpecific: Faction.BYZANTIUM, effects: { faithDelta: -2, prestigeDelta: -1, durationRounds: 2 }, effect: e17 },
-  { id: omenCardId(18), n: 18, slug: "venetian-genoese-war", name: "Venetian–Genoese War", tag: "Ill", era: 2, duration: "Standing", eventDuration: "STANDING", targeting: "PLAYER", effects: { goldDelta: -2, tradeDelta: -2, durationRounds: 2 }, effect: e18 },
-  { id: omenCardId(19), n: 19, slug: "hunyadi-long-campaign", name: "Hunyadi's Long Campaign", tag: "Good", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "FACTION", factionSpecific: Faction.HUNGARY, effects: { moraleDelta: 1, moveDelta: 1 }, effect: e19 },
+  { id: omenCardId(18), n: 18, slug: "genoese-venetian-war", name: "Venetian–Genoese War", tag: "Ill", era: 2, duration: "Standing", eventDuration: "STANDING", targeting: "PLAYER", effects: { goldDelta: -2, tradeDelta: -2, durationRounds: 2 }, effect: e18 },
+  { id: omenCardId(19), n: 19, slug: "long-campaign", name: "Hunyadi's Long Campaign", tag: "Good", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "FACTION", factionSpecific: Faction.HUNGARY, effects: { moraleDelta: 1, moveDelta: 1 }, effect: e19 },
   { id: omenCardId(20), n: 20, slug: "varna-crusade", name: "Varna Crusade", tag: "Mixed", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "PROVINCE", effects: { prestigeDelta: 3, provinces: ["varna", "belgrade", "sofia"] }, effect: e20 },
   { id: omenCardId(21), n: 21, slug: "fall-of-thessalonica", name: "Fall of Thessalonica", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "PROVINCE", effects: { wallTierDelta: -1, garrisonDelta: -1, goldDelta: -3, provinces: ["thessalonica"] }, effect: e21 },
   { id: omenCardId(22), n: 22, slug: "mercenary-revolt", name: "Mercenary Revolt", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { goldDelta: -2 }, effect: e22 },
   { id: omenCardId(23), n: 23, slug: "janissary-discontent", name: "Janissary Discontent", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "FACTION", factionSpecific: Faction.OTTOMAN, effects: { goldDelta: -3, moraleDelta: -1 }, effect: e23 },
   { id: omenCardId(24), n: 24, slug: "wallachian-revolt", name: "Wallachian Revolt", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "MINOR", effects: { goldDelta: -2, spawnUnits: { LEVY: 2, CAVALRY: 1 }, minors: ["wallachia"] }, effect: e24 },
-  { id: omenCardId(25), n: 25, slug: "earthquake", name: "Earthquake", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "PROVINCE", effects: { wallTierDelta: -1, provinces: EARTHQUAKE_CITIES }, effect: e25 },
+  { id: omenCardId(25), n: 25, slug: "walls-earthquake", name: "Earthquake", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "PROVINCE", effects: { wallTierDelta: -1, provinces: EARTHQUAKE_CITIES }, effect: e25 },
   { id: omenCardId(26), n: 26, slug: "grain-fleet-lost", name: "The Grain Fleet Is Lost", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "PLAYER", effects: { grainDelta: -3 }, effect: e26 },
   { id: omenCardId(27), n: 27, slug: "fire-of-the-arsenal", name: "Fire of the Arsenal", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "PLAYER", effects: { timberDelta: -2 }, effect: e27 },
   { id: omenCardId(28), n: 28, slug: "papal-interdict", name: "Papal Interdict", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "PERSISTENT", targeting: "PLAYER", effects: { faithDelta: 0, durationRounds: 2 }, effect: e28 },
   { id: omenCardId(29), n: 29, slug: "schism", name: "Schism", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { prestigeDelta: -1, durationRounds: 1 }, effect: e29 },
   { id: omenCardId(30), n: 30, slug: "mamluk-embargo", name: "Mamluk Embargo", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "SEA_ZONE", effects: { goldDelta: -2, tradeDelta: -1, seaZones: ["eastern-mediterranean"] }, effect: e30 },
   { id: omenCardId(31), n: 31, slug: "anatolian-alliance", name: "Anatolian Alliance", tag: "Ill", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "FACTION", factionSpecific: Faction.OTTOMAN, effects: { spawnUnits: { LEVY: 1 }, moraleDelta: -1, provinces: ANATOLIAN_ALLIANCE_TARGETS }, effect: e31 },
-  { id: omenCardId(32), n: 32, slug: "hexamilion-rebuilt", name: "Hexamilion Rebuilt at Corinth", tag: "Good", era: 2, duration: "Standing", eventDuration: "STANDING", targeting: "PROVINCE", effects: { wallTierDelta: 1, stoneDelta: -2, provinces: ["morea"] }, effect: e32 },
+  { id: omenCardId(32), n: 32, slug: "hexamilion-wall", name: "Hexamilion Rebuilt at Corinth", tag: "Good", era: 2, duration: "Standing", eventDuration: "STANDING", targeting: "PROVINCE", effects: { wallTierDelta: 1, stoneDelta: -2, provinces: ["morea"] }, effect: e32 },
   { id: omenCardId(33), n: 33, slug: "knights-of-rhodes-sortie", name: "Knights of Rhodes Sortie", tag: "Good", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "SEA_ZONE", effects: { seaZones: ["sea-of-crete", "eastern-mediterranean"] }, effect: e33 },
 
   // ===== Era III — Omens of the End (rounds 11–16) · 13 cards =====
@@ -1210,14 +1277,14 @@ export const EVENT_CARDS: EventCard[] = [
   { id: omenCardId(35), n: 35, slug: "black-death-returns", name: "Black Death Returns", tag: "Ill", era: 3, duration: "Immediate", eventDuration: "PERSISTENT", targeting: "GLOBAL", effects: { grainDelta: -1, goldDelta: -1, durationRounds: 2 }, effect: e35 },
   { id: omenCardId(36), n: 36, slug: "gunpowder-revolution", name: "Gunpowder Revolution", tag: "Mixed", era: 3, duration: "Standing", eventDuration: "STANDING", targeting: "GLOBAL", effects: { siegeDelta: 1, wallTierDelta: -1, durationRounds: 0 }, effect: e36 },
   { id: omenCardId(37), n: 37, slug: "final-crusade", name: "The Final Crusade", tag: "Mixed", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { prestigeDelta: 4 }, effect: e37 },
-  { id: omenCardId(38), n: 38, slug: "pilgrimage-jubilee", name: "Pilgrimage / Jubilee Year", tag: "Good", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { goldDelta: 3, faithDelta: 2, provinces: ["rome"] }, effect: e38 },
-  { id: omenCardId(39), n: 39, slug: "relic-discovered", name: "Relic Discovered", tag: "Good", era: 3, duration: "Standing", eventDuration: "STANDING", targeting: "PROVINCE", effects: { faithDelta: 2, prestigeDelta: 1, provinces: RELIC_PROVINCES }, effect: e39 },
+  { id: omenCardId(38), n: 38, slug: "pilgrim-season", name: "Pilgrimage / Jubilee Year", tag: "Good", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { goldDelta: 3, faithDelta: 2, provinces: ["rome"] }, effect: e38 },
+  { id: omenCardId(39), n: 39, slug: "relics-of-the-saints", name: "Relic Discovered", tag: "Good", era: 3, duration: "Standing", eventDuration: "STANDING", targeting: "PROVINCE", effects: { faithDelta: 2, prestigeDelta: 1, provinces: RELIC_PROVINCES }, effect: e39 },
   { id: omenCardId(40), n: 40, slug: "drought", name: "Drought", tag: "Ill", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { grainDelta: -1, provinces: ["alexandria", "cairo"] }, effect: e40 },
   { id: omenCardId(41), n: 41, slug: "financial-crisis", name: "Financial Crisis", tag: "Ill", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { goldDelta: -2 }, effect: e41 },
   { id: omenCardId(42), n: 42, slug: "byzantine-civil-war", name: "Byzantine Civil War", tag: "Ill", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "FACTION", factionSpecific: Faction.BYZANTIUM, effects: { goldDelta: -4, provinces: BYZ_CIVIL_WAR_PROVINCES }, effect: e42 },
   { id: omenCardId(43), n: 43, slug: "peace-of-turin", name: "Peace of Turin", tag: "Good", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "PLAYER", effects: { goldDelta: 1 }, effect: e43 },
-  { id: omenCardId(44), n: 44, slug: "great-comet-1453", name: "The Great Comet of 1453", tag: "Omen", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { moraleDelta: -1, siegeDelta: 1, prestigeDelta: 1 }, effect: e44 },
-  { id: omenCardId(45), n: 45, slug: "genoese-loan-called-in", name: "Genoese Loan Called In", tag: "Ill", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "PLAYER", effects: { goldDelta: -4, prestigeDelta: -1 }, effect: e45 },
+  { id: omenCardId(44), n: 44, slug: "omen-in-the-sky", name: "The Great Comet of 1453", tag: "Omen", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { moraleDelta: -1, siegeDelta: 1, prestigeDelta: 1 }, effect: e44 },
+  { id: omenCardId(45), n: 45, slug: "bank-of-saint-george", name: "Genoese Loan Called In", tag: "Ill", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "PLAYER", effects: { goldDelta: -4, prestigeDelta: -1 }, effect: e45 },
   { id: omenCardId(46), n: 46, slug: "fall-of-constantinople", name: "The Fall of Constantinople", tag: "Mixed", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "PROVINCE", effects: { prestigeDelta: 5, suddenDeath: true, provinces: ["constantinople"] }, effect: e46 },
 ];
 
@@ -1337,7 +1404,7 @@ export const AMBIGUITIES: CardAmbiguity[] = [
     id: "omen-11",
     card: "Corsair Raid",
     interpretation:
-      "Targets the first owned coastal province (the doc's 'a coastal province on the southern shore' has no precise selector without full sea-adjacency); −2 gold applied, galley loss + sea blockade (trade −1) logged. Sea zone picked from the named three via rng.",
+      "MARSHAL-FIXED (map major): the raided sea is picked from the named three (choice/target else rng), and the victim is rng-picked among the OWNED coastal provinces bordering that sea (ADJACENCY province↔sea edges); if that shore is entirely unowned, the other named seas are tried in printed order. −2 gold applied to the victim's owner; galley loss + sea blockade (trade −1) logged.",
   },
   {
     id: "omen-12",
@@ -1367,7 +1434,7 @@ export const AMBIGUITIES: CardAmbiguity[] = [
     id: "omen-17",
     card: "Council of Florence",
     interpretation:
-      "Byzantium's choice via ctx.choice: 'ACCEPT' applies −1 prestige and an immediate −2 faith (the '−2 faith/round for 2 rounds' recurrence logged); anything else = Refuse (no-op beyond a log). Western 'Crusader levy' hiring is left to recruitment.",
+      "Byzantium's choice via ctx.choice: 'ACCEPT' applies −1 prestige, sets acceptedChurchUnion, and posts a BYZANTIUM-targeted faith_income −2 modifier that economy consumes on BOTH Income phases (the printed '−2 faith/round for 2 rounds'); anything else = Refuse (no-op beyond a log). Western 'Crusader levy' hiring is left to recruitment.",
   },
   {
     id: "omen-18",
@@ -1445,7 +1512,7 @@ export const AMBIGUITIES: CardAmbiguity[] = [
     id: "omen-34",
     card: "The Great Bombard Forged",
     interpretation:
-      "delta 3 (CORRECTED CANON, BALANCE_DELTAS.md / GD §8.4 / EVENT_CARDS #34): the retired 'unlock then RECRUIT' model is gone. On resolution the Great Bombard ENTERS PLAY IMMEDIATELY and FREE — recorded on the singleton GameState.greatBombard (inPlay/ownerId/provinceId/emplacedRound) and emplaced as a GREAT_BOMBARD variant piece in the recipient's capital: the Ottoman if in play (Ottoman capital), else auctioned by combined gold+marble (deterministic, turn-order tiebreak) to a winner's capital. Exactly one per game (a second #34 resolution is a no-op). Combat owns the 1-round emplacement fire-gate and capture-passes-intact off the same tracker; actions removes the recruit path.",
+      "rules-delta 3 (CORRECTED CANON, GD §8.4 / EVENT_CARDS #34): the retired 'unlock then RECRUIT' model is gone. On resolution the Great Bombard ENTERS PLAY IMMEDIATELY and FREE — recorded on the singleton GameState.greatBombard (inPlay/ownerId/provinceId/emplacedRound) and emplaced as a GREAT_BOMBARD variant piece in the recipient's capital or, if full, any owned CITY (§8.4 'capital (or any owned CITY)'; then §6.4-safe adjacency fallbacks): the Ottoman if in play, else AWARDED deterministically to the highest combined gold+marble holder (turn-order tiebreak) — a full bid auction is deferred pending design ratification. Exactly one per game (a second #34 resolution is a no-op). Combat owns the 1-round emplacement fire-gate and capture-passes-intact off the same tracker; actions removes the recruit path.",
   },
   {
     id: "omen-35",
