@@ -1,0 +1,81 @@
+# deploy/fly.toml — Fly.io app config for the IMPERIUM game server.
+#
+# Deploy from the REPO ROOT (the build context must be the repo root so the
+# Dockerfile can see server/, shared/ and the root package.json):
+#
+#   fly deploy -c deploy/fly.toml --dockerfile deploy/Dockerfile.server
+#
+# The --dockerfile CLI flag (resolved relative to your cwd, i.e. repo root)
+# takes precedence over [build].dockerfile below; both are kept in agreement
+# on purpose so the config is self-describing.
+
+# TODO: "imperium-game" is a placeholder — app names are globally unique on
+# Fly. Set the real app name when you run `fly launch --no-deploy` (or
+# `fly apps create <name>`) and update this line to match.
+app = "imperium-game"
+
+# Frankfurt = central-EU latency. US alternative: "iad" (Ashburn, Virginia);
+# other options: "ams" (Amsterdam), "lhr" (London), "ord" (Chicago),
+# "sjc" (San Jose). Pick ONE region: rooms are in-memory on a single
+# machine, so this choice sets latency for everyone in a match.
+primary_region = "fra"
+
+# Honor the graceful-shutdown contract: on SIGTERM the server stops
+# accepting new rooms, broadcasts "server_shutdown" with a reconnect hint,
+# waits up to 20s for in-flight turns, then exits 0. Fly's default
+# kill_timeout is 5s, which would cut that window short — give it 30s.
+kill_signal = "SIGTERM"
+kill_timeout = "30s"
+
+[build]
+  # Path used when no --dockerfile flag is given; the runbook always passes
+  # the flag from the repo root, which keeps the build context correct.
+  dockerfile = "deploy/Dockerfile.server"
+
+[env]
+  # Non-secret defaults per the canonical production contract. CORS_ORIGIN
+  # is intentionally NOT set here — its value depends on where the client is
+  # served; set it per-app with `fly secrets set CORS_ORIGIN=...`
+  # (see deploy/README.md, runbook step 4).
+  # TODO(scaffold): the server that reads these vars has not merged yet
+  # (origin/main has no server code); confirm the scaffolded server reads
+  # PORT / NODE_ENV / ROOM_TTL_SECONDS / LOG_LEVEL exactly as named here.
+  PORT = "8080"
+  NODE_ENV = "production"
+  ROOM_TTL_SECONDS = "3600"
+  LOG_LEVEL = "info"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Never auto-stop: an "idle-looking" machine may still hold live WebSocket
+  # matches, and in-memory rooms die with the machine. Always-on costs a few
+  # dollars a month more than scale-to-zero — that is the price of not
+  # killing games mid-match.
+  auto_stop_machines = false
+  auto_start_machines = true
+  # Exactly one machine, always: one game room lives on exactly one server
+  # instance (state is in-memory). Do not raise this until a room-affinity
+  # layer exists.
+  min_machines_running = 1
+  processes = ["app"]
+
+# Platform health checks against the contract endpoint:
+# GET /healthz -> 200 {"status":"ok","rooms":<int>,"uptime":<seconds>}
+[checks]
+  [checks.healthz]
+    type = "http"
+    port = 8080
+    method = "get"
+    path = "/healthz"
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  # 512MB comfortably holds tens of concurrent 2-5 player rooms of pure JSON
+  # game state. When /healthz "rooms" climbs and RSS approaches the limit,
+  # bump MEMORY (`fly scale memory 1024`) — never count. Count stays 1
+  # because rooms are in-memory (see min_machines_running above).
