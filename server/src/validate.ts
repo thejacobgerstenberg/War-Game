@@ -19,10 +19,13 @@
  */
 import {
   Faction,
+  type AddBotPayload,
+  type BotDifficulty,
   type CreateGamePayload,
   type JoinGamePayload,
   type PickFactionPayload,
   type RejoinGamePayload,
+  type RemoveBotPayload,
 } from "@imperium/shared";
 
 export const PLAYER_NAME_MAX_LENGTH = 32;
@@ -120,6 +123,45 @@ export function parseRejoinGamePayload(
   const sessionToken = validateSessionToken(raw.sessionToken);
   if (!sessionToken.ok) return sessionToken;
   return pass({ roomCode: roomCode.value, sessionToken: sessionToken.value });
+}
+
+/** The canonical bot difficulty tiers (mirrors shared `BotDifficulty`). */
+export const BOT_DIFFICULTIES = ["EASY", "NORMAL", "HARD"] as const;
+
+/** Player-id fields are UUIDs (36 chars); anything far past that is garbage. */
+export const PLAYER_ID_MAX_LENGTH = 64;
+
+/** True when `value` is a canonical {@link BotDifficulty}. */
+export function isBotDifficulty(value: unknown): value is BotDifficulty {
+  return (
+    typeof value === "string" &&
+    (BOT_DIFFICULTIES as readonly string[]).includes(value)
+  );
+}
+
+export function parseAddBotPayload(
+  raw: unknown,
+): ValidationResult<AddBotPayload> {
+  if (!isRecord(raw)) return fail("Malformed add_bot payload.");
+  if (!isBotDifficulty(raw.difficulty)) {
+    return fail("Bot difficulty must be EASY, NORMAL or HARD.");
+  }
+  return pass({ difficulty: raw.difficulty });
+}
+
+export function parseRemoveBotPayload(
+  raw: unknown,
+): ValidationResult<RemoveBotPayload> {
+  if (!isRecord(raw)) return fail("Malformed remove_bot payload.");
+  const id = raw.botPlayerId;
+  if (
+    typeof id !== "string" ||
+    id.length === 0 ||
+    id.length > PLAYER_ID_MAX_LENGTH
+  ) {
+    return fail("A bot player id is required.");
+  }
+  return pass({ botPlayerId: id });
 }
 
 export function parsePickFactionPayload(
