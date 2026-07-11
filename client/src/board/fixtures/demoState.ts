@@ -4,7 +4,7 @@
  * keyed by the canonical MAP.md province/sea-zone ids.
  * Returns fresh objects on every call — callers and tests mutate freely.
  */
-import { Faction, GamePhase, UnitType } from "@imperium/shared";
+import { Faction, GamePhase, TaxPosture, UnitType } from "@imperium/shared";
 import type {
   Army,
   Fleet,
@@ -90,6 +90,13 @@ export function createDemoState(): DemoSetup {
       connected: true,
       treasury: bundle(5, 4, 1, 2, 5),
       hand: [],
+      prestige: 0,
+      objectives: [],
+      tax: TaxPosture.NORMAL,
+      treaties: [],
+      vassals: [],
+      betrayals: 0,
+      actionsRemaining: 0,
     },
     {
       id: "p-ottoman",
@@ -99,6 +106,13 @@ export function createDemoState(): DemoSetup {
       connected: true,
       treasury: bundle(6, 7, 3, 3, 2),
       hand: [],
+      prestige: 0,
+      objectives: [],
+      tax: TaxPosture.NORMAL,
+      treaties: [],
+      vassals: [],
+      betrayals: 0,
+      actionsRemaining: 0,
     },
     {
       id: "p-venice",
@@ -108,6 +122,13 @@ export function createDemoState(): DemoSetup {
       connected: true,
       treasury: bundle(9, 4, 5, 3, 1),
       hand: [],
+      prestige: 0,
+      objectives: [],
+      tax: TaxPosture.NORMAL,
+      treaties: [],
+      vassals: [],
+      betrayals: 0,
+      actionsRemaining: 0,
     },
     {
       id: "p-genoa",
@@ -117,6 +138,13 @@ export function createDemoState(): DemoSetup {
       connected: true,
       treasury: bundle(8, 3, 4, 3, 1),
       hand: [],
+      prestige: 0,
+      objectives: [],
+      tax: TaxPosture.NORMAL,
+      treaties: [],
+      vassals: [],
+      betrayals: 0,
+      actionsRemaining: 0,
     },
     {
       id: "p-hungary",
@@ -126,6 +154,13 @@ export function createDemoState(): DemoSetup {
       connected: true,
       treasury: bundle(6, 6, 5, 4, 3),
       hand: [],
+      prestige: 0,
+      objectives: [],
+      tax: TaxPosture.NORMAL,
+      treaties: [],
+      vassals: [],
+      betrayals: 0,
+      actionsRemaining: 0,
     },
   ];
 
@@ -139,6 +174,9 @@ export function createDemoState(): DemoSetup {
     ownerId: OWNER_BY_PROVINCE[p.id] ?? null,
     coastal: p.coastal,
     position: { x: 50, y: 50 },
+    walls: { tier: 0, hp: 0 },
+    buildings: [],
+    greatWorks: [],
   }));
 
   const seaZones = BOARD_SEA_ZONES.map((s) => ({
@@ -221,6 +259,8 @@ export function createDemoState(): DemoSetup {
     roomCode: "DEMO1",
     phase: GamePhase.MOVEMENT,
     turn: 3,
+    round: 3,
+    era: 1,
     activePlayerIndex: 0,
     turnOrder: ["p-byzantium", "p-ottoman", "p-venice", "p-genoa", "p-hungary"],
     players,
@@ -228,6 +268,20 @@ export function createDemoState(): DemoSetup {
     seaZones,
     armies,
     fleets,
+    omenDeck: [],
+    omenDiscard: [],
+    eraDecksRemaining: {},
+    mercMarket: [],
+    minors: [],
+    pendingBattles: [],
+    siegeStates: [],
+    wars: [],
+    activeModifiers: [],
+    constantinopleHold: { faction: null, rounds: 0 },
+    rngSeed: 1,
+    rngCursor: 0,
+    logCounter: 0,
+    clock: 0,
     log: [],
   };
 
