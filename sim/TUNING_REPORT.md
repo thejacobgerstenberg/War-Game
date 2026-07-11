@@ -200,6 +200,24 @@ unit stats: Genoa's merc-surcharge waiver = `MERC_MARKET.genoaGoldMultiplier`
 balance does NOT survive combat-deltas-only uniques; if the engine ships
 arm B regardless, the whole §2 config must be re-tuned from scratch.
 
+#### Faction-LEVY rider A/B — both riders **LOAD-BEARING** (per-faction LEVY override lever question, 2026-07-11)
+
+Isolates the two faction-wide base-LEVY *economy* riders from the strip
+above (2,000 games/arm, paired seeds 14530000+*i*, same protocol; arm A
+reproduces the A/B above bit-for-bit): **devshirme** (Ottoman LEVY grain
+upkeep 0 vs base 1) and **"Strongest Levies" gold** (Hungarian LEVY 1g vs
+base 2g; its CV 2/2 stays on in all arms). Devshirme off: ottomans
+16.1%→8.2% (**−7.9pp**, through the 12% floor), byzantium +8.1pp, sudden
+death 10.7%→2.6% (Ottoman SD wins 213→52) — the Ottoman SD pressure is
+devshirme-funded. Cheap-levies off: hungary 27.3%→**31.9%** (+4.6pp,
+through the 30% band ceiling — at 2g the agents shift gold from 2/2 levy
+spam into the trader/opportunist prestige engine), genoa −5.1pp; Hungary
+*rusher* viability does not depend on it (rusher wins 110→128). Effects
+are ~additive with both off. Verdict: **both riders are load-bearing**
+(each removal breaks a 12–30% band) — the per-faction LEVY override lever
+is justified. Details: `results/faction_levy_riders_ab.json`
+(`src/run/faction_levy_riders_ab.ts`).
+
 ### 2.4 Recruiting (`RECRUIT_PER_ACTION` etc.)
 
 | Key | Value | Home | Evidence |

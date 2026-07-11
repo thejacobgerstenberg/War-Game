@@ -1117,3 +1117,26 @@ coordinator notes. Fullgame = 1000 games seed 14530000 unless noted.
 `src/run/unique_economy_ab.ts`, 2000 games/arm, paired seeds 14530000+i,
 writes results/unique_economy_ab.json — verdict + recommendation recorded
 in TUNING_REPORT §2.3.
+
+### Faction-LEVY rider A/B (per-faction LEVY override lever question)
+
+`src/run/faction_levy_riders_ab.ts`, 4 arms x 2000 games, paired seeds
+14530000+i, current final config otherwise; arm A reproduces
+unique_economy_ab arm A bit-for-bit and the committed fullgame stats within
+cross-seed noise. Writes results/faction_levy_riders_ab.json.
+
+| arm | byz | ott | ven | gen | hun | SD% | med |
+|---|---|---|---|---|---|---|---|
+| A baseline (both riders on) | 14.8 | 16.1 | 16.1 | 25.9 | 27.3 | 10.7 | 15 |
+| B devshirme off (ott levy 1 grain) | 22.9 | 8.2 | 16.2 | 25.6 | 27.3 | 2.6 | 15 |
+| C cheap-levies off (hun levy 2g) | 15.3 | 15.3 | 16.7 | 20.8 | 31.9 | 9.8 | 15 |
+| D both off | 23.6 | 7.5 | 17.1 | 21.3 | 30.4 | 2.1 | 15 |
+
+Noise floor ~1.0pp s.e./arm. Devshirme: LOAD-BEARING (ott -7.9pp through
+the 12% floor, byz +8.1pp, SD 10.7%->2.6%, Ottoman SD wins 213->52 — the
+Ottoman sudden-death pressure is devshirme-funded). Cheap levies:
+LOAD-BEARING (hun +4.6pp through the 30% ceiling, gen -5.1pp; hungary
+rusher wins 110->128, so rusher viability is NOT what it protects — it
+holds Hungary's rate DOWN by pulling gold into 2/2 levy spam instead of
+the prestige engine). Effects ~additive in arm D. Verdict recorded in
+TUNING_REPORT §2.3; CONFIG unchanged.
