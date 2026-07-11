@@ -358,11 +358,20 @@ export class Game {
   private discardPile: string[] = [];
   private readonly cardBySlug = new Map<string, TacticCardDef>();
 
+  /**
+   * `seatOrder` also selects WHICH factions are seated (2-5 players,
+   * CONFIG.game.playersMin/Max): any faction absent from seatOrder is
+   * UNSEATED — it never acts, and its starting provinces are set up as
+   * independent/neutral garrisons under the exact same neutral rules as
+   * every other independent province (see RULES_MODEL.md "Player counts").
+   * Passing all five factions reproduces the 5-player game bit-identically.
+   */
   constructor(seed: number, agents: Record<FactionId, Agent>, seatOrder: FactionId[]) {
     this.seed = seed;
     this.agents = agents;
     this.seatOrder = seatOrder;
     this.turnOrder = [...seatOrder];
+    const seated = new Set<FactionId>(seatOrder);
     const root = create(seed);
     this.rngEvent = root.fork(1);
     this.rngCombat = root.fork(2);
@@ -381,11 +390,16 @@ export class Game {
     this.rngCards.shuffle(this.deck);
 
     for (const p of PROVINCES) {
-      const start = p.initialOwner ? FACTION_STARTS[p.initialOwner].garrisons[p.id] : undefined;
+      // Unseated factions' start provinces become neutral (independent
+      // garrisons per CONFIG.neutrals — NOT the faction's authored setup
+      // armies). With Byzantium unseated, Constantinople is a neutral T5
+      // fortress; the sudden-death rule is unchanged.
+      const owner = p.initialOwner && seated.has(p.initialOwner) ? p.initialOwner : null;
+      const start = owner ? FACTION_STARTS[owner].garrisons[p.id] : undefined;
       this.provinces.set(p.id, {
         id: p.id,
-        owner: p.initialOwner,
-        garrison: start ? copyArmy(start) : p.initialOwner ? emptyArmy() : neutralGarrison(p),
+        owner,
+        garrison: start ? copyArmy(start) : owner ? emptyArmy() : neutralGarrison(p),
         wallTier: p.wallTier,
         wallDamage: 0,
         market: false,
@@ -400,7 +414,9 @@ export class Game {
       const t = FACTION_STARTS[f].treasury;
       this.factions[f] = {
         id: f,
-        alive: true,
+        // Unseated factions start dead: they never act, hold no provinces,
+        // draw no cards, and are excluded from every victory comparison.
+        alive: seated.has(f),
         eliminatedRound: null,
         gold: t.gold,
         grain: t.grain,

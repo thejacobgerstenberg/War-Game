@@ -1,0 +1,1319 @@
+{
+  "criteria": {
+    "medianEndMin": 12,
+    "medianEndMax": 16,
+    "preR11Max": 0.1,
+    "thresholdShareMin": 0.35,
+    "thresholdShareMax": 0.75,
+    "suddenDeathMax": 0.15,
+    "thresholdShareIdeal": 0.55
+  },
+  "protocol": {
+    "subsets": "all C(5,n) faction combinations x all n seat rotations, cycled by game index",
+    "policies": "POLICY_NAMES rotated by game index, seeded shuffle onto seats",
+    "seeds": "game i = baseSeed + i; sweep candidates share seeds (paired); confirm batch uses a fresh seed",
+    "exploreThreshold": 999
+  },
+  "perCount": {
+    "2": {
+      "players": 2,
+      "smoke": false,
+      "cycle": 20,
+      "gamesPerCandidate": 1000,
+      "elapsedMs": 13374,
+      "explore": {
+        "games": 1000,
+        "baseSeed": 14530000,
+        "leaderQuantilesByRound": {
+          "8": {
+            "n": 1000,
+            "p25": 33,
+            "p50": 38,
+            "p75": 42,
+            "p90": 44
+          },
+          "9": {
+            "n": 1000,
+            "p25": 37,
+            "p50": 43,
+            "p75": 49,
+            "p90": 52
+          },
+          "10": {
+            "n": 1000,
+            "p25": 41,
+            "p50": 47,
+            "p75": 55,
+            "p90": 57
+          },
+          "11": {
+            "n": 1000,
+            "p25": 45,
+            "p50": 52,
+            "p75": 59,
+            "p90": 62
+          },
+          "12": {
+            "n": 1000,
+            "p25": 49,
+            "p50": 56,
+            "p75": 63,
+            "p90": 67
+          },
+          "13": {
+            "n": 999,
+            "p25": 53,
+            "p50": 61,
+            "p75": 70,
+            "p90": 74
+          },
+          "14": {
+            "n": 998,
+            "p25": 57,
+            "p50": 66,
+            "p75": 75,
+            "p90": 79
+          },
+          "15": {
+            "n": 991,
+            "p25": 61,
+            "p50": 70,
+            "p75": 79,
+            "p90": 85
+          },
+          "16": {
+            "n": 983,
+            "p25": 65,
+            "p50": 75,
+            "p75": 84,
+            "p90": 90
+          }
+        },
+        "victoryShares": {
+          "threshold": 0,
+          "cap": 0.966,
+          "suddenDeath": 0.034,
+          "elimination": 0
+        },
+        "medianEnd": 16
+      },
+      "sweep": [
+        {
+          "threshold": 69,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 15,
+          "meanEnd": 14.604,
+          "preR11Share": 0.002,
+          "thresholdShare": 0.641,
+          "suddenDeathShare": 0.024,
+          "victoryShares": {
+            "threshold": 0.641,
+            "cap": 0.335,
+            "suddenDeath": 0.024,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 71,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 15,
+          "meanEnd": 14.803,
+          "preR11Share": 0.002,
+          "thresholdShare": 0.59,
+          "suddenDeathShare": 0.025,
+          "victoryShares": {
+            "threshold": 0.59,
+            "cap": 0.385,
+            "suddenDeath": 0.025,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 72,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 14.903,
+          "preR11Share": 0.002,
+          "thresholdShare": 0.563,
+          "suddenDeathShare": 0.025,
+          "victoryShares": {
+            "threshold": 0.563,
+            "cap": 0.412,
+            "suddenDeath": 0.025,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 73,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.02,
+          "preR11Share": 0.001,
+          "thresholdShare": 0.536,
+          "suddenDeathShare": 0.027,
+          "victoryShares": {
+            "threshold": 0.536,
+            "cap": 0.437,
+            "suddenDeath": 0.027,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 74,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.112,
+          "preR11Share": 0.001,
+          "thresholdShare": 0.515,
+          "suddenDeathShare": 0.029,
+          "victoryShares": {
+            "threshold": 0.515,
+            "cap": 0.456,
+            "suddenDeath": 0.029,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 75,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.213,
+          "preR11Share": 0.001,
+          "thresholdShare": 0.494,
+          "suddenDeathShare": 0.03,
+          "victoryShares": {
+            "threshold": 0.494,
+            "cap": 0.476,
+            "suddenDeath": 0.03,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 77,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.412,
+          "preR11Share": 0.001,
+          "thresholdShare": 0.46,
+          "suddenDeathShare": 0.033,
+          "victoryShares": {
+            "threshold": 0.46,
+            "cap": 0.507,
+            "suddenDeath": 0.033,
+            "elimination": 0
+          },
+          "passes": true
+        }
+      ],
+      "recommendation": {
+        "threshold": 72,
+        "passesAllCriteria": true,
+        "accrualMultiple": 15.189904544859344,
+        "meanWinnerAccrualPerRound": 4.739990286796546,
+        "meanWinnerFinalPrestige": 69.5695
+      },
+      "confirm": {
+        "games": 2000,
+        "baseSeed": 74530002,
+        "medianEnd": 16,
+        "meanEnd": 14.884,
+        "preR11Share": 0.0015,
+        "thresholdShare": 0.5685,
+        "suddenDeathShare": 0.0165,
+        "victoryShares": {
+          "threshold": 0.5685,
+          "cap": 0.415,
+          "suddenDeath": 0.0165,
+          "elimination": 0
+        },
+        "lengthHistogram": {
+          "10": 3,
+          "11": 18,
+          "12": 65,
+          "13": 339,
+          "14": 300,
+          "15": 247,
+          "16": 1028
+        },
+        "winRateByFaction": {
+          "byzantium": {
+            "wins": 348,
+            "games": 800,
+            "rate": 0.435
+          },
+          "ottomans": {
+            "wins": 215,
+            "games": 800,
+            "rate": 0.26875
+          },
+          "venice": {
+            "wins": 395,
+            "games": 800,
+            "rate": 0.49375
+          },
+          "genoa": {
+            "wins": 485,
+            "games": 800,
+            "rate": 0.60625
+          },
+          "hungary": {
+            "wins": 557,
+            "games": 800,
+            "rate": 0.69625
+          }
+        },
+        "bySubset": {
+          "byzantium+ottomans": {
+            "games": 200,
+            "wins": {
+              "ottomans": 78,
+              "byzantium": 122
+            }
+          },
+          "byzantium+venice": {
+            "games": 200,
+            "wins": {
+              "venice": 141,
+              "byzantium": 59
+            }
+          },
+          "byzantium+genoa": {
+            "games": 200,
+            "wins": {
+              "byzantium": 81,
+              "genoa": 119
+            }
+          },
+          "byzantium+hungary": {
+            "games": 200,
+            "wins": {
+              "hungary": 114,
+              "byzantium": 86
+            }
+          },
+          "ottomans+venice": {
+            "games": 200,
+            "wins": {
+              "venice": 133,
+              "ottomans": 67
+            }
+          },
+          "genoa+ottomans": {
+            "games": 200,
+            "wins": {
+              "genoa": 163,
+              "ottomans": 37
+            }
+          },
+          "hungary+ottomans": {
+            "games": 200,
+            "wins": {
+              "hungary": 167,
+              "ottomans": 33
+            }
+          },
+          "genoa+venice": {
+            "games": 200,
+            "wins": {
+              "venice": 95,
+              "genoa": 105
+            }
+          },
+          "hungary+venice": {
+            "games": 200,
+            "wins": {
+              "hungary": 174,
+              "venice": 26
+            }
+          },
+          "genoa+hungary": {
+            "games": 200,
+            "wins": {
+              "genoa": 98,
+              "hungary": 102
+            }
+          }
+        },
+        "degenerateSubsets": [
+          {
+            "subset": "hungary+venice",
+            "faction": "hungary",
+            "rate": 0.87,
+            "games": 200
+          },
+          {
+            "subset": "hungary+ottomans",
+            "faction": "hungary",
+            "rate": 0.835,
+            "games": 200
+          },
+          {
+            "subset": "genoa+ottomans",
+            "faction": "genoa",
+            "rate": 0.815,
+            "games": 200
+          },
+          {
+            "subset": "byzantium+venice",
+            "faction": "venice",
+            "rate": 0.705,
+            "games": 200
+          }
+        ]
+      }
+    },
+    "3": {
+      "players": 3,
+      "smoke": false,
+      "cycle": 30,
+      "gamesPerCandidate": 1020,
+      "elapsedMs": 19395,
+      "explore": {
+        "games": 1020,
+        "baseSeed": 14530000,
+        "leaderQuantilesByRound": {
+          "8": {
+            "n": 1020,
+            "p25": 36,
+            "p50": 41,
+            "p75": 42,
+            "p90": 44
+          },
+          "9": {
+            "n": 1020,
+            "p25": 41,
+            "p50": 46,
+            "p75": 51,
+            "p90": 52
+          },
+          "10": {
+            "n": 1020,
+            "p25": 45,
+            "p50": 53,
+            "p75": 55,
+            "p90": 57
+          },
+          "11": {
+            "n": 1020,
+            "p25": 49,
+            "p50": 57,
+            "p75": 60,
+            "p90": 62
+          },
+          "12": {
+            "n": 1020,
+            "p25": 54,
+            "p50": 61,
+            "p75": 64,
+            "p90": 68
+          },
+          "13": {
+            "n": 1014,
+            "p25": 58,
+            "p50": 67,
+            "p75": 72,
+            "p90": 75
+          },
+          "14": {
+            "n": 1003,
+            "p25": 63,
+            "p50": 71,
+            "p75": 76,
+            "p90": 81
+          },
+          "15": {
+            "n": 987,
+            "p25": 67,
+            "p50": 76,
+            "p75": 81,
+            "p90": 87
+          },
+          "16": {
+            "n": 963,
+            "p25": 71,
+            "p50": 80,
+            "p75": 85,
+            "p90": 93
+          }
+        },
+        "victoryShares": {
+          "threshold": 0,
+          "cap": 0.9274509803921569,
+          "suddenDeath": 0.07254901960784314,
+          "elimination": 0
+        },
+        "medianEnd": 16
+      },
+      "sweep": [
+        {
+          "threshold": 75,
+          "games": 1020,
+          "baseSeed": 14530000,
+          "medianEnd": 15,
+          "meanEnd": 14.872549019607844,
+          "preR11Share": 0.00392156862745098,
+          "thresholdShare": 0.6323529411764706,
+          "suddenDeathShare": 0.052941176470588235,
+          "victoryShares": {
+            "threshold": 0.6323529411764706,
+            "cap": 0.31470588235294117,
+            "suddenDeath": 0.052941176470588235,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 77,
+          "games": 1020,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.130392156862746,
+          "preR11Share": 0.0029411764705882353,
+          "thresholdShare": 0.5803921568627451,
+          "suddenDeathShare": 0.058823529411764705,
+          "victoryShares": {
+            "threshold": 0.5803921568627451,
+            "cap": 0.3607843137254902,
+            "suddenDeath": 0.058823529411764705,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 78,
+          "games": 1020,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.229411764705882,
+          "preR11Share": 0.0029411764705882353,
+          "thresholdShare": 0.5617647058823529,
+          "suddenDeathShare": 0.060784313725490195,
+          "victoryShares": {
+            "threshold": 0.5617647058823529,
+            "cap": 0.37745098039215685,
+            "suddenDeath": 0.060784313725490195,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 79,
+          "games": 1020,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.312745098039215,
+          "preR11Share": 0.0029411764705882353,
+          "thresholdShare": 0.5274509803921569,
+          "suddenDeathShare": 0.06274509803921569,
+          "victoryShares": {
+            "threshold": 0.5274509803921569,
+            "cap": 0.40980392156862744,
+            "suddenDeath": 0.06274509803921569,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 80,
+          "games": 1020,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.401960784313726,
+          "preR11Share": 0.0029411764705882353,
+          "thresholdShare": 0.47843137254901963,
+          "suddenDeathShare": 0.06568627450980392,
+          "victoryShares": {
+            "threshold": 0.47843137254901963,
+            "cap": 0.45588235294117646,
+            "suddenDeath": 0.06568627450980392,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 81,
+          "games": 1020,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.48235294117647,
+          "preR11Share": 0.00196078431372549,
+          "thresholdShare": 0.43823529411764706,
+          "suddenDeathShare": 0.06666666666666667,
+          "victoryShares": {
+            "threshold": 0.43823529411764706,
+            "cap": 0.4950980392156863,
+            "suddenDeath": 0.06666666666666667,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 83,
+          "games": 1020,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.608823529411765,
+          "preR11Share": 0.000980392156862745,
+          "thresholdShare": 0.3568627450980392,
+          "suddenDeathShare": 0.06862745098039216,
+          "victoryShares": {
+            "threshold": 0.3568627450980392,
+            "cap": 0.5745098039215686,
+            "suddenDeath": 0.06862745098039216,
+            "elimination": 0
+          },
+          "passes": true
+        }
+      ],
+      "recommendation": {
+        "threshold": 78,
+        "passesAllCriteria": true,
+        "accrualMultiple": 15.558148314344292,
+        "meanWinnerAccrualPerRound": 5.0134500857075395,
+        "meanWinnerFinalPrestige": 75.72786069651741
+      },
+      "confirm": {
+        "games": 2010,
+        "baseSeed": 74530003,
+        "medianEnd": 16,
+        "meanEnd": 15.229850746268657,
+        "preR11Share": 0.0014925373134328358,
+        "thresholdShare": 0.5582089552238806,
+        "suddenDeathShare": 0.04477611940298507,
+        "victoryShares": {
+          "threshold": 0.5582089552238806,
+          "cap": 0.3970149253731343,
+          "suddenDeath": 0.04477611940298507,
+          "elimination": 0
+        },
+        "lengthHistogram": {
+          "9": 1,
+          "10": 2,
+          "11": 6,
+          "12": 50,
+          "13": 115,
+          "14": 259,
+          "15": 436,
+          "16": 1141
+        },
+        "winRateByFaction": {
+          "byzantium": {
+            "wins": 293,
+            "games": 1206,
+            "rate": 0.2429519071310116
+          },
+          "ottomans": {
+            "wins": 211,
+            "games": 1206,
+            "rate": 0.17495854063018243
+          },
+          "venice": {
+            "wins": 375,
+            "games": 1206,
+            "rate": 0.31094527363184077
+          },
+          "genoa": {
+            "wins": 504,
+            "games": 1206,
+            "rate": 0.417910447761194
+          },
+          "hungary": {
+            "wins": 627,
+            "games": 1206,
+            "rate": 0.5199004975124378
+          }
+        },
+        "bySubset": {
+          "byzantium+ottomans+venice": {
+            "games": 201,
+            "wins": {
+              "venice": 76,
+              "byzantium": 88,
+              "ottomans": 37
+            }
+          },
+          "byzantium+genoa+ottomans": {
+            "games": 201,
+            "wins": {
+              "byzantium": 84,
+              "genoa": 62,
+              "ottomans": 55
+            }
+          },
+          "byzantium+hungary+ottomans": {
+            "games": 201,
+            "wins": {
+              "hungary": 86,
+              "byzantium": 52,
+              "ottomans": 63
+            }
+          },
+          "byzantium+genoa+venice": {
+            "games": 201,
+            "wins": {
+              "venice": 85,
+              "genoa": 89,
+              "byzantium": 27
+            }
+          },
+          "byzantium+hungary+venice": {
+            "games": 201,
+            "wins": {
+              "venice": 59,
+              "hungary": 121,
+              "byzantium": 21
+            }
+          },
+          "byzantium+genoa+hungary": {
+            "games": 201,
+            "wins": {
+              "byzantium": 21,
+              "hungary": 104,
+              "genoa": 76
+            }
+          },
+          "genoa+ottomans+venice": {
+            "games": 201,
+            "wins": {
+              "venice": 74,
+              "genoa": 118,
+              "ottomans": 9
+            }
+          },
+          "hungary+ottomans+venice": {
+            "games": 201,
+            "wins": {
+              "hungary": 148,
+              "venice": 38,
+              "ottomans": 15
+            }
+          },
+          "genoa+hungary+ottomans": {
+            "games": 201,
+            "wins": {
+              "genoa": 83,
+              "hungary": 86,
+              "ottomans": 32
+            }
+          },
+          "genoa+hungary+venice": {
+            "games": 201,
+            "wins": {
+              "venice": 43,
+              "hungary": 82,
+              "genoa": 76
+            }
+          }
+        },
+        "degenerateSubsets": [
+          {
+            "subset": "hungary+ottomans+venice",
+            "faction": "hungary",
+            "rate": 0.736318407960199,
+            "games": 201
+          }
+        ]
+      }
+    },
+    "4": {
+      "players": 4,
+      "smoke": false,
+      "cycle": 20,
+      "gamesPerCandidate": 1000,
+      "elapsedMs": 26487,
+      "explore": {
+        "games": 1000,
+        "baseSeed": 14530000,
+        "leaderQuantilesByRound": {
+          "8": {
+            "n": 1000,
+            "p25": 39,
+            "p50": 42,
+            "p75": 43,
+            "p90": 46
+          },
+          "9": {
+            "n": 1000,
+            "p25": 43,
+            "p50": 48,
+            "p75": 51,
+            "p90": 54
+          },
+          "10": {
+            "n": 1000,
+            "p25": 47,
+            "p50": 54,
+            "p75": 56,
+            "p90": 60
+          },
+          "11": {
+            "n": 1000,
+            "p25": 52,
+            "p50": 58,
+            "p75": 61,
+            "p90": 65
+          },
+          "12": {
+            "n": 1000,
+            "p25": 56,
+            "p50": 63,
+            "p75": 65,
+            "p90": 71
+          },
+          "13": {
+            "n": 995,
+            "p25": 61,
+            "p50": 68,
+            "p75": 72,
+            "p90": 78
+          },
+          "14": {
+            "n": 986,
+            "p25": 66,
+            "p50": 73,
+            "p75": 77,
+            "p90": 85
+          },
+          "15": {
+            "n": 963,
+            "p25": 70,
+            "p50": 77,
+            "p75": 82,
+            "p90": 91
+          },
+          "16": {
+            "n": 935,
+            "p25": 75,
+            "p50": 82,
+            "p75": 87,
+            "p90": 97
+          }
+        },
+        "victoryShares": {
+          "threshold": 0,
+          "cap": 0.905,
+          "suddenDeath": 0.095,
+          "elimination": 0
+        },
+        "medianEnd": 16
+      },
+      "sweep": [
+        {
+          "threshold": 77,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 15,
+          "meanEnd": 14.937,
+          "preR11Share": 0.009,
+          "thresholdShare": 0.669,
+          "suddenDeathShare": 0.064,
+          "victoryShares": {
+            "threshold": 0.669,
+            "cap": 0.267,
+            "suddenDeath": 0.064,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 78,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.047,
+          "preR11Share": 0.009,
+          "thresholdShare": 0.636,
+          "suddenDeathShare": 0.071,
+          "victoryShares": {
+            "threshold": 0.636,
+            "cap": 0.293,
+            "suddenDeath": 0.071,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 79,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.144,
+          "preR11Share": 0.007,
+          "thresholdShare": 0.588,
+          "suddenDeathShare": 0.074,
+          "victoryShares": {
+            "threshold": 0.588,
+            "cap": 0.338,
+            "suddenDeath": 0.074,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 80,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.239,
+          "preR11Share": 0.005,
+          "thresholdShare": 0.553,
+          "suddenDeathShare": 0.074,
+          "victoryShares": {
+            "threshold": 0.553,
+            "cap": 0.373,
+            "suddenDeath": 0.074,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 81,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.34,
+          "preR11Share": 0.005,
+          "thresholdShare": 0.514,
+          "suddenDeathShare": 0.076,
+          "victoryShares": {
+            "threshold": 0.514,
+            "cap": 0.41,
+            "suddenDeath": 0.076,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 82,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.401,
+          "preR11Share": 0.003,
+          "thresholdShare": 0.464,
+          "suddenDeathShare": 0.078,
+          "victoryShares": {
+            "threshold": 0.464,
+            "cap": 0.458,
+            "suddenDeath": 0.078,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 84,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.515,
+          "preR11Share": 0.003,
+          "thresholdShare": 0.361,
+          "suddenDeathShare": 0.083,
+          "victoryShares": {
+            "threshold": 0.361,
+            "cap": 0.556,
+            "suddenDeath": 0.083,
+            "elimination": 0
+          },
+          "passes": true
+        }
+      ],
+      "recommendation": {
+        "threshold": 80,
+        "passesAllCriteria": true,
+        "accrualMultiple": 15.523348441720964,
+        "meanWinnerAccrualPerRound": 5.153527301171046,
+        "meanWinnerFinalPrestige": 78.0325
+      },
+      "confirm": {
+        "games": 2000,
+        "baseSeed": 74530004,
+        "medianEnd": 16,
+        "meanEnd": 15.2555,
+        "preR11Share": 0.003,
+        "thresholdShare": 0.538,
+        "suddenDeathShare": 0.0835,
+        "victoryShares": {
+          "threshold": 0.538,
+          "cap": 0.3785,
+          "suddenDeath": 0.0835,
+          "elimination": 0
+        },
+        "lengthHistogram": {
+          "9": 2,
+          "10": 4,
+          "11": 11,
+          "12": 45,
+          "13": 112,
+          "14": 215,
+          "15": 450,
+          "16": 1161
+        },
+        "winRateByFaction": {
+          "byzantium": {
+            "wins": 290,
+            "games": 1600,
+            "rate": 0.18125
+          },
+          "ottomans": {
+            "wins": 268,
+            "games": 1600,
+            "rate": 0.1675
+          },
+          "venice": {
+            "wins": 336,
+            "games": 1600,
+            "rate": 0.21
+          },
+          "genoa": {
+            "wins": 493,
+            "games": 1600,
+            "rate": 0.308125
+          },
+          "hungary": {
+            "wins": 613,
+            "games": 1600,
+            "rate": 0.383125
+          }
+        },
+        "bySubset": {
+          "byzantium+genoa+ottomans+venice": {
+            "games": 400,
+            "wins": {
+              "byzantium": 82,
+              "venice": 129,
+              "genoa": 120,
+              "ottomans": 69
+            }
+          },
+          "byzantium+hungary+ottomans+venice": {
+            "games": 400,
+            "wins": {
+              "hungary": 175,
+              "venice": 49,
+              "ottomans": 86,
+              "byzantium": 90
+            }
+          },
+          "byzantium+genoa+hungary+ottomans": {
+            "games": 400,
+            "wins": {
+              "hungary": 148,
+              "ottomans": 93,
+              "genoa": 83,
+              "byzantium": 76
+            }
+          },
+          "byzantium+genoa+hungary+venice": {
+            "games": 400,
+            "wins": {
+              "venice": 75,
+              "genoa": 154,
+              "hungary": 129,
+              "byzantium": 42
+            }
+          },
+          "genoa+hungary+ottomans+venice": {
+            "games": 400,
+            "wins": {
+              "genoa": 136,
+              "venice": 83,
+              "hungary": 161,
+              "ottomans": 20
+            }
+          }
+        },
+        "degenerateSubsets": []
+      }
+    },
+    "5": {
+      "players": 5,
+      "smoke": false,
+      "cycle": 5,
+      "gamesPerCandidate": 1000,
+      "elapsedMs": 32103,
+      "explore": {
+        "games": 1000,
+        "baseSeed": 14530000,
+        "leaderQuantilesByRound": {
+          "8": {
+            "n": 1000,
+            "p25": 39,
+            "p50": 42,
+            "p75": 44,
+            "p90": 47
+          },
+          "9": {
+            "n": 1000,
+            "p25": 44,
+            "p50": 49,
+            "p75": 51,
+            "p90": 54
+          },
+          "10": {
+            "n": 1000,
+            "p25": 50,
+            "p50": 55,
+            "p75": 56,
+            "p90": 60
+          },
+          "11": {
+            "n": 1000,
+            "p25": 54,
+            "p50": 59,
+            "p75": 61,
+            "p90": 67
+          },
+          "12": {
+            "n": 1000,
+            "p25": 59,
+            "p50": 63,
+            "p75": 66,
+            "p90": 73
+          },
+          "13": {
+            "n": 986,
+            "p25": 64,
+            "p50": 70,
+            "p75": 73,
+            "p90": 79
+          },
+          "14": {
+            "n": 970,
+            "p25": 68,
+            "p50": 74,
+            "p75": 78,
+            "p90": 86
+          },
+          "15": {
+            "n": 935,
+            "p25": 72,
+            "p50": 78,
+            "p75": 83,
+            "p90": 93
+          },
+          "16": {
+            "n": 893,
+            "p25": 77,
+            "p50": 83,
+            "p75": 89,
+            "p90": 98
+          }
+        },
+        "victoryShares": {
+          "threshold": 0,
+          "cap": 0.852,
+          "suddenDeath": 0.148,
+          "elimination": 0
+        },
+        "medianEnd": 16
+      },
+      "sweep": [
+        {
+          "threshold": 74,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 14,
+          "meanEnd": 14.325,
+          "preR11Share": 0.01,
+          "thresholdShare": 0.775,
+          "suddenDeathShare": 0.074,
+          "victoryShares": {
+            "threshold": 0.775,
+            "cap": 0.151,
+            "suddenDeath": 0.074,
+            "elimination": 0
+          },
+          "passes": false
+        },
+        {
+          "threshold": 76,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 15,
+          "meanEnd": 14.611,
+          "preR11Share": 0.006,
+          "thresholdShare": 0.715,
+          "suddenDeathShare": 0.081,
+          "victoryShares": {
+            "threshold": 0.715,
+            "cap": 0.204,
+            "suddenDeath": 0.081,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 78,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 15,
+          "meanEnd": 14.884,
+          "preR11Share": 0.003,
+          "thresholdShare": 0.661,
+          "suddenDeathShare": 0.095,
+          "victoryShares": {
+            "threshold": 0.661,
+            "cap": 0.244,
+            "suddenDeath": 0.095,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 80,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.086,
+          "preR11Share": 0.001,
+          "thresholdShare": 0.573,
+          "suddenDeathShare": 0.109,
+          "victoryShares": {
+            "threshold": 0.573,
+            "cap": 0.318,
+            "suddenDeath": 0.109,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 82,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.262,
+          "preR11Share": 0.001,
+          "thresholdShare": 0.493,
+          "suddenDeathShare": 0.121,
+          "victoryShares": {
+            "threshold": 0.493,
+            "cap": 0.386,
+            "suddenDeath": 0.121,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 84,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.391,
+          "preR11Share": 0.001,
+          "thresholdShare": 0.396,
+          "suddenDeathShare": 0.136,
+          "victoryShares": {
+            "threshold": 0.396,
+            "cap": 0.468,
+            "suddenDeath": 0.136,
+            "elimination": 0
+          },
+          "passes": true
+        },
+        {
+          "threshold": 86,
+          "games": 1000,
+          "baseSeed": 14530000,
+          "medianEnd": 16,
+          "meanEnd": 15.468,
+          "preR11Share": 0.001,
+          "thresholdShare": 0.307,
+          "suddenDeathShare": 0.138,
+          "victoryShares": {
+            "threshold": 0.307,
+            "cap": 0.555,
+            "suddenDeath": 0.138,
+            "elimination": 0
+          },
+          "passes": false
+        }
+      ],
+      "recommendation": {
+        "threshold": 80,
+        "passesAllCriteria": true,
+        "accrualMultiple": 15.153960159168378,
+        "meanWinnerAccrualPerRound": 5.279148101204343,
+        "meanWinnerFinalPrestige": 78.765
+      },
+      "confirm": {
+        "games": 2000,
+        "baseSeed": 74530005,
+        "medianEnd": 16,
+        "meanEnd": 15.039,
+        "preR11Share": 0.0025,
+        "thresholdShare": 0.584,
+        "suddenDeathShare": 0.1165,
+        "victoryShares": {
+          "threshold": 0.584,
+          "cap": 0.2995,
+          "suddenDeath": 0.1165,
+          "elimination": 0
+        },
+        "lengthHistogram": {
+          "9": 2,
+          "10": 3,
+          "11": 14,
+          "12": 86,
+          "13": 166,
+          "14": 256,
+          "15": 466,
+          "16": 1007
+        },
+        "winRateByFaction": {
+          "byzantium": {
+            "wins": 364,
+            "games": 2000,
+            "rate": 0.182
+          },
+          "ottomans": {
+            "wins": 337,
+            "games": 2000,
+            "rate": 0.1685
+          },
+          "venice": {
+            "wins": 240,
+            "games": 2000,
+            "rate": 0.12
+          },
+          "genoa": {
+            "wins": 527,
+            "games": 2000,
+            "rate": 0.2635
+          },
+          "hungary": {
+            "wins": 532,
+            "games": 2000,
+            "rate": 0.266
+          }
+        },
+        "bySubset": {
+          "byzantium+genoa+hungary+ottomans+venice": {
+            "games": 2000,
+            "wins": {
+              "hungary": 532,
+              "byzantium": 364,
+              "ottomans": 337,
+              "genoa": 527,
+              "venice": 240
+            }
+          }
+        },
+        "degenerateSubsets": []
+      }
+    }
+  }
+}

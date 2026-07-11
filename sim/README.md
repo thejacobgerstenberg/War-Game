@@ -60,6 +60,7 @@ npm install
 | `npm run sim:economy` | per-faction × archetype solvency/strike projections + price sweep | ~1 s |
 | `npm run sim:pacing` | prestige-accrual trajectory model + victory-threshold sweep | ~1 s |
 | `npm run sim:fullgame` | full 5-player games, all factions × shuffled policies | ~10 s / 3,000 games |
+| `npm run sim:thresholds` | per-player-count victory-threshold sweep (`PLAYERS=2..5`): explore + candidate sweep + fresh-seed confirm; merges into `results/thresholds.json` | ~30 s / count |
 | `npm run sim:report` | read-only headline summary of whatever is in `results/` — never simulates | instant |
 
 Each sim writes `results/<name>.json` and prints a human-readable summary.
@@ -67,12 +68,20 @@ The adversarial hunters are run directly
 (`npx tsx src/adversarial/run_<hunt>.ts`) and write
 `results/adversarial_<hunt>.json`.
 
-### SMOKE / GAMES / SEED
+### SMOKE / GAMES / SEED / PLAYERS
 
 - `SMOKE=1` — tiny sizes for every module (what `sim:smoke` sets).
 - `GAMES=<n> SEED=<n>` — fullgame only: override game count and base seed for
   independent verification. Defaults: 1,000 games, seed 14530000
   (40 games under SMOKE).
+- `PLAYERS=<2..5>` — `sim:thresholds` only: which player count to sweep
+  (default 5). Unseated factions' start provinces become neutral garrisons
+  (see RULES_MODEL.md "Player counts"); games rotate through all C(5,n)
+  faction subsets × seat rotations by game index so no pairing is
+  over-sampled. Extra env: `THRESHOLDS=<comma list>` (candidate thresholds;
+  auto-derived from the explore batch's leader-accrual quantiles when
+  absent), `GAMES` (per candidate, cycle-aligned, default ≥1,000),
+  `EXPLORE_GAMES`, `CONFIRM_GAMES` (default ≥2,000), `SEED`.
 
 Everything is deterministic in (GAMES, SEED): game *i* seeds from
 `SEED + i`, policy assignment is a seeded shuffle, and no wall-clock entropy
@@ -90,6 +99,21 @@ GAMES=5000 SEED=987654321 npm run sim:fullgame     # the independent 5,000-game 
 GAMES=1000 npx tsx src/adversarial/run_cple_beeline.ts   # and the other five run_*.ts hunters (committed beeline JSON is 1,000 games/arm)
 npm run sim:report
 ```
+
+The committed `results/thresholds.json` (per-player-count victory
+thresholds, TUNING_REPORT §2.13) was produced by exactly:
+
+```bash
+PLAYERS=2 THRESHOLDS=69,71,72,73,74,75,77 npm run sim:thresholds
+PLAYERS=3 THRESHOLDS=75,77,78,79,80,81,83 npm run sim:thresholds
+PLAYERS=4 THRESHOLDS=77,78,79,80,81,82,84 npm run sim:thresholds
+PLAYERS=5 THRESHOLDS=74,76,78,80,82,84,86 npm run sim:thresholds
+```
+
+(each run merges its count into the JSON; the candidate lists were placed
+from each count's explore-batch leader-accrual quantiles — a recon pass at
+the auto-derived candidates, then a denser final grid around the pass
+region).
 
 (Note the last `sim:fullgame` you run overwrites `results/fullgame.json` —
 the committed file is the 3,000-game fresh-seed final run.)

@@ -87,6 +87,36 @@ independent secret objectives (+4 each), E5 betrayal/aggression costs
    modeled since the adversarial fix round (previously a fixed rotating
    seat order, a documented divergence).
 
+## Player counts 2–5 (`Game` seat subsets; used by `src/run/thresholds.ts`)
+
+- The engine supports **2–5 seated players** (`CONFIG.game.playersMin/Max`).
+  `Game`'s `seatOrder` selects WHICH factions are seated: any faction absent
+  from `seatOrder` is **unseated** — it never acts, holds no provinces, draws
+  no cards, and is excluded from every victory comparison. Passing all five
+  factions reproduces the 5-player game **bit-identically** (verified against
+  the committed 3,000-game `results/fullgame.json`).
+- **Unseated factions' starting provinces become independent/neutral
+  garrisons under the exact same neutral rules as every other independent
+  province** (`CONFIG.neutrals`: base levies + levies per wall tier +
+  professionals if key city — NOT the faction's authored setup armies).
+  Modeling choice, documented for the engine team: canon has no setup text
+  for absent great powers; treating their homelands as ordinary minor powers
+  (garrisoned, conquerable by force for the usual walled-capture prestige,
+  yielding nothing to anyone until taken) is the smallest-rules reading and
+  keeps the map economy comparable across player counts.
+- **Sudden death is unchanged** (a non-Byzantine power holding
+  Constantinople through 2 consecutive Cleanups wins immediately, §13.3),
+  whether or not Byzantium is seated. In Byzantium-absent games
+  Constantinople starts as a **neutral T5 fortress** (Theodosian walls +
+  neutral garrison) — still a sudden-death target, just independently held.
+- The Great Bombard omen grant falls back to the auction (richest payer)
+  when the Ottomans are unseated, same as when they are eliminated.
+- **Victory threshold is per player count** — see TUNING_REPORT §2.13
+  `VICTORY_THRESHOLD_BY_PLAYER_COUNT` and `results/thresholds.json`
+  (faction-subset sweep protocol: all C(5,n) subsets × seat rotations).
+  2–4-player games were tuned for PACING ONLY; per-faction win-rate balance
+  at 2–4 players was never a tuning target (TUNING_REPORT §2.13 caveats).
+
 ## Units (5-slot roster ← canon GD §6.1 + FACTIONS unique-unit mapping)
 
 Base tables (neutral garrisons use these):

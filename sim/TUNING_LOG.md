@@ -959,3 +959,66 @@ ProvinceState.pillagedUntilRound. siege.ts: E3 emplacement in runSiege.
 pacing.ts: E2 + E4. agents.ts + adversarial copies: `bombardForged` gate.
 run/siege.ts: T5d re-derived (capture <= emplacement+4 after first fire).
 All results/*.json regenerated at this config.
+
+## Player-count threshold round (2026-07-11) — 2-4p victory thresholds derived, 5p re-confirmed
+
+Goal: replace canon §13.2's pre-tuning 25/30/35 per-player-count
+placeholders with empirically derived values, at the ratified-errata
+config (E1-E5, 5p threshold 80). New runner `src/run/thresholds.ts`
+(`npm run sim:thresholds`, `PLAYERS=<2..5>`); `Game` now seats faction
+SUBSETS (seatOrder selects who plays; unseated factions' start provinces
+become neutral garrisons per CONFIG.neutrals — RULES_MODEL "Player
+counts"). 5-player games verified bit-identical to the committed
+3,000-game fullgame.json after the change.
+
+### Protocol
+
+- Subsets: all C(5,n) faction combinations x all n seat rotations, cycled
+  deterministically by game index (no pairing bias); policies rotate by
+  game index, seeded shuffle onto seats; game i = seed 14530000 + i.
+- Per count: explore batch at unreachable threshold 999 (leader-accrual
+  quantiles place the candidate range), recon sweep at auto-derived
+  candidates, then the committed denser 7-candidate grid (>=1,000 games
+  each, paired seeds), then a 2,000-game fresh-seed confirm at the winner
+  (seeds 74530002-74530005).
+- Selection = the 84->80 derivation criteria: median end 12-16, <10%
+  pre-r11, threshold-decided 35-75%, SD <15%; tie-break toward ~55%
+  threshold-decided.
+
+### Results (confirm batches; full tables in TUNING_REPORT §3.6 + results/thresholds.json)
+
+- 2p: **72** (15.2x winner accrual/round, 4.740/rd) — median end 16
+  (mean 14.9), pre-r11 0.2%, threshold-decided 56.9%, SD 1.7%.
+- 3p: **78** (15.6x, 5.013/rd) — median 16 (15.2), pre-r11 0.2%,
+  threshold 55.8%, SD 4.5%.
+- 4p: **80** (15.5x, 5.154/rd) — median 16 (15.3), pre-r11 0.3%,
+  threshold 53.8%, SD 8.3%.
+- 5p sanity: **80 re-selects itself** from candidates 74-86 (paired 57.3%
+  threshold-decided at 80 vs 49.3% at 82; the pre-errata 84 lands at
+  39.6% — under the original T3 40% floor that forced the errata
+  re-derivation, and far from the ~55% tie-break either way). Confirm
+  58.4%/SD 11.7%/median 16.
+- Leader accrual falls with player count (explore leader p50 @ r16:
+  75/80/82/83 for 2/3/4/5p); all four thresholds sit at 15.2-15.6x mean
+  winner accrual/round — the invariant to re-derive from if accrual moves.
+- Eliminations: 0 games at every count. SD scales down with fewer players
+  (11.7% -> 1.7%).
+
+### Caveats (recorded, not fixed — pacing-only guarantee below 5p)
+
+- Faction win-rate balance was NOT a tuning target at 2-4p. Aggregate 2p
+  seat rates: hun 69.6 / gen 60.6 / ven 49.4 / byz 43.5 / ott 26.9.
+- Degenerate 2p pairs (200 games each): hungary+venice 87.0% hun,
+  hungary+ottomans 83.5% hun, genoa+ottomans 81.5% gen,
+  byzantium+venice 70.5% ven. One 3p triple: hungary+ottomans+venice
+  73.6% hun. 4-5p: no subset above 70%.
+- Byzantium-absent games: Constantinople is a neutral T5 fortress; sudden
+  death unchanged and in band at every count.
+
+### Config deltas this round
+
+None to CONFIG numbers (5p victoryThreshold stays 80). game.ts: seat-subset
+constructor (unseated -> neutral starts, alive=false). New
+run/thresholds.ts + `sim:thresholds` alias; results/thresholds.json;
+TUNING_REPORT §2.13 VICTORY_THRESHOLD_BY_PLAYER_COUNT + §3.6; README
+PLAYERS/THRESHOLDS envs; RULES_MODEL "Player counts 2-5" section.

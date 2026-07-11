@@ -339,6 +339,7 @@ salonica_constantinople, constantinople_caffa — Byzantine hub snowball.)
 | `TURN_ORDER` | re-sort each Cleanup, lowest prestige first (tiebreak fewer provinces) | canon §13.4; modeled since the fix round (runaway-leader hunt) |
 | `CAP_TIEBREAK` | most key cities, then most gold | canon §13.3; modeled since the fix round |
 | **`VICTORY_THRESHOLD`** | **80** (checked at Cleanup only; 84 → 80 in the ratified errata round) | see below |
+| **`VICTORY_THRESHOLD_BY_PLAYER_COUNT`** | **2p: 72 · 3p: 78 · 4p: 80 · 5p: 80** (≈ 15.2× / 15.6× / 15.5× / 15.2× that count's mean winner accrual/round) | §3.6, `results/thresholds.json` |
 
 **VICTORY_THRESHOLD = 80**, expressed both ways per the canon §13.2 handoff
 ("threshold supplied by balance TUNING_REPORT"):
@@ -360,9 +361,46 @@ salonica_constantinople, constantinople_caffa — Byzantine hub snowball.)
   seed (T1 floor broken); **80** → 57.5–57.6% threshold-decided, SD
   11.9–12.3%, Venice 12.3–13.4% across all three seeds — all bands green.
   Pacing window 78–84 (rec 81); 80 sits inside it.
-- **Scope caveat: calibrated at 5 players only.** Canon scales the threshold
-  by player count; 2–4-player values need their own fullgame runs (suggest
-  keeping 80 for 4–5 and re-simming before shipping 2–3-player values).
+**Victory thresholds by player count** (`VICTORY_THRESHOLD_BY_PLAYER_COUNT`,
+derived empirically per count — sweep evidence §3.6,
+`results/thresholds.json`; canon §13.2's 25/30/35 predate the final
+prestige sources and are superseded):
+
+| players | threshold | accrual-multiple form | median end | pre-r11 | threshold-decided | sudden death |
+|---|---|---|---|---|---|---|
+| 2 | **72** | 15.2× mean winner accrual/round (4.740/rd; mean winner final 69.6) | 16 (mean 14.9) | 0.2% | 56.9% | 1.7% |
+| 3 | **78** | 15.6× (5.013/rd; 75.7) | 16 (mean 15.2) | 0.2% | 55.8% | 4.5% |
+| 4 | **80** | 15.5× (5.154/rd; 78.0) | 16 (mean 15.3) | 0.3% | 53.8% | 8.3% |
+| 5 | **80** | 15.2× (5.279/rd; 78.8) | 16 (mean 15.0) | 0.3% | 58.4% | 11.7% |
+
+(Pacing stats are each count's fresh-seed 2,000-game confirm batch at the
+recommended value; sweep selection used the same criteria as the 5-player
+84 → 80 derivation — median end 12–16, <10% pre-r11, threshold-decided
+35–75%, SD <15%, tie-break toward ~55% threshold-decided. The 5-player
+sweep re-selected 80 from candidates 74–86, confirming the errata-round
+value under the subset protocol.)
+
+- **Fewer players ⇒ lower threshold.** With unseated factions' homelands
+  reverting to neutral garrisons, fewer rivals contest key cities and there
+  are fewer enemy-capital/war prestige sources, so leader accrual falls
+  (leader p50 at r16 in the unreachable-threshold explore batches: 75 / 80 /
+  82 / 83 for 2/3/4/5 players). All four values sit at ≈ 15.2–15.6× that
+  count's mean winner accrual/round — the invariant to preserve if rules
+  changes move accrual (cf. the royal-marriage note, §6).
+- **Caveat — pacing-only guarantee at 2–4 players.** Faction win-rate
+  BALANCE was never a tuning target below 5 players (T1 is a 5-player
+  target); only the T3/T4-style pacing bands above were enforced. Aggregate
+  2-player seat win rates run Hungary 69.6% … Ottomans 26.9% (3p: Hungary
+  52.0% … Ottomans 17.5%; 4p: Hungary 38.3% … Ottomans 16.8%).
+- **Caveat — degenerate 2-player pairs** (confirm batch, 200 games/pair):
+  **hungary+venice → Hungary 87.0%**, **hungary+ottomans → Hungary 83.5%**,
+  **genoa+ottomans → Genoa 81.5%**, byzantium+venice → Venice 70.5%. Ship
+  2-player only with a matchup guide/handicap or after a dedicated balance
+  pass. At 3 players one triple crosses the line (hungary+ottomans+venice →
+  Hungary 73.6%); at 4–5 players no subset has a faction above 70%.
+- Byzantium-absent games leave Constantinople a **neutral T5 fortress**;
+  sudden death is unchanged and stays in band at every count (SD share
+  above; RULES_MODEL.md "Player counts").
 
 ### 2.14 Economy misc
 
@@ -651,6 +689,59 @@ figure. Mean battles/game: 11.5.)
 | **errata fresh-seed 3,000g, SEED=24681357 (80) — committed** | **17.7** | **17.3** | **12.3** | **26.3** | **26.4** |
 | **errata verify 5,000g, SEED=987654321 (80)** | **18.2** | **17.0** | **13.2** | **25.3** | **26.3** |
 
+### 3.6 Player-count threshold sweep (`results/thresholds.json`, `sim:thresholds`)
+
+Protocol (per player count n): game *i* seats subset `C(5,n)[i mod C(5,n)]`
+rotated by `⌊i / C(5,n)⌋ mod n` — every faction subset × seat rotation is
+covered exactly once per cycle, so no pairing is over-sampled. Unseated
+factions' start provinces are neutral garrisons (RULES_MODEL.md "Player
+counts"). Three phases per count: an **explore** batch at unreachable
+threshold 999 (places the candidate range from leader-accrual quantiles), a
+**sweep** of 7 candidates × ≥1,000 games on paired seeds (base 14530000),
+and a fresh-seed **confirm** batch of ~2,000 games at the selection.
+Selection criteria = the 84 → 80 derivation's: median end 12–16, <10%
+pre-r11, threshold-decided 35–75%, SD <15%; tie-break toward ~55%
+threshold-decided. Candidate lists (recon at auto-derived ranges, then the
+committed denser grids) are in README "Regenerating the report numbers".
+
+Paired-seed sweep tables (threshold-decided / SD / median end / pre-r11):
+
+| T (2p) | thr% | SD% | med | <r11 | | T (3p) | thr% | SD% | med | <r11 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 69 | 64.1 | 2.4 | 15 | 0.2% | | 75 | 63.2 | 5.3 | 15 | 0.4% |
+| 71 | 59.0 | 2.5 | 15 | 0.2% | | 77 | 58.0 | 5.9 | 16 | 0.3% |
+| **72** | **56.3** | **2.5** | **16** | **0.2%** | | **78** | **56.2** | **6.1** | **16** | **0.3%** |
+| 73 | 53.6 | 2.7 | 16 | 0.1% | | 79 | 52.7 | 6.3 | 16 | 0.3% |
+| 74 | 51.5 | 2.9 | 16 | 0.1% | | 80 | 47.8 | 6.6 | 16 | 0.3% |
+| 75 | 49.4 | 3.0 | 16 | 0.1% | | 81 | 43.8 | 6.7 | 16 | 0.2% |
+| 77 | 46.0 | 3.3 | 16 | 0.1% | | 83 | 35.7 | 6.9 | 16 | 0.1% |
+
+| T (4p) | thr% | SD% | med | <r11 | | T (5p) | thr% | SD% | med | <r11 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 77 | 66.9 | 6.4 | 15 | 0.9% | | 74 | 77.5 ✗ | 7.4 | 14 | 1.0% |
+| 78 | 63.6 | 7.1 | 16 | 0.9% | | 76 | 71.5 | 8.1 | 15 | 0.6% |
+| 79 | 58.8 | 7.4 | 16 | 0.7% | | 78 | 66.1 | 9.5 | 15 | 0.3% |
+| **80** | **55.3** | **7.4** | **16** | **0.5%** | | **80** | **57.3** | **10.9** | **16** | **0.1%** |
+| 81 | 51.4 | 7.6 | 16 | 0.5% | | 82 | 49.3 | 12.1 | 16 | 0.1% |
+| 82 | 46.4 | 7.8 | 16 | 0.3% | | 84 | 39.6 | 13.6 | 16 | 0.1% |
+| 84 | 36.1 | 8.3 | 16 | 0.3% | | 86 | 30.7 ✗ | 13.8 | 16 | 0.1% |
+
+(✗ = fails the 35–75% threshold-decided band; every other cell above passes
+all four criteria. The 5-player sweep **re-selects 80** — the errata-round
+value — under the subset protocol: 80's 57.3% is the closest to the ~55%
+tie-break target (82 sits at 49.3%). The pre-errata 84 lands at 39.6% —
+inside this sweep's 35% floor but under the original T3 40% floor that
+forced the errata re-derivation, and far from the tie-break either way.)
+
+Confirm batches (fresh seeds 74530002–74530005) are quoted in §2.13's
+per-count table, including the accrual multiples and the degenerate-pair
+caveats (2p worst: hungary+venice → Hungary 87.0% of 200). Elimination
+victories: 0 at every count (the skeleton-garrison and walled-capture rules
+make total conquest slower than either clock). Sudden death scales DOWN
+with fewer players (11.7% → 1.7% from 5p to 2p): fewer rivals reach
+Constantinople's neighborhood, and Byzantium-absent games put a full
+neutral T5 garrison behind the Theodosian walls.
+
 ---
 
 ## 4. Adversarial audit
@@ -919,6 +1010,12 @@ npm run sim:fullgame   # ~10 s / 3,000 games (≈3.2–3.4 ms/game)
 GAMES=3000 SEED=24681357  npm run sim:fullgame   # reproduces committed results/fullgame.json
 GAMES=5000 SEED=987654321 npm run sim:fullgame   # the independent verification run quoted in §1
 
+# per-player-count threshold sweep (§2.13 / §3.6; merges into results/thresholds.json)
+PLAYERS=2 THRESHOLDS=69,71,72,73,74,75,77 npm run sim:thresholds
+PLAYERS=3 THRESHOLDS=75,77,78,79,80,81,83 npm run sim:thresholds
+PLAYERS=4 THRESHOLDS=77,78,79,80,81,82,84 npm run sim:thresholds
+PLAYERS=5 THRESHOLDS=74,76,78,80,82,84,86 npm run sim:thresholds
+
 # adversarial suite (not in npm scripts; writes results/adversarial_*.json)
 GAMES=1000 npx tsx src/adversarial/run_cple_beeline.ts   # seed 311002 (committed JSON is 1,000 games/arm)
 npx tsx src/adversarial/run_economy_exploit.ts   # seed 311005
@@ -931,7 +1028,9 @@ npx tsx src/adversarial/run_faction_floor.ts     # seeds 111006 / 311006
 Seeds used for the committed artifacts: fullgame **24681357** (3,000 games;
 default without env overrides is 14530000/1,000); 5,000-game verify
 **987654321**; combat 789415; siege 20260711; pacing 14530529; adversarial
-311001–311006 + 111006 (per-file `config.baseSeed`).
+311001–311006 + 111006 (per-file `config.baseSeed`); threshold sweeps
+**14530000** (explore + paired candidates) with fresh-seed confirms
+**74530002–74530005**.
 
 **Determinism note.** All statistics in this report were read back from
 executed runs at the shipped errata CONFIG (threshold 80). The committed
