@@ -40,6 +40,16 @@
   <style>
     /* ---- combat.html screen-specific styles (kept small) --------------- */
 
+    /* Screen title for assistive tech; the modal head is the visual title. */
+    .visually-hidden {
+      position: absolute;
+      width: 1px; height: 1px;
+      margin: -1px; padding: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
     /* The stage: dimmed campaign board with the battle modal centered on it */
     .battle-stage {
       position: relative;
@@ -196,6 +206,10 @@
   </style>
 </head>
 <body class="theme-night">
+
+  <main>
+
+  <h1 class="visually-hidden">Battle Resolution — The Field at Kosovo</h1>
 
   <!-- ZONE 1 · The stage: campaign board dimmed under a scrim, battle modal
        centered. The scrim does NOT dismiss on click — a battle, once joined,
@@ -471,6 +485,8 @@
 
     </div>
   </section>
+
+  </main>
 
   <!-- Spec legend — apparatus for the client team; does not ship. -->
   <div class="spec-main" style="padding-top: 0;">

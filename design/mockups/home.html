@@ -176,7 +176,7 @@
           <h3>Convene a Game</h3>
           <p class="path-rubric">Summon rival princes to your table. You set the seats;
             whether they dare to fill them is their affair.</p>
-          <p><a class="btn btn--primary btn--grand" href="02-lobby-faction-select.html">Convene a Game</a></p>
+          <p><a class="btn btn--primary btn--grand" href="lobby.html">Convene a Game</a></p>
         </article>
 
         <!-- Path: Join by code. ZONE 3 is the six-letter summons code. -->
@@ -196,17 +196,19 @@
               <input maxlength="1" value="A" aria-label="Sixth letter">
             </div>
             <p class="code-hint">Letters only, as the herald spoke them. Great or small, it is all one.</p>
-            <p style="margin: 0;"><a class="btn btn--grand" href="02-lobby-faction-select.html">Take Your Seat</a></p>
+            <p style="margin: 0;"><a class="btn btn--grand" href="lobby.html">Take Your Seat</a></p>
           </div>
         </article>
 
         <!-- Path: How to play -->
-        <article class="panel panel--parchment path-card">
+        <article class="panel panel--parchment path-card" id="book-of-rules">
           <span class="asset path-glyph"><img src="../../art/icons/faith.svg" alt="Faith"></span>
           <h3>The Book of Rules</h3>
           <p class="path-rubric">How the age is played: phases and omens, hosts and levies,
             ledgers and the fall of cities — set down fair, as the monks would have it.</p>
-          <!-- Rules screen is not yet in the Phase 3 file map; link is a placeholder. -->
+          <!-- The rules-reader screen is not yet in the Phase 3 file map; until it
+               ships, the link anchors to this card (#book-of-rules) so the target
+               is real. Repoint to the reader when it lands. -->
           <p><a class="btn btn--grand" href="#book-of-rules">Open the Book</a></p>
         </article>
 
@@ -216,7 +218,7 @@
     <hr>
 
     <!-- ZONE 4 · Faction crest strip — display only; the choosing happens
-         in the lobby (02-lobby-faction-select.html). Crests carry
+         in the lobby (lobby.html). Crests carry
          data-faction so the colorblind pattern overlays (mockups.css §16)
          apply wherever a swatch appears. -->
     <section class="zone" aria-label="The five powers">
@@ -277,10 +279,11 @@
         anywhere on the page doubles as the browser audio unlock (README §4). The board glimpse
         beneath is decorative — non-interactive on this screen.</li>
       <li><b class="callout">2</b> <b>The three paths.</b> Primary actions of the landing screen.
-        “Convene a Game” (gold, primary) opens the lobby (<code>02-lobby-faction-select.html</code>)
+        “Convene a Game” (gold, primary) opens the lobby (<code>lobby.html</code>)
         as host. Every press plays <code>ui_click</code>; the convened game's first round opens on
         <code>church_bell</code>. “Open the Book” will route to the rules reader — screen not yet in
-        the Phase 3 file map; placeholder link.</li>
+        the Phase 3 file map; until it ships the link anchors to its own card
+        (<code>#book-of-rules</code>).</li>
       <li><b class="callout">3</b> <b>Summons code.</b> Six single-letter cells, monospace, forced to
         capitals; typing auto-advances, pasting a whole code fills all six, and the letter case the
         player types is all one. “Take Your Seat” stays disabled until six letters stand. An unknown

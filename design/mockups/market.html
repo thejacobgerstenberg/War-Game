@@ -123,6 +123,8 @@
   .exchange-row.is-barred { opacity: 0.6; box-shadow: none; }
   .exchange-reason { flex-basis: 100%; margin: 0; font-style: italic;
     font-size: var(--text-xs); color: var(--crimson); }
+  .house-note { margin: var(--space-3) 0 0; font-style: italic; font-size: var(--text-sm);
+    color: color-mix(in srgb, var(--ink) 72%, var(--parchment)); }
 
   /* Trade-route summary strip */
   .route-strip { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
@@ -144,6 +146,8 @@
     <h1>The Market</h1>
     <p class="rubric">Two doors under one roof: swords for hire at the first, ledgers at the second. Both open on Gold.</p>
   </header>
+
+  <main>
 
   <!-- ZONE 1 · The treasury readout — shared by both leaves -->
   <section class="panel panel--porphyry treasury zone" aria-label="The treasury of Genoa">
@@ -377,19 +381,25 @@
             <li class="exchange-row">
               <span class="exchange-side">
                 <span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span>
-                Four Gold
+                Two Gold
               </span>
               <span class="exchange-for">for</span>
               <span class="exchange-side">
-                <span class="asset asset--icon"><img src="../../art/icons/faith.svg" alt="Faith"></span>
-                One Faith
+                <span class="asset asset--icon"><img src="../../art/icons/marble.svg" alt="Marble"></span>
+                One Marble
               </span>
-              <span class="pill pill--gold rate-pill">Four Gold for one Faith</span>
-              <span class="pill">The Church styles it an endowment</span>
+              <span class="pill pill--gold rate-pill">Two Gold for one Marble</span>
+              <span class="pill">Cut dear and carried far — the house knows it</span>
               <button class="btn" type="button">Strike the Bargain</button>
             </li>
 
           </ul>
+
+          <!-- The rule of the house, stated in voice: Faith never stands
+               among the rates. The sole gold-to-faith conversion in the game
+               is the Papal Indulgence tactic card (two Gold for three Faith),
+               and it is no business of this ledger. -->
+          <p class="house-note">Faith is not for sale in any market; only Rome sells grace.</p>
 
           <!-- ZONE 8 · The routes held — trade-route summary strip -->
           <div class="route-strip zone" aria-label="The routes held">
@@ -412,6 +422,8 @@
 
     </div>
   </div>
+
+  </main>
 
   <hr>
 
@@ -454,7 +466,10 @@
       Rows touched by a monopoly carry the toll pill in the holder's color. A row the vaults cannot meet is barred:
       button disabled with the in-voice reason beneath and on hover/tap, row at reduced weight, treasury chip
       flagged <code>.is-short</code>. Striking a bargain plays <code>coin_purse</code> and refreshes the treasury;
-      rates hold for the round and are re-cried at the Income phase.</li>
+      rates hold for the round and are re-cried at the Income phase. Faith never stands among the rates —
+      markets do not trade it (GAME_DESIGN §4); the in-voice house note beneath the rows states the rule.
+      The game's sole gold-to-faith conversion is the Papal Indulgence tactic card (two Gold for three
+      Faith), played from the hand, not struck in this house.</li>
     <li><b class="callout">8</b> <strong>The routes held</strong> — one lapis pill per route, each naming its ports
       and worded yield, and a total at the strip's end ("three routes held · four Gold and one Grain each round").
       The yield pays itself at the Income phase with <code>coin_purse</code>. A route lost to war or monopoly leaves

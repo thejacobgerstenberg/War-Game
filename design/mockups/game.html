@@ -45,6 +45,16 @@
     /* ---- game.html screen-specific styles (kept small) ------------------ */
     html, body { height: 100%; }
 
+    /* Screen title for assistive tech; the chrome itself is the visual title. */
+    .visually-hidden {
+      position: absolute;
+      width: 1px; height: 1px;
+      margin: -1px; padding: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
     /* The shell: exactly one viewport tall; nothing inside it scrolls. */
     .app-shell {
       height: 100vh;
@@ -337,6 +347,7 @@
 
     <!-- ================= TOP BAR ======================================== -->
     <header class="top-bar zone" aria-label="Round, era, phases and the breath-timer">
+      <h1 class="visually-hidden">The Campaign Board</h1>
       <b class="callout" style="top: -8px; left: 8px">1</b>
       <div class="reign">
         <div class="round-counter">Round <b>VII</b></div>
@@ -611,12 +622,13 @@
         Yield the Floor
       </button>
 
-      <div class="action-budget" aria-label="Deeds remaining this campaign: two of three">
+      <div class="action-budget" aria-label="Deeds remaining this campaign: three of four">
         Deeds this campaign
         <span class="pip is-spent" title="Spent"></span>
         <span class="pip" title="Remaining"></span>
         <span class="pip" title="Remaining"></span>
-        <span>II of III remain</span>
+        <span class="pip" title="Remaining"></span>
+        <span>III of IV remain</span>
       </div>
     </footer>
 
@@ -673,7 +685,7 @@
         Raise, Traffic, Parley, Whisper, Play a Stratagem, Yield the Floor. One order is armed at
         a time (<code>.is-selected</code>, gold fill — March here); arming an order sets the map's
         click-meaning. Yield the Floor is quiet-styled and always confirms. The deed pips show
-        the action budget: three per campaign, spent pips hollow; at nought all orders but
+        the action budget: four per campaign, spent pips hollow; at nought all orders but
         Yield the Floor disable.</li>
       <li><b class="callout">12</b> <strong>Event toast</strong> — event-card notices dock top-right of
         the map (ordinary notices keep the top-center <code>.toast-rack</code>, README §2). Thumbnail
