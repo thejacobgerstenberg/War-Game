@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>timur shadow</title>
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- vast crimson sun of the East, low behind the tower -->
+  <circle cx="130" cy="80" r="64" fill="#7A1F2B"/>
+  <!-- carrion birds -->
+  <path d="M 32 26 L 42 19 L 52 26" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <path d="M 204 34 L 214 27 L 224 34" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <!-- scorched earth -->
+  <rect x="0" y="148" width="260" height="12" fill="#2B2118"/>
+  <polygon points="55,148 130,142 205,148" fill="#2B2118"/>
+  <!-- tower of skulls: row 4 (crown) -->
+  <circle cx="130" cy="60" r="15" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="124" cy="57" r="3.5" fill="#2B2118"/>
+  <circle cx="136" cy="57" r="3.5" fill="#2B2118"/>
+  <polygon points="130,62 127,69 133,69" fill="#2B2118"/>
+  <!-- row 3 -->
+  <circle cx="115" cy="86" r="15" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="109" cy="83" r="3.5" fill="#2B2118"/>
+  <circle cx="121" cy="83" r="3.5" fill="#2B2118"/>
+  <polygon points="115,88 112,95 118,95" fill="#2B2118"/>
+  <circle cx="145" cy="86" r="15" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="139" cy="83" r="3.5" fill="#2B2118"/>
+  <circle cx="151" cy="83" r="3.5" fill="#2B2118"/>
+  <polygon points="145,88 142,95 148,95" fill="#2B2118"/>
+  <!-- row 2 -->
+  <circle cx="100" cy="112" r="15" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="94" cy="109" r="3.5" fill="#2B2118"/>
+  <circle cx="106" cy="109" r="3.5" fill="#2B2118"/>
+  <polygon points="100,114 97,121 103,121" fill="#2B2118"/>
+  <circle cx="130" cy="112" r="15" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="124" cy="109" r="3.5" fill="#2B2118"/>
+  <circle cx="136" cy="109" r="3.5" fill="#2B2118"/>
+  <polygon points="130,114 127,121 133,121" fill="#2B2118"/>
+  <circle cx="160" cy="112" r="15" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="154" cy="109" r="3.5" fill="#2B2118"/>
+  <circle cx="166" cy="109" r="3.5" fill="#2B2118"/>
+  <polygon points="160,114 157,121 163,121" fill="#2B2118"/>
+  <!-- row 1 (base) -->
+  <circle cx="85" cy="138" r="15" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="79" cy="135" r="3.5" fill="#2B2118"/>
+  <circle cx="91" cy="135" r="3.5" fill="#2B2118"/>
+  <polygon points="85,140 82,147 88,147" fill="#2B2118"/>
+  <circle cx="115" cy="138" r="15" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="109" cy="135" r="3.5" fill="#2B2118"/>
+  <circle cx="121" cy="135" r="3.5" fill="#2B2118"/>
+  <polygon points="115,140 112,147 118,147" fill="#2B2118"/>
+  <circle cx="145" cy="138" r="15" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="139" cy="135" r="3.5" fill="#2B2118"/>
+  <circle cx="151" cy="135" r="3.5" fill="#2B2118"/>
+  <polygon points="145,140 142,147 148,147" fill="#2B2118"/>
+  <circle cx="175" cy="138" r="15" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="169" cy="135" r="3.5" fill="#2B2118"/>
+  <circle cx="181" cy="135" r="3.5" fill="#2B2118"/>
+  <polygon points="175,140 172,147 178,147" fill="#2B2118"/>
+</svg>

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Plague in the Ports</title>
+
+  <!-- parchment sky -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- harbor water -->
+  <rect x="0" y="120" width="260" height="40" fill="#2C5F7C"/>
+
+  <!-- wave dashes -->
+  <rect x="10" y="134" width="36" height="5" rx="2.5" fill="#2B2118"/>
+  <rect x="58" y="148" width="32" height="5" rx="2.5" fill="#2B2118"/>
+  <rect x="148" y="151" width="32" height="5" rx="2.5" fill="#2B2118"/>
+  <rect x="6" y="150" width="24" height="5" rx="2.5" fill="#2B2118"/>
+
+  <!-- mast and yard -->
+  <rect x="114" y="8" width="7" height="110" fill="#2B2118"/>
+  <rect x="72" y="30" width="92" height="6" fill="#2B2118"/>
+
+  <!-- pennant -->
+  <polygon points="121,8 152,15 121,22" fill="#7A1F2B"/>
+
+  <!-- sail -->
+  <path d="M 78 36 C 104 30 132 30 158 36 C 154 56 154 66 158 84 C 130 76 106 76 78 84 C 82 66 82 56 78 36 Z" fill="#E2D3B3"/>
+
+  <!-- plague cross on the sail -->
+  <rect x="111" y="40" width="13" height="40" fill="#7A1F2B"/>
+  <rect x="97" y="53" width="41" height="13" fill="#7A1F2B"/>
+
+  <!-- hull -->
+  <path d="M 44 94 C 52 126 84 134 118 134 C 152 134 178 124 192 88 C 176 100 150 108 116 108 C 88 108 62 102 44 94 Z" fill="#2B2118"/>
+
+  <!-- quay and warehouse, bleeding off the right edge -->
+  <polygon points="206,160 206,112 224,112 224,96 244,80 260,92 260,160" fill="#2B2118"/>
+
+  <!-- barred merchant door -->
+  <rect x="233" y="112" width="18" height="30" fill="#E2D3B3"/>
+  <polygon points="233,115 237,112 251,139 247,142" fill="#2B2118"/>
+  <polygon points="251,115 247,112 233,139 237,142" fill="#2B2118"/>
+
+  <!-- grave cross on the quay -->
+  <rect x="211" y="94" width="5" height="18" fill="#2B2118"/>
+  <rect x="205" y="99" width="17" height="5" fill="#2B2118"/>
+</svg>

@@ -1,0 +1,761 @@
+/* ==========================================================================
+   IMPERIUM: Twilight of Empires — Phase 3 UI mockups, shared stylesheet
+   ==========================================================================
+   This file is the design-token layer and component kit for every screen in
+   design/mockups/. It is the CONTRACT the client team implements.
+
+   Rules of the scriptorium:
+   - Static CSS only. No external requests of any kind. Fonts are self-hosted
+     woff2 referenced by relative path (they live on feature/design-and-scaffold;
+     until merged the serif fallbacks render — that is expected).
+   - Only the nine locked palette hues below. Derived tones must be mixes of
+     these hues (color-mix) or alpha variants — never a new hue.
+   - Screen-specific CSS goes in a small <style> block in each screen file.
+   - Illuminated-manuscript feel: flat borders, hard offset shadows (no blur),
+     small radii, small-caps display headers, gilded rules.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   0. FONTS — locked stack, self-hosted (see README.md, "Fonts")
+   Paths are relative from design/mockups/ to client/public/fonts/ on
+   feature/design-and-scaffold. Do NOT replace with a fonts.googleapis.com
+   import: under restricted egress that request stalls page load ~13s.
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("../../client/public/fonts/cinzel-latin-600-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("../../client/public/fonts/eb-garamond-latin-400-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "EB Garamond";
+  font-style: italic;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("../../client/public/fonts/eb-garamond-latin-italic-400.woff2") format("woff2");
+}
+
+
+/* --------------------------------------------------------------------------
+   1. DESIGN TOKENS
+   -------------------------------------------------------------------------- */
+:root {
+  /* Locked palette — the nine hues. No others, anywhere. */
+  --porphyry:  #4B1F3F;   /* imperial purple — Byzantium, chrome accents   */
+  --gold:      #C9A227;   /* gilding — hover rims, selection, treasure     */
+  --parchment: #F0E6D2;   /* page ground, light surfaces                   */
+  --vellum:    #E2D3B3;   /* panel ground, hatching, muted surfaces        */
+  --lapis:     #1F4E79;   /* Venice, water, links                          */
+  --deep-sea:  #2C5F7C;   /* Ottomans (board color), secondary water       */
+  --ink:       #2B2118;   /* text, borders, night ground                   */
+  --crimson:   #7A1F2B;   /* Genoa, danger, battle                         */
+  --laurel:    #4A5D3A;   /* Hungary, triumph, confirmation                */
+
+  /* Derived tones — mixes of the locked hues only */
+  --porphyry-deep:   color-mix(in srgb, var(--porphyry) 65%, var(--ink));
+  --gold-soft:       color-mix(in srgb, var(--gold) 45%, var(--parchment));
+  --vellum-shade:    color-mix(in srgb, var(--vellum) 78%, var(--ink));
+  --ink-faint:       color-mix(in srgb, var(--ink) 34%, transparent);
+  --ink-ghost:       color-mix(in srgb, var(--ink) 14%, transparent);
+  --parchment-faint: color-mix(in srgb, var(--parchment) 40%, transparent);
+  --night:           color-mix(in srgb, var(--ink) 82%, var(--porphyry));
+
+  /* Faction accents (board colors — match the crest set on
+     feature/visual-assets; five distinct hues, one per player) */
+  --faction-byzantium: var(--porphyry);
+  --faction-venice:    var(--lapis);
+  --faction-genoa:     var(--crimson);
+  --faction-ottomans:  var(--deep-sea);
+  --faction-hungary:   var(--laurel);
+
+  /* Type */
+  --font-display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --font-body:    "EB Garamond", Garamond, Georgia, serif;
+  --font-mono:    ui-monospace, "Courier New", monospace;
+
+  --text-xs:  0.72rem;
+  --text-sm:  0.85rem;
+  --text-md:  1rem;      /* body = 18px, set on html below */
+  --text-lg:  1.2rem;
+  --text-xl:  1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.6rem;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Radii — manuscripts are square-shouldered; keep radii small */
+  --radius-1: 2px;
+  --radius-2: 4px;
+  --radius-pill: 999px;
+
+  /* Elevation — hard offset shadows, no blur (woodblock, not neumorphism) */
+  --shadow-1: 2px 2px 0 var(--ink-faint);
+  --shadow-2: 4px 4px 0 var(--ink-faint);
+  --shadow-3: 6px 6px 0 var(--ink-faint);
+
+  /* Page ground (overridden by .theme-night) */
+  --page-bg: var(--parchment);
+  --page-fg: var(--ink);
+}
+
+/* Night chrome for board/battle screens: set class on <body> */
+.theme-night {
+  --page-bg: var(--night);
+  --page-fg: var(--parchment);
+  --ink-faint: color-mix(in srgb, var(--ink) 60%, transparent);
+}
+
+
+/* --------------------------------------------------------------------------
+   2. BASE
+   -------------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { font-size: 18px; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  line-height: 1.55;
+  color: var(--page-fg);
+  background: var(--page-bg);
+}
+
+img, svg { max-width: 100%; }
+
+a { color: var(--lapis); text-decoration-color: var(--gold); }
+.theme-night a { color: var(--gold-soft); }
+
+::selection { background: var(--gold); color: var(--ink); }
+
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+
+/* --------------------------------------------------------------------------
+   3. TYPOGRAPHY — small-caps display headers, chronicle body
+   -------------------------------------------------------------------------- */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1.15;
+  margin: 0 0 var(--space-3);
+}
+h1 { font-size: var(--text-3xl); }
+h2 { font-size: var(--text-2xl); }
+h3 { font-size: var(--text-xl); }
+h4 { font-size: var(--text-lg); }
+
+h1 + .rubric, h2 + .rubric {
+  font-style: italic;
+  color: color-mix(in srgb, var(--page-fg) 72%, var(--page-bg));
+  margin-top: calc(-1 * var(--space-2));
+}
+
+code, .counter { font-family: var(--font-mono); font-size: 0.85em; }
+
+/* Ornamental rule — gilded line with a centered fleuron */
+hr {
+  border: none;
+  height: 1px;
+  margin: var(--space-6) auto;
+  background: linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold) 80%, transparent);
+  overflow: visible;
+  position: relative;
+}
+hr::after {
+  content: "❦";
+  position: absolute;
+  top: -0.72em;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 0.5em;
+  background: var(--page-bg);
+  color: var(--gold);
+  font-size: var(--text-md);
+  line-height: 1;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. .asset — graceful fallback box for game art
+   --------------------------------------------------------------------------
+   Wrap EVERY art reference:
+     <figure class="asset asset--card">
+       <img src="../../art/illustrations/events/greek-fire.svg" alt="Greek Fire">
+     </figure>
+   When the file exists (branch merged), the image fills the box. When it is
+   missing, the hatched vellum ground shows through and the browser renders
+   the alt text, centered and legible — a labeled placeholder, never a broken
+   layout. The subtle hatch behind transparent SVGs is acceptable in mockups.
+   -------------------------------------------------------------------------- */
+.asset {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  overflow: hidden;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--vellum) 0 6px,
+    var(--parchment) 6px 12px
+  );
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-1);
+  color: var(--ink);
+}
+.asset > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* These style the alt text when the source is missing: */
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  text-align: center;
+  color: color-mix(in srgb, var(--ink) 74%, var(--vellum));
+  padding: var(--space-2);
+}
+.asset--cover > img { object-fit: cover; }
+
+/* Aspect/size conventions */
+.asset--icon  { display: inline-grid; width: 1.3em; height: 1.3em;
+                vertical-align: -0.22em; border: none; }
+.asset--glyph { display: inline-grid; width: 1.7em; height: 1.7em; }
+.asset--crest { aspect-ratio: 1 / 1; }
+.asset--card  { aspect-ratio: 5 / 7; }
+.asset--wide  { aspect-ratio: 16 / 9; }
+.asset--board { aspect-ratio: 16 / 10; }
+
+
+/* --------------------------------------------------------------------------
+   5. SURFACES — .panel
+   -------------------------------------------------------------------------- */
+.panel {
+  background: var(--vellum);
+  color: var(--ink);
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-2);
+  padding: var(--space-4);
+}
+.panel--parchment { background: var(--parchment); }
+.panel--porphyry {
+  background: var(--porphyry);
+  color: var(--parchment);
+  border-color: var(--gold);
+}
+.panel > .panel-title {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-lg);
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--gold);
+}
+
+
+/* --------------------------------------------------------------------------
+   6. BUTTONS — .btn with primary / quiet / danger variants
+   Interaction contract (README): hover = gold rim; selected = gold fill +
+   ink text; press = shadow collapses (the seal comes down); destructive
+   actions always confirm via .modal.
+   -------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  letter-spacing: 0.06em;
+  padding: 0.55em 1.2em;
+  color: var(--ink);
+  background: var(--vellum);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-1);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+}
+.btn:hover  { box-shadow: var(--shadow-1), 0 0 0 2px var(--gold); }
+.btn:active { transform: translate(2px, 2px); box-shadow: none; }
+
+.btn--primary { background: var(--gold); }
+.btn--quiet {
+  background: transparent;
+  border-color: var(--ink-faint);
+  box-shadow: none;
+}
+.btn--danger {
+  background: var(--crimson);
+  color: var(--parchment);
+}
+
+.btn.is-selected,
+.btn[aria-pressed="true"] {
+  background: var(--gold);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.btn[disabled], .btn.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.btn[disabled]:hover, .btn.is-disabled:hover { box-shadow: none; }
+
+.theme-night .btn--quiet {
+  color: var(--parchment);
+  border-color: var(--parchment-faint);
+}
+
+
+/* --------------------------------------------------------------------------
+   7. PILLS & RESOURCE CHIPS
+   -------------------------------------------------------------------------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+  padding: 0.12em 0.75em;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--ink-faint);
+  border-radius: var(--radius-pill);
+}
+.pill--gold    { background: var(--gold); border-color: var(--ink); }
+.pill--crimson { background: var(--crimson); color: var(--parchment); }
+.pill--laurel  { background: var(--laurel);  color: var(--parchment); }
+.pill--lapis   { background: var(--lapis);   color: var(--parchment); }
+
+/* Resource chip — icon slot + value + (optional) name.
+   <span class="resource-chip">
+     <span class="asset asset--icon"><img src="../../art/icons/grain.svg" alt="Grain"></span>
+     <b class="value">7</b><span class="name">Grain</span>
+   </span> */
+.resource-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.2em 0.8em 0.2em 0.5em;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-1);
+  font-size: var(--text-sm);
+}
+.resource-chip .value { font-family: var(--font-mono); font-weight: 700; }
+.resource-chip .name  { font-variant: small-caps; letter-spacing: 0.04em; }
+.resource-chip.is-short { border-color: var(--crimson); }         /* cannot afford */
+.resource-chip.is-short .value { color: var(--crimson); }
+
+
+/* --------------------------------------------------------------------------
+   8. PRESTIGE TRACK — the victory track
+   The track is 0-BASED: it runs nought to twenty, so the first child is
+   notch 0 and milestone notches 5/10/15/20 are children 6/11/16/21 —
+   hence the 5n+1 arithmetic below (nought itself is no milestone).
+   <ol class="prestige-track">
+     <li class="notch">0</li>
+     <li class="notch">1</li> …
+     <li class="notch is-held" data-faction="venice">8
+       <span class="marker asset asset--icon"><img src="../../art/crests/venice.svg" alt="Venice"></span>
+     </li> …
+   </ol>
+   -------------------------------------------------------------------------- */
+.prestige-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1);
+  background: var(--porphyry);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-1);
+  width: fit-content;
+}
+.prestige-track .notch {
+  position: relative;
+  min-width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  background: var(--vellum);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-1);
+}
+.prestige-track .notch:nth-child(5n+1):not(:first-child) {
+  background: var(--gold-soft);              /* gilded milestones: 5, 10, 15, 20 */
+}
+.prestige-track .notch.is-held { outline: 2px solid var(--gold); z-index: 1; }
+.prestige-track .notch .marker {
+  position: absolute;
+  top: -0.75em;
+  right: -0.4em;
+  width: 1.4em;
+  height: 1.4em;
+  background: var(--parchment);
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+}
+
+
+/* --------------------------------------------------------------------------
+   9. PHASE TRACK — the five canonical phases:
+      Income · Muster · Campaign · Council · Twilight
+   <ol class="phase-track">
+     <li class="phase is-done"> <span class="phase-glyph asset"><img
+        src="../../art/icons/phase-income.svg" alt="Income"></span>
+        <span class="phase-name">Income</span></li>
+     <li class="phase is-current">…</li> …
+   </ol>
+   -------------------------------------------------------------------------- */
+.phase-track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.phase {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.35em 0.9em;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-sm);
+  letter-spacing: 0.05em;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--ink-faint);
+  border-radius: var(--radius-1);
+}
+.phase + .phase::before {          /* gilded lozenge between phases */
+  content: "◆";
+  position: absolute;
+  left: calc(-1 * var(--space-4) + 2px);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--gold);
+  font-size: 0.55em;
+}
+.phase .phase-glyph { width: 1.7em; height: 1.7em; border: none; }
+.phase.is-current {
+  background: var(--gold);
+  border-color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+.phase.is-done { opacity: 0.55; }
+
+
+/* --------------------------------------------------------------------------
+   10. TOASTS — heralds' notices (behavior contract in README.md)
+   Rack sits fixed top-center, below the phase track. Newest on top, max 3.
+   -------------------------------------------------------------------------- */
+.toast-rack {
+  position: fixed;
+  top: var(--space-5);
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  z-index: 90;
+}
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.5em 1.2em;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-left: 5px solid var(--gold);
+  border-radius: var(--radius-1);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-sm);
+}
+.toast--error   { border-left-color: var(--crimson); }
+.toast--triumph { border-left-color: var(--laurel); }
+
+
+/* --------------------------------------------------------------------------
+   11. ADVISOR BUBBLE — the court counsellor speaks
+   <div class="advisor-bubble">The Doge smiles, sire. Beware his teeth.
+     <cite>— The Chancellor</cite></div>
+   -------------------------------------------------------------------------- */
+.advisor-bubble {
+  position: relative;
+  max-width: 38ch;
+  padding: var(--space-3) var(--space-4);
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-1);
+  font-style: italic;
+}
+.advisor-bubble::after {           /* tail, lower left, toward the advisor */
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 1.4rem;
+  border-style: solid;
+  border-width: 10px 12px 0 0;
+  border-color: var(--gold) transparent transparent transparent;
+}
+.advisor-bubble cite {
+  display: block;
+  margin-top: var(--space-2);
+  font-style: normal;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  color: var(--porphyry);
+}
+
+
+/* --------------------------------------------------------------------------
+   12. MODAL — confirmations, event reveals
+   <div class="modal-scrim"><div class="modal" role="dialog"> … </div></div>
+   Destructive confirmations: title, one line of consequence, .btn--danger
+   with the verb + .btn--quiet to stay the hand. See README.md.
+   -------------------------------------------------------------------------- */
+.modal-scrim {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--ink) 62%, transparent);
+  z-index: 100;
+  padding: var(--space-4);
+}
+.modal {
+  width: min(34rem, 100%);
+  background: var(--parchment);
+  color: var(--ink);
+  border: 2px solid var(--gold);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-3);
+  padding: var(--space-5);
+}
+.modal .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+
+/* --------------------------------------------------------------------------
+   13. TABS — .tab-row (CSS-only via hidden radios; tiny inline JS also fine)
+   Markup for the CSS-only form, radios FIRST, then row, then panels:
+     <div class="tab-group">
+       <input type="radio" name="tg1" id="tg1-a" checked>
+       <input type="radio" name="tg1" id="tg1-b">
+       <div class="tab-row" role="tablist">
+         <label class="tab" for="tg1-a">Provinces</label>
+         <label class="tab" for="tg1-b">Hosts</label>
+       </div>
+       <div class="tab-panels">
+         <section class="tab-panel">…</section>
+         <section class="tab-panel">…</section>
+       </div>
+     </div>
+   Supports up to four tabs; or drive .is-active with two lines of JS.
+   -------------------------------------------------------------------------- */
+.tab-group > input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.tab-row {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 2px solid var(--gold);
+}
+.tab {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-sm);
+  letter-spacing: 0.05em;
+  padding: 0.4em 1.1em;
+  background: var(--vellum);
+  color: var(--ink);
+  border: 1px solid var(--vellum-shade);
+  border-bottom: none;
+  border-radius: var(--radius-1) var(--radius-1) 0 0;
+  cursor: pointer;
+}
+.tab:hover { box-shadow: inset 0 0 0 2px var(--gold); }
+.tab-panel { display: none; padding: var(--space-4) 0; }
+
+/* active states, radio-driven (n = 1..4) */
+.tab-group > input:nth-of-type(1):checked ~ .tab-row .tab:nth-of-type(1),
+.tab-group > input:nth-of-type(2):checked ~ .tab-row .tab:nth-of-type(2),
+.tab-group > input:nth-of-type(3):checked ~ .tab-row .tab:nth-of-type(3),
+.tab-group > input:nth-of-type(4):checked ~ .tab-row .tab:nth-of-type(4),
+.tab.is-active {
+  background: var(--gold);
+  border-color: var(--ink);
+  font-weight: 700;
+}
+.tab-group > input:nth-of-type(1):checked ~ .tab-panels .tab-panel:nth-of-type(1),
+.tab-group > input:nth-of-type(2):checked ~ .tab-panels .tab-panel:nth-of-type(2),
+.tab-group > input:nth-of-type(3):checked ~ .tab-panels .tab-panel:nth-of-type(3),
+.tab-group > input:nth-of-type(4):checked ~ .tab-panels .tab-panel:nth-of-type(4),
+.tab-panel.is-active { display: block; }
+
+
+/* --------------------------------------------------------------------------
+   14. TABLES — ledgers and muster rolls
+   -------------------------------------------------------------------------- */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  background: var(--parchment);
+  color: var(--ink);
+}
+.table th {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 2px solid var(--gold);
+}
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--ink-ghost);
+}
+.table tbody tr:hover { background: color-mix(in srgb, var(--gold) 14%, transparent); }
+.table .num { font-family: var(--font-mono); text-align: right; }
+
+
+/* --------------------------------------------------------------------------
+   15. CALLOUTS & LEGEND — spec annotations, NOT shipping UI
+   Place numbered markers over a zone (parent gets position:relative):
+     <b class="callout" style="top:8px; left:8px">1</b>
+   Then list them:
+     <ol class="legend"><li><b class="callout">1</b> Phase track — …</li></ol>
+   -------------------------------------------------------------------------- */
+.callout {
+  position: absolute;
+  z-index: 50;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: grid;
+  place-items: center;
+  background: var(--crimson);
+  color: var(--parchment);
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  font-style: normal;
+  box-shadow: var(--shadow-1);
+}
+.legend {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-4);
+  background: var(--vellum);
+  border: 1px dashed var(--ink-faint);
+  border-radius: var(--radius-2);
+  font-size: var(--text-sm);
+}
+.legend li { margin: 0 0 var(--space-2); padding-left: 2.2rem; position: relative; }
+.legend .callout { position: absolute; left: var(--space-1); top: 0; }
+
+
+/* --------------------------------------------------------------------------
+   16. COLORBLIND MODE — pattern overlays (toggle contract in README.md)
+   Add .colorblind to <body>. Any element carrying data-faction shows its
+   faction pattern in addition to its color; color is never the only channel.
+   -------------------------------------------------------------------------- */
+[data-faction="byzantium"] { --faction-color: var(--faction-byzantium); }
+[data-faction="venice"]    { --faction-color: var(--faction-venice); }
+[data-faction="genoa"]     { --faction-color: var(--faction-genoa); }
+[data-faction="ottomans"]  { --faction-color: var(--faction-ottomans); }
+[data-faction="hungary"]   { --faction-color: var(--faction-hungary); }
+
+.faction-swatch {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-1);
+  background-color: var(--faction-color, var(--vellum));
+}
+.colorblind [data-faction="byzantium"] .faction-swatch,
+.colorblind .faction-swatch[data-faction="byzantium"] {
+  background-image: repeating-linear-gradient(45deg,
+    var(--parchment-faint) 0 2px, transparent 2px 7px);              /* diagonal */
+}
+.colorblind [data-faction="venice"] .faction-swatch,
+.colorblind .faction-swatch[data-faction="venice"] {
+  background-image: repeating-linear-gradient(0deg,
+    var(--parchment-faint) 0 2px, transparent 2px 7px);              /* waves */
+}
+.colorblind [data-faction="genoa"] .faction-swatch,
+.colorblind .faction-swatch[data-faction="genoa"] {
+  background-image: repeating-linear-gradient(90deg,
+    var(--parchment-faint) 0 2px, transparent 2px 7px);              /* pales */
+}
+.colorblind [data-faction="ottomans"] .faction-swatch,
+.colorblind .faction-swatch[data-faction="ottomans"] {
+  background-image: repeating-linear-gradient(-45deg,
+    var(--parchment-faint) 0 2px, transparent 2px 7px);              /* bends */
+}
+.colorblind [data-faction="hungary"] .faction-swatch,
+.colorblind .faction-swatch[data-faction="hungary"] {
+  background-image: repeating-radial-gradient(circle,
+    var(--parchment-faint) 0 1px, transparent 1px 5px);              /* ermine */
+}
+
+
+/* --------------------------------------------------------------------------
+   17. SMALL LAYOUT HELPERS (use sparingly; screens keep their own CSS small)
+   -------------------------------------------------------------------------- */
+.row   { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.stack { display: grid; gap: var(--space-3); }
+.zone  { position: relative; }     /* callout anchor for annotated regions */
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .tab, .toast { transition: box-shadow 120ms ease, transform 80ms ease; }
+}
