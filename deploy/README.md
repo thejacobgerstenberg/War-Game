@@ -281,4 +281,5 @@ API/socket, not the game UI).
 | `deploy/nginx.conf` | nginx site config for the client image: serves the SPA, proxies `/socket.io/` + `/healthz` to the server. |
 | `deploy/docker-compose.yml` | Local prod-like two-service stack (server + nginx client on `localhost:3000`). |
 | `deploy/dockerignore` | Staged `.dockerignore` — copy to repo root when adopting (root is owned by the scaffold team). |
-| `deploy/workflows-proposed/` | CI/CD workflow proposals — staged here because `.github/` is owned by the CI workstream. |
+
+CI: image builds are handled by the adopted workflow in `.github/workflows/build-images.yml` (owned by the CI workstream, originally proposed by this workstream; see PR #1).
