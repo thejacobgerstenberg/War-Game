@@ -1,0 +1,241 @@
+/* ==========================================================================
+   IMPERIUM — cards area (card- prefix): event-card reveal + tactic hand tray
+   ==========================================================================
+   Per design/mockups/game.html callouts 12 (event toast, docked top-right of
+   the map) and the tactic tray (bottom-center). Frames are the vendored
+   art/cards/*.svg (300x420, 5:7); colors are color-mix()es of the locked
+   tokens only.
+   ========================================================================== */
+
+/* -- Event toast (top-right of the map; the slot positions it) ------------- */
+.card-event-toast {
+  align-items: flex-start;
+  text-align: left;
+  max-width: 24rem;
+  /* The whole toast is a button (click opens the full card). Explicit
+     resets beat theme.css's global `button` styling. */
+  font: inherit;
+  font-family: var(--font-body);
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+  transform: none;
+  filter: none;
+}
+.card-event-toast:hover,
+.card-event-toast:focus-visible {
+  box-shadow: var(--shadow-2), 0 0 0 2px var(--gold);
+  transform: none;
+  filter: none;
+}
+.card-event-toast .card-thumb {
+  width: 3.4rem;
+  aspect-ratio: 5 / 7;
+  flex: none;
+  border: 1px solid var(--ink-faint);
+  border-radius: 2px;
+  background: var(--vellum) center / cover no-repeat;
+  overflow: hidden;
+}
+.card-event-toast .card-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.card-event-toast b {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}
+
+/* -- Full event card (inside the reveal modal) ------------------------------ */
+.card-face {
+  position: relative;
+  width: min(19rem, 64vw);
+  aspect-ratio: 5 / 7;
+  margin-inline: auto;
+  background: center / 100% 100% no-repeat;
+  color: var(--ink);
+  border-radius: 10px;
+  box-shadow: var(--shadow-2);
+}
+/* Era-styled border: the reveal ring takes the era's tone —
+   I (Omens of Peace) laurel, II (Omens of War) crimson, III (Omens of the
+   End) porphyry night. */
+.card-face.card-era-1 { outline: 3px solid var(--laurel); outline-offset: 2px; }
+.card-face.card-era-2 { outline: 3px solid var(--crimson); outline-offset: 2px; }
+.card-face.card-era-3 {
+  outline: 3px solid color-mix(in srgb, var(--porphyry) 65%, var(--ink));
+  outline-offset: 2px;
+}
+
+/* Content zones laid over the frame's ribbon / art window / body areas
+   (frame viewBox 300x420: ribbon y26-56, art window x30 y70 w240 h140,
+   body area y232-335, footer type line y376). */
+.card-face .card-name {
+  position: absolute;
+  top: 6.2%;
+  left: 15%;
+  right: 15%;
+  height: 7.1%;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--parchment);
+}
+.card-face .card-art {
+  position: absolute;
+  top: 16.7%;
+  left: 10%;
+  right: 10%;
+  height: 33.3%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.card-face .card-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.card-face .card-body {
+  position: absolute;
+  top: 55.5%;
+  left: 11%;
+  right: 11%;
+  bottom: 15%;
+  overflow-y: auto;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.card-face .card-body .card-rules { margin: 0 0 0.4em; }
+.card-face .card-body .card-flavor {
+  margin: 0;
+  font-style: italic;
+  color: color-mix(in srgb, var(--ink) 78%, var(--parchment));
+}
+.card-face .card-foot {
+  position: absolute;
+  left: 13%;
+  right: 13%;
+  bottom: 8%;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+.card-reveal-caption {
+  margin: var(--space-3) 0 0;
+  text-align: center;
+  font-style: italic;
+  font-size: var(--text-sm);
+}
+
+/* -- Tactic hand tray (bottom-center; the slot positions it) ---------------- */
+.card-tray {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+.card-tray .card-tray-caption {
+  position: relative;
+  z-index: 6; /* stays legible above the tucked fan */
+}
+.card-tray .card-fan {
+  display: flex;
+  align-items: flex-end;
+  padding: 0 var(--space-3);
+}
+.card-tray .card-fan .card-tactic {
+  position: relative;
+  width: 6.4rem;
+  aspect-ratio: 5 / 7;
+  margin: 0 -1.1rem;
+  padding: 0;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  background: var(--vellum) center / 100% 100% no-repeat;
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  text-transform: none; /* beat theme.css's global button uppercase */
+  transform: translateY(28%) rotate(var(--card-tilt, 0deg));
+  transform-origin: 50% 120%;
+}
+.card-tray .card-fan .card-tactic:hover,
+.card-tray .card-fan .card-tactic:focus-visible {
+  transform: translateY(2%) scale(1.35);
+  z-index: 5;
+  box-shadow: var(--shadow-2), 0 0 0 2px var(--gold);
+  filter: none;
+}
+.card-tray .card-fan .card-tactic .card-tactic-name {
+  position: absolute;
+  top: 6.2%;
+  left: 14%;
+  right: 14%;
+  height: 7.1%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-weight: 700;
+  font-size: 0.42rem;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  color: var(--parchment);
+  text-align: center;
+}
+.card-tray .card-fan .card-tactic .card-tactic-effect {
+  position: absolute;
+  top: 55.5%;
+  left: 12%;
+  right: 12%;
+  bottom: 15%;
+  overflow: hidden;
+  font-size: 0.4rem;
+  line-height: 1.3;
+  text-align: left;
+}
+.card-tray .card-fan .card-tactic.is-committed {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+.card-tray .card-fan .card-tactic .card-tactic-committed {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 2.5%;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: 0.42rem;
+  letter-spacing: 0.06em;
+  color: var(--porphyry);
+  text-align: center;
+}
+.card-tray .card-hand-limit.is-over { border-color: var(--crimson); color: var(--crimson); }
+
+/* Detail modal body (the frame's art window keeps its laurel motif). */
+.card-tactic-detail { display: grid; gap: var(--space-3); justify-items: center; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .card-tray .card-fan .card-tactic { transition: transform 120ms ease, box-shadow 120ms ease; }
+  .card-event-toast { animation: card-toast-in 240ms ease; }
+  @keyframes card-toast-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+  }
+}

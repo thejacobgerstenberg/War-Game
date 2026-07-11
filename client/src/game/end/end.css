@@ -1,0 +1,487 @@
+/* ==========================================================================
+   end.css — Victory screen & the Illuminated Chronicle (area prefix: end-)
+   ==========================================================================
+   Adapted from design/mockups/chronicle.html's screen-specific <style> block
+   (the Phase 3 contract for this screen), re-expressed against the client
+   tokens (client/src/styles/tokens.css). Only the locked hues + color-mix()
+   derivations are used — no new hex anywhere.
+
+   The screen mounts inside the shared <Modal> (ui/Modal.tsx) as a full-page
+   scroll; .end-screen widens the dialog and removes its padding so the
+   porphyry banner can run edge to edge. The parchment book carries its own
+   ground colors, so it reads correctly under .theme-night as well.
+
+   @media print: "Bind the Volume" commits the chronicle to paper — chrome,
+   actions and the app behind the scrim are suppressed; the book and the
+   reckoning remain.
+   ========================================================================== */
+
+/* ---- The dialog shell ---------------------------------------------------- */
+
+.modal.end-screen {
+  width: min(1200px, 100%);
+  max-height: min(94vh, 100%);
+  padding: 0;
+  background: var(--parchment);
+}
+/* The Modal's own small-caps title is redundant with the banner h1 — keep it
+   for the dialog's aria-label, hide it visually. */
+.end-screen > .modal-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- Zone 1 · winner banner (gold on porphyry) --------------------------- */
+
+.end-victory-head {
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+  background: linear-gradient(180deg, var(--night), var(--porphyry));
+  color: var(--parchment);
+  border-bottom: 4px double var(--gold);
+}
+.end-verdict-pill {
+  margin-bottom: var(--space-3);
+}
+.end-victory-crest {
+  width: 6.5rem;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  padding: var(--space-2);
+  background: var(--parchment);
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+}
+.end-victory-crest img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.end-victory-title {
+  color: var(--gold);
+  font-family: var(--font-display);
+  font-size: clamp(var(--text-2xl), 5vw, 3rem);
+  letter-spacing: 0.1em;
+  margin: var(--space-3) 0 var(--space-2);
+}
+.end-victory-sub {
+  font-size: var(--text-lg);
+  letter-spacing: 0.18em;
+  margin: 0 0 var(--space-3);
+}
+.end-victory-quote {
+  max-width: 58ch;
+  margin: 0 auto var(--space-3);
+  font-style: italic;
+  color: var(--gold-soft);
+}
+.end-victory-body {
+  max-width: 62ch;
+  margin: 0 auto;
+  color: color-mix(in srgb, var(--parchment) 88%, var(--gold));
+}
+.end-victory-body p {
+  margin: 0 0 var(--space-2);
+  white-space: pre-line;
+}
+.end-victory-footer {
+  margin: var(--space-3) 0 var(--space-4);
+  color: var(--gold);
+  letter-spacing: 0.12em;
+}
+.end-victory-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+/* ---- The main scroll ------------------------------------------------------ */
+
+.end-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  display: grid;
+  gap: var(--space-6);
+  color: var(--ink);
+}
+.end-rule {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--ink-ghost);
+  margin: 0;
+}
+
+/* ---- Zones 2–3 · reckoning + epilogues ------------------------------------ */
+
+.end-verdict-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+.end-panel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.end-title-icon {
+  width: 1.2em;
+  height: 1.2em;
+}
+.end-table-scroll {
+  overflow-x: auto;
+}
+.end-standings .end-seat {
+  font-family: var(--font-mono);
+}
+.end-standings tr.end-standing-first td {
+  background: var(--gold-soft);
+}
+.end-player-name {
+  font-size: var(--text-xs);
+  color: color-mix(in srgb, var(--ink) 66%, var(--vellum));
+}
+.end-fate-quiet {
+  font-style: italic;
+  font-size: var(--text-sm);
+}
+.end-standings-note {
+  font-size: var(--text-sm);
+  font-style: italic;
+  margin: var(--space-3) 0 0;
+}
+
+.end-epilogue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.end-epilogue-list li {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+.end-epilogue-crest {
+  width: 2.2rem;
+  margin: 0;
+}
+.end-epilogue-crest img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.end-epilogue-name {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}
+.end-epilogue-line {
+  margin: 0;
+  font-style: italic;
+  font-size: var(--text-sm);
+}
+
+/* ---- Zone 4 · the book (parchment double-page spread) --------------------- */
+
+.end-book {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 2px solid var(--gold);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-3);
+}
+.end-book::before {
+  /* the spine's shadowed gutter */
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 28px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, var(--ink-ghost), transparent);
+  pointer-events: none;
+}
+.end-page {
+  padding: var(--space-6);
+  min-width: 0;
+}
+.end-chapter-head {
+  text-align: center;
+  margin-bottom: var(--space-5);
+}
+.end-ornament {
+  display: block;
+  color: var(--gold);
+  letter-spacing: 0.9em;
+  padding-left: 0.9em;
+}
+.end-book-title {
+  font-family: var(--font-display);
+  margin: var(--space-2) 0;
+}
+.end-book-title-line {
+  display: block;
+}
+.end-era-when {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--porphyry);
+  margin: var(--space-5) 0 0;
+}
+.end-era-when:first-child {
+  margin-top: 0;
+}
+.end-chapter-title {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  margin: var(--space-2) 0 var(--space-3);
+}
+.end-chronicle-body p {
+  text-align: justify;
+  hyphens: auto;
+  margin: 0 0 var(--space-3);
+}
+.end-drop-cap {
+  float: left;
+  font-family: var(--font-display);
+  font-size: 3.1rem;
+  line-height: 0.9;
+  padding: 0.16em 0.24em;
+  margin: 0.1em 0.4em 0 0;
+  background: var(--porphyry);
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  box-shadow: var(--shadow-1);
+}
+.end-opener {
+  min-height: 3.4rem; /* room for the drop cap on short openers */
+}
+
+/* Marginalia — key battles, storms and great works, icon + word. */
+.end-marginalia {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) 0 0;
+  border-top: 1px solid var(--ink-ghost);
+  display: grid;
+  gap: var(--space-1);
+}
+.end-marginalia-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+.end-marginalia-icon {
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+}
+
+.end-plate {
+  margin: var(--space-4) 0 0;
+}
+.end-plate img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--ink-ghost);
+}
+.end-plate-caption {
+  font-size: var(--text-sm);
+  font-style: italic;
+  text-align: center;
+  margin: var(--space-2) 0 0;
+}
+.end-colophon {
+  text-align: center;
+  font-style: italic;
+  margin: var(--space-5) 0 0;
+}
+
+/* ---- Zone 5 · the era timeline rail ---------------------------------------- */
+
+.end-glance-title {
+  text-align: center;
+  font-family: var(--font-display);
+  margin: 0 0 var(--space-2);
+}
+.end-glance-rubric {
+  text-align: center;
+  margin: 0 0 var(--space-5);
+}
+.end-era-rail {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+.end-rail-title {
+  font-family: var(--font-display);
+  margin: 0 0 var(--space-3);
+}
+.end-pip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 var(--space-4);
+  border-left: 2px solid var(--gold);
+}
+.end-pip {
+  position: relative;
+  padding: var(--space-2) 0;
+}
+.end-pip::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--space-4) - 6px);
+  top: 1.4rem;
+  width: 10px;
+  height: 10px;
+  background: var(--gold);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+.end-pip--fatal::before {
+  background: var(--crimson);
+}
+.end-pip-button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-1);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-1);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: none;
+  cursor: pointer;
+}
+.end-pip-button:hover {
+  box-shadow: 0 0 0 2px var(--gold);
+}
+.end-pip-art {
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ink-ghost);
+  background: var(--vellum);
+  overflow: hidden;
+}
+.end-pip-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.end-pip-art-blank {
+  color: var(--gold);
+}
+.end-pip-name {
+  display: block;
+  font-size: var(--text-sm);
+}
+.end-pip-when {
+  display: block;
+  font-size: var(--text-xs);
+  color: color-mix(in srgb, var(--ink) 66%, var(--vellum));
+}
+.end-pip-record {
+  margin: var(--space-1) 0 0 calc(2.4rem + var(--space-3));
+  font-size: var(--text-sm);
+}
+.end-pip-flavor {
+  font-style: italic;
+  margin: 0 0 var(--space-1);
+}
+.end-pip-reading {
+  margin: 0;
+  color: color-mix(in srgb, var(--ink) 74%, var(--vellum));
+}
+
+/* ---- Zone 6 · closing actions ---------------------------------------------- */
+
+.end-bind-row {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.end-grand {
+  font-size: var(--text-md);
+  padding: 0.7em 1.6em;
+}
+
+/* ---- Narrow viewports -------------------------------------------------------- */
+
+@media (max-width: 920px) {
+  .end-verdict-grid,
+  .end-era-rail {
+    grid-template-columns: 1fr;
+  }
+  .end-book {
+    grid-template-columns: 1fr;
+  }
+  .end-book::before {
+    display: none;
+  }
+}
+
+/* ---- Print: "Bind the Volume" ------------------------------------------------ */
+
+@media print {
+  /* The app behind the scrim does not print; the volume does. */
+  #root {
+    display: none;
+  }
+  .modal-scrim:has(.end-screen) {
+    position: static;
+    padding: 0;
+    background: none;
+    display: block;
+  }
+  .modal.end-screen {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    border: 0;
+    box-shadow: none;
+  }
+  .end-victory-actions,
+  .end-bind-row,
+  .end-pip-button:hover {
+    display: none;
+  }
+  .end-book {
+    box-shadow: none;
+  }
+  .end-book,
+  .end-era-rail .panel {
+    break-inside: avoid;
+  }
+}

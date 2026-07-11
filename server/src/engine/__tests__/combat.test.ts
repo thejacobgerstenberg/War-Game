@@ -38,7 +38,6 @@ import { resolveBattle, resolveNaval, resolveSiege } from "../combat.js";
 vi.mock("../tactics/index.js", () => ({
   playTactic: vi.fn((state: GameState) => state),
 }));
-// eslint-disable-next-line import/first
 import { playTactic } from "../tactics/index.js";
 
 // ---------------------------------------------------------------------------

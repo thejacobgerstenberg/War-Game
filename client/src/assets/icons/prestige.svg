@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="prestige-icon" role="img" aria-labelledby="prestige-title">
+  <title id="prestige-title">Prestige — laurel crown, two branches meeting</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — action icon: PRESTIGE
+       Victor's laurel crown: two branches crossing at the base,
+       climbing the sides of a r=22 ring, tips opening at the top.
+       One leaf shape is defined once and swept around the ring by
+       rotation; the whole left branch is a mirror of the right.
+       currentColor only.
+       ============================================================ -->
+
+  <defs>
+    <!-- == single laurel leaf: pointed base at origin, tip on +x == -->
+    <path id="prestige-leaf" fill="currentColor" d="
+      M0 0 Q2.5 -3.4 6.5 -3.4 Q10.5 -2.4 12 0
+      Q10.5 2.4 6.5 3.4 Q2.5 3.4 0 0 Z"/>
+
+    <!-- == leaf pair astride the stem at the ring's bottom point;
+         placed along the branch by rotation about (32,32) == -->
+    <g id="prestige-leaf-pair">
+      <use href="#prestige-leaf" transform="translate(32.6 52) rotate(-36)"/>
+      <use href="#prestige-leaf" transform="translate(32.6 54.6) rotate(28)"/>
+    </g>
+
+    <!-- == laurel berry, riding the inner edge of the stem == -->
+    <circle id="prestige-berry" fill="currentColor" cx="32" cy="51" r="2.1"/>
+  </defs>
+
+  <!-- == right branch: stem arc, six leaf pairs, three berries,
+       and a closing tip leaf == -->
+  <g id="prestige-branch-right">
+    <path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"
+          d="M27.8 53.6 A22 22 0 0 0 44.3 13.8"/>
+    <use href="#prestige-leaf-pair" transform="rotate(-14 32 32)"/>
+    <use href="#prestige-leaf-pair" transform="rotate(-36 32 32)"/>
+    <use href="#prestige-leaf-pair" transform="rotate(-58 32 32)"/>
+    <use href="#prestige-leaf-pair" transform="rotate(-80 32 32)"/>
+    <use href="#prestige-leaf-pair" transform="rotate(-102 32 32)"/>
+    <use href="#prestige-leaf-pair" transform="rotate(-124 32 32)"/>
+    <use href="#prestige-berry" transform="rotate(-25 32 32)"/>
+    <use href="#prestige-berry" transform="rotate(-69 32 32)"/>
+    <use href="#prestige-berry" transform="rotate(-113 32 32)"/>
+    <use href="#prestige-leaf" transform="rotate(-146 32 32) translate(32.4 53) rotate(-18)"/>
+  </g>
+
+  <!-- == left branch: mirror of the right; the two stem butts
+       cross at the bottom centre == -->
+  <use href="#prestige-branch-right" transform="matrix(-1 0 0 1 64 0)"/>
+</svg>

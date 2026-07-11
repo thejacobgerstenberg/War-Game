@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="army-icon" role="img" aria-labelledby="army-title">
+  <title id="army-title">Army — spear crossed behind a round shield</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — action icon: ARMY
+       Round infantry shield with a spear crossed diagonally behind
+       it. "Behind" is told single-color style: the shaft is drawn
+       as two visible stubs that stop short of the shield rim,
+       leaving a breathing gap. Shield detail (rim channel, Greek
+       cross) is evenodd negative space. currentColor only.
+       ============================================================ -->
+
+  <!-- == spear: axis 45 degrees through the shield centre (30,37);
+       local x runs along the shaft toward the blade tip == -->
+  <g fill="currentColor" transform="translate(30 37) rotate(-45)">
+    <!-- upper shaft stub (gap of 2.5 off the rim at x=20.5) -->
+    <rect x="20.5" y="-2.25" width="8.5" height="4.5"/>
+    <!-- leaf-shaped blade -->
+    <path d="M28 -2.25 Q34 -5.4 40 0 Q34 5.4 28 2.25 Z"/>
+    <!-- lower shaft stub with rounded butt -->
+    <rect x="-31.5" y="-2.25" width="11" height="4.5" rx="2"/>
+  </g>
+
+  <!-- == shield: solid disc r=18 at (30,37); cut-outs: rim channel
+       (r 13.5..15.5) and a Greek cross at the boss == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M30 19 A18 18 0 1 0 30 55 A18 18 0 1 0 30 19 Z
+    M30 21.5 A15.5 15.5 0 1 1 30 52.5 A15.5 15.5 0 1 1 30 21.5 Z
+    M30 23.5 A13.5 13.5 0 1 0 30 50.5 A13.5 13.5 0 1 0 30 23.5 Z
+    M27.8 26.5 H32.2 V34.8 H40.5 V39.2 H32.2 V47.5 H27.8 V39.2 H19.5 V34.8 H27.8 Z"/>
+</svg>

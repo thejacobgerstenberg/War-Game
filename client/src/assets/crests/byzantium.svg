@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-labelledby="byzantium-title byzantium-desc">
+  <title id="byzantium-title">Byzantium (Palaiologos)</title>
+  <desc id="byzantium-desc">Faction crest: a gold double-headed eagle displayed, both heads crowned, bearing cross-staff and orb, on an imperial porphyry shield with a gold rim and Greek-key band.</desc>
+
+  <!-- ==================== DEFS ==================== -->
+  <defs>
+    <!-- Canonical shield outline, reused for coat, clip and rim -->
+    <path id="byzantium-shield-outline" d="M100 12 L180 36 V118 C180 178 148 212 100 228 C52 212 20 178 20 118 V36 Z"/>
+
+    <clipPath id="byzantium-shield-clip">
+      <use href="#byzantium-shield-outline"/>
+    </clipPath>
+
+    <!-- Left half of the eagle (head, wing, leg); mirrored for the right side -->
+    <g id="byzantium-eagle-half">
+      <!-- wing: bold displayed wing, four feather points on the lower edge -->
+      <path d="M98 88
+               C86 76 62 70 42 78
+               C34 82 29 92 28 102
+               L27 124 L39 118
+               L35 144 L48 136
+               L46 160 L59 150
+               L61 170 L73 156
+               C83 146 90 132 93 116
+               C95 106 96 96 98 88 Z"
+            fill="#C9A227" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- wing-fold detail line -->
+      <path d="M90 104 C84 92 72 84 58 82" fill="none" stroke="#2B2118" stroke-width="2.5"
+            stroke-opacity="0.45" stroke-linecap="round"/>
+      <!-- neck and outward-facing head with hooked beak -->
+      <path d="M106 96
+               C98 84 94 76 90 68
+               C88 56 80 48 69 48
+               C61 48 54 51 48 56
+               C44 59 45 64 50 64
+               L60 63
+               C64 72 70 78 80 84
+               C87 91 92 97 94 104 Z"
+            fill="#C9A227" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- eye -->
+      <circle cx="67" cy="57" r="2.5" fill="#2B2118"/>
+      <!-- crown -->
+      <path d="M58 52 L58 40 L65 45 L69 37 L73 45 L80 40 L80 52 Z"
+            fill="#C9A227" stroke="#2B2118" stroke-width="2" stroke-linejoin="round"/>
+      <!-- leg + claw toes: ink under-strokes give them a thin outline so they
+           read cleanly where they cross the wing's outline -->
+      <path d="M90 138 L70 164" fill="none" stroke="#2B2118" stroke-width="10.5" stroke-linecap="round"/>
+      <path d="M70 164 L61 170 M70 164 L65 177 M70 164 L73 176"
+            fill="none" stroke="#2B2118" stroke-width="7" stroke-linecap="round"/>
+      <!-- leg -->
+      <path d="M90 138 L70 164" fill="none" stroke="#C9A227" stroke-width="8" stroke-linecap="round"/>
+      <!-- claw toes -->
+      <path d="M70 164 L61 170 M70 164 L65 177 M70 164 L73 176"
+            fill="none" stroke="#C9A227" stroke-width="4.5" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  <!-- ==================== SHIELD BASE COAT ==================== -->
+  <use href="#byzantium-shield-outline" fill="#4B1F3F"/>
+
+  <!-- ==================== CHARGE (clipped to shield) ==================== -->
+  <g clip-path="url(#byzantium-shield-clip)">
+
+    <!-- ......... Greek-key band along the top edge ......... -->
+    <g id="byzantium-key-band">
+      <path d="M20 36 L100 12 L180 36 L180 48 L100 24 L20 48 Z"
+            fill="#C9A227"/>
+      <!-- simplified meander, left slope -->
+      <g transform="translate(22,47) rotate(-16.7)">
+        <path d="M0 -1 H5 V-5 H10 V-1 H15 V-5 H20 V-1 H25 V-5 H30 V-1 H35 V-5 H40 V-1 H45 V-5 H50 V-1 H55 V-5 H60 V-1 H65 V-5 H70 V-1 H75 V-5 H80"
+              fill="none" stroke="#4B1F3F" stroke-width="2.5"/>
+      </g>
+      <!-- simplified meander, right slope (mirror) -->
+      <g transform="translate(178,47) rotate(16.7) scale(-1,1)">
+        <path d="M0 -1 H5 V-5 H10 V-1 H15 V-5 H20 V-1 H25 V-5 H30 V-1 H35 V-5 H40 V-1 H45 V-5 H50 V-1 H55 V-5 H60 V-1 H65 V-5 H70 V-1 H75 V-5 H80"
+              fill="none" stroke="#4B1F3F" stroke-width="2.5"/>
+      </g>
+      <path d="M20 48 L100 24 L180 48" fill="none" stroke="#2B2118" stroke-width="2"/>
+    </g>
+
+    <!-- ......... Double-headed eagle ......... -->
+    <g id="byzantium-eagle">
+      <!-- mirrored halves: wings, heads, crowns, legs -->
+      <use href="#byzantium-eagle-half"/>
+      <use href="#byzantium-eagle-half" transform="translate(200,0) scale(-1,1)"/>
+
+      <!-- tail: three-feather fan -->
+      <path d="M84 140 L75 184 L89 175 L100 198 L111 175 L125 184 L116 140 Z"
+            fill="#C9A227" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+
+      <!-- torso -->
+      <path d="M100 74 C86 80 82 94 82 112 C82 132 89 144 100 150 C111 144 118 132 118 112 C118 94 114 80 100 74 Z"
+            fill="#C9A227" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- breast feathering: nested chevrons -->
+      <path d="M91 104 L100 112 L109 104 M91 118 L100 126 L109 118 M93 132 L100 139 L107 132"
+            fill="none" stroke="#2B2118" stroke-width="2.5" stroke-opacity="0.5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- cross-staff, held by the dexter claw; ink under-stroke outlines it
+           (matching the orb) so the cross reads over the gold wing -->
+      <g id="byzantium-cross-staff">
+        <path d="M58 146 V196 M47 158 H69" fill="none" stroke="#2B2118" stroke-width="8.5" stroke-linecap="round"/>
+        <path d="M58 146 V196" fill="none" stroke="#C9A227" stroke-width="6" stroke-linecap="round"/>
+        <path d="M47 158 H69" fill="none" stroke="#C9A227" stroke-width="6" stroke-linecap="round"/>
+      </g>
+
+      <!-- orb, held by the sinister claw -->
+      <g id="byzantium-orb">
+        <path d="M142 156 V171 M136 162 H148" fill="none" stroke="#C9A227" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="142" cy="180" r="10" fill="#C9A227" stroke="#2B2118" stroke-width="2.5"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== RIM: gold band flanked by thin ink lines ==================== -->
+  <use href="#byzantium-shield-outline" fill="none" stroke="#2B2118" stroke-width="10.5"/>
+  <use href="#byzantium-shield-outline" fill="none" stroke="#C9A227" stroke-width="6"/>
+</svg>

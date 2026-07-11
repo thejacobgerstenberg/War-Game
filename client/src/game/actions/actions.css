@@ -1,0 +1,136 @@
+/* ==========================================================================
+   Actions area (act- prefix) — the order trays of the action bar and the
+   build sheet (BuildMenu). Layers on the gb-bar shell (styles/gameBoard.css)
+   and the shared primitives in styles/base.css; restyles nothing foreign.
+   ========================================================================== */
+
+/* -- Order tray: a full-width second row inside the wrapping gb-bar ------- */
+.act-tray {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--porphyry) 72%, var(--ink));
+  border: 1px solid var(--gold-soft);
+  border-radius: var(--radius-1);
+  color: var(--parchment);
+  font-size: var(--text-sm);
+}
+.act-tray .rubric { color: color-mix(in srgb, var(--parchment) 78%, var(--porphyry)); }
+
+.act-tray-title {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: var(--gold);
+  margin-right: var(--space-2);
+}
+
+/* -- Muster roll: one row per unit type ----------------------------------- */
+.act-units {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.act-unit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.act-unit .act-unit-name {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  min-width: 7em;
+}
+.act-unit .act-unit-cost {
+  font-size: var(--text-xs);
+  color: color-mix(in srgb, var(--parchment) 72%, var(--porphyry));
+}
+
+.act-stepper { display: inline-flex; align-items: center; gap: var(--space-1); }
+.act-stepper .btn {
+  min-width: 1.8em;
+  padding: 0.05em 0.45em;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+.act-count {
+  min-width: 1.6em;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.act-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  cursor: pointer;
+}
+.act-check input { accent-color: var(--gold); width: 1em; height: 1em; }
+.act-check .act-check-gloss {
+  font-size: var(--text-xs);
+  color: color-mix(in srgb, var(--parchment) 72%, var(--porphyry));
+}
+
+/* Total-cost chips + the seal, pushed to the row's end. */
+.act-total { display: inline-flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; }
+.act-seal {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* March summary chips ("From X · to Y"). */
+.act-leg { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+/* -- Build sheet (BuildMenu modal) ---------------------------------------- */
+.act-build-section {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  font-size: var(--text-md, 1rem);
+  margin: var(--space-4) 0 var(--space-2);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--gold);
+}
+.act-build-rows { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.act-build-row.btn {
+  flex-direction: row;
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  gap: var(--space-3);
+  padding: 0.45em 0.9em;
+}
+.act-build-row .act-build-name {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  min-width: 11em;
+}
+.act-build-row .act-build-gloss {
+  flex: 1 1 12em;
+  font-family: var(--font-body);
+  font-variant: normal;
+  font-weight: 400;
+  font-size: var(--text-xs);
+  font-style: italic;
+  letter-spacing: 0;
+}
+.act-build-row .act-build-cost {
+  display: inline-flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.act-build-row .resource-chip { font-size: var(--text-xs); box-shadow: none; }

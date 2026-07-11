@@ -1,0 +1,525 @@
+/* ==========================================================================
+   IMPERIUM — shared primitive styling (client)
+   ==========================================================================
+   Component kit adapted from design/mockups/mockups.css §2–§17. These class
+   names are the CONTRACT the ui/ primitives render and every feature area
+   reuses. Screen-/area-specific CSS lives beside its area (e.g.
+   styles/gameBoard.css for the gb-* shell); ONLY shared primitives belong
+   here. Tokens come from tokens.css.
+
+   Interaction contract (design/mockups/README):
+   - hover  = 2px --gold ring (box-shadow), no fill change
+   - focus  = same gold rim via :focus-visible
+   - selected = gold fill + ink text (.is-selected / aria-pressed) + ALWAYS a
+     glyph/label — never color alone
+   - pressed = 2px translate ("the seal comes down"), 120ms, respects
+     prefers-reduced-motion
+   - disabled = opacity .45 + an in-voice reason on hover (title)
+   - destructive actions always confirm via .modal
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Typography helpers
+   -------------------------------------------------------------------------- */
+.display-caps {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+}
+
+.rubric {
+  font-style: italic;
+  color: color-mix(in srgb, var(--page-fg) 72%, var(--page-bg));
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Surfaces — .panel
+   -------------------------------------------------------------------------- */
+.panel {
+  background: var(--vellum);
+  color: var(--ink);
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-2);
+  padding: var(--space-4);
+}
+.panel--parchment { background: var(--parchment); }
+.panel--porphyry {
+  background: var(--porphyry);
+  color: var(--parchment);
+  border-color: var(--gold);
+}
+.panel > .panel-title {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--gold);
+}
+
+/* --------------------------------------------------------------------------
+   Buttons — .btn with primary / quiet / danger variants
+   (Every declaration is explicit so .btn beats theme.css's global `button`
+   element styles regardless of load order.)
+   -------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  letter-spacing: 0.06em;
+  text-transform: none;
+  line-height: 1.3;
+  padding: 0.55em 1.2em;
+  color: var(--ink);
+  background: var(--vellum);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-1);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  transform: none;
+  filter: none;
+}
+.btn:hover:not(:disabled) {
+  box-shadow: var(--shadow-1), 0 0 0 2px var(--gold);
+  transform: none;
+  filter: none;
+}
+.btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: none; }
+
+.btn--primary { background: var(--gold); }
+.btn--quiet {
+  background: transparent;
+  border-color: var(--ink-faint);
+  box-shadow: none;
+}
+.btn--danger {
+  background: var(--crimson);
+  color: var(--parchment);
+}
+
+.btn.is-selected,
+.btn[aria-pressed="true"] {
+  background: var(--gold);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.btn:disabled,
+.btn[disabled],
+.btn.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.btn:disabled:hover, .btn.is-disabled:hover { box-shadow: none; transform: none; filter: none; }
+/* aria-disabled buttons stay focusable so the in-voice reason (title) is
+   reachable by keyboard; they merely look and act disabled. */
+.btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.btn[aria-disabled="true"]:hover { box-shadow: none; transform: none; }
+
+.theme-night .btn--quiet,
+.dark .btn--quiet {
+  color: var(--parchment);
+  border-color: var(--parchment-faint);
+}
+
+/* --------------------------------------------------------------------------
+   Pills & resource chips
+   -------------------------------------------------------------------------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+  padding: 0.12em 0.75em;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--ink-faint);
+  border-radius: var(--radius-pill);
+}
+.pill--gold    { background: var(--gold); border-color: var(--ink); }
+.pill--crimson { background: var(--crimson); color: var(--parchment); }
+.pill--laurel  { background: var(--laurel);  color: var(--parchment); }
+.pill--lapis   { background: var(--lapis);   color: var(--parchment); }
+
+.resource-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.2em 0.8em 0.2em 0.5em;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-1);
+  font-size: var(--text-sm);
+}
+.resource-chip .chip-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3em;
+  height: 1.3em;
+}
+.resource-chip .chip-icon img { display: block; width: 100%; height: 100%; }
+.resource-chip .value { font-family: var(--font-mono); font-weight: 700; }
+.resource-chip .name  { font-variant: small-caps; letter-spacing: 0.04em; }
+.resource-chip.is-short { border-color: var(--crimson); }         /* cannot afford */
+.resource-chip.is-short .value { color: var(--crimson); }
+
+/* --------------------------------------------------------------------------
+   Faction swatch (+ colorblind pattern channel, mockups.css §16).
+   Add .colorblind to the screen root to enable patterns.
+   -------------------------------------------------------------------------- */
+.faction-swatch {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-1);
+  background-color: var(--faction-color, var(--vellum));
+}
+.colorblind [data-faction="byzantium"] .faction-swatch,
+.colorblind .faction-swatch[data-faction="byzantium"] {
+  background-image: repeating-linear-gradient(45deg,
+    var(--parchment-faint) 0 2px, transparent 2px 7px);              /* diagonal */
+}
+.colorblind [data-faction="venice"] .faction-swatch,
+.colorblind .faction-swatch[data-faction="venice"] {
+  background-image: repeating-linear-gradient(0deg,
+    var(--parchment-faint) 0 2px, transparent 2px 7px);              /* waves */
+}
+.colorblind [data-faction="genoa"] .faction-swatch,
+.colorblind .faction-swatch[data-faction="genoa"] {
+  background-image: repeating-linear-gradient(90deg,
+    var(--parchment-faint) 0 2px, transparent 2px 7px);              /* pales */
+}
+.colorblind [data-faction="ottomans"] .faction-swatch,
+.colorblind .faction-swatch[data-faction="ottomans"] {
+  background-image: repeating-linear-gradient(-45deg,
+    var(--parchment-faint) 0 2px, transparent 2px 7px);              /* bends */
+}
+.colorblind [data-faction="hungary"] .faction-swatch,
+.colorblind .faction-swatch[data-faction="hungary"] {
+  background-image: repeating-radial-gradient(circle,
+    var(--parchment-faint) 0 1px, transparent 1px 5px);              /* ermine */
+}
+
+/* --------------------------------------------------------------------------
+   Toasts — heralds' notices. Rack fixed top-center, newest on top, max 3;
+   errors persist until dismissed (ui/Toast.tsx enforces the behavior).
+   -------------------------------------------------------------------------- */
+.toast-rack {
+  position: fixed;
+  top: var(--space-5);
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  z-index: 90;
+}
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.5em 1.2em;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-left: 5px solid var(--gold);
+  border-radius: var(--radius-1);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-sm);
+  max-width: min(34rem, 90vw);
+}
+.toast--error   { border-left-color: var(--crimson); }
+.toast--triumph { border-left-color: var(--laurel); }
+.toast .toast-dismiss {
+  display: inline-grid;
+  place-items: center;
+  margin-left: 0.4em;
+  padding: 0 0.35em;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--ink-faint);
+  border-radius: var(--radius-1);
+  box-shadow: none;
+  cursor: pointer;
+  text-transform: none;
+}
+.toast .toast-dismiss:hover { box-shadow: 0 0 0 2px var(--gold); transform: none; filter: none; }
+
+/* --------------------------------------------------------------------------
+   Modal — confirmations, event reveals. Scrim + dialog; ui/Modal.tsx adds
+   the focus trap and Escape handling.
+   -------------------------------------------------------------------------- */
+.modal-scrim {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--ink) 62%, transparent);
+  z-index: 100;
+  padding: var(--space-4);
+}
+.modal {
+  width: min(34rem, 100%);
+  max-height: min(90vh, 100%);
+  overflow-y: auto;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 2px solid var(--gold);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-3);
+  padding: var(--space-5);
+}
+.modal--wide { width: min(52rem, 100%); }
+.modal .modal-title {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--space-3);
+}
+.modal .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+/* --------------------------------------------------------------------------
+   Tooltip (ui/Tooltip.tsx)
+   -------------------------------------------------------------------------- */
+.ui-tooltip-anchor { position: relative; display: inline-flex; }
+.ui-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 80;
+  width: max-content;
+  max-width: 32ch;
+  padding: var(--space-2) var(--space-3);
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-1);
+  box-shadow: var(--shadow-1);
+  font-size: var(--text-xs);
+  font-style: italic;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Advisor bubble
+   -------------------------------------------------------------------------- */
+.advisor-bubble {
+  position: relative;
+  max-width: 38ch;
+  padding: var(--space-3) var(--space-4);
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-1);
+  font-style: italic;
+}
+.advisor-bubble::after {           /* tail, lower left, toward the advisor */
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 1.4rem;
+  border-style: solid;
+  border-width: 10px 12px 0 0;
+  border-color: var(--gold) transparent transparent transparent;
+}
+.advisor-bubble cite {
+  display: block;
+  margin-top: var(--space-2);
+  font-style: normal;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  color: var(--porphyry);
+}
+
+/* --------------------------------------------------------------------------
+   Phase track — Income · Muster · Campaign · Council · Twilight
+   -------------------------------------------------------------------------- */
+.phase-track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.phase {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.35em 0.9em;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-sm);
+  letter-spacing: 0.05em;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--ink-faint);
+  border-radius: var(--radius-1);
+}
+.phase + .phase::before {          /* gilded lozenge between phases */
+  content: "◆";
+  position: absolute;
+  left: calc(-1 * var(--space-4) + 2px);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--gold);
+  font-size: 0.55em;
+}
+.phase .phase-glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 1.7em;
+  height: 1.7em;
+}
+.phase .phase-glyph img { display: block; width: 100%; height: 100%; }
+.phase.is-current {
+  background: var(--gold);
+  border-color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+.phase.is-done { opacity: 0.55; }
+
+/* --------------------------------------------------------------------------
+   Prestige track — nought to twenty, gilded milestones every fifth notch.
+   0-based: children 6/11/16/21 are the 5/10/15/20 milestones (5n+1).
+   -------------------------------------------------------------------------- */
+.prestige-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1);
+  background: var(--porphyry);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-1);
+  width: fit-content;
+}
+.prestige-track .notch {
+  position: relative;
+  min-width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  background: var(--vellum);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-1);
+}
+.prestige-track .notch:nth-child(5n+1):not(:first-child) {
+  background: var(--gold-soft);              /* gilded milestones: 5, 10, 15, 20 */
+}
+.prestige-track .notch.is-held { outline: 2px solid var(--gold); z-index: 1; }
+.prestige-track .notch .marker {
+  position: absolute;
+  top: -0.75em;
+  right: -0.4em;
+  width: 1.4em;
+  height: 1.4em;
+  display: grid;
+  place-items: center;
+  background: var(--parchment);
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+}
+.prestige-track .notch .marker img { display: block; width: 100%; height: 100%; }
+
+/* --------------------------------------------------------------------------
+   Action-budget pips (ui/PipBudget.tsx)
+   -------------------------------------------------------------------------- */
+.action-budget {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.action-budget .pip {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  background: var(--gold);
+}
+.action-budget .pip.is-spent { background: transparent; }
+
+/* --------------------------------------------------------------------------
+   Tables — ledgers and muster rolls
+   -------------------------------------------------------------------------- */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  background: var(--parchment);
+  color: var(--ink);
+}
+.table th {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 2px solid var(--gold);
+}
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--ink-ghost);
+}
+.table tbody tr:hover { background: color-mix(in srgb, var(--gold) 14%, transparent); }
+.table .num { font-family: var(--font-mono); text-align: right; }
+
+/* --------------------------------------------------------------------------
+   Small layout helpers
+   -------------------------------------------------------------------------- */
+.row   { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.stack { display: grid; gap: var(--space-3); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .toast { transition: box-shadow 120ms ease, transform 80ms ease; }
+}

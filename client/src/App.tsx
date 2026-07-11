@@ -12,6 +12,11 @@ import { CreateJoin } from "./screens/CreateJoin";
 import { FactionPick } from "./screens/FactionPick";
 import { Lobby } from "./screens/Lobby";
 import { GameBoard } from "./screens/GameBoard";
+import { GameProvider } from "./game/GameProvider";
+import { ToastProvider } from "./ui";
+import { AudioProvider } from "./audio/AudioProvider";
+import "./styles/tokens.css";
+import "./styles/base.css";
 
 type Screen = "home" | "createJoin" | "factionPick" | "lobby" | "game";
 type Mode = "create" | "join";
@@ -127,40 +132,54 @@ export function App() {
     getSocket().emit(SOCKET_EVENTS.START_GAME);
   };
 
-  switch (screen) {
-    case "home":
-      return <Home onCreate={() => startCreateJoin("create")} onJoin={() => startCreateJoin("join")} />;
-    case "createJoin":
-      return (
-        <CreateJoin
-          mode={mode}
-          error={error}
-          onSubmit={submitCreateJoin}
-          onBack={() => setScreen("home")}
-        />
-      );
-    case "factionPick":
-      return (
-        <FactionPick
-          players={players}
-          myFaction={me?.faction ?? null}
-          error={error}
-          onPick={pickFaction}
-          onContinue={() => setScreen("lobby")}
-        />
-      );
-    case "lobby":
-      return (
-        <Lobby
-          roomCode={roomCode}
-          players={players}
-          isHost={me?.isHost ?? false}
-          error={error}
-          onStart={startGame}
-          onBackToFactions={() => setScreen("factionPick")}
-        />
-      );
-    case "game":
-      return gameState ? <GameBoard state={gameState} /> : null;
-  }
+  const renderScreen = () => {
+    switch (screen) {
+      case "home":
+        return <Home onCreate={() => startCreateJoin("create")} onJoin={() => startCreateJoin("join")} />;
+      case "createJoin":
+        return (
+          <CreateJoin
+            mode={mode}
+            error={error}
+            onSubmit={submitCreateJoin}
+            onBack={() => setScreen("home")}
+          />
+        );
+      case "factionPick":
+        return (
+          <FactionPick
+            players={players}
+            myFaction={me?.faction ?? null}
+            error={error}
+            onPick={pickFaction}
+            onContinue={() => setScreen("lobby")}
+          />
+        );
+      case "lobby":
+        return (
+          <Lobby
+            roomCode={roomCode}
+            players={players}
+            isHost={me?.isHost ?? false}
+            error={error}
+            onStart={startGame}
+            onBackToFactions={() => setScreen("factionPick")}
+          />
+        );
+      case "game":
+        // GameProvider owns the live in-game state from here on; App's
+        // gameState only seeds it (and keeps this branch mounted).
+        return gameState ? (
+          <GameProvider initialState={gameState} myPlayerId={playerId} roomCode={roomCode}>
+            <GameBoard />
+          </GameProvider>
+        ) : null;
+    }
+  };
+
+  return (
+    <ToastProvider>
+      <AudioProvider>{renderScreen()}</AudioProvider>
+    </ToastProvider>
+  );
 }

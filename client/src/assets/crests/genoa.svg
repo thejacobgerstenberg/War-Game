@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-labelledby="genoa-title genoa-desc">
+  <title id="genoa-title">Genoa (the Republic)</title>
+  <desc id="genoa-desc">Faction crest: the cross of St George, a bold blood-crimson upright cross spanning a white shield, edged with thin gold fimbriation lines, with a gold rim and Greek-key band.</desc>
+
+  <!-- ==================== DEFS ==================== -->
+  <defs>
+    <!-- Canonical shield outline, reused for coat, clip and rim -->
+    <path id="genoa-shield-outline" d="M100 12 L180 36 V118 C180 178 148 212 100 228 C52 212 20 178 20 118 V36 Z"/>
+
+    <clipPath id="genoa-shield-clip">
+      <use href="#genoa-shield-outline"/>
+    </clipPath>
+
+    <!-- Cross of St George: one union shape, limbs 34 units thick,
+         overshooting the shield on all four sides so the clip trims it
+         flush against the rim. Vertical limb centered on x=100; the
+         horizontal limb sits at the heraldic fesse point (center y=107). -->
+    <path id="genoa-cross" d="M83 4 H117 V90 H192 V124 H117 V236 H83 V124 H8 V90 H83 Z"/>
+  </defs>
+
+  <!-- ==================== SHIELD BASE COAT ==================== -->
+  <use href="#genoa-shield-outline" fill="#FFFFFF"/>
+
+  <!-- ==================== CHARGE (clipped to shield) ==================== -->
+  <g clip-path="url(#genoa-shield-clip)">
+
+    <!-- ......... Vellum inner shadow just inside the rim, for parchment depth ......... -->
+    <!-- Clipped stroke: only the inner half paints; the rim later covers most of it,
+         leaving a narrow aged-vellum ring inside the gold. -->
+    <use href="#genoa-shield-outline" fill="none" stroke="#E2D3B3" stroke-width="18" stroke-opacity="0.7"/>
+
+    <!-- ......... The cross of St George ......... -->
+    <g id="genoa-cross-charge">
+      <!-- crimson body with ink keyline -->
+      <use href="#genoa-cross" fill="#7A1F2B" stroke="#2B2118" stroke-width="3" stroke-linejoin="round"/>
+      <!-- gold fimbriation: thin liner inset 4.5 units inside each limb edge,
+           running out to the rim in all four re-entrant corners -->
+      <path id="genoa-fimbriation"
+            d="M87.5 4 V94.5 H8
+               M8 119.5 H87.5 V236
+               M112.5 236 V119.5 H192
+               M192 94.5 H112.5 V4"
+            fill="none" stroke="#C9A227" stroke-width="2.5" stroke-linejoin="round"/>
+    </g>
+
+    <!-- ......... Greek-key band along the top edge ......... -->
+    <g id="genoa-key-band">
+      <path d="M20 36 L100 12 L180 36 L180 48 L100 24 L20 48 Z"
+            fill="#C9A227"/>
+      <!-- simplified meander, left slope -->
+      <g transform="translate(22,47) rotate(-16.7)">
+        <path d="M0 -1 H5 V-5 H10 V-1 H15 V-5 H20 V-1 H25 V-5 H30 V-1 H35 V-5 H40 V-1 H45 V-5 H50 V-1 H55 V-5 H60 V-1 H65 V-5 H70 V-1 H75 V-5 H80"
+              fill="none" stroke="#FFFFFF" stroke-width="2.5"/>
+      </g>
+      <!-- simplified meander, right slope (mirror) -->
+      <g transform="translate(178,47) rotate(16.7) scale(-1,1)">
+        <path d="M0 -1 H5 V-5 H10 V-1 H15 V-5 H20 V-1 H25 V-5 H30 V-1 H35 V-5 H40 V-1 H45 V-5 H50 V-1 H55 V-5 H60 V-1 H65 V-5 H70 V-1 H75 V-5 H80"
+              fill="none" stroke="#FFFFFF" stroke-width="2.5"/>
+      </g>
+      <path d="M20 48 L100 24 L180 48" fill="none" stroke="#2B2118" stroke-width="2"/>
+    </g>
+  </g>
+
+  <!-- ==================== RIM: gold band flanked by thin ink lines ==================== -->
+  <use href="#genoa-shield-outline" fill="none" stroke="#2B2118" stroke-width="10.5"/>
+  <use href="#genoa-shield-outline" fill="none" stroke="#C9A227" stroke-width="6"/>
+</svg>

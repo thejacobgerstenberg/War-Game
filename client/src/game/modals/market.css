@@ -1,0 +1,372 @@
+/* ---------------------------------------------------------------------------
+   market.css — Area 5 (The Market: Free Companies + Counting-House).
+   Class prefix: mkt-. Styles follow design/mockups/market.html (the screen
+   contract) rebuilt on the locked tokens in styles/tokens.css. Derived colors
+   are color-mix()es of the locked hues only.
+   --------------------------------------------------------------------------- */
+
+/* ---- Treasury readout — shared header above both leaves (mockup zone 1) --- */
+.mkt-treasury {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin: 0 0 var(--space-4);
+}
+.mkt-treasury-title {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  font-size: var(--text-lg);
+  margin-right: var(--space-2);
+}
+.mkt-treasury-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--gold-soft);
+}
+
+/* ---- The two leaves — tab row (mockup zone 2) ----------------------------- */
+.mkt-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  border-bottom: 2px solid var(--gold);
+}
+.mkt-tab {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  font-size: var(--text-md);
+  color: var(--ink);
+  background: var(--vellum);
+  border: 1px solid var(--ink);
+  border-bottom: none;
+  border-radius: var(--radius-1) var(--radius-1) 0 0;
+  padding: 0.35em 1em;
+  cursor: pointer;
+}
+.mkt-tab:hover { box-shadow: 0 0 0 2px var(--gold); }
+.mkt-tab[aria-selected="true"] {
+  background: var(--gold);
+  color: var(--ink);
+  font-weight: 700;
+}
+.mkt-tab[aria-selected="true"]::before { content: "❧ "; }
+
+/* ---- Herald's note over the block (mockup zone 3) ------------------------- */
+.mkt-note {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  width: fit-content;
+  margin: 0 0 var(--space-3);
+  padding: 0.4em 1em;
+  font-style: italic;
+  font-size: var(--text-sm);
+  background: var(--vellum);
+  border: 1px solid var(--gold);
+  border-left: 5px solid var(--gold);
+  border-radius: var(--radius-1);
+  box-shadow: var(--shadow-1);
+}
+.mkt-note::before { content: "❧"; color: var(--gold); font-style: normal; }
+
+/* ---- Company cards — the mercenary block (mockup zone 4) ------------------ */
+.mkt-section { margin-top: var(--space-4); }
+.mkt-section-title {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  font-size: var(--text-lg);
+  margin: 0 0 var(--space-3);
+}
+.mkt-company-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: var(--space-4);
+}
+.mkt-company {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  padding: var(--space-3);
+  background: var(--vellum);
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-2);
+}
+.mkt-company.is-live { outline: 2px solid var(--gold); outline-offset: 2px; }
+.mkt-cardface {
+  display: block;
+  width: 9.5rem;
+  margin: 0 auto;
+  filter: drop-shadow(2px 2px 0 color-mix(in srgb, var(--ink) 35%, transparent));
+}
+.mkt-cardface svg { display: block; width: 100%; height: auto; }
+.mkt-company-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  text-align: center;
+}
+.mkt-stats {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) 0 0;
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  border-top: 1px solid var(--ink-ghost);
+}
+.mkt-term {
+  display: block;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  color: var(--porphyry);
+}
+
+/* Strength in dice — count always doubled by words; color never the channel */
+.mkt-die {
+  display: inline-block;
+  width: 1.05em;
+  height: 1.05em;
+  margin-right: 2px;
+  vertical-align: -0.18em;
+  position: relative;
+  background: var(--parchment);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-1);
+  box-shadow: var(--shadow-1);
+}
+.mkt-die::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 0.3em;
+  height: 0.3em;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.mkt-bid-line { display: inline-flex; align-items: center; gap: 0.4em; flex-wrap: wrap; }
+.mkt-crest { width: 1.6em; height: 1.6em; flex: 0 0 auto; }
+.mkt-crest img { display: block; width: 100%; height: 100%; }
+.mkt-inline-icon { width: 1.4em; height: 1.4em; vertical-align: -0.3em; }
+
+.mkt-pass-pills { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+
+/* ---- Bid control — steppers + the committed purse (mockup zone 5) --------- */
+.mkt-bid-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--ink-faint);
+}
+.mkt-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  background: var(--parchment);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-1);
+  box-shadow: var(--shadow-1);
+}
+.mkt-stepper button {
+  width: 2rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-md);
+  color: var(--ink);
+  background: var(--vellum);
+  border: none;
+  cursor: pointer;
+}
+.mkt-stepper button:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--gold); }
+.mkt-stepper button:disabled { opacity: 0.45; cursor: not-allowed; }
+.mkt-stepper button:first-child { border-right: 1px solid var(--ink-faint); }
+.mkt-stepper button:last-child { border-left: 1px solid var(--ink-faint); }
+.mkt-stepper-value {
+  min-width: 2.8rem;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+.mkt-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-style: italic;
+  font-size: var(--text-xs);
+  color: color-mix(in srgb, var(--ink) 72%, var(--parchment));
+}
+
+/* ---- Auction chronicle — the cries of the block --------------------------- */
+.mkt-log ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 9rem;
+  overflow-y: auto;
+  display: grid;
+  gap: 2px;
+  font-size: var(--text-sm);
+}
+.mkt-log li {
+  padding: 0.2em 0.6em;
+  border-left: 3px solid var(--gold);
+  background: var(--vellum);
+}
+
+/* ---- Exchange rows — the rates of the house (mockup zone 7) --------------- */
+.mkt-exchange-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.mkt-exchange-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  background: var(--vellum);
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-1);
+  box-shadow: var(--shadow-1);
+}
+.mkt-exchange-row.is-selected { outline: 2px solid var(--gold); outline-offset: 2px; }
+/* Selected-state contract: gold fill is never the only channel — add the glyph */
+.mkt-exchange-row .btn[aria-pressed="true"]::before { content: "❧ "; }
+.mkt-exchange-row.is-barred { opacity: 0.6; box-shadow: none; }
+.mkt-exchange-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-variant: small-caps;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  letter-spacing: 0.03em;
+}
+.mkt-exchange-for {
+  font-style: italic;
+  color: color-mix(in srgb, var(--ink) 60%, var(--parchment));
+}
+.mkt-exchange-row .mkt-rate-pill { margin-left: auto; }
+.mkt-exchange-reason {
+  flex-basis: 100%;
+  margin: 0;
+  font-style: italic;
+  font-size: var(--text-xs);
+  color: var(--crimson);
+}
+.mkt-house-note {
+  margin: var(--space-3) 0 0;
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: color-mix(in srgb, var(--ink) 72%, var(--parchment));
+}
+
+/* ---- The bargain panel — measure, preview, seal ---------------------------- */
+.mkt-bargain {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--vellum);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-1);
+}
+.mkt-bargain-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.mkt-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.mkt-preview-label {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+}
+
+/* ---- The tithe — SET_TAX posture selector ---------------------------------- */
+.mkt-tax-options {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+.mkt-tax-options .btn {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  align-content: start;
+  white-space: normal;
+}
+.mkt-tax-name {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  font-size: var(--text-md);
+}
+.mkt-tax-desc {
+  font-size: var(--text-xs);
+  font-style: italic;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.mkt-tax-commit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* ---- Routes held — summary strip (mockup zone 8) --------------------------- */
+.mkt-route-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  background: var(--vellum);
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-2);
+}
+.mkt-route-label {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+}
+.mkt-route-total {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+}
+@media (max-width: 56rem) {
+  .mkt-route-total { margin-left: 0; flex-basis: 100%; }
+}

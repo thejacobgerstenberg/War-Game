@@ -1,0 +1,85 @@
+/* ==========================================================================
+   Province inspector (insp- prefix) — the right-rail province card of
+   design/mockups/game.html callouts 9–10. Layers on ui/Panel + base.css
+   primitives; restyles nothing foreign.
+   ========================================================================== */
+
+.insp-card { display: flex; flex-direction: column; min-height: 0; }
+
+/* Owner row: crest + "Under the banner of …" (mockup .owner-row). */
+.insp-owner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.insp-crest {
+  width: 3rem;
+  flex: none;
+  margin: 0;
+}
+.insp-crest img { display: block; width: 100%; height: auto; }
+.insp-owner-name {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+/* Definition list per the mockup .province-card dl/dt/dd. */
+.insp-card dl { margin: 0; font-size: var(--text-sm); }
+.insp-card dt {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  font-size: var(--text-xs);
+  color: color-mix(in srgb, var(--ink) 72%, var(--parchment));
+  margin-top: var(--space-3);
+}
+.insp-card dd { margin: 0.15em 0 0; }
+
+/* Seasonal yields: all five stores, icon + word + count. */
+.insp-yields { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.insp-yields .resource-chip { font-size: var(--text-xs); box-shadow: none; }
+
+/* Garrison / hosts / fleets present. */
+.insp-hosts { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2em; }
+.insp-hosts li { display: flex; align-items: center; gap: 0.45em; }
+.insp-hosts .insp-host-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.2em;
+  height: 1.2em;
+}
+.insp-hosts .insp-host-icon img { display: block; width: 100%; height: 100%; }
+.insp-hosts .insp-host-strength { font-family: var(--font-mono); font-weight: 700; }
+
+/* Siege / blockade notices. */
+.insp-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  margin-top: var(--space-2);
+}
+
+/* Adjacency: click a neighbor to navigate there. */
+.insp-adj {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.insp-adj .btn {
+  font-size: var(--text-xs);
+  padding: 0.15em 0.7em;
+  min-width: 0;
+}
+
+/* Contextual orders (at most two; mockup .card-actions). */
+.insp-actions {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}

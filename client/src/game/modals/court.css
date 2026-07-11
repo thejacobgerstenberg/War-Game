@@ -1,0 +1,382 @@
+/* ---------------------------------------------------------------------------
+   court.css — Area 6 (Diplomacy & espionage) + the Great Works ledger.
+   Class prefixes: dip- (DiplomacyModal), spy- (SpyModal), gw- (GreatWorksModal).
+   Styles follow design/mockups/diplomacy.html ("The Court of Envoys") rebuilt
+   on the locked tokens in styles/tokens.css; derived colors are color-mix()es
+   of the locked hues only.
+   --------------------------------------------------------------------------- */
+
+/* ==== Shared court chrome ================================================== */
+
+.dip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin: 0 0 var(--space-3);
+}
+.dip-when { display: flex; gap: var(--space-2); align-items: center; }
+
+.dip-section-title {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  font-size: var(--text-lg);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+/* ---- The offers table: standing arrangements (mockup zone 1) ------------- */
+.dip-treaty-scroll { overflow-x: auto; }
+.dip-treaty-table { min-width: 44rem; width: 100%; }
+.dip-arrangement-kind {
+  display: block;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+.dip-party-pair {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.dip-party {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.dip-party img { width: 1.9em; height: 1.9em; display: block; }
+.dip-pair-tie { color: var(--gold); font-weight: 700; }
+.dip-endures { font-style: italic; }
+.dip-treaty-table .pill { white-space: nowrap; }
+/* The proposed row is gold-washed until answered; the wash is doubled by the
+   "Awaiting your word" pill — color is never the only channel. */
+.dip-treaty-table tr.dip-is-proposed td {
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+}
+.dip-treaty-table tr.dip-is-proposed td:first-child {
+  border-left: 4px solid var(--gold);
+}
+
+/* ---- Rival courts --------------------------------------------------------- */
+.dip-courts { display: grid; gap: var(--space-2); }
+.dip-court-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--parchment) 92%, var(--ink));
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-2);
+}
+.dip-court-crest { width: 2.8rem; height: 2.8rem; display: block; }
+.dip-court-name {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-md);
+  letter-spacing: 0.04em;
+}
+.dip-court-standing {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.dip-court-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: end; }
+@media (max-width: 48rem) {
+  .dip-court-row { grid-template-columns: auto 1fr; }
+  .dip-court-actions { grid-column: 1 / -1; justify-content: start; }
+}
+
+/* ---- Vassal management (mockup zone 3) ------------------------------------ */
+.dip-vassal-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--parchment) 92%, var(--ink));
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-2);
+  margin-bottom: var(--space-2);
+}
+.dip-vassal-name {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-md);
+  letter-spacing: 0.04em;
+  margin-right: var(--space-2);
+}
+.dip-vassal-obligations {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+}
+.dip-vassal-obligations dt {
+  float: left;
+  clear: left;
+  margin-right: 0.5em;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+.dip-vassal-obligations dd { margin: 0 0 2px; }
+.dip-vassal-actions {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: stretch;
+  min-width: 12rem;
+}
+.dip-odds-line { font-style: italic; font-size: var(--text-sm); margin: var(--space-1) 0 0; }
+.dip-marriage-toggle {
+  display: flex;
+  gap: 0.5em;
+  align-items: baseline;
+  font-size: var(--text-sm);
+}
+
+/* ---- The scribes' caution (mockup zone 5) --------------------------------- */
+.dip-caution {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--parchment) 88%, var(--ink));
+  border: 1px solid var(--vellum-shade);
+  border-left: 5px solid var(--crimson);
+  border-radius: var(--radius-1);
+  font-size: var(--text-sm);
+}
+.dip-caution img { width: 2.2em; height: 2.2em; flex: 0 0 auto; }
+.dip-caution-kicker {
+  display: block;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--crimson);
+}
+.dip-caution p { margin: 0; font-style: italic; }
+
+/* ---- The envoy: incoming-offer card (mockup zone 6) ----------------------- */
+.dip-envoy {
+  position: relative;
+  margin: var(--space-3) 0 var(--space-4);
+  padding: var(--space-4);
+  padding-top: var(--space-5);
+  background: color-mix(in srgb, var(--parchment) 96%, var(--gold));
+  border: 2px solid var(--gold);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-2);
+}
+.dip-seal-disc {
+  position: absolute;
+  top: calc(-1 * var(--space-4));
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4.2rem;
+  height: 4.2rem;
+  padding: 0.5rem;
+  border-radius: 50%;
+  border: 3px double var(--gold);
+  background: var(--crimson);
+  box-shadow: var(--shadow-1);
+  box-sizing: border-box;
+}
+.dip-seal-disc img { width: 100%; height: 100%; display: block; filter: invert(1); }
+.dip-envoy-kicker {
+  margin: var(--space-2) 0 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+}
+.dip-envoy h3 { text-align: center; margin: var(--space-1) 0 var(--space-3); }
+.dip-offer-words {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--vellum) 70%, transparent);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--radius-1);
+  font-size: var(--text-lg);
+  font-style: italic;
+}
+.dip-offer-terms { margin: 0 0 var(--space-3); font-size: var(--text-sm); }
+.dip-offer-terms dt {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  margin-top: var(--space-2);
+}
+.dip-offer-terms dd { margin: 2px 0 0; }
+.dip-seal-caution {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--crimson);
+  text-align: right;
+}
+
+/* ---- The composer (Extend the Hand) --------------------------------------- */
+.dip-composer {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-2);
+  background: color-mix(in srgb, var(--parchment) 94%, var(--gold));
+}
+.dip-composer-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  margin: var(--space-2) 0;
+}
+.dip-composer-label {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  min-width: 7rem;
+}
+.dip-field {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  background: var(--parchment);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-1);
+  padding: 0.3em 0.5em;
+}
+.dip-field:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--gold); }
+.dip-warning-line {
+  margin: var(--space-2) 0 0;
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--crimson);
+}
+
+/* ==== SpyModal ============================================================== */
+
+.spy-missions { display: grid; gap: var(--space-2); margin: var(--space-3) 0; }
+.spy-mission-btn { justify-content: flex-start; text-align: left; width: 100%; }
+.spy-mission-name {
+  display: block;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+}
+.spy-mission-gloss {
+  display: block;
+  font-style: italic;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.spy-cost-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  margin: var(--space-2) 0;
+}
+.spy-risk {
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 4px solid var(--crimson);
+  background: color-mix(in srgb, var(--parchment) 90%, var(--crimson));
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+.spy-reports { display: grid; gap: var(--space-2); }
+.spy-report {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--vellum-shade);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--radius-1);
+  background: color-mix(in srgb, var(--parchment) 92%, var(--ink));
+  font-size: var(--text-sm);
+}
+.spy-report.spy-report--caught { border-left-color: var(--crimson); }
+.spy-report-when {
+  display: block;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+.spy-report-intel { font-style: italic; margin: 2px 0 0; }
+
+/* ==== GreatWorksModal ======================================================= */
+
+.gw-works { display: grid; gap: var(--space-3); margin: var(--space-3) 0; }
+/* A bare <button> card: explicitly override theme.css's global button chrome
+   (gold gradient, uppercase, hover lift) per HANDOFF gotcha 3. */
+.gw-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-2);
+  background: color-mix(in srgb, var(--parchment) 94%, var(--ink));
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: none;
+}
+.gw-card:hover { box-shadow: 0 0 0 2px var(--gold); transform: none; filter: none; }
+.gw-card:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--gold); }
+.gw-card[aria-pressed="true"] {
+  background: var(--gold);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.gw-card[aria-pressed="true"] .gw-name::before { content: "❧ "; }
+.gw-name {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-md);
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.gw-effect { margin: var(--space-1) 0; font-size: var(--text-sm); }
+.gw-cost-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: var(--space-1);
+}
+.gw-rounds { font-style: italic; font-size: var(--text-sm); }
+.gw-progress-line { font-size: var(--text-sm); margin: var(--space-1) 0 0; }
+.gw-progress-pips { font-family: var(--font-mono); letter-spacing: 0.15em; }
+.gw-site-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  margin: var(--space-3) 0;
+}

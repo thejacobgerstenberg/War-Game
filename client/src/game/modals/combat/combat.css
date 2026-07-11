@@ -1,0 +1,283 @@
+/* ==========================================================================
+   Combat feature area (cbt- prefix) — design/mockups/combat.html.
+   Layers battle chrome on top of the foundation modal/pill/chip primitives;
+   never restyles another area's classes. Tokens only — no new hexes.
+   ========================================================================== */
+
+.cbt-modal { color: var(--ink); }
+
+/* ---- Modal head: battle glyph, rubric ---------------------------------- */
+.cbt-head { text-align: center; }
+.cbt-head .cbt-glyph {
+  width: 1.6rem;
+  height: 1.6rem;
+  vertical-align: -0.35em;
+  margin-right: var(--space-2);
+}
+.cbt-rubric {
+  margin: 0 0 var(--space-3);
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: color-mix(in srgb, var(--ink) 72%, var(--parchment));
+  text-align: center;
+}
+
+.cbt-rule {
+  border: none;
+  border-top: 2px solid var(--gold);
+  margin: var(--space-4) auto;
+}
+
+/* ---- Zone 2 · The armies arrayed --------------------------------------- */
+.cbt-armies {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+.cbt-army { display: flex; gap: var(--space-3); align-items: flex-start; }
+.cbt-army--defender { flex-direction: row-reverse; text-align: right; }
+.cbt-army--defender .cbt-army-units { justify-content: flex-end; }
+.cbt-army-crest { width: 4.5rem; flex: none; }
+.cbt-army-crest img { display: block; width: 100%; height: auto; }
+.cbt-army h3 {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+.cbt-army-role { margin: 0 0 var(--space-1); }
+.cbt-army-units {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+}
+.cbt-commander {
+  font-style: italic;
+  font-size: var(--text-sm);
+  margin: var(--space-1) 0 0;
+}
+.cbt-versus {
+  align-self: center;
+  font-size: var(--text-2xl);
+  color: var(--crimson);
+  text-shadow: 1px 1px 0 var(--gold);
+}
+@media (max-width: 40rem) {
+  .cbt-armies { grid-template-columns: 1fr; }
+  .cbt-army--defender { flex-direction: row; text-align: left; }
+  .cbt-army--defender .cbt-army-units { justify-content: flex-start; }
+  .cbt-versus { justify-self: center; }
+}
+
+/* ---- Zone 3 · The dice cascade ------------------------------------------ */
+.cbt-dice-row {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.cbt-die-slot { display: grid; justify-items: center; gap: var(--space-1); }
+.cbt-die {
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: var(--radius-2);
+}
+.cbt-die img { display: block; width: 100%; height: 100%; }
+.cbt-dice-row--attacker .cbt-die { box-shadow: 0 0 0 3px var(--gold), var(--shadow-1); }
+.cbt-dice-row--defender .cbt-die { box-shadow: 0 0 0 3px var(--lapis), var(--shadow-1); }
+.cbt-die-verdict {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+}
+.cbt-die-verdict.is-miss { opacity: 0.55; }
+.cbt-dice-more {
+  align-self: center;
+  font-style: italic;
+  font-size: var(--text-sm);
+}
+
+/* Dice tumble: <=400ms per the mockup; settle instantly under reduced motion. */
+@keyframes cbt-tumble {
+  0%   { transform: rotate(-14deg) scale(0.72); opacity: 0.2; }
+  45%  { transform: rotate(11deg) scale(1.08); opacity: 1; }
+  75%  { transform: rotate(-5deg) scale(0.97); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+.cbt-die.is-rolling { animation: cbt-tumble 0.4s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .cbt-die.is-rolling { animation: none; }
+}
+
+/* ---- The reckoning strip ------------------------------------------------ */
+.cbt-reckoning {
+  text-align: center;
+  margin: var(--space-4) 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--vellum);
+  border-block: 2px solid var(--gold);
+  font-size: var(--text-sm);
+}
+.cbt-reckoning p { margin: 0 0 var(--space-1); }
+.cbt-reckoning .cbt-tally {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* ---- Zone 4 · Modifiers readout ----------------------------------------- */
+.cbt-modifiers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.cbt-modifiers li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  background: var(--parchment);
+  border: 1px solid var(--vellum-shade);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--radius-1);
+  font-size: var(--text-sm);
+}
+.cbt-modifiers .cbt-mod-glyph {
+  flex: none;
+  font-size: var(--text-lg);
+  color: var(--porphyry);
+}
+.cbt-modifiers .cbt-mod-name {
+  flex: none;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+}
+
+/* ---- Siege state readout ------------------------------------------------ */
+.cbt-siege {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-3);
+  background: var(--parchment);
+  border: 1px solid var(--vellum-shade);
+  border-radius: var(--radius-1);
+  font-size: var(--text-sm);
+}
+
+/* ---- Zone 5 · The tactic hand ------------------------------------------- */
+.cbt-committed {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0 0 var(--space-3);
+}
+.cbt-hand {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--space-4);
+  align-items: stretch;
+}
+.cbt-card {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--parchment);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-1);
+  font-size: var(--text-sm);
+}
+.cbt-card.is-playable { box-shadow: 0 0 0 3px var(--gold), var(--shadow-2); }
+.cbt-card.is-dimmed { opacity: 0.5; }
+.cbt-card h4 {
+  margin: 0;
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+}
+.cbt-card h4 img { width: 1.2rem; height: 1.2rem; flex: none; }
+.cbt-card .cbt-flavor { font-style: italic; margin: 0; }
+.cbt-card .cbt-effect { margin: 0; }
+.cbt-card .cbt-withheld {
+  margin: 0;
+  font-style: italic;
+  font-size: var(--text-xs);
+  color: var(--crimson);
+}
+
+/* A rival's sealed stratagem: face-down card back. */
+.cbt-sealed {
+  display: inline-grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 3.3rem;
+  background: var(--porphyry);
+  color: var(--gold-soft);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-1);
+  box-shadow: var(--shadow-1);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+
+/* ---- Zone 6 · Result banner --------------------------------------------- */
+.cbt-banner {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-5);
+  color: var(--parchment);
+  border: 2px solid var(--gold);
+  border-radius: var(--radius-2);
+  box-shadow: var(--shadow-3);
+}
+.cbt-banner--victory { background: var(--laurel); }
+.cbt-banner--defeat { background: var(--crimson); }
+.cbt-banner--neutral { background: var(--porphyry-deep); }
+.cbt-banner .cbt-banner-glyph {
+  width: 3rem;
+  height: 3rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: var(--text-3xl);
+  color: var(--gold-soft);
+}
+.cbt-banner .cbt-banner-glyph img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* prestige.svg draws with currentColor as ink; lift it on the dark ground */
+  filter: invert(0.9) sepia(0.4) saturate(2) hue-rotate(10deg);
+}
+.cbt-banner h3 {
+  margin: 0 0 var(--space-1);
+  color: var(--gold-soft);
+  font-family: var(--font-display);
+}
+.cbt-banner p { margin: 0; }
+.cbt-banner .cbt-banner-body { flex: 1 1 24ch; }
+
+@keyframes cbt-banner-land {
+  from { transform: translateY(-6px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.cbt-banner { animation: cbt-banner-land 0.3s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .cbt-banner { animation: none; }
+}

@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-labelledby="venice-title venice-desc">
+  <title id="venice-title">Venice (Serenissima)</title>
+  <desc id="venice-desc">Faction crest: the gold winged lion of St Mark passant, halo behind the head, one forepaw on an open white book, above the waves, on a lapis shield with a gold rim and Greek-key band.</desc>
+
+  <!-- ==================== DEFS ==================== -->
+  <defs>
+    <!-- Canonical shield outline, reused for coat, clip and rim -->
+    <path id="venice-shield-outline" d="M100 12 L180 36 V118 C180 178 148 212 100 228 C52 212 20 178 20 118 V36 Z"/>
+
+    <clipPath id="venice-shield-clip">
+      <use href="#venice-shield-outline"/>
+    </clipPath>
+
+    <!-- Lion limbs, drawn twice: wide ink underlay, then gold overlay -->
+    <path id="venice-leg-raised" d="M78 120 L62 131 L48 147"/>
+    <path id="venice-leg-fore"   d="M88 130 L90 154 L88 178 L78 181"/>
+    <path id="venice-leg-hind-a" d="M124 136 L117 156 L115 178 L104 181"/>
+    <path id="venice-leg-hind-b" d="M142 138 L148 158 L149 178 L139 182"/>
+    <path id="venice-tail-curve" d="M150 120 C166 114 172 100 167 88"/>
+  </defs>
+
+  <!-- ==================== SHIELD BASE COAT ==================== -->
+  <use href="#venice-shield-outline" fill="#1F4E79"/>
+
+  <!-- ==================== CHARGE (clipped to shield) ==================== -->
+  <g clip-path="url(#venice-shield-clip)">
+
+    <!-- ......... The lagoon: waves along the shield foot ......... -->
+    <g id="venice-waves">
+      <path d="M8 184 Q17 174 26 184 Q35 174 44 184 Q53 174 62 184 Q71 174 80 184
+               Q89 174 98 184 Q107 174 116 184 Q125 174 134 184 Q143 174 152 184
+               Q161 174 170 184 Q179 174 188 184 V240 H8 Z"
+            fill="#2C5F7C"/>
+      <!-- foam crest highlights -->
+      <path d="M8 184 Q17 174 26 184 Q35 174 44 184 Q53 174 62 184 Q71 174 80 184
+               Q89 174 98 184 Q107 174 116 184 Q125 174 134 184 Q143 174 152 184
+               Q161 174 170 184 Q179 174 188 184"
+            fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-opacity="0.75"/>
+      <path d="M22 198 Q31 189 40 198 Q49 189 58 198 Q67 189 76 198 Q85 189 94 198
+               Q103 189 112 198 Q121 189 130 198 Q139 189 148 198 Q157 189 166 198"
+            fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-opacity="0.35"/>
+    </g>
+
+    <!-- ......... Greek-key band along the top edge ......... -->
+    <g id="venice-key-band">
+      <path d="M20 36 L100 12 L180 36 L180 48 L100 24 L20 48 Z"
+            fill="#C9A227"/>
+      <!-- simplified meander, left slope -->
+      <g transform="translate(22,47) rotate(-16.7)">
+        <path d="M0 -1 H5 V-5 H10 V-1 H15 V-5 H20 V-1 H25 V-5 H30 V-1 H35 V-5 H40 V-1 H45 V-5 H50 V-1 H55 V-5 H60 V-1 H65 V-5 H70 V-1 H75 V-5 H80"
+              fill="none" stroke="#1F4E79" stroke-width="2.5"/>
+      </g>
+      <!-- simplified meander, right slope (mirror) -->
+      <g transform="translate(178,47) rotate(16.7) scale(-1,1)">
+        <path d="M0 -1 H5 V-5 H10 V-1 H15 V-5 H20 V-1 H25 V-5 H30 V-1 H35 V-5 H40 V-1 H45 V-5 H50 V-1 H55 V-5 H60 V-1 H65 V-5 H70 V-1 H75 V-5 H80"
+              fill="none" stroke="#1F4E79" stroke-width="2.5"/>
+      </g>
+      <path d="M20 48 L100 24 L180 48" fill="none" stroke="#2B2118" stroke-width="2"/>
+    </g>
+
+    <!-- ......... Winged lion of St Mark, passant ......... -->
+    <g id="venice-lion">
+
+      <!-- wing, raised over the back, feathered trailing edge -->
+      <g id="venice-wing">
+        <path d="M84 106
+                 C86 86 96 68 112 56
+                 C124 47 138 43 150 45
+                 L141 57 L152 61
+                 L138 73 L148 79
+                 L133 89 L141 95
+                 L128 106 Z"
+              fill="#C9A227" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+        <!-- feather-layer detail lines -->
+        <path d="M98 94 C102 78 112 66 126 58 M112 98 C118 82 128 70 140 62"
+              fill="none" stroke="#2B2118" stroke-width="2.5" stroke-opacity="0.45" stroke-linecap="round"/>
+      </g>
+
+      <!-- halo behind the head: white disc with a gold liner ring -->
+      <g id="venice-halo">
+        <circle cx="58" cy="86" r="27" fill="#FFFFFF" stroke="#2B2118" stroke-width="2.5"/>
+        <circle cx="58" cy="86" r="23" fill="none" stroke="#C9A227" stroke-width="3"/>
+      </g>
+
+      <!-- open book (the Gospel), under the raised forepaw -->
+      <g id="venice-book">
+        <!-- gold cover, peeking out beneath the pages -->
+        <path d="M59 154 C51 148 43 147 38 150 L38 170 C45 167 52 168 59 173
+                 C66 168 73 167 80 170 L80 150 C75 147 67 148 59 154 Z"
+              fill="#C9A227" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+        <!-- white pages -->
+        <path d="M59 151 C52 146 45 145 41 148 L41 166 C47 164 53 165 59 169
+                 C65 165 71 164 77 166 L77 148 C73 145 66 146 59 151 Z"
+              fill="#FFFFFF" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M59 151 V169" fill="none" stroke="#2B2118" stroke-width="2.5"/>
+        <!-- faint script lines -->
+        <path d="M45 153 C49 151.5 52 151.5 56 153 M45 158 C49 156.5 52 156.5 56 158
+                 M62 153 C66 151.5 69 151.5 73 153 M62 158 C66 156.5 69 156.5 73 158"
+              fill="none" stroke="#2B2118" stroke-width="2.5" stroke-opacity="0.35" stroke-linecap="round"/>
+      </g>
+
+      <!-- limbs and tail: ink underlay first, gold overlay second -->
+      <g id="venice-limbs" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <g stroke="#2B2118">
+          <use href="#venice-leg-raised" stroke-width="16"/>
+          <use href="#venice-leg-fore"   stroke-width="16"/>
+          <use href="#venice-leg-hind-a" stroke-width="16"/>
+          <use href="#venice-leg-hind-b" stroke-width="16"/>
+          <use href="#venice-tail-curve" stroke-width="12"/>
+        </g>
+        <g stroke="#C9A227">
+          <use href="#venice-leg-raised" stroke-width="11"/>
+          <use href="#venice-leg-fore"   stroke-width="11"/>
+          <use href="#venice-leg-hind-a" stroke-width="11"/>
+          <use href="#venice-leg-hind-b" stroke-width="11"/>
+          <use href="#venice-tail-curve" stroke-width="7"/>
+        </g>
+        <!-- tail tuft -->
+        <circle cx="165" cy="84" r="6.5" fill="#C9A227" stroke="#2B2118" stroke-width="2.5"/>
+      </g>
+
+      <!-- torso -->
+      <path id="venice-body"
+            d="M76 102
+               C66 108 62 118 67 128
+               C71 137 81 143 93 145
+               C103 148 113 148 123 145
+               C137 148 149 142 154 130
+               C158 119 156 109 148 105
+               C134 98 118 96 104 98
+               C94 99 84 99 76 102 Z"
+            fill="#C9A227" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+
+      <!-- head: scalloped mane, round face -->
+      <g id="venice-head">
+        <path d="M77 92
+                 Q82.4 100.9 72.6 104.2
+                 Q71 114.5 61.3 110.7
+                 Q53.5 117.6 48.5 108.5
+                 Q38.1 108.7 40.1 98.5
+                 Q32 92 40.1 85.5
+                 Q38.1 75.3 48.5 75.5
+                 Q53.5 66.4 61.3 73.3
+                 Q71 69.5 72.6 79.8
+                 Q82.4 83.1 77 92 Z"
+              fill="#C9A227" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+        <circle cx="58" cy="92" r="11" fill="#C9A227" stroke="#2B2118" stroke-width="2.5"/>
+        <!-- face -->
+        <circle cx="53.5" cy="89.5" r="2" fill="#2B2118"/>
+        <circle cx="62.5" cy="89.5" r="2" fill="#2B2118"/>
+        <path d="M58 92 L55.5 95.5 L60.5 95.5 Z" fill="#2B2118"/>
+        <path d="M58 95.5 V99 M53.5 99 H62.5"
+              fill="none" stroke="#2B2118" stroke-width="2" stroke-linecap="round"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== RIM: gold band flanked by thin ink lines ==================== -->
+  <use href="#venice-shield-outline" fill="none" stroke="#2B2118" stroke-width="10.5"/>
+  <use href="#venice-shield-outline" fill="none" stroke="#C9A227" stroke-width="6"/>
+</svg>

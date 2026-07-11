@@ -196,11 +196,17 @@ export function factionPatternId(faction: Faction): string {
   return `facPattern-${FACTION_SLUG[faction]}`;
 }
 
-/** Faction fill colors as defined on svg#board (kept for HTML UI chips only). */
+/**
+ * Faction fill colors for HTML chips/badges. Reconciled to the LOCKED design
+ * tokens (design/mockups/mockups.css): Ottoman = --deep-sea, Genoa =
+ * --crimson. The vendored board.svg's own --faction-* custom properties
+ * still carry the retired values; styles/tokens.css overrides them at the
+ * `.board-svg-host svg#board` scope so map fills match these chips.
+ */
 export const FACTION_COLOR: Record<Faction, string> = {
   [Faction.BYZANTIUM]: "#4B1F3F",
-  [Faction.OTTOMAN]: "#7A1F2B",
+  [Faction.OTTOMAN]: "#2C5F7C",
   [Faction.VENICE]: "#1F4E79",
-  [Faction.GENOA]: "#C9A227",
+  [Faction.GENOA]: "#7A1F2B",
   [Faction.HUNGARY]: "#4A5D3A",
 };

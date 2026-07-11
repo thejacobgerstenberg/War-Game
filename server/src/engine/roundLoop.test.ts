@@ -61,7 +61,7 @@ function actionsOf(state: GameState, id: string): number {
 
 describe("FL-11 — action budget (§9.1/§10.0, CANON #2)", () => {
   it("owning a University does NOT grant a 5th action; budget stays base 4", () => {
-    let state = fresh();
+    const state = fresh();
     // Give p1 a University on a province it owns (its former +1-action source).
     const owned = state.provinces.find((prov) => prov.ownerId === "p1");
     if (!owned) throw new Error("p1 owns no province");

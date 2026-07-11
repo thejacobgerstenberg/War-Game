@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>hexamilion wall</title>
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- gold sun, upper left -->
+  <polygon points="34,4 38,12 30,12" fill="#C9A227"/>
+  <polygon points="34,48 30,40 38,40" fill="#C9A227"/>
+  <polygon points="12,26 20,22 20,30" fill="#C9A227"/>
+  <polygon points="56,26 48,22 48,30" fill="#C9A227"/>
+  <polygon points="18,10 26,12 20,18" fill="#C9A227"/>
+  <polygon points="50,10 42,12 48,18" fill="#C9A227"/>
+  <circle cx="34" cy="26" r="12" fill="#C9A227"/>
+
+  <!-- curtain wall, shore to shore -->
+  <rect x="8" y="90" width="244" height="42" fill="#2B2118"/>
+  <!-- curtain merlons -->
+  <rect x="12" y="80" width="9" height="10" fill="#2B2118"/>
+  <rect x="25" y="80" width="9" height="10" fill="#2B2118"/>
+  <rect x="72" y="80" width="9" height="10" fill="#2B2118"/>
+  <rect x="86" y="80" width="9" height="10" fill="#2B2118"/>
+  <rect x="165" y="80" width="9" height="10" fill="#2B2118"/>
+  <rect x="179" y="80" width="9" height="10" fill="#2B2118"/>
+  <rect x="226" y="80" width="9" height="10" fill="#2B2118"/>
+  <rect x="239" y="80" width="9" height="10" fill="#2B2118"/>
+
+  <!-- left flanking tower -->
+  <rect x="38" y="58" width="28" height="74" fill="#2B2118"/>
+  <rect x="38" y="50" width="7" height="8" fill="#2B2118"/>
+  <rect x="49" y="50" width="7" height="8" fill="#2B2118"/>
+  <rect x="59" y="50" width="7" height="8" fill="#2B2118"/>
+
+  <!-- right flanking tower -->
+  <rect x="194" y="58" width="28" height="74" fill="#2B2118"/>
+  <rect x="194" y="50" width="7" height="8" fill="#2B2118"/>
+  <rect x="205" y="50" width="7" height="8" fill="#2B2118"/>
+  <rect x="215" y="50" width="7" height="8" fill="#2B2118"/>
+
+  <!-- central gate tower (focal) -->
+  <rect x="106" y="36" width="48" height="96" fill="#2B2118"/>
+  <rect x="106" y="26" width="9" height="10" fill="#2B2118"/>
+  <rect x="119" y="26" width="9" height="10" fill="#2B2118"/>
+  <rect x="132" y="26" width="9" height="10" fill="#2B2118"/>
+  <rect x="145" y="26" width="9" height="10" fill="#2B2118"/>
+  <!-- cross cut into the tower -->
+  <rect x="127" y="48" width="6" height="22" fill="#F0E6D2"/>
+  <rect x="120" y="55" width="20" height="6" fill="#F0E6D2"/>
+  <!-- arched gate -->
+  <path d="M119 132 L119 110 Q130 96 141 110 L141 132 Z" fill="#F0E6D2"/>
+
+  <!-- banner pole and crimson pennant -->
+  <rect x="128" y="6" width="3" height="20" fill="#2B2118"/>
+  <polygon points="131,7 157,13 131,19" fill="#7A1F2B"/>
+
+  <!-- the two gulfs, drawn over the wall ends -->
+  <path d="M0 100 Q8 92 16 100 Q24 108 32 100 L44 160 L0 160 Z" fill="#2C5F7C"/>
+  <path d="M260 100 Q252 92 244 100 Q236 108 228 100 L216 160 L260 160 Z" fill="#2C5F7C"/>
+  <!-- parchment wave crescents -->
+  <path d="M5 122 Q15 114 26 122 Q15 120 5 122 Z" fill="#F0E6D2"/>
+  <path d="M3 142 Q16 134 31 142 Q16 140 3 142 Z" fill="#F0E6D2"/>
+  <path d="M255 122 Q245 114 234 122 Q245 120 255 122 Z" fill="#F0E6D2"/>
+  <path d="M257 142 Q244 134 229 142 Q244 140 257 142 Z" fill="#F0E6D2"/>
+</svg>

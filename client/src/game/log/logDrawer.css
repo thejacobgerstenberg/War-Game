@@ -1,0 +1,124 @@
+/* ==========================================================================
+   IMPERIUM — chronicle drawer (chr- prefix), game.html callout 14
+   ==========================================================================
+   Right-edge gilded tab; open lays a parchment strip OVER the map (the
+   gb-slot-drawer slot positions and bounds it; the shell does not reflow).
+   Newest entries first, "Round VII — Campaign" rubrics, scrollable within
+   itself.
+   ========================================================================== */
+
+.chr-drawer {
+  display: flex;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.chr-drawer .chr-tab {
+  writing-mode: vertical-rl;
+  align-self: center;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  padding: var(--space-3) var(--space-1);
+  background: var(--gold);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-right: none;
+  border-radius: var(--radius-1) 0 0 var(--radius-1);
+  cursor: pointer;
+  text-transform: none; /* beat theme.css's global button uppercase */
+}
+.chr-drawer .chr-tab:hover,
+.chr-drawer .chr-tab:focus-visible {
+  box-shadow: 0 0 0 2px var(--gold);
+  transform: none;
+  filter: none;
+}
+
+.chr-drawer .chr-body {
+  display: flex;
+  flex-direction: column;
+  width: 21rem;
+  max-width: 60vw;
+  background: var(--parchment);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-right: none;
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-sm);
+}
+@media (max-width: 1280px) {
+  .chr-drawer .chr-body { width: 16rem; }
+}
+
+.chr-drawer .chr-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--ink-ghost);
+}
+.chr-drawer .chr-filter {
+  font: inherit;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+  text-transform: none; /* beat theme.css's global button uppercase */
+  padding: 0.1em 0.6em;
+  background: var(--vellum);
+  color: var(--ink);
+  border: 1px solid var(--ink-faint);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.chr-drawer .chr-filter:hover,
+.chr-drawer .chr-filter:focus-visible {
+  box-shadow: 0 0 0 2px var(--gold);
+  transform: none;
+  filter: none;
+}
+.chr-drawer .chr-filter[aria-pressed="true"] {
+  background: var(--gold);
+  border-color: var(--ink);
+}
+.chr-drawer .chr-round-select {
+  margin-left: auto;
+  font: inherit;
+  font-size: var(--text-xs);
+  padding: 0.1em 0.3em;
+  background: var(--vellum);
+  color: var(--ink);
+  border: 1px solid var(--ink-faint);
+  border-radius: var(--radius-1);
+}
+
+.chr-drawer .chr-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-4);
+}
+.chr-drawer .chr-scroll ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.chr-drawer .chr-scroll li {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--ink-ghost);
+}
+.chr-drawer .chr-when {
+  display: block;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  color: var(--porphyry);
+}
+.chr-drawer .chr-empty {
+  padding: var(--space-3) 0;
+  font-style: italic;
+  color: var(--ink-faint);
+}

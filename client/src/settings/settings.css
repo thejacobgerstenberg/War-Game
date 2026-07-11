@@ -1,0 +1,129 @@
+/* ==========================================================================
+   IMPERIUM — The Steward's Chamber (settings) · prefix: set-
+   ==========================================================================
+   Chrome for client/src/settings/SettingsPanel.tsx. Tokens only — every
+   color is a locked hue or a color-mix() of locked hues (tokens.css).
+   Motion is gated behind prefers-reduced-motion: no-preference.
+   ========================================================================== */
+
+/* The in-game door: docked top-left inside the map viewport (the other map
+   corners belong to the event toast / advisor / tray / drawer slots). */
+.set-door-slot {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 60;
+}
+
+.set-door {
+  font-size: var(--text-lg);
+  line-height: 1;
+  padding: var(--space-1) var(--space-2);
+}
+
+/* -- Chamber body ---------------------------------------------------------- */
+
+.set-subtitle {
+  margin: 0 0 var(--space-4);
+}
+
+.set-section {
+  margin-bottom: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--ink-ghost);
+}
+
+.set-heading {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  font-size: var(--text-md);
+  color: var(--porphyry);
+}
+.theme-night .set-heading,
+.dark .set-heading {
+  color: var(--gold-soft);
+}
+
+/* -- Switch rows (mute, the Scribe's Aids) ---------------------------------- */
+
+.set-switch {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  cursor: pointer;
+}
+
+.set-switch input[type="checkbox"] {
+  inline-size: 1.05rem;
+  block-size: 1.05rem;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+.set-switch-label {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+}
+
+.set-switch-state,
+.set-switch-gloss {
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: color-mix(in srgb, currentColor 65%, transparent);
+}
+
+.set-switch-gloss {
+  grid-column: 2 / -1;
+}
+
+/* -- Volume sliders ---------------------------------------------------------- */
+
+.set-volume-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr 2.5rem;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.set-volume-label {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.set-volume-slider {
+  inline-size: 100%;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+/* Hover/focus parity with the contract's gold rim (README §1). */
+.set-volume-slider:hover,
+.set-volume-slider:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: var(--radius-1);
+}
+
+.set-volume-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-align: right;
+}
+
+/* Motion respect: the door press translate comes from .btn; nothing here
+   animates, and anything that ever does must sit inside this gate. */
+@media (prefers-reduced-motion: reduce) {
+  .set-door,
+  .set-volume-slider,
+  .set-switch input[type="checkbox"] {
+    transition: none;
+  }
+}

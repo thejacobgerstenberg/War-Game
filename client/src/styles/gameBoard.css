@@ -1,0 +1,167 @@
+/* ==========================================================================
+   IMPERIUM — GameBoard shell layout (gb-* prefix)
+   ==========================================================================
+   Implements the design/mockups/game.html app shell: one viewport tall,
+   nothing inside it scrolls except designated inner regions. Grid areas:
+     "top  top  top"
+     "left map  right"
+     "bar  bar  bar"
+   Foundation-owned. Feature areas style their own components with their own
+   prefixes (see scratchpad HANDOFF.md §CSS conventions).
+   ========================================================================== */
+
+.gb-shell {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 268px 1fr 336px;
+  grid-template-areas:
+    "top  top  top"
+    "left map  right"
+    "bar  bar  bar";
+  gap: var(--space-2);
+  padding: var(--space-2);
+  overflow: hidden;
+  background: var(--page-bg);
+  color: var(--page-fg);
+}
+
+/* -- Top bar --------------------------------------------------------------- */
+.gb-top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--porphyry);
+  color: var(--parchment);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-2);
+  min-width: 0;   /* shrinks with the grid; never widens the map track */
+}
+.gb-top .reign { display: flex; align-items: center; gap: var(--space-4); }
+.gb-top .round-counter,
+.gb-top .era-banner {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.gb-top .round-counter b { color: var(--gold); font-size: var(--text-lg); }
+.gb-top .era-banner {
+  font-size: var(--text-xs);
+  color: var(--gold-soft);
+  border-left: 1px solid var(--gold);
+  padding-left: var(--space-4);
+}
+.gb-top .phase-track { margin-inline: auto; min-width: 0; }
+
+/* Breath-timer: hourglass motif + sand gauge. No clock digits, ever. */
+.turn-timer { display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+.turn-timer .hourglass { color: var(--gold); font-size: var(--text-lg); line-height: 1; }
+.turn-timer .breaths {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+}
+.sand-gauge {
+  width: 90px;
+  height: 8px;
+  background: var(--porphyry-deep);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-1);
+  overflow: hidden;
+}
+.sand-gauge .sand { display: block; height: 100%; background: var(--gold); }
+.turn-timer.is-low .sand-gauge .sand { background: var(--crimson); }
+.turn-timer.is-low .breaths { color: var(--crimson); }
+
+/* -- Side rails ------------------------------------------------------------ */
+.gb-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  overflow-y: auto;
+}
+.gb-left  { grid-area: left; }
+.gb-right { grid-area: right; }
+.gb-side .panel { box-shadow: none; }        /* rails sit flush in the shell */
+
+/* -- Map viewport ----------------------------------------------------------- */
+.gb-map {
+  grid-area: map;
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  border: 2px solid var(--gold);
+  border-radius: var(--radius-2);
+  overflow: hidden;
+  background: var(--deep-sea);
+}
+.gb-map .board-root { width: 100%; height: 100%; }
+
+/* Overlay slots inside the map viewport (per game.html):
+   event toast top-right; advisor bottom-left; chronicle drawer right edge;
+   tactic tray bottom-center. Slots never intercept clicks themselves. */
+.gb-slot { position: absolute; z-index: 60; pointer-events: none; }
+.gb-slot > * { pointer-events: auto; }
+.gb-slot-event    { top: var(--space-3); right: var(--space-3); max-width: 24rem; }
+.gb-slot-advisor  { left: var(--space-3); bottom: var(--space-3); }
+.gb-slot-drawer   { top: 22%; right: 0; bottom: 26%; }
+.gb-slot-tray     { left: 50%; bottom: var(--space-3); transform: translateX(-50%); }
+
+/* -- Action bar -------------------------------------------------------------- */
+.gb-bar {
+  grid-area: bar;
+  display: flex;
+  flex-wrap: wrap;  /* orders take a second row rather than clip */
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--porphyry);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-2);
+  min-width: 0;
+}
+.gb-bar .btn {
+  flex-direction: column;
+  gap: 0.15em;
+  padding: 0.4em 0.8em;
+  min-width: 6.2em;
+}
+.gb-bar .action-budget { margin-left: auto; color: var(--parchment); }
+
+/* -- Narrow shells (≤1280px; verified at 1024×768 in the mockups) ----------- */
+@media (max-width: 1280px) {
+  .gb-shell { grid-template-columns: 220px 1fr 300px; }
+
+  .gb-top .reign { flex-direction: column; align-items: flex-start; gap: 0; }
+  .gb-top .era-banner { border-left: none; padding-left: 0; }
+
+  /* Phases go glyph-only; names remain for assistive tech. */
+  .gb-top .phase { padding: 0.35em 0.5em; }
+  .gb-top .phase .phase-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .turn-timer {
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: var(--space-2);
+    align-items: center;
+  }
+  .turn-timer .hourglass { grid-row: 1 / span 2; }
+  .turn-timer .sand-gauge, .turn-timer .breaths { grid-column: 2; }
+
+  .gb-bar .btn { min-width: 0; }
+  .gb-slot-drawer { bottom: 38%; }
+}

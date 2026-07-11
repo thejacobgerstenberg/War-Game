@@ -1,0 +1,116 @@
+/* ==========================================================================
+   IMPERIUM: Twilight of Empires — design tokens (client)
+   ==========================================================================
+   Adapted VERBATIM from design/mockups/mockups.css §0–§1 (the Phase 3 design
+   contract). The nine locked palette hues below are the ONLY hues allowed
+   anywhere in the client UI; derived tones must be color-mix()es or alpha
+   variants of these — never a new hue.
+
+   FONTS: Cinzel + EB Garamond are already self-hosted at client/public/fonts/
+   and their @font-face rules live in client/src/theme.css (loaded by
+   main.tsx before this file). Do NOT re-declare @font-face here and do NOT
+   introduce a fonts.googleapis.com import (restricted egress stalls page
+   load ~13s). The --font-* stacks below fall back to system serifs until
+   the woff2 files arrive (font-display: swap).
+   ========================================================================== */
+
+:root {
+  /* Locked palette — the nine hues. No others, anywhere. */
+  --porphyry:  #4B1F3F;   /* imperial purple — Byzantium, chrome accents   */
+  --gold:      #C9A227;   /* gilding — hover rims, selection, treasure     */
+  --parchment: #F0E6D2;   /* page ground, light surfaces                   */
+  --vellum:    #E2D3B3;   /* panel ground, hatching, muted surfaces        */
+  --lapis:     #1F4E79;   /* Venice, water, links                          */
+  --deep-sea:  #2C5F7C;   /* Ottomans (board color), secondary water       */
+  --ink:       #2B2118;   /* text, borders, night ground                   */
+  --crimson:   #7A1F2B;   /* Genoa, danger, battle                         */
+  --laurel:    #4A5D3A;   /* Hungary, triumph, confirmation                */
+
+  /* Derived tones — mixes of the locked hues only */
+  --porphyry-deep:   color-mix(in srgb, var(--porphyry) 65%, var(--ink));
+  --gold-soft:       color-mix(in srgb, var(--gold) 45%, var(--parchment));
+  --vellum-shade:    color-mix(in srgb, var(--vellum) 78%, var(--ink));
+  --ink-faint:       color-mix(in srgb, var(--ink) 34%, transparent);
+  --ink-ghost:       color-mix(in srgb, var(--ink) 14%, transparent);
+  --parchment-faint: color-mix(in srgb, var(--parchment) 40%, transparent);
+  --night:           color-mix(in srgb, var(--ink) 82%, var(--porphyry));
+
+  /* Faction accents (board colors; note plural "ottomans" slug — this is
+     the board.svg contract, see client/src/board/types.ts FACTION_SLUG) */
+  --faction-byzantium: var(--porphyry);
+  --faction-venice:    var(--lapis);
+  --faction-genoa:     var(--crimson);
+  --faction-ottomans:  var(--deep-sea);
+  --faction-hungary:   var(--laurel);
+
+  /* Type */
+  --font-display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --font-body:    "EB Garamond", Garamond, Georgia, serif;
+  --font-mono:    ui-monospace, "Courier New", monospace;
+
+  --text-xs:  0.72rem;
+  --text-sm:  0.85rem;
+  --text-md:  1rem;      /* body = 18px, set on html by theme.css */
+  --text-lg:  1.2rem;
+  --text-xl:  1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.6rem;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Radii — manuscripts are square-shouldered; keep radii small */
+  --radius-1: 2px;
+  --radius-2: 4px;
+  --radius-pill: 999px;
+
+  /* Elevation — hard offset "seal" shadows, no blur (woodblock, not
+     neumorphism) */
+  --shadow-1: 2px 2px 0 var(--ink-faint);
+  --shadow-2: 4px 4px 0 var(--ink-faint);
+  --shadow-3: 6px 6px 0 var(--ink-faint);
+
+  /* Page ground (overridden by .theme-night / .dark) */
+  --page-bg: var(--parchment);
+  --page-fg: var(--ink);
+}
+
+/* Night chrome for board/battle screens (mockups' .theme-night) and its
+   `.dark` alias. Set either class on the screen root (the GameBoard shell
+   sets .theme-night). */
+.theme-night,
+.dark {
+  --page-bg: var(--night);
+  --page-fg: var(--parchment);
+  --ink-faint: color-mix(in srgb, var(--ink) 60%, transparent);
+}
+
+/* --------------------------------------------------------------------------
+   Faction color channel — any element carrying data-faction resolves
+   --faction-color (mockups.css §16). Color is never the only channel:
+   pair with a crest, glyph, or label.
+   -------------------------------------------------------------------------- */
+[data-faction="byzantium"] { --faction-color: var(--faction-byzantium); }
+[data-faction="venice"]    { --faction-color: var(--faction-venice); }
+[data-faction="genoa"]     { --faction-color: var(--faction-genoa); }
+[data-faction="ottomans"]  { --faction-color: var(--faction-ottomans); }
+[data-faction="hungary"]   { --faction-color: var(--faction-hungary); }
+
+/* --------------------------------------------------------------------------
+   Board faction-color reconciliation. The vendored board.svg's inline
+   <style> declares --faction-ottomans: #7A1F2B and --faction-genoa: #C9A227,
+   which contradict the locked mockup tokens (Ottomans = --deep-sea,
+   Genoa = --crimson). The mockups win. This selector (id + class) out-
+   specifies the SVG's own `svg#board` rule wherever the board is mounted
+   inside the board host, so provinces paint with the contract colors.
+   -------------------------------------------------------------------------- */
+.board-svg-host svg#board {
+  --faction-ottomans: var(--deep-sea);
+  --faction-genoa: var(--crimson);
+}

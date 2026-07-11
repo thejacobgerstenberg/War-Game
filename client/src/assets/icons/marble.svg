@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="marble-icon" role="img" aria-labelledby="marble-title">
+  <title id="marble-title">Marble — classical column</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — resource icon: MARBLE
+       A Doric column: abacus, echinus capital, tapered fluted
+       shaft, torus and plinth base. Single-color silhouette:
+       currentColor fills, flutes as evenodd cut-out channels,
+       thin gaps separate the courses of stone.
+       ============================================================ -->
+
+  <!-- == capital: abacus slab == -->
+  <rect fill="currentColor" x="9" y="5" width="46" height="6" rx="1.5"/>
+
+  <!-- == echinus flaring into the tapered shaft (x 21.5..42.5 at
+       the neck, 19..45 at the foot), three cut-out flutes == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M14 13 L50 13 L42.5 20 L45 49 L19 49 L21.5 20
+    Z
+    M25 23 H28 V46 H25 Z
+    M30.5 23 H33.5 V46 H30.5 Z
+    M36 23 H39 V46 H36 Z"/>
+
+  <!-- == base: torus course and plinth == -->
+  <rect fill="currentColor" x="15" y="50.5" width="34" height="4" rx="1.5"/>
+  <rect fill="currentColor" x="9" y="56" width="46" height="4" rx="1.5"/>
+</svg>
