@@ -1,0 +1,382 @@
+/**
+ * Hand-authored map: 52 land provinces + 12 sea zones covering the
+ * Mediterranean/Balkans theater, 1400-1453. Historical plausibility over
+ * precision. Adjacency is authored as edge lists and expanded symmetrically,
+ * so it cannot be asymmetric by typo; validateMap() checks everything else.
+ */
+
+import type {
+  Army,
+  FactionId,
+  FactionStart,
+  Province,
+  SeaZone,
+  Terrain,
+  TradeRoute,
+  WallTier,
+  Yields,
+} from './types';
+import { CONFIG } from './rules';
+import { armyOf } from './combat';
+
+// ------------------------------------------------------------- authoring
+
+interface ProvinceSpec {
+  name: string;
+  owner: FactionId | null;
+  terrain: Terrain;
+  wall: WallTier;
+  key?: boolean;
+  /** [gold, grain, timber, marble, faith] */
+  y: [number, number, number, number, number];
+  /** Sea zones this province coasts (implies port when non-empty). */
+  coasts?: string[];
+}
+
+const P: Record<string, ProvinceSpec> = {
+  // ---- Italy ----
+  venice: { name: 'Venice', owner: 'venice', terrain: 'plains', wall: 2, key: true, y: [5, 1, 0, 1, 0], coasts: ['adriatic_north'] },
+  friuli: { name: 'Friuli', owner: null, terrain: 'plains', wall: 0, y: [1, 2, 2, 0, 0], coasts: ['adriatic_north'] },
+  milan: { name: 'Milan', owner: null, terrain: 'plains', wall: 2, y: [4, 3, 0, 0, 0] },
+  genoa: { name: 'Genoa', owner: 'genoa', terrain: 'hills', wall: 2, key: true, y: [5, 1, 1, 0, 0], coasts: ['ligurian'] },
+  tuscany: { name: 'Tuscany', owner: null, terrain: 'hills', wall: 1, y: [3, 2, 0, 2, 0], coasts: ['ligurian'] },
+  rome: { name: 'Rome', owner: null, terrain: 'plains', wall: 2, key: true, y: [3, 2, 0, 1, 2], coasts: ['tyrrhenian'] },
+  naples: { name: 'Naples', owner: null, terrain: 'plains', wall: 1, y: [3, 3, 0, 0, 0], coasts: ['tyrrhenian'] },
+  apulia: { name: 'Apulia', owner: null, terrain: 'plains', wall: 0, y: [2, 3, 0, 0, 0], coasts: ['adriatic_south', 'ionian'] },
+  sicily: { name: 'Sicily', owner: null, terrain: 'plains', wall: 1, y: [3, 4, 0, 0, 0], coasts: ['tyrrhenian', 'ionian'] },
+  corsica: { name: 'Corsica', owner: 'genoa', terrain: 'mountains', wall: 0, y: [1, 1, 2, 0, 0], coasts: ['ligurian', 'tyrrhenian'] },
+  // ---- Western Balkans ----
+  ragusa: { name: 'Ragusa', owner: null, terrain: 'hills', wall: 2, key: true, y: [4, 1, 0, 0, 0], coasts: ['adriatic_south'] },
+  zara: { name: 'Zara', owner: 'venice', terrain: 'hills', wall: 1, y: [2, 1, 1, 0, 0], coasts: ['adriatic_north'] },
+  croatia: { name: 'Croatia', owner: 'hungary', terrain: 'hills', wall: 0, y: [1, 2, 1, 0, 0], coasts: ['adriatic_north'] },
+  slavonia: { name: 'Slavonia', owner: 'hungary', terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0] },
+  bosnia: { name: 'Bosnia', owner: null, terrain: 'mountains', wall: 0, y: [2, 1, 2, 0, 0] },
+  serbia: { name: 'Serbia', owner: null, terrain: 'hills', wall: 1, y: [3, 2, 0, 0, 0] },
+  albania: { name: 'Albania', owner: null, terrain: 'mountains', wall: 0, y: [1, 1, 0, 0, 0], coasts: ['adriatic_south'] },
+  epirus: { name: 'Epirus', owner: null, terrain: 'mountains', wall: 0, y: [1, 1, 0, 0, 0], coasts: ['ionian'] },
+  athens: { name: 'Athens', owner: null, terrain: 'plains', wall: 1, key: true, y: [2, 1, 0, 2, 1], coasts: ['aegean_south'] },
+  morea: { name: 'Morea', owner: 'byzantium', terrain: 'hills', wall: 1, y: [2, 2, 0, 1, 0], coasts: ['ionian', 'sea_of_crete'] },
+  // ---- Hungary & lower Danube ----
+  buda: { name: 'Buda', owner: 'hungary', terrain: 'plains', wall: 2, key: true, y: [4, 3, 0, 0, 0] },
+  upper_hungary: { name: 'Upper Hungary', owner: 'hungary', terrain: 'mountains', wall: 0, y: [3, 1, 1, 0, 0] },
+  transylvania: { name: 'Transylvania', owner: 'hungary', terrain: 'mountains', wall: 0, y: [2, 2, 2, 0, 0] },
+  banat: { name: 'Banat', owner: 'hungary', terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0] },
+  moldavia: { name: 'Moldavia', owner: null, terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0], coasts: ['black_sea_west'] },
+  wallachia: { name: 'Wallachia', owner: null, terrain: 'plains', wall: 0, y: [1, 4, 0, 0, 0] },
+  vidin: { name: 'Vidin', owner: null, terrain: 'hills', wall: 1, y: [1, 2, 0, 0, 0] },
+  nicopolis: { name: 'Nicopolis', owner: null, terrain: 'plains', wall: 1, y: [1, 2, 0, 0, 0] },
+  mesembria: { name: 'Mesembria', owner: 'byzantium', terrain: 'plains', wall: 1, y: [2, 2, 0, 0, 0], coasts: ['black_sea_west'] },
+  // ---- Ottoman Balkans & Thrace ----
+  sofia: { name: 'Sofia', owner: 'ottomans', terrain: 'hills', wall: 1, y: [2, 2, 0, 0, 0] },
+  philippopolis: { name: 'Philippopolis', owner: 'ottomans', terrain: 'plains', wall: 0, y: [2, 3, 0, 0, 0] },
+  macedonia: { name: 'Macedonia', owner: null, terrain: 'hills', wall: 0, y: [1, 2, 0, 0, 0] },
+  salonica: { name: 'Salonica', owner: 'byzantium', terrain: 'plains', wall: 2, key: true, y: [4, 2, 0, 0, 1], coasts: ['aegean_north'] },
+  edirne: { name: 'Edirne', owner: 'ottomans', terrain: 'plains', wall: 2, key: true, y: [3, 3, 0, 0, 0] },
+  gallipoli: { name: 'Gallipoli', owner: 'ottomans', terrain: 'plains', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['aegean_north', 'sea_of_marmara'] },
+  constantinople: { name: 'Constantinople', owner: 'byzantium', terrain: 'plains', wall: 3, key: true, y: [5, 1, 0, 1, 2], coasts: ['sea_of_marmara', 'black_sea_west'] },
+  // ---- Anatolia ----
+  bursa: { name: 'Bursa', owner: 'ottomans', terrain: 'plains', wall: 1, y: [3, 2, 0, 0, 0], coasts: ['sea_of_marmara'] },
+  nicaea: { name: 'Nicaea', owner: 'ottomans', terrain: 'hills', wall: 1, y: [2, 2, 0, 0, 0] },
+  smyrna: { name: 'Smyrna', owner: 'ottomans', terrain: 'plains', wall: 0, y: [3, 2, 0, 0, 0], coasts: ['aegean_south'] },
+  ankara: { name: 'Ankara', owner: 'ottomans', terrain: 'plains', wall: 0, y: [2, 2, 0, 0, 0] },
+  karaman: { name: 'Karaman', owner: null, terrain: 'mountains', wall: 1, y: [2, 2, 0, 0, 0] },
+  attaleia: { name: 'Attaleia', owner: null, terrain: 'hills', wall: 0, y: [2, 1, 1, 0, 0], coasts: ['eastern_med'] },
+  sinope: { name: 'Sinope', owner: null, terrain: 'hills', wall: 1, y: [2, 1, 1, 0, 0], coasts: ['black_sea_east'] },
+  trebizond: { name: 'Trebizond', owner: 'byzantium', terrain: 'mountains', wall: 2, key: true, y: [3, 1, 0, 0, 1], coasts: ['black_sea_east'] },
+  // ---- Islands & overseas colonies ----
+  crete: { name: 'Crete', owner: 'venice', terrain: 'hills', wall: 1, y: [3, 2, 0, 0, 0], coasts: ['sea_of_crete', 'eastern_med'] },
+  negroponte: { name: 'Negroponte', owner: 'venice', terrain: 'plains', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['aegean_south'] },
+  corfu: { name: 'Corfu', owner: 'venice', terrain: 'hills', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['ionian', 'adriatic_south'] },
+  chios: { name: 'Chios', owner: 'genoa', terrain: 'hills', wall: 1, y: [3, 1, 0, 0, 0], coasts: ['aegean_south'] },
+  lesbos: { name: 'Lesbos', owner: 'genoa', terrain: 'hills', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['aegean_north'] },
+  rhodes: { name: 'Rhodes', owner: null, terrain: 'hills', wall: 2, y: [2, 1, 0, 0, 2], coasts: ['aegean_south', 'eastern_med'] },
+  cyprus: { name: 'Cyprus', owner: null, terrain: 'plains', wall: 1, y: [3, 2, 1, 0, 0], coasts: ['eastern_med'] },
+  caffa: { name: 'Caffa', owner: 'genoa', terrain: 'plains', wall: 1, y: [4, 2, 0, 0, 0], coasts: ['black_sea_east'] },
+};
+
+/** Land adjacency (symmetric; expanded below). */
+const LAND_EDGES: Array<[string, string]> = [
+  // Italy
+  ['venice', 'friuli'], ['venice', 'milan'], ['milan', 'genoa'], ['milan', 'tuscany'],
+  ['genoa', 'tuscany'], ['tuscany', 'rome'], ['rome', 'naples'], ['naples', 'apulia'],
+  // Italy <-> western Balkans (land route around the head of the Adriatic)
+  ['friuli', 'croatia'],
+  // Western Balkans
+  ['zara', 'croatia'], ['zara', 'bosnia'], ['croatia', 'slavonia'], ['croatia', 'bosnia'],
+  ['slavonia', 'bosnia'], ['bosnia', 'serbia'], ['bosnia', 'ragusa'], ['ragusa', 'albania'],
+  ['albania', 'serbia'], ['albania', 'epirus'], ['albania', 'macedonia'],
+  ['epirus', 'macedonia'], ['epirus', 'athens'], ['athens', 'morea'], ['athens', 'salonica'],
+  // Hungary & Danube
+  ['buda', 'upper_hungary'], ['buda', 'slavonia'], ['buda', 'banat'], ['buda', 'transylvania'],
+  ['upper_hungary', 'transylvania'], ['transylvania', 'moldavia'], ['transylvania', 'wallachia'],
+  ['transylvania', 'banat'], ['banat', 'slavonia'], ['banat', 'serbia'], ['banat', 'wallachia'],
+  ['serbia', 'vidin'], ['serbia', 'macedonia'], ['serbia', 'sofia'],
+  ['vidin', 'wallachia'], ['vidin', 'nicopolis'], ['vidin', 'sofia'],
+  ['wallachia', 'moldavia'], ['wallachia', 'nicopolis'],
+  ['nicopolis', 'mesembria'], ['nicopolis', 'sofia'], ['nicopolis', 'philippopolis'],
+  ['mesembria', 'constantinople'], ['mesembria', 'edirne'],
+  // Ottoman Balkans & Thrace
+  ['sofia', 'philippopolis'], ['sofia', 'macedonia'],
+  ['philippopolis', 'edirne'], ['philippopolis', 'macedonia'],
+  ['macedonia', 'salonica'],
+  ['edirne', 'gallipoli'], ['edirne', 'constantinople'],
+  // Anatolia
+  ['bursa', 'nicaea'], ['bursa', 'smyrna'], ['nicaea', 'ankara'], ['nicaea', 'smyrna'],
+  ['smyrna', 'attaleia'], ['attaleia', 'karaman'], ['karaman', 'ankara'],
+  ['ankara', 'sinope'], ['sinope', 'trebizond'],
+  // Bridge at Chalcis
+  ['negroponte', 'athens'],
+];
+
+/**
+ * Strait crossings: traversable land adjacencies across narrow water.
+ * The full game applies CONFIG.combat.riverCrossingPenalty when attacking
+ * across one, and may forbid crossing while an enemy fleet holds the zone.
+ * Also included in normal adjacency below.
+ */
+export const STRAIT_EDGES: Array<[string, string]> = [
+  ['gallipoli', 'bursa'], // Dardanelles
+  ['constantinople', 'nicaea'], // Bosporus
+];
+
+interface SeaZoneSpec {
+  name: string;
+}
+
+const S: Record<string, SeaZoneSpec> = {
+  ligurian: { name: 'Ligurian Sea' },
+  tyrrhenian: { name: 'Tyrrhenian Sea' },
+  adriatic_north: { name: 'North Adriatic' },
+  adriatic_south: { name: 'South Adriatic' },
+  ionian: { name: 'Ionian Sea' },
+  sea_of_crete: { name: 'Sea of Crete' },
+  aegean_south: { name: 'South Aegean' },
+  aegean_north: { name: 'North Aegean' },
+  sea_of_marmara: { name: 'Sea of Marmara' },
+  black_sea_west: { name: 'West Black Sea' },
+  black_sea_east: { name: 'East Black Sea' },
+  eastern_med: { name: 'Eastern Mediterranean' },
+};
+
+const SEA_EDGES: Array<[string, string]> = [
+  ['ligurian', 'tyrrhenian'],
+  ['tyrrhenian', 'ionian'],
+  ['adriatic_north', 'adriatic_south'],
+  ['adriatic_south', 'ionian'],
+  ['ionian', 'sea_of_crete'],
+  ['sea_of_crete', 'aegean_south'],
+  ['sea_of_crete', 'eastern_med'],
+  ['aegean_south', 'aegean_north'],
+  ['aegean_south', 'eastern_med'],
+  ['aegean_north', 'sea_of_marmara'],
+  ['sea_of_marmara', 'black_sea_west'],
+  ['black_sea_west', 'black_sea_east'],
+];
+
+// -------------------------------------------------------------- expansion
+
+function buildProvinces(): Province[] {
+  const out: Province[] = [];
+  for (const [id, spec] of Object.entries(P)) {
+    const [gold, grain, timber, marble, faith] = spec.y;
+    const yields: Yields = { gold, grain, timber, marble, faith };
+    out.push({
+      id,
+      name: spec.name,
+      initialOwner: spec.owner,
+      terrain: spec.terrain,
+      wallTier: spec.wall,
+      theodosianWalls: id === 'constantinople',
+      keyCity: spec.key === true,
+      port: (spec.coasts?.length ?? 0) > 0,
+      yields,
+      adjacentProvinces: [],
+      coasts: spec.coasts ? [...spec.coasts] : [],
+    });
+  }
+  return out;
+}
+
+export const PROVINCES: Province[] = buildProvinces();
+export const PROVINCE_BY_ID: ReadonlyMap<string, Province> = new Map(
+  PROVINCES.map((p) => [p.id, p]),
+);
+
+for (const [a, b] of [...LAND_EDGES, ...STRAIT_EDGES]) {
+  const pa = PROVINCE_BY_ID.get(a);
+  const pb = PROVINCE_BY_ID.get(b);
+  if (!pa || !pb) throw new Error(`map.ts: land edge references unknown province: ${a}-${b}`);
+  pa.adjacentProvinces.push(b);
+  pb.adjacentProvinces.push(a);
+}
+
+export const SEA_ZONES: SeaZone[] = Object.entries(S).map(([id, spec]) => ({
+  id,
+  name: spec.name,
+  adjacentZones: [],
+  coastalProvinces: [],
+}));
+export const SEA_ZONE_BY_ID: ReadonlyMap<string, SeaZone> = new Map(
+  SEA_ZONES.map((z) => [z.id, z]),
+);
+
+for (const [a, b] of SEA_EDGES) {
+  const za = SEA_ZONE_BY_ID.get(a);
+  const zb = SEA_ZONE_BY_ID.get(b);
+  if (!za || !zb) throw new Error(`map.ts: sea edge references unknown zone: ${a}-${b}`);
+  za.adjacentZones.push(b);
+  zb.adjacentZones.push(a);
+}
+
+for (const p of PROVINCES) {
+  for (const zid of p.coasts) {
+    const z = SEA_ZONE_BY_ID.get(zid);
+    if (!z) throw new Error(`map.ts: province ${p.id} coasts unknown zone ${zid}`);
+    z.coastalProvinces.push(p.id);
+  }
+}
+
+export const KEY_CITY_IDS: string[] = PROVINCES.filter((p) => p.keyCity).map((p) => p.id);
+
+// ------------------------------------------------------------ trade routes
+
+export const TRADE_ROUTES: TradeRoute[] = [
+  { id: 'venice_constantinople', a: 'venice', b: 'constantinople', seaZones: ['adriatic_north', 'adriatic_south', 'ionian', 'sea_of_crete', 'aegean_south', 'aegean_north', 'sea_of_marmara'], income: 4 },
+  { id: 'genoa_caffa', a: 'genoa', b: 'caffa', seaZones: ['ligurian', 'tyrrhenian', 'ionian', 'sea_of_crete', 'aegean_south', 'aegean_north', 'sea_of_marmara', 'black_sea_west', 'black_sea_east'], income: 4 },
+  { id: 'constantinople_caffa', a: 'constantinople', b: 'caffa', seaZones: ['black_sea_west', 'black_sea_east'], income: 3 },
+  { id: 'venice_crete', a: 'venice', b: 'crete', seaZones: ['adriatic_north', 'adriatic_south', 'ionian', 'sea_of_crete'], income: 2 },
+  { id: 'genoa_chios', a: 'genoa', b: 'chios', seaZones: ['ligurian', 'tyrrhenian', 'ionian', 'sea_of_crete', 'aegean_south'], income: 2 },
+  { id: 'ragusa_venice', a: 'ragusa', b: 'venice', seaZones: ['adriatic_south', 'adriatic_north'], income: 2 },
+  { id: 'crete_cyprus', a: 'crete', b: 'cyprus', seaZones: ['eastern_med'], income: 3 },
+  { id: 'salonica_constantinople', a: 'salonica', b: 'constantinople', seaZones: ['aegean_north', 'sea_of_marmara'], income: 2 },
+];
+
+// -------------------------------------------------------------- starts
+
+/**
+ * Starting treasuries and garrisons. Grain upkeep of each start roughly
+ * matches (or slightly exceeds) starting grain income, so factions begin
+ * near equilibrium and must expand or trade to grow armies.
+ */
+export const FACTION_STARTS: Record<FactionId, FactionStart> = {
+  byzantium: {
+    treasury: { gold: 30, grain: 12 },
+    garrisons: {
+      constantinople: armyOf({ levy: 2, professional: 2, galley: 1 }),
+      salonica: armyOf({ levy: 1, professional: 1 }),
+      morea: armyOf({ levy: 1 }),
+      trebizond: armyOf({ levy: 1 }),
+      mesembria: armyOf({ levy: 1 }),
+    },
+  },
+  ottomans: {
+    treasury: { gold: 24, grain: 16 },
+    garrisons: {
+      edirne: armyOf({ levy: 2, professional: 2 }),
+      gallipoli: armyOf({ levy: 1, professional: 1, galley: 1 }),
+      bursa: armyOf({ levy: 2, professional: 1 }),
+      nicaea: armyOf({ levy: 1 }),
+      smyrna: armyOf({ levy: 1, galley: 1 }),
+      ankara: armyOf({ levy: 1 }),
+      sofia: armyOf({ levy: 1 }),
+      philippopolis: armyOf({ levy: 1 }),
+    },
+  },
+  venice: {
+    treasury: { gold: 40, grain: 8 },
+    garrisons: {
+      venice: armyOf({ levy: 1, professional: 2, galley: 2 }),
+      crete: armyOf({ levy: 1, professional: 1, galley: 1 }),
+      corfu: armyOf({ levy: 1, galley: 1 }),
+      negroponte: armyOf({ levy: 1 }),
+      zara: armyOf({ levy: 1 }),
+    },
+  },
+  genoa: {
+    treasury: { gold: 36, grain: 8 },
+    garrisons: {
+      genoa: armyOf({ levy: 1, professional: 2, galley: 2 }),
+      chios: armyOf({ levy: 1, galley: 1 }),
+      caffa: armyOf({ levy: 1, professional: 1, galley: 1 }),
+      corsica: armyOf({ levy: 1 }),
+      lesbos: armyOf({ levy: 1 }),
+    },
+  },
+  hungary: {
+    treasury: { gold: 18, grain: 18 },
+    garrisons: {
+      buda: armyOf({ levy: 3, professional: 2 }),
+      transylvania: armyOf({ levy: 2 }),
+      croatia: armyOf({ levy: 2 }),
+      slavonia: armyOf({ levy: 2 }),
+      banat: armyOf({ levy: 2 }),
+      upper_hungary: armyOf({ levy: 1 }),
+    },
+  },
+};
+
+/** Setup garrison of a neutral province (minor powers defend themselves). */
+export function neutralGarrison(p: Province): Army {
+  const n = CONFIG.neutrals;
+  return armyOf({
+    levy: n.baseLevies + n.leviesPerWallTier * p.wallTier,
+    professional: p.keyCity ? n.professionalsIfKeyCity : 0,
+  });
+}
+
+// ------------------------------------------------------------- validation
+
+/** Returns a list of problems (empty = map is consistent). */
+export function validateMap(): string[] {
+  const problems: string[] = [];
+  const y = CONFIG.yields;
+  const bounds: Array<[keyof Yields, readonly [number, number]]> = [
+    ['gold', y.gold], ['grain', y.grain], ['timber', y.timber], ['marble', y.marble], ['faith', y.faith],
+  ];
+  for (const p of PROVINCES) {
+    for (const [res, [lo, hi]] of bounds) {
+      const v = p.yields[res];
+      if (v < lo || v > hi) problems.push(`${p.id}: ${res} yield ${v} outside [${lo},${hi}]`);
+    }
+    if (p.keyCity && p.yields.gold < y.keyCityGoldMin) {
+      problems.push(`${p.id}: key city gold ${p.yields.gold} < min ${y.keyCityGoldMin}`);
+    }
+    for (const a of p.adjacentProvinces) {
+      const q = PROVINCE_BY_ID.get(a);
+      if (!q) problems.push(`${p.id}: adjacent to unknown ${a}`);
+      else if (!q.adjacentProvinces.includes(p.id)) problems.push(`${p.id}<->${a}: asymmetric adjacency`);
+    }
+    if (new Set(p.adjacentProvinces).size !== p.adjacentProvinces.length) {
+      problems.push(`${p.id}: duplicate adjacency entries`);
+    }
+  }
+  for (const z of SEA_ZONES) {
+    for (const a of z.adjacentZones) {
+      const q = SEA_ZONE_BY_ID.get(a);
+      if (!q) problems.push(`${z.id}: adjacent to unknown zone ${a}`);
+      else if (!q.adjacentZones.includes(z.id)) problems.push(`${z.id}<->${a}: asymmetric sea adjacency`);
+    }
+  }
+  for (const r of TRADE_ROUTES) {
+    for (const end of [r.a, r.b]) {
+      const p = PROVINCE_BY_ID.get(end);
+      if (!p) problems.push(`route ${r.id}: unknown endpoint ${end}`);
+      else if (!p.port) problems.push(`route ${r.id}: endpoint ${end} is not a port`);
+    }
+    for (let i = 0; i < r.seaZones.length; i++) {
+      const z = SEA_ZONE_BY_ID.get(r.seaZones[i]);
+      if (!z) { problems.push(`route ${r.id}: unknown zone ${r.seaZones[i]}`); continue; }
+      if (i > 0 && !z.adjacentZones.includes(r.seaZones[i - 1])) {
+        problems.push(`route ${r.id}: zones ${r.seaZones[i - 1]} -> ${r.seaZones[i]} not adjacent`);
+      }
+    }
+  }
+  for (const [fid, start] of Object.entries(FACTION_STARTS) as Array<[FactionId, FactionStart]>) {
+    for (const pid of Object.keys(start.garrisons)) {
+      const p = PROVINCE_BY_ID.get(pid);
+      if (!p) problems.push(`${fid}: garrison in unknown province ${pid}`);
+      else if (p.initialOwner !== fid) problems.push(`${fid}: garrison in ${pid} owned by ${p.initialOwner}`);
+    }
+  }
+  return problems;
+}

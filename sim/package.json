@@ -1,0 +1,19 @@
+{
+  "name": "imperium-balance-sim",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Standalone balance simulation package for IMPERIUM: Twilight of Empires",
+  "scripts": {
+    "sim:combat": "tsx src/run/combat_mc.ts",
+    "sim:siege": "tsx src/run/siege.ts",
+    "sim:economy": "tsx src/run/economy.ts",
+    "sim:pacing": "tsx src/run/pacing.ts",
+    "sim:fullgame": "tsx src/run/fullgame.ts",
+    "sim:all": "npm run sim:combat && npm run sim:siege && npm run sim:economy && npm run sim:pacing && npm run sim:fullgame"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
