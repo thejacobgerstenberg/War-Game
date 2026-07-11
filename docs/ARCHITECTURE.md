@@ -37,12 +37,14 @@ War-Game/
 │   ├── vitest.config.ts    # test include src/**/*.test.ts, node env
 │   └── tsconfig.json       # composite, references ../shared
 └── client/                 # @imperium/client — React + Vite SPA — see §7
-    └── src/                # screens, SVG map, socket hook, styles/tokens.css
+    └── src/                # screens, SVG map, socket singleton, theme.css
 ```
 
-The three workspaces are wired as **TypeScript composite/project references**:
-`server` and `client` both reference `shared`, so a change to a shared type is a
-compile-time break on both ends — the wire format can never silently drift.
+`server` references `shared` as a **TypeScript composite/project reference**, so
+a change to a shared type is a compile-time break on the server. The client has
+no project reference: it consumes `@imperium/shared`'s built `dist/` through the
+npm workspace and typechecks with `tsc --noEmit` (rebuild `shared` to surface a
+shared-type change on the client).
 
 Root scripts (`package.json`):
 
@@ -51,7 +53,7 @@ Root scripts (`package.json`):
 | `npm run build` | Build shared → server → client, in order |
 | `npm run dev` | `concurrently` runs server (`tsx watch`) + client (`vite`) |
 | `npm test` | Runs the server's Vitest suite (the engine tests) |
-| `npm run typecheck` | `tsc -b` across shared + server + client |
+| `npm run typecheck` | Build `shared`, then typecheck server (`tsc -b`) and client (`tsc --noEmit`) |
 
 ---
 
@@ -161,6 +163,7 @@ interface GameState {
   seaZones: SeaZone[];
   armies: Army[];
   fleets: Fleet[];
+  log: GameLogEntry[];             // structured event log (§9), from day one
 }
 
 const EMPTY_RESOURCES: ResourceBundle = { gold:0, grain:0, timber:0, stone:0, faith:0 };
@@ -175,8 +178,6 @@ with (kept in `shared` so both ends stay typed):
   `Player.treaties`, `Player.vassals: string[]`.
 * `GameState.omenDeck` / `discard`, `GameState.mercMarket` (bid row, §Game-Design
   §6.3), `GameState.minors` (NPC states), per-province `walls`/`buildings`/`siege`.
-* `GameState.log: GameLogEntry[]` — the **structured event log** (§9), present
-  from day one.
 * `GameState.rngSeed` / `rngCursor` — the seeded-RNG state (§4.2).
 
 ---
@@ -191,13 +192,13 @@ no `Math.random()` inside it). Everything is a function of explicit inputs.
 
 | File | Exports | Responsibility |
 |---|---|---|
-| `engine/mapData.ts` | `MAP_PROVINCES`, `MAP_SEAZONES`, `ADJACENCY` | Static map definition (from [`MAP.md`](./MAP.md)) |
-| `engine/gameState.ts` | `createInitialState(players, seed)` | Build a fresh `GameState` for a started game |
-| `engine/income.ts` | `computeIncome(state, playerId)` | Sum province yields + buildings + trade routes → `ResourceBundle` |
+| `engine/mapData.ts` | `PROVINCES`, `SEA_ZONES`, `ADJACENCY` | Static map definition (from [`MAP.md`](./MAP.md)) |
+| `engine/gameState.ts` | `createInitialState(roomCode, seats)` | Build a fresh `GameState` for a started game |
+| `engine/income.ts` | `computeIncome(state, playerId)` | Sum owned-province yields minus army grain upkeep → `ResourceBundle` (buildings/trade routes land with those systems) |
 | `engine/adjacency.ts` | `areAdjacent(a, b)` | Graph queries over the map (movement/attack legality) |
-| `engine/actions.ts` | `applyAction(state, action)` | The reducer: `(state, action) → newState` |
-| `engine/rng.ts` | `makeRng(seed)`, `roll(rng, n)` | Seeded deterministic RNG for dice/draws |
-| `engine/*.test.ts` | — | Vitest unit tests co-located per module |
+| `engine/actions.ts` *(planned — §12)* | `applyAction(state, action)` | The reducer: `(state, action) → newState` |
+| `engine/rng.ts` *(planned — §12)* | `makeRng(seed)`, `roll(rng, n)` | Seeded deterministic RNG for dice/draws |
+| `engine/__tests__/*.test.ts` | — | Vitest unit tests (the config picks up `src/**/*.test.ts`) |
 
 ### 4.2 Design: `(state, action) → newState`
 
@@ -316,9 +317,11 @@ engine.
 * **Pick faction** → a player claims one of the five unclaimed `Faction`s;
   broadcast `lobby_update`.
 * **Start** → **host only**; requires ≥ 2 players, each with a faction. The server
-  calls `createInitialState(players, seed)` and broadcasts `game_started`.
+  calls `createInitialState(roomCode, seats)` and broadcasts `game_started`.
 
-Room codes map `roomCode → Room { players, socketIds, gameState | null, seed }`.
+Room codes map `roomCode → Room { code, players, startedByHost, state: GameState
+| null, emptySince }`. (A seeded-RNG field arrives with the action engine —
+§3.3, §12.)
 
 ### 6.1 Sequence diagram
 
@@ -342,7 +345,7 @@ sequenceDiagram
     S-->>P: lobby_update { players:[Alexios/BYZ, Mehmed/OTT] }
 
     H->>S: start_game
-    Note over S: createInitialState(players, seed)
+    Note over S: createInitialState(roomCode, seats)
     S-->>H: game_started { state }
     S-->>P: game_started { state }
 
@@ -358,20 +361,25 @@ The browser app. React function components + hooks, Vite dev/build,
 custom properties + Google Fonts (**Cinzel** + **EB Garamond**) per
 [`UI_DESIGN.md`](./UI_DESIGN.md).
 
-* **Socket layer** — a `useSocket()` hook wraps a single `socket.io-client`
-  connection typed with the shared `ClientToServerEvents`/`ServerToClientEvents`;
-  a `GameContext` holds the latest `GameState` from `state_update`/`game_started`
-  and re-renders the tree.
+* **Socket layer** — a typed `getSocket()` module singleton (`src/socket.ts`)
+  lazily creates the single `socket.io-client` connection typed with the shared
+  `ClientToServerEvents`/`ServerToClientEvents`; `App.tsx` subscribes directly
+  and holds the latest `GameState` from `state_update`/`game_started` in
+  component state (a `useSocket()` hook + `GameContext` refactor arrives with
+  the action engine).
 * **Screen flow** — `Home → Create/Join → Faction Pick → Lobby → Game Board`
   (a router or a `screen` state machine keyed off connection/game phase). The
   **Game Board** is a **placeholder** in the scaffold: it renders the SVG map,
   resource bar, and panels from `GameState`, but in-game actions are stubbed until
   the action engine lands.
 * **SVG map** — provinces/sea zones positioned by their `position` (0–100 viewBox
-  space) with the interaction states of `UI_DESIGN.md` §6; ownership washes use
-  the per-faction color **+ pattern** for colorblind safety (`UI_DESIGN.md` §7).
-* **Styling** — `src/styles/tokens.css` defines the palette/type tokens
-  (`--imp-*`, `--font-*`); fonts loaded in `index.html`.
+  space). The placeholder board flat-fills provinces with interim per-faction
+  colors; the interaction states of `UI_DESIGN.md` §6 and the color **+ pattern**
+  ownership washes for colorblind safety (`UI_DESIGN.md` §7) land with the full
+  map UI.
+* **Styling** — `src/theme.css` defines the palette/type tokens
+  (`--imp-*`, `--font-*`); the fonts are self-hosted woff2 files in
+  `public/fonts/`, loaded via `@font-face` in the same file.
 
 ---
 
@@ -420,32 +428,33 @@ deterministic and replayable). Two things consume it: the live **log/event feed*
 ### 9.1 `GameLogEntry` format
 
 ```ts
-type GameLogType =
-  | "phase"          // phase/round transitions (e.g., "The year 1444 opens")
-  | "event_card"     // an Omen was drawn/resolved
-  | "recruit"
-  | "trade"
+type GameLogEventType =
   | "battle"         // field/naval battle result
   | "siege"          // siege progress: bombardment, breach, assault, relief
-  | "diplomacy"      // treaty proposed/accepted/renounced, vassalize
   | "betrayal"       // treaty broken (feeds prestige penalty + chronicle drama)
-  | "spy"            // espionage attempt/outcome
+  | "event_card"     // an Omen was drawn/resolved
   | "prestige_change"// any prestige delta, with reason
-  | "mercenary"      // merc-market bids & hires
-  | "victory";       // threshold hit / sudden death / 1453 endgame
+  | "trade"
+  | "diplomacy"      // treaty proposed/accepted/renounced, vassalize
+  | "recruit"
+  | "build"
+  | "game_start"     // the opening chronicle line
+  | "game_end";      // threshold hit / sudden death / 1453 endgame
 
 interface GameLogEntry {
-  id: string;                 // stable id
-  round: number;              // the "year" (1..16 → 1400..1453)
+  round: number;              // the round, 1..16
   phase: GamePhase;           // when it happened
-  type: GameLogType;
+  type: GameLogEventType;
   actors: string[];           // player ids (and/or minor-state ids) initiating
-  targets: string[];          // player ids / province ids / sea-zone ids affected
-  data: Record<string, unknown>; // typed per `type`: dice rolls, casualties, HP, amounts, seed cursor…
+  targets?: string[];         // player ids / province ids / sea-zone ids affected
+  data?: Record<string, unknown>; // typed per `type`: dice rolls, casualties, HP, amounts…
   message: string;            // pre-rendered human-readable line for the live feed
-  timestamp: number;          // logical order (monotonic counter, not wall-clock — keeps engine pure)
 }
 ```
+
+Further event types (`spy`, `mercenary`, phase transitions) — and a stable `id` +
+logical `timestamp` (a monotonic counter, not wall-clock, to keep the engine
+pure) — are added as those systems land.
 
 `data` carries the machine-readable specifics per type — e.g. a `battle` entry
 records attacker/defender composition, each round's rolls, modifiers applied, and

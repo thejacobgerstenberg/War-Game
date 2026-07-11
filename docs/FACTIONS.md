@@ -14,6 +14,30 @@ Starting Ownership Summary. Event references point to `EVENT_CARDS.md`.
   (round 16) unless the sudden-death rule (hold `constantinople` two rounds) ends the game first. A player
   need not complete all three; each contributes prestige/points per `GAME_DESIGN.md`.
 
+**Unique units and the engine roster.** Every named unique unit is a **variant of a base
+`UnitType`** from `GAME_DESIGN.md` §6.1 — army/fleet stacks store it under that base type
+(`units: Record<UnitType, number>`), with the powers described in each faction's *Unique
+Units* entry layered on top. Unless its entry says otherwise, a unique unit uses its base
+type's raise cost, CV and upkeep.
+
+| Unique unit | Faction | Base `UnitType` |
+|---|---|---|
+| Varangian Guard | Byzantium | `INFANTRY` |
+| Greek-Fire Dromon | Byzantium | `WARSHIP` |
+| Janissary | Ottomans | `INFANTRY` |
+| Ghazi Akıncı | Ottomans | `CAVALRY` |
+| Great Bombard | Ottomans | `SIEGE` |
+| Stradioti | Venice | `CAVALRY` |
+| Great Galley (Galeazza) | Venice | `WARSHIP` |
+| Genoese Crossbowmen | Genoa | `ARCHER` |
+| Carrack (Nave) | Genoa | `WARSHIP` |
+| Black Army (Fekete Sereg) | Hungary | `INFANTRY` |
+| Banderial Knights | Hungary | `CAVALRY` |
+
+The generic `WARSHIP` ("great galley / carrack", `GAME_DESIGN.md` §6.1) is buildable by
+**every** faction; Venice's *Galeazza* and Genoa's *Carrack* are those factions' named
+WARSHIP variants, not separate hull types.
+
 ---
 
 ## ✝️ BYZANTIUM — *The Queen of Cities, at twilight*
@@ -40,11 +64,13 @@ Starting Ownership Summary. Event references point to `EVENT_CARDS.md`.
   **burn a besieging fleet** in a friendly port's sea zone. Built only at `constantinople` or `thessalonica`.
 
 ### Unique Powers
-1. **Theodosian Walls.** `constantinople` starts at wall **Tier 5** and **auto-repels the first two siege
-   rounds** each time it is besieged (defenders sally). Only a **Great Bombard** (see Ottomans / event
-   *The Great Bombard Forged*) can damage its tier faster than one step per round.
+1. **Theodosian Walls.** `constantinople` starts at wall **Tier 5** (16 Wall HP, defender +4 —
+   `GAME_DESIGN.md` §8.1) and **auto-repels the first two siege rounds** each time it is besieged
+   (defenders sally; no bombardment damage those rounds). Only a **Great Bombard** (see Ottomans / event
+   *The Great Bombard Forged*) rolls enough wall damage to batter them down quickly (double wall-damage
+   dice, `GAME_DESIGN.md` §8.2).
 2. **Hagia Sophia.** `constantinople` yields **+2 ✝️ faith/round** on top of its listed yield. Byzantium may
-   spend faith to **sway Orthodox neutrals** (`serbia`, `trebizond`, `wallachia`, `morea` region, `athens`)
+   spend faith to **sway Orthodox neutrals** (`serbia`, `trebizond`, `wallachia`, `epirus`, `thessaly`, `athens`)
    toward neutrality or alliance instead of paying gold.
 3. **Reconquista of the Romans.** Byzantium holds a standing **claim** on former imperial cities —
    `nicaea`, `bursa`, `athens`, `trebizond`, `thessaly` — and pays **−25% cost** to besiege/capture them.
@@ -88,8 +114,9 @@ Starting Ownership Summary. Event references point to `EVENT_CARDS.md`.
 1. **Devshirme & the Timariots.** *Levies cost −1 🌾 to sustain* and can be **raised in one turn in any owned
    province**. The Ottoman fields the largest, cheapest land army on the map.
 2. **The Great Bombard.** From round 6 onward (or immediately via event *The Great Bombard Forged*) the
-   Ottoman may build **Orban's Great Bombard** — a super-siege engine that damages **even Tier-5 walls by up
-   to 2 tiers/round** and is the only reliable answer to the Theodosian Walls. Slow, costly (🪙+🪨), fragile
+   Ottoman may build **Orban's Great Bombard** — a super-siege engine (a `SIEGE` variant) that rolls
+   **double wall-damage dice** (up to 6 Wall HP/round, `GAME_DESIGN.md` §8.2) — enough to batter down even
+   the Tier-5 Theodosian Walls, and the only reliable answer to them. Slow, costly (🪙+🪨), fragile
    in open battle.
 3. **Ghaza (Holy Raid).** Razzias against **neutral beyliks and Christian frontier provinces** cost −25% and
    return extra 🪙 plunder; the Ottoman gains a small prestige bump each time it takes a new city.
@@ -177,7 +204,8 @@ Starting Ownership Summary. Event references point to `EVENT_CARDS.md`.
 2. **Colonies of the Black Sea.** `kaffa` and `chios` are **major trade engines** — each yields **+2 🪙** and
    Genoa holds a **monopoly on alum & mastic** (`chios`) and Pontic grain (`kaffa`), boosted by event
    *Discovery of Alum*. Colonies **resupply Genoese fleets** at range.
-3. **Mercenary Brokers.** Genoa hires mercenaries at **−25%** and profits by brokering **Crossbowmen** to
+3. **Mercenary Brokers.** Genoa hires mercenaries at the **normal ×1.0 gold rate** (no ×1.5 mercenary
+   surcharge — `GAME_DESIGN.md` §6.2) and profits by brokering **Crossbowmen** to
    others; its fleets get **+1 combat when defending a colony's sea zone**.
 
 ### Secret Objectives (dealt 3)

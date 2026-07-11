@@ -37,10 +37,11 @@ and often a **Secondary Yield** (smaller amount). Ports additionally enable trad
 | **mountains** | timber/stone | Hard to move through; strong on defense |
 | **forest** | timber | Slows movement; ambush terrain |
 | **coast** | grain(fishing)/gold(trade) | Always a port; embark/disembark fleets |
-| **desert** | low; gold(caravan) | Attrition; Egypt/Levant edge only |
 
-**Walled City tier** = siege-defense value 1 (light wall) to 5 (Theodosian Walls). A siege must
-reduce the tier to 0 before the city can be assaulted; bombards/trebuchets damage tiers, stone repairs them.
+**Walled City tier** = fortification grade **T1** (light wall) to **T5** (Theodosian Walls). Each tier
+maps to a Wall-HP pool and defender bonus in `GAME_DESIGN.md` §8.1; siege engines batter Wall HP down
+(a city may be assaulted before breach at the escalade penalty), and a lost tier is rebuilt with 🪨 stone
+via the Build action.
 
 ---
 
@@ -74,9 +75,9 @@ Prestige/Value nodes (high-value economic & scoring cities) are flagged in **Not
 | `rome` | Rome | Latium | city | ✝️ faith | 🪙 gold | Y | T4 | Independent | Papal States. **HV(4)**. Source of indulgences & crusades. |
 | `naples` | Naples | Campania | city | 🌾 grain | 🪙 gold | Y | T3 | Independent | Aragonese kingdom. **HV(3)**. |
 | `sicily` | Sicily (Palermo) | Sicily | coast | 🌾 grain | 🪙 gold | Y | T2 | Independent | Aragon's granary. |
-| `tunis` | Tunis | Ifriqiya | desert | 🪙 gold | 🌾 grain | Y | T1 | Independent | Hafsid corsair nest. |
+| `tunis` | Tunis | Ifriqiya | coast | 🪙 gold | 🌾 grain | Y | T1 | Independent | Hafsid corsair nest. |
 | `dalmatia` | Dalmatia (Zara/Split) | Dalmatia | coast | 🪵 timber | 🪨 stone | Y | T1 | **Venice** | Arsenal oak & stone. |
-| `ragusa` | Ragusa | Dalmatia | city | 🪙 gold | — | Y | T2 | Independent | Merchant republic; tribute-payer. |
+| `ragusa` | Ragusa | Dalmatia | city | 🪙 gold | — | Y | T2 | Independent | Merchant republic; tribute-payer. NPC minor. |
 | `croatia` | Croatia (Zagreb) | Croatia | forest | 🪵 timber | 🌾 grain | N | — | **Hungary** | Frontier march. |
 | `buda` | Buda | Hungary | city | 🪙 gold | 🌾 grain | R | T3 | **Hungary** | Capital; Danube river port. |
 | `belgrade` | Belgrade (Nándorfehérvár) | Danube | city | 🌾 grain | 🪨 stone | R | **T4** | **Hungary** | Key Danube fortress guarding the Balkans. |
@@ -94,7 +95,7 @@ Prestige/Value nodes (high-value economic & scoring cities) are flagged in **Not
 | `aleppo` | Aleppo | Levant | plains | 🪙 gold | 🌾 grain | N | T1 | Independent | Mamluk caravan city. |
 | `antioch` | Antioch | Levant | coast | 🌾 grain | 🪙 gold | Y | T1 | Independent | Mamluk frontier. |
 | `damascus`? — *(not used)* | — | — | — | — | — | — | — | — | *(Levant folded into Aleppo/Cairo)* |
-| `cairo` | Cairo | Egypt | desert | 🪙 gold | ✝️ faith | N | T2 | Independent | Mamluk capital. **HV(3)**. |
+| `cairo` | Cairo | Egypt | city | 🪙 gold | ✝️ faith | N | T2 | Independent | Mamluk capital. **HV(3)**. |
 | `alexandria` | Alexandria | Egypt | coast | 🌾 grain | 🪙 gold | Y | T2 | Independent | Nile grain + spice. **HV(3)**. |
 | `cyprus` | Cyprus | E Mediterranean | coast | 🪙 gold | 🌾 grain | Y | T2 | Independent | Lusignan kingdom; sugar & wine. |
 | `rhodes` | Rhodes | Dodecanese | coast | 🪙 gold | ✝️ faith | Y | T3 | Independent | Knights Hospitaller. NPC minor. |
@@ -125,8 +126,8 @@ Prestige/Value nodes (high-value economic & scoring cities) are flagged in **Not
 | **T5** | `constantinople` |
 | **T4** | `belgrade`, `rome` |
 | **T3** | `edirne`, `bursa`, `thessalonica`, `rhodes`, `trebizond`, `venice`, `genoa`, `buda`, `naples` |
-| **T2** | `nicaea`, `athens`, `morea`, `serbia`, `cairo`, `alexandria`, `cyprus`, `gallipoli`, `negroponte`, `corfu`, `crete`, `ragusa`, `milan`, `sicily` |
-| **T1** | `pera`, `varna`, `bosnia`, `albania`, `ankara`, `konya`, `sinope`, `smyrna`, `antalya`, `aleppo`, `antioch`, `chios`, `lesbos`, `lemnos`, `naxos`, `transylvania`, `tunis` |
+| **T2** | `nicaea`, `athens`, `morea`, `serbia`, `cairo`, `alexandria`, `cyprus`, `gallipoli`, `negroponte`, `corfu`, `crete`, `ragusa`, `milan`, `sicily`, `kaffa` |
+| **T1** | `pera`, `varna`, `bosnia`, `albania`, `modon`, `dalmatia`, `ankara`, `konya`, `sinope`, `smyrna`, `aleppo`, `antioch`, `chios`, `lesbos`, `lemnos`, `naxos`, `transylvania`, `tunis` |
 
 *(Where the registry lists “—” for a province’s Walls, it is an open/rural province with no defensive tier.)*
 
@@ -160,17 +161,18 @@ or **vassalize** the minor through diplomacy/tribute. A vassal pays its lord **i
 supplies **levies**, but is fragile: certain Omen cards can trigger a **vassal revolt** (see
 `EVENT_CARDS.md` — *Wallachian Revolt*, *Serbian Despotate Submits*, *Anatolian Alliance*).
 
-> The full **vassalage / tribute / revolt rules** live in `GAME_DESIGN.md` (owned by another worker).
+> The full **vassalage / tribute / revolt rules** live in `GAME_DESIGN.md` (owned by another worker),
+> including the uniform vassal benefits (yields ×0.5 tribute + the levy call — `GAME_DESIGN.md` §11.5).
 > This section only defines **which minors exist, what they hold, and their garrisons.**
 
-| Minor State | Provinces held | Garrison (starting) | Vassal yield if won over | Flavor |
-|-------------|----------------|---------------------|--------------------------|--------|
-| **Despotate of Serbia** | `serbia` | 2 levies + 1 professional infantry, behind T2 walls (Smederevo) | +2 🪙 tribute, +1 levy/round | Torn between Hungary and the Ottomans; silver of Novo Brdo. |
-| **Voivodship of Wallachia** | `wallachia` | 2 levies + 1 light cavalry | +1 🌾, +2 levies/round (raiders) | Danube frontier; volatile, revolt-prone. |
-| **Empire of Trebizond** | `trebizond` | 1 professional infantry + 1 war galley, behind T3 walls | +2 🪙, +1 ✝️/round | Last Greek empire in the east; silk terminus, sea-reliant. |
-| **Karaman League** | `ankara`, `konya` | 2 levies each (4 total) + 1 light cavalry | +1 🌾 +1 🪙, +2 levies/round | Anatolian beyliks; natural anti-Ottoman bloc. |
-| **Knights of Rhodes (Hospitallers)** | `rhodes` | 2 professional infantry + 1 war galley, behind T3 walls | +1 ✝️, +1 war galley every 3 rounds | Crusader order; very hard to conquer, rarely vassalizes (Catholic only). |
-| **Republic of Ragusa** | `ragusa` | 1 levy, behind T2 walls | +3 🪙 tribute/round (pays anyone strong) | Merchant city that buys its safety; the easiest vassal, pure gold. |
+| Minor State | Provinces held | Garrison (starting) | Flavor |
+|-------------|----------------|---------------------|--------|
+| **Despotate of Serbia** | `serbia` | 2 levies + 1 professional infantry, behind T2 walls (Smederevo) | Torn between Hungary and the Ottomans; silver of Novo Brdo. |
+| **Voivodship of Wallachia** | `wallachia` | 2 levies + 1 light cavalry | Danube frontier; volatile, revolt-prone. |
+| **Empire of Trebizond** | `trebizond` | 1 professional infantry + 1 war galley, behind T3 walls | Last Greek empire in the east; silk terminus, sea-reliant. |
+| **Karaman League** | `ankara`, `konya` | 2 levies each (4 total) + 1 light cavalry | Anatolian beyliks; natural anti-Ottoman bloc. |
+| **Knights of Rhodes (Hospitallers)** | `rhodes` | 2 professional infantry + 1 war galley, behind T3 walls | Crusader order; very hard to conquer, rarely vassalizes (Catholic only). |
+| **Republic of Ragusa** | `ragusa` | 1 levy, behind T2 walls | Merchant city that buys its safety; the easiest vassal, pure gold. |
 
 Remaining Independent provinces (e.g. `cairo`/`alexandria`/`aleppo`/`antioch` = **Mamluk Egypt**,
 `athens` = **Duchy of Athens**, `naples`/`sicily` = **Aragon**, `rome` = **Papacy**, `tunis` = **Hafsids**)
@@ -254,7 +256,7 @@ is denied, and ports on it cannot be reinforced by sea).
 |----------|---------------------|-------------------|-------------------------|
 | `bosphorus` | `sea-of-marmara`, `black-sea-west` | `constantinople`, `pera`, `bithynia` | The chokepoint. Whoever holds `constantinople` **or** a fleet here can toll/close the strait between Aegean and Black Sea. |
 | `sea-of-marmara` | `bosphorus`, `aegean` (via Dardanelles at `gallipoli`) | `constantinople`, `selymbria`, `gallipoli`, `bithynia`, `bursa` | `gallipoli` gates the Dardanelles; an enemy fleet + Gallipoli garrison can seal Marmara. |
-| `aegean` | `sea-of-marmara`, `sea-of-crete` | `gallipoli`, `lemnos`, `lesbos`, `chios`, `smyrna`, `thessalonica`, `thessaly`, `athens`, `negroponte`, `morea` | The great trade sea; heavy Venetian/Genoese contest. Corsair-prone. |
+| `aegean` | `sea-of-marmara`, `sea-of-crete` | `gallipoli`, `lemnos`, `lesbos`, `chios`, `smyrna`, `thessalonica`, `thessaly`, `athens`, `negroponte`, `naxos`, `morea` | The great trade sea; heavy Venetian/Genoese contest. Corsair-prone. |
 | `sea-of-crete` | `aegean`, `eastern-mediterranean`, `ionian` | `crete`, `naxos`, `rhodes`, `morea`, `modon` | Rhodian galleys police it; Hospitaller sorties can clear corsairs. |
 | `eastern-mediterranean` | `sea-of-crete`, `sicilian-channel` | `rhodes`, `cyprus`, `antioch`, `antalya`, `alexandria`, `tunis` | Spice & pilgrim routes; Mamluk & Hafsid corsairs. Mamluk embargo can raise tolls here. |
 | `ionian` | `sea-of-crete`, `adriatic`, `sicilian-channel`, `tyrrhenian` | `corfu`, `epirus`, `albania`, `ragusa`, `modon`, `morea`, `naples`, `sicily` | The seam between Greece and Italy; Otranto gateway to the Adriatic. |
@@ -265,10 +267,11 @@ is denied, and ports on it cannot be reinforced by sea).
 | `black-sea-east` | `black-sea-west`, `sea-of-azov` | `sinope`, `trebizond`, `kastamonu`, `kaffa` | Genoese/Trapezuntine grain & silk. Freezes in the *Hard Winter* event. |
 | `sea-of-azov` | `black-sea-east` | `kaffa` | Shallow northern gulf; grain & slave markets. Dead-end zone; frozen in winter. |
 
-**Genoa's lifeline:** from `genoa` (Tyrrhenian) a fleet reaches `kaffa` only by the long chain
-`tyrrhenian → sicilian-channel → eastern-mediterranean → sea-of-crete → aegean → sea-of-marmara →
-bosphorus → black-sea-west`. Any hostile blockade on that chain (especially the Bosphorus) throttles
-the Black Sea colonies — the strategic tension at the heart of the Genoese position.
+**Genoa's lifeline:** from `genoa` (Tyrrhenian) the shortest fleet route to `kaffa` is the long chain
+`tyrrhenian → ionian → sea-of-crete → aegean → sea-of-marmara → bosphorus → black-sea-west` (a southern
+detour runs via the `sicilian-channel` and `eastern-mediterranean`). Every route east funnels through
+`sea-of-crete → aegean → sea-of-marmara → bosphorus`, so any hostile blockade on that chain (especially
+the Bosphorus) throttles the Black Sea colonies — the strategic tension at the heart of the Genoese position.
 
 ---
 
@@ -292,4 +295,4 @@ the Black Sea colonies — the strategic tension at the heart of the Genoese pos
 - **Chokepoints for scoring:** `bosphorus`, `gallipoli`/Dardanelles, and `sicilian-channel` are the
   strategic valves of the trade map; several faction objectives and event cards target them.
 - **Board size:** 55 land provinces + 12 sea zones. 27 provinces start owned by the five great powers;
-  28 remain Independent (of which 8, in 6 named minor states, carry standing garrisons).
+  28 remain Independent (of which 7, in 6 named minor states, carry standing garrisons).

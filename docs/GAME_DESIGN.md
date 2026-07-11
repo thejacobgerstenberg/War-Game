@@ -22,8 +22,9 @@ emperor schemes to buy, wed, and pray his way to one more century.
 **IMPERIUM: Twilight of Empires** is a turn-based grand-strategy board game for
 **2–5 players**. Each player is a great power with a capital, an asymmetric
 economy, a war machine, and three secret ambitions. The clock runs from
-**1400 to 1453** — sixteen years, sixteen rounds. When the last round ends the
-walls of Constantinople either still stand, or they do not.
+**1400 to 1453** — sixteen rounds, each spanning three to four years of the
+century's history. When the last round ends the walls of Constantinople either
+still stand, or they do not.
 
 The game blends three classic loops:
 
@@ -90,9 +91,12 @@ is the province's default; named/key cities and buildings modify it (see
 
 ### 3.2 Key cities
 
-A handful of named cities (Constantinople, Thessalonica, Smyrna, Ragusa,
-Famagusta, Belgrade, …) carry extra yields, prestige value, and pre-built walls.
-They are the prestige anchors of the map. Full list and stats: [`MAP.md`](./MAP.md).
+A handful of named **key cities** — exactly the provinces flagged `HV(n)` in
+[`MAP.md`](./MAP.md)'s registry (Constantinople HV(5); Venice, Genoa, Rome HV(4);
+Thessalonica, Athens, Trebizond, Crete, Cairo, Alexandria, Naples, Kaffa HV(3)) —
+carry extra yields, prestige value, and pre-built walls. They are the prestige
+anchors of the map and the "key cities" scored in §13.1. Full list and stats:
+[`MAP.md`](./MAP.md).
 
 ---
 
@@ -112,7 +116,7 @@ Five resources drive everything, modelled as `ResourceBundle`:
 
 During the **Income & upkeep** phase each round, every player collects the summed
 yields of all owned provinces into their treasury. This is the engine function
-[`computeIncome(state, playerId)`](../shared/src/types/gameState.ts) →
+[`computeIncome(state, playerId)`](../server/src/engine/income.ts) →
 `ResourceBundle`.
 
 ```
@@ -120,6 +124,10 @@ income(player) = Σ province.yields  for province where province.ownerId == play
                  + Σ building.yieldBonus
                  + Σ tradeRouteIncome        (see §5)
 ```
+
+> The shipped `computeIncome` implements the first term and already **nets the
+> army's grain upkeep (§4.4) out of the grain yield**; the building and
+> trade-route terms are added with those systems.
 
 ### 4.2 Taxation
 
@@ -185,7 +193,8 @@ route then pays gold every Income phase while it remains **unbroken**.
 
 ```
 routeIncome = BASE_ROUTE_GOLD            // = 2
-            + portTier(A) + portTier(B)  // each port’s tier 0–3, from MAP.md
+            + portTier(A) + portTier(B)  // each port’s tier 0–3, derived from MAP.md's HV flags:
+                                         //   HV(4)+ port = 3, HV(3) port = 2, any other port = 1
             + controlledSeaHops          // +1 per sea zone on the route you or an ally control
 
 then:
@@ -194,7 +203,7 @@ then:
   if faction is VENICE or GENOA:  routeIncome ×= 1.5  (merchant bonus, round down)
 ```
 
-**Worked example.** Venice runs Venice (tier 3) ↔ Famagusta (tier 2) across 3
+**Worked example.** Venice runs Venice (tier 3) ↔ Crete (tier 2) across 3
 controlled sea hops, unblockaded:
 `(2 + 3 + 2 + 3) × 1.5 = 10 × 1.5 = 15 gold/round`. If Genoa blockades one hop
 with a warship: `10 × 0.5 = 5`, then `×1.5 = 7 gold`.
@@ -249,7 +258,8 @@ naval units require a **Shipyard** province. Pay the full cost from the treasury
 * **Mercenaries** — any land unit may instead be **hired as a mercenary**: pay
   **×1.5 gold, 0 grain** to raise, available immediately even outside recruitment
   buildings, but they carry **×2 grain upkeep** and **desert first** if unpaid
-  (§4.4). Genoa hires mercenaries at the normal ×1.0 gold rate.
+  (§4.4). Genoa hires mercenaries at the normal ×1.0 gold rate (ordinary hiring
+  only — bid-market bids, §6.3, are not discounted).
 
 ### 6.3 The Mercenary Bid Market
 
@@ -274,15 +284,14 @@ player interaction.
    NPC minor state** (§11.5) instead, strengthening that minor's garrison —
    pass at your peril.
 
-| Company (examples) | Typical stack | Min bid |
+| Company | Typical stack | Min bid |
 |---|---|---|
 | **Catalan Company** | 5 INFANTRY, 3 ARCHER | 12 gold |
 | **Company of St. George** | 4 INFANTRY, 3 CAVALRY | 14 gold |
 | **The Almogavars** | 6 LEVY, 2 CAVALRY, 1 SIEGE | 10 gold |
 | **Varangian Remnant** | 4 INFANTRY, 2 CAVALRY (elite: +1 CV def) | 16 gold |
 
-Full company deck and stats: [`EVENT_CARDS.md`](./EVENT_CARDS.md) /
-[`FACTIONS.md`](./FACTIONS.md).
+The four companies above are the **complete company deck** for the base game.
 
 ### 6.4 Movement & stacking
 
@@ -336,7 +345,7 @@ first** by default (configurable in the assault action).
 | Attacker amphibious (from sea) | attacker **−1** |
 | Cavalry charge on `PLAINS` (attacker) | attacker cavalry **+1** |
 | Forest / mountains vs cavalry | cavalry bonus **negated** |
-| City walls (defender) | defender **+2** (Lv1) / **+3** (Lv2) / **+4** (Theodosian), while Wall HP > 0 |
+| City walls (defender) | defender **+1 … +4** by wall tier (§8.1), while Wall HP > 0 |
 | Escalade (assaulting un-breached walls) | attacker **−1** |
 | Tactic card | as printed (typ. **+1** to all rolls, or reroll misses) |
 | Outnumbering 2:1 in a round | larger side **+1** |
@@ -358,8 +367,8 @@ Casualties: defender loses 1 `LEVY`; attacker loses 1 `ARCHER`.
 **Melee step.**
 Attacker rolls 4 INF (5+), 2 CAV (4+), 1 ARCHER (5+) — SIEGE idle.
 → INF {6,5,3,4}=2 hits, CAV {4,2}=1 hit, ARCHER {5}=1 hit → **4 hits**.
-Defender rolls 3 INF (`7−3−1=3+`), 2 LEVY (`7−1−1=5+`), 1 ARCHER (5+).
-→ INF {5,2,4}=2 hits, LEVY {6,1}=1 hit, ARCHER {3}=0 → **3 hits**.
+Defender rolls 3 INF (`7−3−1=3+`), 2 LEVY (`7−1−1=5+`), 2 ARCHER (5+).
+→ INF {5,2,4}=2 hits, LEVY {6,1}=1 hit, ARCHER {3,2}=0 → **3 hits**.
 Casualties: defender removes 4 lowest-value (2 LEVY, then 2 ARCHER-then-INF per
 rule) → down to 3 INF; attacker removes 3 lowest (1 ARCHER, 2 INFANTRY).
 
@@ -373,6 +382,10 @@ rule) → down to 3 INF; attacker removes 3 lowest (1 ARCHER, 2 INFANTRY).
 * **Rout check** — a side that lost **≥ 50% of its starting stack this battle**
   rolls 1d6; it **routs** on `roll ≤ 3`. Routing units retreat to an adjacent
   friendly/empty province; if none exists they **surrender** (removed).
+* **Morale modifiers** — effects phrased as **±1 morale** (event cards, the
+  Church, §9.1) apply to this rout check: each +1 morale adds 1 to the side's
+  rout-check die (routing less likely), each −1 subtracts 1, for any side
+  containing affected units.
 * **Pursuit** — if a side routs and the enemy has `CAVALRY`, each cavalry inflicts
   1 automatic pursuit hit on the fleeing stack.
 
@@ -389,14 +402,24 @@ their cargo if the fleet is wiped out.
 
 Taking a **walled city** is a **multi-turn** operation, not a single battle.
 
-### 8.1 Wall HP
+### 8.1 Wall tiers & HP
 
-| Wall level | Wall HP | Defender bonus |
-|---|---|---|
-| Palisade / none | 0 | — |
-| Walls Lv1 | 6 | +2 |
-| Walls Lv2 | 10 | +3 |
-| **Theodosian Walls** (Constantinople great work) | 16 | +4 |
+Walls are graded in **tiers T1–T5** — the `Walls` column of [`MAP.md`](./MAP.md)'s
+registry. Each tier maps to a Wall-HP pool and a defender bonus:
+
+| Wall tier | Wall HP | Defender bonus | Notes |
+|---|---|---|---|
+| — (palisade / none) | 0 | — | Open province |
+| **T1** (light wall) | 3 | +1 | |
+| **T2** | 6 | +2 | Buildable: **Walls Lv1** (§9.1) |
+| **T3** | 10 | +3 | Buildable: **Walls Lv2** (§9.1) |
+| **T4** (great fortress) | 13 | +4 | e.g. `belgrade`, `rome` |
+| **T5 — Theodosian Walls** | 16 | +4 | Constantinople great work (§8.3, §9.2) |
+
+Card/event effects phrased as **"wall tier ±1"** move the city one row on this
+table (its Wall HP is set to the new tier's maximum). A tier lost this way is
+rebuilt with the Build action's wall upgrade (gold + stone, §9.1); HP damage
+*within* a tier heals at +1 HP/round out of siege (§8.2.5).
 
 ### 8.2 Siege lifecycle
 
@@ -419,11 +442,17 @@ Taking a **walled city** is a **multi-turn** operation, not a single battle.
    besiegers in a field battle. If the besiegers lose or retreat, the **siege is
    broken** and walls begin to slowly repair (+1 HP/round out of siege, up to max).
 
+**Percentage siege/diplomacy modifiers** — card and faction effects phrased as a
+**±25% / ±50%** modifier to sieges or diplomacy translate to dice: every 25% is
+**1 pip** on the relevant rolls (wall-damage, assault, or diplomacy/vassalize
+rolls). E.g. *"capture at −50% siege cost"* = **+2** to the attacker's
+wall-damage and assault rolls; *"−25% to its sieges"* = **−1** to its rolls.
+
 ### 8.3 Constantinople
 
-Constantinople begins with **Theodosian Walls (16 HP, +4)**. Its capture triggers
-the **sudden-death** victory check (§11.3). Byzantium may spend a great work to
-keep them in repair; a lapsed empire lets them crumble to Lv2.
+Constantinople begins with **Theodosian Walls (tier T5: 16 HP, +4)**. Its capture
+triggers the **sudden-death** victory check (§11.3). Byzantium may spend a great
+work to keep them in repair; a lapsed empire lets them crumble to T3.
 
 ---
 
@@ -442,9 +471,9 @@ action per round for the listed duration; abandoning forfeits the investment).
 | **Market** | gold 4, stone 2 | Trade ratio 2:1; **+1 gold/round** here |
 | **Granary** | gold 4, timber 3 | +2 grain storage; **+2 siege hold-out rounds**; softens starvation |
 | **Shipyard** | gold 6, timber 4 | Build `GALLEY`/`WARSHIP` here; +1 fleet cap |
-| **Church / Mosque** | gold 5, stone 3, faith 1 | **+1 faith/round**; supports morale |
-| **Walls Lv1** | gold 5, stone 4 | Wall HP 6, defender +2 |
-| **Walls Lv2** (upgrade) | gold 8, stone 6 | Wall HP 10, defender +3 |
+| **Church / Mosque** | gold 5, stone 3, faith 1 | **+1 faith/round**; defenders in this province get **+1 morale** (§7.5) |
+| **Walls Lv1** | gold 5, stone 4 | Wall tier T2: Wall HP 6, defender +2 |
+| **Walls Lv2** (upgrade) | gold 8, stone 6 | Wall tier T3: Wall HP 10, defender +3 |
 | **University** | gold 10, stone 4, faith 2 | **+1 tactic/omen card draw per round**; minor prestige |
 
 ### 9.2 Great Works (prestige)
@@ -452,7 +481,7 @@ action per round for the listed duration; abandoning forfeits the investment).
 | Great Work | Cost | Rounds | Effect | Prestige |
 |---|---|---|---|---|
 | **Hagia Sophia Repair** | gold 20, stone 10, faith 8 | 3 | +2 faith/round; unlocks unique Byzantine cards | **+10** |
-| **Theodosian Walls** (Grand Walls) | gold 15, stone 12 | 2 | Wall HP 16, defender +4 | **+6** |
+| **Theodosian Walls** (Grand Walls) | gold 15, stone 12 | 2 | Wall tier T5: Wall HP 16, defender +4 | **+6** |
 | **Great University** | gold 18, stone 8, faith 4 | 3 | +2 card draw/round; tactic reroll aura | **+6** |
 | **Grand Bazaar** | gold 16, timber 6, stone 6 | 2 | Best trade ratio; **+3 gold/route** from this port | **+5** |
 
@@ -464,22 +493,23 @@ Venice raising the Bazaar, Hungary walling the Danube).
 
 ## 10. Turn Structure
 
-Each **round is one year** (1400 → 1453 across 16 rounds). A round runs five
+Each **round represents 3–4 years** of the 1400 → 1453 span (16 rounds; the UI
+displays a fixed round → year mapping). A round runs five
 phases. The engine's finer-grained [`GamePhase`](../shared/src/types/gameState.ts)
 enum (`INCOME`, `RECRUITMENT`, `MOVEMENT`, `COMBAT`, `DIPLOMACY`, `END`) is the
 state-machine realisation of these five conceptual phases.
 
 | # | Conceptual phase | Engine `GamePhase`(s) | What happens |
 |---|---|---|---|
-| 1 | **Omen** | (front of `INCOME`) | Each active power draws & resolves an event card from the Omen deck (§12) |
-| 2 | **Income & upkeep** | `INCOME` | Collect province yields (`computeIncome`), pay grain upkeep, resolve starvation (§4) |
+| 1 | **Omen** | (front of `INCOME`) | The table draws & resolves **one** event card from the current era's Omen deck (§12) |
+| 2 | **Income & upkeep** | `INCOME` | Collect province yields net of grain upkeep (`computeIncome`), resolve starvation (§4) |
 | 3 | **Action phases** | `RECRUITMENT` → `MOVEMENT` → `DIPLOMACY` | In turn order, each player spends **~4 actions** (§10.0) |
 | 4 | **Battle resolution** | `COMBAT` | Resolve all declared battles, assaults, sieges, naval clashes (§7, §8) |
 | 5 | **Cleanup / reshuffle** | `END` | Flip contested ownership, score prestige, check victory, **re-sort turn order by prestige** |
 
 ### 10.0 The action economy (~4 actions)
 
-Each player receives **4 actions** per round (a **University** or certain cards
+Each player receives **4 actions** per round (certain cards
 can raise this to 5). Actions may be spent in any mix from the list below; a Move
 that starts a battle **queues** it for the Battle phase.
 
@@ -515,8 +545,8 @@ Spend **1 action + 3 gold** to dispatch an agent and choose **one** mission.
 Each mission first requires a **success roll** of **1d6 ≥ 3** (base 4-in-6). The
 target may lengthen the odds: a rival with a **University** imposes **−1** (you
 then need `≥ 4`), and Byzantium as the *target* resists with a **+1** (needs
-`≥ 4`, or `≥ 5` vs a University rival) thanks to its intelligence tradition
-(see [`FACTIONS.md`](./FACTIONS.md)).
+`≥ 4`, or `≥ 5` vs a University rival) thanks to its long tradition of palace
+intrigue.
 
 | Mission | On success |
 |---|---|
@@ -551,26 +581,28 @@ is powerful but never free.
 
 ### 11.5 NPC Minor States
 
-Between the great powers sit **4–6 neutral minor states** — small realms with a
-capital province and a standing garrison, but no player. They are prizes to be
-**conquered** by the sword or **vassalized** by the purse. The exact set,
-provinces and garrison sizes are fixed by [`MAP.md`](./MAP.md); the canonical
-roster is: **Serbia**, **Wallachia**, **Karaman**, **Trebizond**, and the
-**Knights of Rhodes** (a sixth, e.g. **Athens/Achaea**, is optional per player
-count).
+Between the great powers sit **six neutral minor states** — small realms holding
+one or two provinces with a standing garrison, but no player. They are prizes to
+be **conquered** by the sword or **vassalized** by the purse. The exact set,
+provinces and garrison sizes are fixed by [`MAP.md`](./MAP.md) §5; the canonical
+roster is: **Serbia**, **Wallachia**, the **Karaman League** (`ankara` +
+`konya`), **Trebizond**, the **Knights of Rhodes**, and the **Republic of
+Ragusa**.
 
 **Two paths to control:**
 
 * **Conquest** — attack and defeat the minor's garrison like any defender
-  (§7–§8; several minors sit in defensible terrain or behind Lv1 walls, so this
-  is **costly** and may take a siege). On victory the minor's provinces flip to
+  (§7–§8; several minors sit in defensible terrain or behind T2–T3 walls
+  (`MAP.md` §5), so this is **costly** and may take a siege). On victory the minor's provinces flip to
   the conqueror as normal territory. Conquest scores the usual battle prestige but
   earns the minor's **enmity** — see revolts below.
 
 * **Vassalize** (Diplomacy action) — instead of fighting, **buy loyalty**. Spend
   **1 Diplomacy action** and pay the minor an **up-front bribe** of `8 gold +
-  4 × (garrison unit count)`; then roll **1d6 + your prestige-tier − garrison
-  tier**. On **≥ 4** the minor becomes your **vassal**. A standing **NAP or
+  4 × (garrison unit count)`; then roll **1d6 + your prestige-tier − the minor's
+  garrison tier**, where **prestige-tier** = `⌊your prestige ÷ 10⌋` (capped at 2)
+  and **garrison tier** = `⌊garrison unit count ÷ 2⌋`. On **≥ 4** the minor
+  becomes your **vassal**. A standing **NAP or
   royal-marriage-adjacent bribe** (paying an extra +4 gold) grants **+1** to the
   roll. On failure the bribe is **half-refunded** and you may retry next round.
 
@@ -595,8 +627,12 @@ under the coin.
 
 ## 12. Event Cards (the Omen Deck)
 
-At the start of each round every active power draws one card from the shared
-**Omen deck** and resolves it. Cards come in three durations:
+The Omen deck is split into **three era decks** — **Era I** (rounds 1–5),
+**Era II** (rounds 6–10), **Era III** (rounds 11–16) — each shuffled separately.
+At the start of each round the table draws **one card** from the current era's
+deck and resolves it, **regardless of player count**; with **4–5 players** the
+*next* card is additionally revealed face-up as a telegraphed "gathering omen".
+Cards come in three durations:
 
 * **Immediate** — resolve now and discard (a good/bad harvest, a comet, a plague
   outbreak, a mercenary company for hire).
@@ -605,11 +641,12 @@ At the start of each round every active power draws one card from the shared
 * **Grant** — adds a **tactic** or **political** card to the drawer's `hand` for
   later use (a papal indulgence, a clever stratagem).
 
-The deck is weighted so early rounds skew opportunity and late rounds (1440s+)
-skew crisis, dramatising the gathering storm around Constantinople. The full card
-list, weights and text live in [`EVENT_CARDS.md`](./EVENT_CARDS.md); the engine
-only needs the deck definition and a **seeded RNG** to draw deterministically
-(see [`ARCHITECTURE.md`](./ARCHITECTURE.md) §Rules-engine).
+The era split does the weighting: the early decks skew opportunity and the late
+deck (1440s+) skews crisis, dramatising the gathering storm around
+Constantinople. The full card list and text live in
+[`EVENT_CARDS.md`](./EVENT_CARDS.md); the engine only needs the deck definitions
+and a **seeded RNG** to draw deterministically (see
+[`ARCHITECTURE.md`](./ARCHITECTURE.md) §Rules-engine).
 
 ---
 
@@ -624,7 +661,7 @@ only needs the deck definition and a **seeded RNG** to draw deterministically
 |---|---|
 | Hold **your own capital** | **+1** / round (passive) |
 | Hold an **enemy capital** | **+3** / round |
-| Hold a named **key city** | **+1** each / round |
+| Hold a named **key city** (any `HV(n)` city — §3.2) | **+1** each / round |
 | **Trade monopoly** (control both ends of a major route, or most ports of a sea) | **+2** / round |
 | Complete a **Great Work** | **+5 … +10** once (per §9.2) |
 | Win a **decisive battle** (attacker or defender wipes/routs the enemy) | **+1** |

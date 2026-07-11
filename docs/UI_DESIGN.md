@@ -1,10 +1,10 @@
 # IMPERIUM: Twilight of Empires — UI & Visual Design
 
 > The visual language for the browser client (`client/`, React + Vite). This doc
-> defines the art direction, the **exact** palette and fonts the scaffold ships
-> as CSS custom properties + Google Fonts, the iconography, layout, interaction
-> states, component kit, and accessibility rules. It is the source of truth the
-> client CSS must match. Systems live in [`GAME_DESIGN.md`](./GAME_DESIGN.md);
+> defines the art direction, the palette and fonts the client ships as CSS
+> custom properties (§2 notes which tokens the scaffold ships today), the
+> iconography, layout, interaction states, component kit, and accessibility
+> rules. It is the source of truth the client CSS must match. Systems live in [`GAME_DESIGN.md`](./GAME_DESIGN.md);
 > the technical plan in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ---
@@ -37,8 +37,13 @@ Principles:
 ## 2. Color Palette
 
 The client defines these as **CSS custom properties** on `:root` (in
-`client/src/styles/tokens.css`). Use the variable, never the raw hex, in
-components.
+`client/src/theme.css`). Use the variable, never the raw hex, in components.
+The scaffold ships the five core colors plus the derived `--imp-purple-deep` /
+`--imp-gold-soft` / `--imp-parchment-shade` today; the remaining tints, the
+semantic aliases and the `--fac-*` faction tokens (§2.1) are the target set,
+added as the game-board UI lands. *(The scaffold's lobby chrome currently sits
+on a dark porphyry gradient; the parchment-first board surface of §1 arrives
+with the full board UI.)*
 
 | Token (CSS var) | Hex | Role |
 |---|---|---|
@@ -54,31 +59,35 @@ Supporting tints (derived, also tokenised):
 
 | Token | Hex | Role |
 |---|---|---|
-| `--imp-parchment-dark` | `#E5D5B0` | Panel fills, hover on parchment, table zebra |
-| `--imp-parchment-aged` | `#D9C8A0` | Map landmass base, worn edges |
-| `--imp-gold-light` | `#E3C766` | Gold highlight, glints, focus ring inner |
-| `--imp-purple-light` | `#6E3B5C` | Hover/active on purple chrome |
-| `--imp-ink-soft` | `#5A4B3A` | Secondary text, captions, disabled ink |
+| `--imp-purple-deep` | `#35162C` | Background gradient depth, darkest chrome |
+| `--imp-parchment-shade` | `#E6D7B4` | Panel fills, hover on parchment, table zebra |
+| `--imp-parchment-aged` | `#D9C8A0` | Map landmass base, worn edges *(planned)* |
+| `--imp-gold-soft` | `#E2C766` | Gold highlight, glints, focus ring inner |
+| `--imp-purple-light` | `#6E3B5C` | Hover/active on purple chrome *(planned)* |
+| `--imp-ink-soft` | `#5A4B3A` | Secondary text, captions, disabled ink *(planned)* |
 
 ```css
 :root {
+  /* shipped today in client/src/theme.css */
   --imp-purple: #4B1F3F;
   --imp-gold: #C9A227;
   --imp-parchment: #F4E9D0;
   --imp-lapis: #26619C;
   --imp-ink: #2B2118;
+  --imp-purple-deep: #35162C;
+  --imp-gold-soft: #E2C766;
+  --imp-parchment-shade: #E6D7B4;
+
+  /* target tokens — added with the game-board UI */
   --imp-blood: #7B241C;
   --imp-verdigris: #40826D;
-
-  --imp-parchment-dark: #E5D5B0;
   --imp-parchment-aged: #D9C8A0;
-  --imp-gold-light: #E3C766;
   --imp-purple-light: #6E3B5C;
   --imp-ink-soft: #5A4B3A;
 
-  /* semantic aliases */
+  /* semantic aliases — added with the game-board UI */
   --bg: var(--imp-parchment);
-  --surface: var(--imp-parchment-dark);
+  --surface: var(--imp-parchment-shade);
   --text: var(--imp-ink);
   --text-muted: var(--imp-ink-soft);
   --border: var(--imp-ink);
@@ -103,23 +112,29 @@ faction **emblem** and a **texture pattern** (§7, §8.3) for colorblind safety.
 | Genoa | `--fac-genoa` | `#C9CBD0` → red cross | Silver-white, the red cross of St George |
 | Hungary | `--fac-hungary` | `#2F5B8C` | Blue & silver, the raven |
 
+> The scaffold's placeholder `GameBoard` currently flat-fills provinces with
+> interim hardcoded colors; these `--fac-*` tokens (and the §7 pattern fills)
+> replace them when the full map UI lands.
+
 ---
 
 ## 3. Typography
 
-Two Google Fonts, loaded in `client/index.html`:
+Two Google fonts — self-hosted as woff2 files in `client/public/fonts/` and
+loaded via `@font-face` in `client/src/theme.css` (no `fonts.googleapis.com`
+request at runtime):
 
 * **Display / titles — [Cinzel](https://fonts.google.com/specimen/Cinzel)**, a
   Trajan-inspired Roman capital face. Titles, headers, faction names, numbers of
-  weight. `--font-display: "Cinzel", "Trajan Pro", serif;`
+  weight. `--font-display: "Cinzel", "Trajan Pro", Georgia, serif;`
 * **Body — [EB Garamond](https://fonts.google.com/specimen/EB+Garamond)**, a warm
   humanist serif for readable long text, tables, tooltips.
-  `--font-body: "EB Garamond", Georgia, serif;`
+  `--font-body: "EB Garamond", Garamond, Georgia, serif;`
 
 ```css
 :root {
   --font-display: "Cinzel", "Trajan Pro", Georgia, serif;
-  --font-body: "EB Garamond", Georgia, "Times New Roman", serif;
+  --font-body: "EB Garamond", Garamond, Georgia, serif;
 }
 ```
 
@@ -230,7 +245,7 @@ order (topmost wins on the stroke):
 | State | Treatment |
 |---|---|
 | **Default** | Terrain-tinted fill, `--imp-ink` 1px stroke, faction color as ownership wash + pattern (§8.3) |
-| **Hover** | `--imp-gold-light` 2px stroke, subtle lift; tooltip with name/terrain/yields |
+| **Hover** | `--imp-gold-soft` 2px stroke, subtle lift; tooltip with name/terrain/yields |
 | **Selected** | `--imp-gold` 3px stroke + animated tesserae glint; info in right panel |
 | **Valid move / target** | Pulsing `--imp-verdigris` overlay + dashed gold outline on reachable tiles |
 | **Enemy territory** | `--imp-blood` hatch overlay along the border when a move would attack |
@@ -276,7 +291,7 @@ are the manuscript rule.
 ### 8.1 Buttons
 * **Primary (imperial)** — porphyry fill, gold border + label, gold-light on
   hover; used for confirm/start.
-* **Action** — parchment-dark fill, ink label, gold underline on hover; the
+* **Action** — parchment-shade fill, ink label, gold underline on hover; the
   right-panel action buttons, each with an icon and a cost chip.
 * **Destructive (war)** — blood fill, parchment label; attack/assault/betray.
 * **Ghost** — ink outline on parchment; cancel/secondary.
@@ -297,11 +312,12 @@ lapis). A delta (`+3` / `−1`) animates on the pill each Income phase.
 Event/Omen, tactic and objective cards render as **illuminated manuscript pages**:
 a parchment field inside a gold manuscript border, a Cinzel title with a drop-cap
 initial, an EB Garamond body, a cost strip of resource pills, and a corner
-finial matched to card type (crisis = blood, boon = verdigris, grant = gold).
+finial matched to card type (**Ill**/crisis = blood, **Good**/boon = verdigris,
+**Grant** = gold — the card types of `EVENT_CARDS.md`).
 Objective (secret) cards show face-down as a porphyry back with a gold roundel.
 
 ### 8.5 Panels & modals
-* **Panel** — parchment-dark surface, manuscript border, Cinzel `--fs-h2` header
+* **Panel** — parchment-shade surface, manuscript border, Cinzel `--fs-h2` header
   on a porphyry ribbon.
 * **Combat modal** — a "battlefield" spread: attacker vs defender columns, the
   dice roll animated as struck coins/tesserae, terrain & wall modifier chips, a
