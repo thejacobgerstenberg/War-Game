@@ -412,8 +412,8 @@ their cargo if the fleet is wiped out.
 ### 7.7 Tactic cards
 
 Tactic cards are the card layer of combat — held surprises that bend a battle
-without replacing the dice. The shared **tactic deck** holds **47 cards over 23
-designs** (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded RNG
+without replacing the dice. The shared **tactic deck** holds **48 cards over 24
+designs** (8 Common ×3, 8 Uncommon ×2, 8 Rare ×1), shuffled with the seeded RNG
 (§14).
 
 **Drawing & holding.**
@@ -443,7 +443,7 @@ designs** (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded R
   *tactic reroll aura* (§9.2): once per battle, its owner may reroll **one** of
   their dice as if by a tactic card (the once-per-die rule still applies).
 
-**The 23 ratified cards.**
+**The 24 ratified cards.**
 
 | Slug | Card | Tier (copies) | Final effect |
 |---|---|---|---|
@@ -464,6 +464,7 @@ designs** (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded R
 | `the-intercepted-letter` | The Intercepted Letter | Uncommon ×2 | **Reaction** — play as a rival plays a tactic card: **cancel it**. Both cards are discarded. |
 | `the-hexamilion-manned` | The Hexamilion Manned | Uncommon ×2 | One land battle you defend in an **unwalled** province: gain **defender +2** (a temporary T2-grade wall bonus; creates no Wall HP; does not stack with real walls). |
 | `greek-fire` | Greek Fire | Rare ×1 | Before dice in a fleet battle you are fighting: **win it outright** — all enemy naval units in the zone are destroyed (transports and cargo with them, §7.6). Then **discard one other tactic card** from your hand and **remove this card from the game**. |
+| `master-founders-hired` | Master Founders Hired | Rare ×1 | One siege you are pressing, for **one full round**: the defender's **wall bonus is 0** (Wall HP unchanged; escalade −1 still applies) and your side rolls **+1 die** in each melee step of the assault. Hires the founders, not the gun: creates **no siege engine** and never interacts with the **Great Bombard**, which stays unique per §8.4. |
 | `treason-at-the-gate` | Treason at the Gate | Rare ×1 | Pay **4 gold**. Playable only from **round 6** onward, on a walled city you have besieged for **2+ consecutive rounds** whose garrison holds **4 or fewer units**: the city **falls without an assault** — its garrison surrenders (removed) and you occupy it, walls at their current HP. **Remove this card from the game.** |
 | `the-pay-chest-taken` | The Pay Chest Taken | Rare ×1 | Take **up to 3 gold** from one rival's treasury (never more than they hold). |
 | `holy-war-proclaimed` | Holy War Proclaimed | Rare ×1 | Pay **2 faith**: until the start of your next turn, your side rolls **+1 die** in each melee step of **every** battle you fight. |
@@ -477,14 +478,15 @@ designs** (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded R
 |---|---|---|---|
 | Common | 8 | 3 | 24 |
 | Uncommon | 8 | 2 | 16 |
-| Rare | 7 | 1 | 7 |
-| **Tactic deck** | **23** | — | **47** |
+| Rare | 8 | 1 | 8 |
+| **Tactic deck** | **24** | — | **48** |
 
 > One proposed rare, `the-guns-of-orban`, was **rejected**: it would put the
 > same historical gun in the game twice — once as the unique, capturable
 > **Great Bombard** (§8.4, granted by the `great-bombard-forged` omen) and once
-> as a replayable one-shot card. A re-flavored rare may refill the slot in a
-> future pass, returning the deck to 48.
+> as a replayable one-shot card. Its slot is filled by the re-flavor
+> `master-founders-hired`, which hires the gun-founders rather than fielding
+> the gun and so leaves the Bombard's uniqueness intact.
 
 Rares appear once each, and *Greek Fire* and *Treason at the Gate* additionally
 remove themselves from the game — their moments happen at most once per
