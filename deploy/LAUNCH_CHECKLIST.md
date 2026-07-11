@@ -148,12 +148,18 @@ use it as the reference for expected shapes and behavior.
   `/healthz` to the server, same-origin. The Fly deploy above is the README's
   **single-app** decision (step 8, primary path): one machine built from
   `deploy/Dockerfile.server` only — no nginx layer, no proxy hop.
-- **Consequence today:** `deploy/Dockerfile.server` contains no client build
-  stage and the server does not (yet) serve `client/dist` statically, so the
-  Fly URL serves the API, socket, and `/healthz` — **not the game UI** —
-  until the README step 8 follow-up (Express `express.static(client/dist)` +
-  SPA fallback + Dockerfile client stage) lands. Until then, host the built
-  client elsewhere and add its origin to `CORS_ORIGIN` (see 3.1).
+- **Consequence today (gap closing):** on `main` as of this rehearsal, the
+  Fly URL serves the API, socket, and `/healthz` — **not the game UI**. Two
+  in-flight PRs close that gap together: the deploy PR
+  ("Deploy: serve the game UI from the server image",
+  `deploy/single-app-image`, #26), which adds the client build stage to
+  `deploy/Dockerfile.server`, ships `client/dist`, and bakes
+  `SERVE_CLIENT=/app/client/dist`; and the game-client workstream's PR
+  (`feature/game-client`), which adds the server-side
+  `express.static` + SPA-fallback reader gated on `SERVE_CLIENT`. Once both
+  merge, a plain `fly deploy` serves the full game UI same-origin. Until
+  both are in, host the built client elsewhere and add its origin to
+  `CORS_ORIGIN` (see 3.1).
 - Minor: staging used compose's `stop_grace_period: 25s`; Fly uses
   `kill_timeout = "30s"`. Both satisfy the ≥20s SIGTERM drain contract.
 - See `deploy/STAGING_REPORT.md` for exactly what the rehearsal did and did
