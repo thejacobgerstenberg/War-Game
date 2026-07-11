@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Venetian Monopoly</title>
+  <!-- parchment field -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- the sea, scalloped -->
+  <path d="M0,128 Q13,118 26,128 Q39,118 52,128 Q65,118 78,128 Q91,118 104,128 Q117,118 130,128 Q143,118 156,128 Q169,118 182,128 Q195,118 208,128 Q221,118 234,128 Q247,118 260,128 L260,160 L0,160 Z" fill="#2C5F7C"/>
+  <path d="M44,146 q9,-8 18,0 q9,-8 18,0" fill="none" stroke="#F0E6D2" stroke-width="3"/>
+  <path d="M150,150 q9,-8 18,0 q9,-8 18,0" fill="none" stroke="#F0E6D2" stroke-width="3"/>
+  <!-- rival ships, small and far -->
+  <polygon points="10,132 36,132 32,140 14,140" fill="#2B2118"/>
+  <rect x="21" y="116" width="3" height="17" fill="#2B2118"/>
+  <polygon points="26,114 26,130 38,127" fill="#2B2118"/>
+  <polygon points="218,130 244,130 240,138 222,138" fill="#2B2118"/>
+  <rect x="230" y="114" width="3" height="17" fill="#2B2118"/>
+  <polygon points="228,112 228,128 216,125" fill="#2B2118"/>
+  <!-- hoard of ducats -->
+  <polygon points="60,128 74,106 92,112 112,100 134,108 154,98 174,108 194,102 210,128" fill="#C9A227" stroke="#2B2118" stroke-width="2.5"/>
+  <circle cx="100" cy="116" r="6" fill="none" stroke="#2B2118" stroke-width="2.5"/>
+  <circle cx="134" cy="116" r="6" fill="none" stroke="#2B2118" stroke-width="2.5"/>
+  <circle cx="168" cy="114" r="6" fill="none" stroke="#2B2118" stroke-width="2.5"/>
+  <!-- the great ducat under the paw -->
+  <circle cx="72" cy="100" r="17" fill="#C9A227" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="72" cy="102" r="7" fill="none" stroke="#2B2118" stroke-width="2.5"/>
+  <!-- halo of San Marco -->
+  <circle cx="96" cy="50" r="27" fill="#C9A227" stroke="#2B2118" stroke-width="2.5"/>
+  <!-- raised wing -->
+  <polygon points="116,66 124,26 132,42 142,20 150,40 160,26 170,62" fill="#C9A227" stroke="#2B2118" stroke-width="2.5"/>
+  <!-- tail -->
+  <path d="M178,72 Q206,62 200,40" fill="none" stroke="#7A1F2B" stroke-width="5"/>
+  <polygon points="195,44 208,32 205,48" fill="#7A1F2B"/>
+  <!-- the lion, crimson -->
+  <polygon points="86,56 106,64 112,94 94,98" fill="#7A1F2B"/>
+  <ellipse cx="142" cy="80" rx="40" ry="17" fill="#7A1F2B"/>
+  <rect x="100" y="92" width="9" height="20" fill="#7A1F2B"/>
+  <rect x="158" y="90" width="9" height="22" fill="#7A1F2B"/>
+  <rect x="172" y="88" width="9" height="22" fill="#7A1F2B"/>
+  <polygon points="96,68 76,76 68,84 78,90 98,80" fill="#7A1F2B"/>
+  <ellipse cx="72" cy="85" rx="8" ry="5" fill="#7A1F2B"/>
+  <!-- spiked mane -->
+  <polygon points="119,52 111,46 113,36 103,38 97,30 91,38 81,36 83,46 75,52 83,58 81,68 91,66 97,74 103,66 113,68 111,58" fill="#7A1F2B"/>
+  <circle cx="95" cy="52" r="13" fill="#7A1F2B"/>
+  <polygon points="85,46 69,53 85,60" fill="#7A1F2B"/>
+  <circle cx="91" cy="48" r="3" fill="#F0E6D2"/>
+</svg>

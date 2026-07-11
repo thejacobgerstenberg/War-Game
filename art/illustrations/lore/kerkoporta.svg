@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>kerkoporta</title>
+  <!-- vellum sky / ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#E2D3B3"/>
+  <!-- setting crimson sun, half-swallowed by the battlements -->
+  <circle cx="206" cy="28" r="17" fill="#7A1F2B"/>
+  <!-- omen birds -->
+  <polygon points="36,20 45,13 54,20 45,17" fill="#2B2118"/>
+  <polygon points="58,29 65,24 72,29 65,27" fill="#2B2118"/>
+  <!-- the great land wall -->
+  <rect x="0" y="52" width="260" height="108" fill="#2B2118"/>
+  <!-- merlons -->
+  <rect x="0" y="34" width="24" height="20" fill="#2B2118"/>
+  <rect x="40" y="34" width="24" height="20" fill="#2B2118"/>
+  <rect x="80" y="34" width="24" height="20" fill="#2B2118"/>
+  <rect x="120" y="34" width="24" height="20" fill="#2B2118"/>
+  <rect x="160" y="34" width="24" height="20" fill="#2B2118"/>
+  <rect x="200" y="34" width="24" height="20" fill="#2B2118"/>
+  <rect x="240" y="34" width="20" height="20" fill="#2B2118"/>
+  <!-- Theodosian brick bands -->
+  <rect x="0" y="72" width="260" height="6" fill="#7A1F2B"/>
+  <rect x="0" y="118" width="260" height="6" fill="#7A1F2B"/>
+  <!-- dressed-stone surround of the sally-port -->
+  <path d="M84 160 V106 A24 24 0 0 1 132 106 V160 Z" fill="#4B1F3F"/>
+  <!-- light beyond the unbarred gate -->
+  <path d="M90 160 V108 A18 18 0 0 1 126 108 V160 Z" fill="#C9A227"/>
+  <!-- the door leaf, swung ajar -->
+  <polygon points="126,160 126,96 104,104 104,160" fill="#2B2118"/>
+  <!-- the bolt not drawn: empty bracket, bar dangling -->
+  <rect x="133" y="106" width="10" height="7" fill="#C9A227"/>
+  <polygon points="134,113 141,111 150,146 143,148" fill="#C9A227"/>
+  <!-- enemy spears through the gap -->
+  <rect x="84" y="112" width="34" height="6" fill="#7A1F2B"/>
+  <polygon points="84,105 62,115 84,125" fill="#7A1F2B"/>
+  <rect x="92" y="132" width="26" height="6" fill="#7A1F2B"/>
+  <polygon points="92,126 72,135 92,144" fill="#7A1F2B"/>
+</svg>

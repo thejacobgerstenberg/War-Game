@@ -1,0 +1,356 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  IMPERIUM: Twilight of Empires — Phase 3 UI mockup: THE LOBBY
+  ==========================================================================
+  THIS FILE IS A PHASE 3 IMPLEMENTATION CONTRACT. What is annotated here is
+  deliberate; where this screen and design/mockups/README.md disagree, the
+  README wins. Numbered .callout circles and the .legend at the foot are
+  spec apparatus — they do not ship.
+
+  Point of view: the HOST (Godfrey of the March), who has chosen the banner
+  of Hungary but not yet raised it. Two other players sit at the table and
+  have raised theirs (Venice, Ottomans); two seats stand empty. Therefore:
+  two banners are raised, the rite asks three, and "Begin the Game" renders
+  disabled.
+
+  Static HTML/CSS only. No JS. No external requests — art is referenced by
+  relative path and degrades to the .asset hatched placeholder until the
+  sibling branches (feature/visual-assets) merge. Hatched boxes here are
+  expected and correct.
+
+  Sound contract (README §4): menu_theme loops for the life of this screen;
+  ui_click on generic presses; quill_scratch when a banner is raised
+  (the two-step commit); church_bell when the game begins.
+  ==========================================================================
+-->
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IMPERIUM — The Gathering Hall (Lobby)</title>
+<link rel="stylesheet" href="mockups.css">
+<style>
+  /* ---- Lobby-only CSS (screen-specific; tokens come from mockups.css) ---- */
+
+  .lobby { max-width: 68rem; margin: 0 auto; padding: var(--space-5) var(--space-4) var(--space-7); }
+
+  /* Word of gathering — the room code, writ large */
+  .gather-code {
+    display: flex; align-items: center; gap: var(--space-4);
+    flex-wrap: wrap; margin-bottom: var(--space-5);
+  }
+  .gather-code__label {
+    font-family: var(--font-display); font-variant: small-caps;
+    letter-spacing: 0.08em; font-size: var(--text-lg);
+  }
+  .gather-code__word {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: var(--text-3xl); letter-spacing: 0.35em;
+    color: var(--gold); line-height: 1; padding-left: 0.2em;
+  }
+  .gather-code .btn--quiet { color: var(--parchment); border-color: var(--parchment-faint); }
+  .gather-code__hint { flex-basis: 100%; margin: 0; font-style: italic; font-size: var(--text-sm); color: var(--gold-soft); }
+
+  /* Copy affordance glyph — two offset leaves of a page (visual only) */
+  .copy-glyph { position: relative; display: inline-block; width: 0.6em; height: 0.75em; border: 1.5px solid currentColor; border-radius: 1px; }
+  .copy-glyph::before { content: ""; position: absolute; top: -0.28em; left: 0.2em; width: 0.6em; height: 0.75em; border: 1.5px solid currentColor; border-radius: 1px; }
+
+  /* Main columns: seats | banners+chat */
+  .lobby-main { display: grid; grid-template-columns: 1.1fr 1fr; gap: var(--space-5); align-items: start; }
+  @media (max-width: 56rem) { .lobby-main { grid-template-columns: 1fr; } }
+
+  /* Seats of the table */
+  .seat-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+  .seat {
+    display: flex; align-items: stretch; gap: var(--space-3);
+    background: var(--parchment); border: 1px solid var(--vellum-shade);
+    border-radius: var(--radius-2); box-shadow: var(--shadow-1); overflow: hidden;
+  }
+  .seat__band { flex: 0 0 8px; background: var(--faction-color, var(--vellum)); }
+  .seat--unsealed .seat__band {
+    background: repeating-linear-gradient(180deg,
+      var(--faction-color) 0 8px, var(--parchment) 8px 12px);  /* chosen, not yet raised */
+  }
+  .seat__crest { width: 3.4rem; height: 3.4rem; align-self: center; flex: 0 0 auto; }
+  .seat__body { padding: var(--space-2) var(--space-3) var(--space-2) 0; display: grid; gap: 2px; align-content: center; }
+  .seat__name { font-family: var(--font-display); font-variant: small-caps; letter-spacing: 0.04em; font-size: var(--text-md); }
+  .seat__state { font-style: italic; font-size: var(--text-sm); color: color-mix(in srgb, var(--ink) 72%, var(--parchment)); }
+  .seat--empty { opacity: 0.6; border-style: dashed; box-shadow: none; }
+  .seat--empty .seat__crest { border-style: dashed; }
+
+  /* Laurel mark of the host */
+  .host-mark::before { content: "❧ "; }
+
+  /* The banners — faction picker */
+  .faction-picker { list-style: none; margin: 0 0 var(--space-4); padding: 0;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-2); }
+  /* Below 64rem the right column leaves the cards too narrow for five
+     abreast ("Byzantium", padlock+"Ottomans" hit min-content); step to
+     three so they keep comfortable width in the two-column layout. */
+  @media (max-width: 64rem) { .faction-picker { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 36rem) { .faction-picker { grid-template-columns: repeat(2, 1fr); } }
+  .faction-card {
+    display: grid; gap: var(--space-1); justify-items: center; text-align: center;
+    padding: var(--space-2); background: var(--parchment);
+    border: 1px solid var(--vellum-shade); border-radius: var(--radius-1);
+    box-shadow: var(--shadow-1); cursor: pointer;
+  }
+  .faction-card .asset--crest { width: 3rem; }
+  .faction-card__name { font-family: var(--font-display); font-variant: small-caps; font-size: var(--text-sm); letter-spacing: 0.04em; }
+  .faction-card__note { font-style: italic; font-size: var(--text-xs); line-height: 1.3; color: color-mix(in srgb, var(--ink) 70%, var(--parchment)); }
+  .faction-card:hover, .faction-card.is-hover { box-shadow: var(--shadow-1), 0 0 0 2px var(--gold); }
+  .faction-card.is-selected { background: var(--gold); border-color: var(--ink); }
+  .faction-card.is-selected .faction-card__note { color: var(--ink); }
+  .faction-card.is-locked { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+  .faction-card.is-locked:hover { box-shadow: none; }
+
+  /* Padlock glyph, drawn in CSS (no image dependency) */
+  .padlock { position: relative; display: inline-block; width: 0.66em; height: 0.5em;
+    margin-right: 0.35em; background: currentColor; border-radius: 1px; }
+  .padlock::before { content: ""; position: absolute; left: 50%; top: -0.4em;
+    transform: translateX(-50%); width: 0.36em; height: 0.42em;
+    border: 0.11em solid currentColor; border-bottom: none;
+    border-radius: 0.25em 0.25em 0 0; }
+
+  .banner-actions { display: grid; gap: var(--space-2); justify-items: start; margin-top: var(--space-4); }
+  .start-rule { margin: 0; font-style: italic; font-size: var(--text-sm); }
+  .start-reason { margin: 0; font-size: var(--text-xs); color: var(--crimson); font-style: italic; }
+
+  /* The antechamber — chat stub */
+  .chat-log { list-style: none; margin: 0 0 var(--space-3); padding: 0; display: grid; gap: var(--space-2); }
+  .chat-line { padding: var(--space-2) var(--space-3); background: var(--parchment);
+    border: 1px solid var(--ink-ghost); border-left: 4px solid var(--faction-color, var(--vellum));
+    border-radius: var(--radius-1); font-size: var(--text-sm); }
+  .chat-line__who { font-family: var(--font-display); font-variant: small-caps; font-size: var(--text-xs);
+    letter-spacing: 0.05em; display: block; color: var(--faction-color, var(--ink)); }
+  .chat-line--herald { border-left-color: var(--gold); font-style: italic; text-align: center;
+    color: color-mix(in srgb, var(--ink) 74%, var(--parchment)); }
+  .chat-form { display: flex; gap: var(--space-2); }
+  .chat-form input {
+    flex: 1; font-family: var(--font-body); font-size: var(--text-sm);
+    padding: 0.45em 0.8em; color: var(--ink); background: var(--parchment);
+    border: 1px solid var(--vellum-shade); border-radius: var(--radius-1);
+  }
+  .chat-form input::placeholder { font-style: italic; color: var(--ink-faint); }
+</style>
+
+<div class="lobby">
+
+  <header>
+    <h1>The Gathering Hall</h1>
+    <p class="rubric">Five seats, one age ending. The company assembles before the chronicle opens.</p>
+  </header>
+
+  <main>
+
+  <!-- ZONE 1 · The word of gathering (room code) -->
+  <section class="panel panel--porphyry gather-code zone" aria-label="The word of gathering">
+    <b class="callout" style="top:-10px; left:-10px">1</b>
+    <span class="gather-code__label">The word of gathering</span>
+    <strong class="gather-code__word">KERKO</strong>
+    <button class="btn btn--quiet" type="button" title="Sets the word of gathering upon your page, to give to whom you will.">
+      <span class="copy-glyph" aria-hidden="true"></span> Scribe a Copy
+    </button>
+    <p class="gather-code__hint">Give this word to any you would summon. It opens this hall and no other door.</p>
+  </section>
+
+  <div class="lobby-main">
+
+    <!-- ZONE 2 & 3 · The seats of the table -->
+    <section class="panel zone" aria-label="The seats of the table">
+      <b class="callout" style="top:-10px; left:-10px">2</b>
+      <h2 class="panel-title">The Seats of the Table</h2>
+      <ol class="seat-list">
+
+        <!-- Seat of the host (the viewer). Banner chosen, not yet raised:
+             the color band renders broken (dashed) until the seal is set. -->
+        <li class="seat seat--unsealed zone" data-faction="hungary">
+          <b class="callout" style="top:8px; right:8px">3</b>
+          <span class="seat__band" aria-hidden="true"></span>
+          <figure class="asset asset--crest seat__crest">
+            <img src="../../art/crests/hungary.svg" alt="Crest of Hungary">
+          </figure>
+          <div class="seat__body">
+            <b class="seat__name">Godfrey of the March
+              <span class="pill pill--laurel host-mark">Host of the Hall</span>
+              <span class="pill">Yourself</span>
+            </b>
+            <span class="seat__state">Weighs the banner of Hungary — chosen, not yet raised.</span>
+          </div>
+        </li>
+
+        <li class="seat" data-faction="venice">
+          <span class="seat__band" aria-hidden="true"></span>
+          <figure class="asset asset--crest seat__crest">
+            <img src="../../art/crests/venice.svg" alt="Crest of Venice">
+          </figure>
+          <div class="seat__body">
+            <b class="seat__name">Sier Bartolomeo Zen <span class="pill pill--gold">Banner raised</span></b>
+            <span class="seat__state">At the table, under the lion of Saint Mark.</span>
+          </div>
+        </li>
+
+        <li class="seat" data-faction="ottomans">
+          <span class="seat__band" aria-hidden="true"></span>
+          <figure class="asset asset--crest seat__crest">
+            <img src="../../art/crests/ottomans.svg" alt="Crest of the Ottomans">
+          </figure>
+          <div class="seat__body">
+            <b class="seat__name">Iskender of Adrianople <span class="pill pill--gold">Banner raised</span></b>
+            <span class="seat__state">At the table, under the crescent of the Porte.</span>
+          </div>
+        </li>
+
+        <li class="seat seat--empty">
+          <span class="seat__band" aria-hidden="true"></span>
+          <figure class="asset asset--crest seat__crest" aria-hidden="true"></figure>
+          <div class="seat__body">
+            <b class="seat__name">A seat awaits</b>
+            <span class="seat__state">The word of gathering finds it empty still.</span>
+          </div>
+        </li>
+
+        <li class="seat seat--empty">
+          <span class="seat__band" aria-hidden="true"></span>
+          <figure class="asset asset--crest seat__crest" aria-hidden="true"></figure>
+          <div class="seat__body">
+            <b class="seat__name">A seat awaits</b>
+            <span class="seat__state">The word of gathering finds it empty still.</span>
+          </div>
+        </li>
+
+      </ol>
+    </section>
+
+    <div class="stack">
+
+      <!-- ZONE 4 & 5 · The banners (faction picker) and the beginning -->
+      <section class="panel zone" aria-label="The banners">
+        <b class="callout" style="top:-10px; left:-10px">4</b>
+        <h2 class="panel-title">The Banners</h2>
+
+        <ul class="faction-picker">
+
+          <!-- resting state -->
+          <li class="faction-card" data-faction="byzantium" role="button" tabindex="0" aria-pressed="false">
+            <figure class="asset asset--crest">
+              <img src="../../art/crests/byzantium.svg" alt="Crest of Byzantium">
+            </figure>
+            <b class="faction-card__name">Byzantium</b>
+            <span class="faction-card__note">Eleven centuries of empire, one City left to keep.</span>
+          </li>
+
+          <!-- locked: claimed by another seat -->
+          <li class="faction-card is-locked" data-faction="venice" role="button" aria-disabled="true">
+            <figure class="asset asset--crest">
+              <img src="../../art/crests/venice.svg" alt="Crest of Venice">
+            </figure>
+            <b class="faction-card__name"><span class="padlock" aria-hidden="true"></span>Venice</b>
+            <span class="faction-card__note">Claimed by Sier Bartolomeo Zen.</span>
+          </li>
+
+          <!-- hover state, shown statically (.is-hover mirrors :hover) -->
+          <li class="faction-card is-hover" data-faction="genoa" role="button" tabindex="0" aria-pressed="false">
+            <figure class="asset asset--crest">
+              <img src="../../art/crests/genoa.svg" alt="Crest of Genoa">
+            </figure>
+            <b class="faction-card__name">Genoa</b>
+            <span class="faction-card__note">The counting-house that outlasts kingdoms.</span>
+          </li>
+
+          <!-- locked: claimed by another seat -->
+          <li class="faction-card is-locked" data-faction="ottomans" role="button" aria-disabled="true">
+            <figure class="asset asset--crest">
+              <img src="../../art/crests/ottomans.svg" alt="Crest of the Ottomans">
+            </figure>
+            <b class="faction-card__name"><span class="padlock" aria-hidden="true"></span>Ottomans</b>
+            <span class="faction-card__note">Claimed by Iskender of Adrianople.</span>
+          </li>
+
+          <!-- selected state: the viewer's chosen banner, awaiting the seal -->
+          <li class="faction-card is-selected" data-faction="hungary" role="button" tabindex="0" aria-pressed="true">
+            <figure class="asset asset--crest">
+              <img src="../../art/crests/hungary.svg" alt="Crest of Hungary">
+            </figure>
+            <b class="faction-card__name">Hungary</b>
+            <span class="faction-card__note">Your chosen banner. Raise it, and the choice is sealed.</span>
+          </li>
+
+        </ul>
+
+        <div class="banner-actions zone">
+          <b class="callout" style="top:-10px; right:-10px">5</b>
+          <button class="btn btn--primary" type="button">Raise the Banner of Hungary</button>
+          <button class="btn" type="button" disabled
+                  title="Two banners are raised; the rite asks a third.">Begin the Game</button>
+          <p class="start-rule">The game begins when three banners are raised.</p>
+          <p class="start-reason">Two are raised; the hall waits upon a third.</p>
+        </div>
+      </section>
+
+      <!-- ZONE 6 · The antechamber (chat stub) -->
+      <section class="panel zone" aria-label="The antechamber">
+        <b class="callout" style="top:-10px; left:-10px">6</b>
+        <h2 class="panel-title">The Antechamber</h2>
+        <ol class="chat-log">
+          <li class="chat-line chat-line--herald">The herald cries: Sier Bartolomeo Zen raises the banner of Venice.</li>
+          <li class="chat-line" data-faction="venice">
+            <b class="chat-line__who">Sier Bartolomeo Zen</b>
+            The lagoon greets you all. Choose swiftly — the tide waits for no one, and neither does my patience.
+          </li>
+          <li class="chat-line" data-faction="ottomans">
+            <b class="chat-line__who">Iskender of Adrianople</b>
+            Patience, Venetian. Cities fall to those who know how to wait.
+          </li>
+        </ol>
+        <div class="chat-form">
+          <input type="text" placeholder="Speak to the gathered company…" aria-label="Speak to the gathered company">
+          <button class="btn" type="button">Speak</button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  </main>
+
+  <hr>
+
+  <!-- SPEC LEGEND — annotation apparatus, does not ship -->
+  <ol class="legend">
+    <li><b class="callout">1</b> <strong>The word of gathering</strong> — the room code, writ large in the display face,
+      generous letter-spacing, always five letters. "Scribe a Copy" places the word on the clipboard (visual mock here —
+      no behavior in this file); on success show the default toast <em>"The word is copied; summon whom you will."</em>
+      and play <code>ui_click</code>.</li>
+    <li><b class="callout">2</b> <strong>The seats of the table</strong> — always five, in join order. Each seat carries
+      the faction crest (<code>../../art/crests/*.svg</code> in an <code>.asset</code> box), a color band in the faction
+      hue (doubled by the crest — color is never the only channel), the player's name, and a state line. An empty seat
+      reads <em>"A seat awaits"</em> at reduced opacity with dashed borders. A player joining or departing is announced
+      by the herald in the antechamber, never by a toast.</li>
+    <li><b class="callout">3</b> <strong>The host's laurel</strong> — exactly one seat bears the laurel pill
+      <em>"Host of the Hall"</em>. If the host departs, the laurel passes to the eldest remaining seat and the herald
+      announces it. The dashed color band marks a banner chosen but not yet raised.</li>
+    <li><b class="callout">4</b> <strong>The banners</strong> — five faction cards. All four states are shown statically
+      here: Byzantium at rest; Genoa carrying <code>.is-hover</code> (identical to real <code>:hover</code> — the gold
+      rim per README §1); Hungary carrying <code>.is-selected</code> (gold fill, ink text); Venice and the Ottomans
+      locked — padlock glyph (drawn in CSS, no image), opacity 0.45, <code>cursor: not-allowed</code>, and the note
+      names the claimant. A locked card answers a press only with its note; no toast. In the client, each card is a
+      real <code>&lt;button&gt;</code> inside its <code>&lt;li&gt;</code> — <code>aria-pressed</code> marks the chosen
+      banner, <code>disabled</code> marks a locked one; the <code>role="button"</code>/<code>tabindex</code> here only
+      stand in for that in this static mock.</li>
+    <li><b class="callout">5</b> <strong>Raising and beginning</strong> — choosing a banner is two-step per README §1:
+      select the card, then commit with <em>"Raise the Banner"</em> (plays <code>quill_scratch</code>; until then the
+      choice is freely revocable). <em>"Begin the Game"</em> belongs to the host alone and stays disabled until three
+      banners are raised; disabled state pairs with the in-voice reason shown beneath and on hover/tap. On press:
+      confirm nothing (beginning is not destructive), play <code>church_bell</code>, and pass every seat to the
+      campaign board.</li>
+    <li><b class="callout">6</b> <strong>The antechamber</strong> — the lobby chat. Player lines carry the speaker's
+      faction color on the spine and name (doubled by the name itself); herald lines are centered, italic, gold-spined,
+      and machine-authored (joins, departures, banners raised). Input is a mock in this file. Lines cap at two hundred
+      characters; the log keeps the last fifty.</li>
+    <li><strong>Music</strong> — <code>menu_theme</code> loops for the life of this screen (README §4, state
+      <code>LOBBY</code>); it crossfades to <code>campaign_ambient</code> when the game begins.</li>
+  </ol>
+
+</div>
+</html>

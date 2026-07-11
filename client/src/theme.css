@@ -1,0 +1,190 @@
+/* IMPERIUM: Twilight of Empires — theme foundation.
+   Display face: Cinzel (Roman inscriptional capitals).
+   Body face: EB Garamond (humanist serif).
+
+   Fonts are SELF-HOSTED from /fonts (client/public/fonts/, latin subsets,
+   variable-weight woff2 fetched from Google Fonts). Do not reintroduce a
+   fonts.googleapis.com @import: under restricted egress that request stalls
+   the page ~13s before `load` fires. font-display: swap keeps the serif
+   fallbacks visible until the files arrive. */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400 900; /* variable file; covers the 500/700/900 uses below */
+  font-display: swap;
+  src: url("/fonts/cinzel-latin-600-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 400 800; /* variable file; covers 400/500/700 */
+  font-display: swap;
+  src: url("/fonts/eb-garamond-latin-400-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: italic;
+  font-weight: 400 800; /* variable file */
+  font-display: swap;
+  src: url("/fonts/eb-garamond-latin-italic-400.woff2") format("woff2");
+}
+
+:root {
+  /* Imperial palette */
+  --imp-purple: #4b1f3f;
+  --imp-gold: #c9a227;
+  --imp-parchment: #f4e9d0;
+  --imp-lapis: #26619c;
+  --imp-ink: #2b2118;
+
+  /* Derived tokens */
+  --imp-purple-deep: #35162c;
+  --imp-gold-soft: #e2c766;
+  --imp-parchment-shade: #e6d7b4;
+
+  --font-display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --font-body: "EB Garamond", Garamond, Georgia, serif;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--imp-parchment);
+  background:
+    radial-gradient(
+      circle at 50% -10%,
+      var(--imp-purple) 0%,
+      var(--imp-purple-deep) 55%,
+      var(--imp-ink) 100%
+    );
+  background-attachment: fixed;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  color: var(--imp-gold);
+  margin: 0 0 0.4em;
+}
+
+h1 {
+  font-weight: 900;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+button {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--imp-ink);
+  background: linear-gradient(180deg, var(--imp-gold-soft), var(--imp-gold));
+  border: 1px solid var(--imp-gold);
+  border-radius: 4px;
+  padding: 0.6em 1.2em;
+  cursor: pointer;
+  transition:
+    transform 0.08s ease,
+    filter 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--imp-gold);
+  border: 1px solid var(--imp-gold);
+}
+
+input {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--imp-ink);
+  background: var(--imp-parchment);
+  border: 1px solid var(--imp-gold);
+  border-radius: 4px;
+  padding: 0.55em 0.8em;
+}
+
+a {
+  color: var(--imp-gold-soft);
+}
+
+.imp-panel {
+  background: rgba(43, 33, 24, 0.55);
+  border: 1px solid rgba(201, 162, 39, 0.4);
+  border-radius: 8px;
+  padding: 1.5rem;
+  backdrop-filter: blur(2px);
+}
+
+.imp-center {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.imp-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.imp-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.imp-subtitle {
+  font-family: var(--font-body);
+  font-style: italic;
+  color: var(--imp-parchment-shade);
+  font-size: 1.1rem;
+}
+
+.imp-error {
+  color: #f0b3a0;
+  font-style: italic;
+}
+
+.imp-code {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: var(--imp-gold);
+  font-size: 1.6rem;
+}

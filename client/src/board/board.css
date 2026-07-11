@@ -1,0 +1,161 @@
+/* Board layout + interaction states. Imported once by Board.tsx.
+   The vendored board.svg's embedded <style> owns the ownership contract
+   (--faction-* variables, base owner-* fills) — never restated here. */
+
+.board-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.board-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none; /* pan/zoom handles gestures; do NOT preventDefault pointerdown */
+  cursor: grab;
+  background: #12233a;
+}
+
+.board-viewport:active {
+  cursor: grabbing;
+}
+
+.board-content {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.board-svg-host,
+.board-svg-host > svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* --- Interaction states (UI_DESIGN §6) ------------------------------------
+   !important where needed to beat the SVG's own .province:hover stroke rule. */
+
+svg#board .province.is-hovered {
+  stroke: var(--imp-gold-soft, #e2c766);
+  stroke-width: 3;
+}
+
+svg#board .sea-zone.is-hovered {
+  fill-opacity: 0.3;
+}
+
+svg#board .sea-zone:hover {
+  cursor: pointer;
+}
+
+svg#board .province.is-selected,
+svg#board .sea-zone.is-selected {
+  stroke: var(--imp-gold, #c9a227) !important;
+  stroke-width: 4 !important;
+}
+
+svg#board .province.is-move-target {
+  stroke: #40826d;
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+}
+
+/* Keyboard focus (shapes are tabbable role="button" elements). Only
+   :focus-visible — pointer interactions keep the hover/selected styling. */
+svg#board .province:focus-visible,
+svg#board .sea-zone:focus-visible {
+  outline: 3px solid var(--imp-gold-soft, #e2c766);
+  outline-offset: 2px;
+}
+
+svg#board .sea-zone.is-move-target {
+  stroke: #40826d;
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+  stroke-opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  svg#board .province.is-move-target,
+  svg#board .sea-zone.is-move-target {
+    animation: board-target-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes board-target-pulse {
+  50% {
+    stroke-opacity: 0.45;
+  }
+}
+
+/* --- Colorblind mode (UI_DESIGN §7) ----------------------------------------
+   Patterns are injected inline by ensureFactionPatterns(); each tile's
+   background rect carries the faction color, so color + texture together. */
+
+svg#board.colorblind .province.owner-byzantium {
+  fill: url(#facPattern-byzantium);
+}
+
+svg#board.colorblind .province.owner-ottoman {
+  fill: url(#facPattern-ottoman);
+}
+
+svg#board.colorblind .province.owner-venice {
+  fill: url(#facPattern-venice);
+}
+
+svg#board.colorblind .province.owner-genoa {
+  fill: url(#facPattern-genoa);
+}
+
+svg#board.colorblind .province.owner-hungary {
+  fill: url(#facPattern-hungary);
+}
+
+/* --- Tooltip (state island; placement is inline left/top/transform) ------- */
+
+.board-tooltip {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  max-width: 16rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--imp-parchment, #f4e9d0);
+  color: var(--imp-ink, #2b2118);
+  border: 1px solid var(--imp-gold-soft, #e2c766);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.board-tooltip-name {
+  font-weight: 700;
+}
+
+.board-tooltip-sub {
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.board-tooltip-yields {
+  margin-top: 0.15rem;
+}
+
+/* --- Overlay tokens (rendered by overlays/*; text styling lives here) ------ */
+
+svg#board .ov-army,
+svg#board .ov-fleet,
+svg#board .ov-siege,
+svg#board .ov-walls {
+  user-select: none;
+}
+
+svg#board .ov-army text,
+svg#board .ov-fleet text,
+svg#board .ov-walls text {
+  text-anchor: middle;
+  dominant-baseline: central;
+}

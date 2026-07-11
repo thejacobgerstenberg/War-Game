@@ -1,0 +1,34 @@
+{
+  "name": "imperium-twilight-of-empires",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "IMPERIUM: Twilight of Empires — a browser strategy game set in the late Roman/Byzantine world (~1400–1453).",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @imperium/shared && npm run build --workspace @imperium/server && npm run build --workspace @imperium/client",
+    "predev": "npm run build --workspace @imperium/shared",
+    "dev": "concurrently -n server,client -c blue,magenta \"npm run dev --workspace @imperium/server\" \"npm run dev --workspace @imperium/client\"",
+    "lint": "eslint .",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "playwright test --config e2e/playwright.config.ts",
+    "test:load": "node e2e/load/socket-load.mjs",
+    "typecheck": "npm run build --workspace @imperium/shared && npm run typecheck --workspace @imperium/server && npm run typecheck --workspace @imperium/client"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "1.56.1",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.39.5",
+    "socket.io-client": "^4.8.1",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.63.0"
+  }
+}
