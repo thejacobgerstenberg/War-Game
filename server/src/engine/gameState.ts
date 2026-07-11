@@ -64,6 +64,18 @@ function hashSeed(text: string): number {
   return h >>> 0;
 }
 
+/** Optional creation-time configuration (test-only knobs live here). */
+export interface InitialStateOptions {
+  /**
+   * TEST-ONLY §13.2 prestige-threshold override, stored on
+   * `GameState.prestigeTarget` (see the shared type's doc comment). The engine
+   * stays pure: env resolution happens in the lobby layer, which passes the
+   * value here; `prestige.decideWinner` then prefers it over
+   * `balance.PRESTIGE_THRESHOLDS`.
+   */
+  prestigeTarget?: number;
+}
+
 /**
  * Build the initial, ready-to-play state.
  *
@@ -77,6 +89,7 @@ export function createInitialState(
   roomCode: string,
   seats: SeatInput[],
   seed?: number,
+  options?: InitialStateOptions,
 ): GameState {
   const rngSeed = seed ?? hashSeed(roomCode);
 
@@ -187,6 +200,9 @@ export function createInitialState(
       provinceId: null,
       emplacedRound: 0,
     },
+    ...(options?.prestigeTarget !== undefined
+      ? { prestigeTarget: options.prestigeTarget }
+      : {}),
     rngSeed,
     rngCursor: rng.cursor,
     logCounter: 0,

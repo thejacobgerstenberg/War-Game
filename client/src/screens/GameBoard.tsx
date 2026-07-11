@@ -17,7 +17,7 @@
  * Contexts (already provided): useGame (GameProvider is mounted by App),
  * SelectionProvider + OverlayProvider are mounted HERE.
  */
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Faction } from "@imperium/shared";
 import { Board } from "../board/Board";
 import type { BoardOverlayState } from "../board/types";
@@ -103,6 +103,24 @@ function BoardMount(): JSX.Element {
   const { colorblind } = useUiSettings();
   const { playSfx } = useAudio();
 
+  // Test hook (same contract as board/DemoPage.tsx): ?svgUrl=<url> mounts an
+  // alternate board SVG (e.g. the canon-id e2e fixture) instead of the
+  // vendored board.svg, whose retired 53-region id scheme cannot select most
+  // canon provinces (board/mapData.ts NOTE — drift until the canon-id art
+  // lands). DEV-ONLY: loadBoardSvgFromUrl fetches the URL and injects the
+  // response into the live DOM, so honouring a query param here in a
+  // production build would let any crafted link (?svgUrl=https://…) make the
+  // client fetch and mount attacker-controlled SVG markup. `import.meta.env
+  // .DEV` is statically false in `vite build`, so the whole branch (and the
+  // fetch path behind it) is compiled out of production bundles; the e2e
+  // stack runs the vite dev server, where the hook stays live. Read once at
+  // mount.
+  const [svgUrl] = useState<string | undefined>(() =>
+    import.meta.env.DEV
+      ? (new URLSearchParams(window.location.search).get("svgUrl") ?? undefined)
+      : undefined,
+  );
+
   /* game.html legend callout 7: selecting a province fills the province
      card AND plays ui_click. Deselecting (Escape / empty-sea click -> null)
      stays silent — the cue marks a selection being made. */
@@ -142,6 +160,7 @@ function BoardMount(): JSX.Element {
       onHoverChange={setHover}
       overlays={overlays}
       colorblind={colorblind} // AUDIO-A11Y AGENT: Scribe's Aids wiring
+      svgUrl={svgUrl} // test hook (see above); undefined in normal play
     />
   );
 }

@@ -13,8 +13,13 @@ interface CreateJoinProps {
  * - Join heading: lore/ui-text.md §1 "Answer the Summons".
  * - Join rubric: lore/ui-text.md §2 Codes/joining — "Present your seal to join
  *   a game already convened." (join-by-code field prompt).
- * - Code hint: design/mockups/home.html code-entry — "Letters only, as the
- *   herald spoke them. Great or small, it is all one."
+ * - Code hint: adapted from design/mockups/home.html code-entry ("Letters
+ *   only, as the herald spoke them. Great or small, it is all one."). The
+ *   mockup's "letters only" contradicts the server, whose room codes draw from
+ *   A–Z AND 0–9 (lobbyManager ROOM_CODE_ALPHABET) — a letters-only filter
+ *   silently swallowed the digits of most real codes and left "Take Your
+ *   Seat" permanently disabled. The filter and hint accept both; the
+ *   case-folding half of the mockup line is kept verbatim.
  * - Join submit: home.html "Take Your Seat"; Back: ui-text.md §3 "Return".
  * - Name placeholder "Godfrey of the March": example claimant name from
  *   design/mockups/lobby.html seat cards (no canonical name-field prompt exists).
@@ -52,12 +57,13 @@ export function CreateJoin({ mode, error, onSubmit, onBack }: CreateJoinProps) {
             <input
               value={code}
               onChange={(e) =>
-                // "Great or small, it is all one" — case-fold; letters only,
-                // as the herald spoke them.
-                setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))
+                // "Great or small, it is all one" — case-fold. Codes are six
+                // characters of A–Z0–9 (server ROOM_CODE_ALPHABET), so digits
+                // must pass the filter too.
+                setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
               }
               maxLength={6}
-              aria-label="Summons code, six letters"
+              aria-label="Summons code, six characters"
               style={{ letterSpacing: "0.2em", textTransform: "uppercase" }}
             />
             <span
@@ -67,7 +73,7 @@ export function CreateJoin({ mode, error, onSubmit, onBack }: CreateJoinProps) {
                 color: "var(--imp-parchment-shade)",
               }}
             >
-              Letters only, as the herald spoke them. Great or small, it is all
+              Six marks, as the herald spoke them. Great or small, it is all
               one.
             </span>
           </label>

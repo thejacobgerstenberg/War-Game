@@ -685,6 +685,16 @@ export interface GameState {
     provinceId: string | null;
     emplacedRound: number;
   };
+  /**
+   * TEST-ONLY override of the §13.2 prestige victory threshold. Absent in
+   * normal play (decideWinner falls back to `balance.PRESTIGE_THRESHOLDS` by
+   * player count). Set at game creation by `createInitialState` when the
+   * server's `PRESTIGE_TARGET` env knob is active (docs/ARCHITECTURE.md,
+   * Operations — test-only knobs) so E2E runs can reach a real engine victory
+   * in a few rounds. Carried on state (not read from env in the engine) to
+   * keep the engine pure.
+   */
+  prestigeTarget?: number;
   /** Winner faction once the game has ended. */
   winner?: Faction;
   /** Seed for the deterministic RNG. */

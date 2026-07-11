@@ -233,8 +233,11 @@ function objectiveSatisfied(state: GameState, player: Player, obj: SecretObjecti
  */
 function decideWinner(state: GameState): Faction | null {
   const playerCount = state.players.length;
-  // §13.2 threshold by player count (2→25, 3→30, 4–5→35).
-  const threshold = PRESTIGE_THRESHOLDS[playerCount] ?? 35;
+  // §13.2 threshold by player count, unless the TEST-ONLY creation-time
+  // override is present on state (GameState.prestigeTarget — set via the
+  // server's PRESTIGE_TARGET env knob; never in normal play).
+  const threshold =
+    state.prestigeTarget ?? PRESTIGE_THRESHOLDS[playerCount] ?? 35;
 
   /** Highest prestige; tiebreak most key cities, then most gold (§13.3). */
   const pickBest = (candidates: Player[]): Player | null => {

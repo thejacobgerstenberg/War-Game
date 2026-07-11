@@ -1,0 +1,148 @@
+<svg id="board" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 952 688">
+  <!-- GENERATED e2e fixture — do not hand-edit; see gen-canon-board.ts
+       alongside this file. Full canon id scheme (docs/MAP.md): 55
+       provinces + 12 sea zones as a click-safe schematic grid. A TEST
+       ASSET, not art: mounted via the GameBoard ?svgUrl= test hook because
+       the vendored board.svg still uses the retired region id scheme. -->
+  <rect x="0" y="0" width="952" height="688" fill="#efe7d3"/>
+  <g id="board-seas">
+    <path id="bosphorus" d="M 8 536 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="sea-of-marmara" d="M 126 536 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="aegean" d="M 244 536 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="sea-of-crete" d="M 362 536 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="eastern-mediterranean" d="M 480 536 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="ionian" d="M 598 536 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="adriatic" d="M 716 536 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="tyrrhenian" d="M 834 536 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="sicilian-channel" d="M 8 608 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="black-sea-west" d="M 126 608 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="black-sea-east" d="M 244 608 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="sea-of-azov" d="M 362 608 h 110 v 64 h -110 Z" fill="#b8c8d8" stroke="#2B2118" stroke-width="1.5"/>
+  </g>
+  <g id="board-provinces">
+    <path id="constantinople" d="M 8 8 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="selymbria" d="M 126 8 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="pera" d="M 244 8 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="edirne" d="M 362 8 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="gallipoli" d="M 480 8 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="philippopolis" d="M 598 8 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="sofia" d="M 716 8 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="varna" d="M 834 8 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="wallachia" d="M 8 80 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="serbia" d="M 126 80 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="bosnia" d="M 244 80 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="albania" d="M 362 80 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="epirus" d="M 480 80 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="thessaly" d="M 598 80 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="thessalonica" d="M 716 80 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="athens" d="M 834 80 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="morea" d="M 8 152 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="modon" d="M 126 152 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="venice" d="M 244 152 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="milan" d="M 362 152 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="genoa" d="M 480 152 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="rome" d="M 598 152 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="naples" d="M 716 152 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="sicily" d="M 834 152 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="tunis" d="M 8 224 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="dalmatia" d="M 126 224 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="ragusa" d="M 244 224 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="croatia" d="M 362 224 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="buda" d="M 480 224 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="belgrade" d="M 598 224 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="transylvania" d="M 716 224 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="bithynia" d="M 834 224 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="bursa" d="M 8 296 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="nicaea" d="M 126 296 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="ankara" d="M 244 296 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="konya" d="M 362 296 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="kastamonu" d="M 480 296 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="sinope" d="M 598 296 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="smyrna" d="M 716 296 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="antalya" d="M 834 296 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="trebizond" d="M 8 368 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="aleppo" d="M 126 368 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="antioch" d="M 244 368 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="cairo" d="M 362 368 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="alexandria" d="M 480 368 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="cyprus" d="M 598 368 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="rhodes" d="M 716 368 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="chios" d="M 834 368 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="lesbos" d="M 8 440 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="lemnos" d="M 126 440 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="negroponte" d="M 244 440 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="naxos" d="M 362 440 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="crete" d="M 480 440 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="corfu" d="M 598 440 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+    <path id="kaffa" d="M 716 440 h 110 v 64 h -110 Z" fill="#d8cdb4" stroke="#2B2118" stroke-width="1.5"/>
+  </g>
+  <g id="board-labels" pointer-events="none">
+    <text x="14" y="28" font-size="11" pointer-events="none" fill="#2B2118">Constantinople</text>
+    <text x="132" y="28" font-size="11" pointer-events="none" fill="#2B2118">Selymbria</text>
+    <text x="250" y="28" font-size="11" pointer-events="none" fill="#2B2118">Pera</text>
+    <text x="368" y="28" font-size="11" pointer-events="none" fill="#2B2118">Edirne</text>
+    <text x="486" y="28" font-size="11" pointer-events="none" fill="#2B2118">Gallipoli</text>
+    <text x="604" y="28" font-size="11" pointer-events="none" fill="#2B2118">Philippopolis</text>
+    <text x="722" y="28" font-size="11" pointer-events="none" fill="#2B2118">Sofia</text>
+    <text x="840" y="28" font-size="11" pointer-events="none" fill="#2B2118">Varna</text>
+    <text x="14" y="100" font-size="11" pointer-events="none" fill="#2B2118">Wallachia</text>
+    <text x="132" y="100" font-size="11" pointer-events="none" fill="#2B2118">Serbia</text>
+    <text x="250" y="100" font-size="11" pointer-events="none" fill="#2B2118">Bosnia</text>
+    <text x="368" y="100" font-size="11" pointer-events="none" fill="#2B2118">Albania</text>
+    <text x="486" y="100" font-size="11" pointer-events="none" fill="#2B2118">Epirus</text>
+    <text x="604" y="100" font-size="11" pointer-events="none" fill="#2B2118">Thessaly</text>
+    <text x="722" y="100" font-size="11" pointer-events="none" fill="#2B2118">Thessalonica</text>
+    <text x="840" y="100" font-size="11" pointer-events="none" fill="#2B2118">Athens</text>
+    <text x="14" y="172" font-size="11" pointer-events="none" fill="#2B2118">Morea</text>
+    <text x="132" y="172" font-size="11" pointer-events="none" fill="#2B2118">Modon &amp; Coro</text>
+    <text x="250" y="172" font-size="11" pointer-events="none" fill="#2B2118">Venice</text>
+    <text x="368" y="172" font-size="11" pointer-events="none" fill="#2B2118">Milan</text>
+    <text x="486" y="172" font-size="11" pointer-events="none" fill="#2B2118">Genoa</text>
+    <text x="604" y="172" font-size="11" pointer-events="none" fill="#2B2118">Rome</text>
+    <text x="722" y="172" font-size="11" pointer-events="none" fill="#2B2118">Naples</text>
+    <text x="840" y="172" font-size="11" pointer-events="none" fill="#2B2118">Sicily</text>
+    <text x="14" y="244" font-size="11" pointer-events="none" fill="#2B2118">Tunis</text>
+    <text x="132" y="244" font-size="11" pointer-events="none" fill="#2B2118">Dalmatia</text>
+    <text x="250" y="244" font-size="11" pointer-events="none" fill="#2B2118">Ragusa</text>
+    <text x="368" y="244" font-size="11" pointer-events="none" fill="#2B2118">Croatia</text>
+    <text x="486" y="244" font-size="11" pointer-events="none" fill="#2B2118">Buda</text>
+    <text x="604" y="244" font-size="11" pointer-events="none" fill="#2B2118">Belgrade</text>
+    <text x="722" y="244" font-size="11" pointer-events="none" fill="#2B2118">Transylvania</text>
+    <text x="840" y="244" font-size="11" pointer-events="none" fill="#2B2118">Bithynia</text>
+    <text x="14" y="316" font-size="11" pointer-events="none" fill="#2B2118">Bursa</text>
+    <text x="132" y="316" font-size="11" pointer-events="none" fill="#2B2118">Nicaea</text>
+    <text x="250" y="316" font-size="11" pointer-events="none" fill="#2B2118">Ankara</text>
+    <text x="368" y="316" font-size="11" pointer-events="none" fill="#2B2118">Konya</text>
+    <text x="486" y="316" font-size="11" pointer-events="none" fill="#2B2118">Kastamonu</text>
+    <text x="604" y="316" font-size="11" pointer-events="none" fill="#2B2118">Sinope</text>
+    <text x="722" y="316" font-size="11" pointer-events="none" fill="#2B2118">Smyrna</text>
+    <text x="840" y="316" font-size="11" pointer-events="none" fill="#2B2118">Antalya</text>
+    <text x="14" y="388" font-size="11" pointer-events="none" fill="#2B2118">Trebizond</text>
+    <text x="132" y="388" font-size="11" pointer-events="none" fill="#2B2118">Aleppo</text>
+    <text x="250" y="388" font-size="11" pointer-events="none" fill="#2B2118">Antioch</text>
+    <text x="368" y="388" font-size="11" pointer-events="none" fill="#2B2118">Cairo</text>
+    <text x="486" y="388" font-size="11" pointer-events="none" fill="#2B2118">Alexandria</text>
+    <text x="604" y="388" font-size="11" pointer-events="none" fill="#2B2118">Cyprus</text>
+    <text x="722" y="388" font-size="11" pointer-events="none" fill="#2B2118">Rhodes</text>
+    <text x="840" y="388" font-size="11" pointer-events="none" fill="#2B2118">Chios</text>
+    <text x="14" y="460" font-size="11" pointer-events="none" fill="#2B2118">Lesbos</text>
+    <text x="132" y="460" font-size="11" pointer-events="none" fill="#2B2118">Lemnos</text>
+    <text x="250" y="460" font-size="11" pointer-events="none" fill="#2B2118">Negroponte</text>
+    <text x="368" y="460" font-size="11" pointer-events="none" fill="#2B2118">Naxos</text>
+    <text x="486" y="460" font-size="11" pointer-events="none" fill="#2B2118">Crete</text>
+    <text x="604" y="460" font-size="11" pointer-events="none" fill="#2B2118">Corfu</text>
+    <text x="722" y="460" font-size="11" pointer-events="none" fill="#2B2118">Kaffa</text>
+    <text x="14" y="556" font-size="11" pointer-events="none" fill="#1a2a3a">Bosphorus</text>
+    <text x="132" y="556" font-size="11" pointer-events="none" fill="#1a2a3a">Sea of Marmara</text>
+    <text x="250" y="556" font-size="11" pointer-events="none" fill="#1a2a3a">Aegean Sea</text>
+    <text x="368" y="556" font-size="11" pointer-events="none" fill="#1a2a3a">Sea of Crete</text>
+    <text x="486" y="556" font-size="11" pointer-events="none" fill="#1a2a3a">Eastern Mediterr</text>
+    <text x="604" y="556" font-size="11" pointer-events="none" fill="#1a2a3a">Ionian Sea</text>
+    <text x="722" y="556" font-size="11" pointer-events="none" fill="#1a2a3a">Adriatic Sea</text>
+    <text x="840" y="556" font-size="11" pointer-events="none" fill="#1a2a3a">Tyrrhenian Sea</text>
+    <text x="14" y="628" font-size="11" pointer-events="none" fill="#1a2a3a">Sicilian Channel</text>
+    <text x="132" y="628" font-size="11" pointer-events="none" fill="#1a2a3a">Black Sea (West)</text>
+    <text x="250" y="628" font-size="11" pointer-events="none" fill="#1a2a3a">Black Sea (East)</text>
+    <text x="368" y="628" font-size="11" pointer-events="none" fill="#1a2a3a">Sea of Azov</text>
+  </g>
+</svg>

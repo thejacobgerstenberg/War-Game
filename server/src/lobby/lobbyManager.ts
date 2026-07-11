@@ -10,6 +10,7 @@ import {
   type LobbyUpdatePayload,
 } from "@imperium/shared";
 import { createInitialState, type SeatInput } from "../engine/gameState.js";
+import { log } from "../log.js";
 import { isFaction, PLAYER_NAME_MAX_LENGTH } from "../validate.js";
 
 /** Domain error surfaced to clients as `error_msg`. */
@@ -67,6 +68,59 @@ function generateSessionToken(): string {
  */
 function generateGameSeed(): number {
   return randomBytes(4).readUInt32LE(0);
+}
+
+/**
+ * TEST-ONLY knob (docs/ARCHITECTURE.md, Operations — test-only knobs): when
+ * `GAME_SEED` is set to a valid 32-bit unsigned integer, every game started by
+ * this process uses that seed instead of {@link generateGameSeed}. This makes
+ * whole games byte-for-byte reproducible (deck order, every roll), which the
+ * Playwright E2E suite depends on. It also makes the "hidden" deck ordering
+ * reconstructable by anyone who knows the seed — NEVER set it in production;
+ * a loud `test_knob_active` warning is logged on every game start while it is
+ * active. Garbage values are ignored (crypto-random fallback) with a warning.
+ */
+export function gameSeedFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): number | null {
+  const raw = env.GAME_SEED;
+  if (raw === undefined || raw.trim() === "") return null;
+  const value = Number(raw.trim());
+  if (!Number.isInteger(value) || value < 0 || value > 0xffffffff) {
+    log(
+      "warn",
+      "test_knob_invalid",
+      `GAME_SEED=${raw.slice(0, 32)} is not a 32-bit unsigned integer; ignored (crypto-random seed used)`,
+    );
+    return null;
+  }
+  return value;
+}
+
+/**
+ * TEST-ONLY knob (documented beside GAME_SEED): when `PRESTIGE_TARGET` is set
+ * to a positive integer, games started by this process carry it as
+ * `GameState.prestigeTarget`, and `prestige.decideWinner` uses it instead of
+ * the ratified §13.2 `balance.PRESTIGE_THRESHOLDS`. Lets an E2E run reach a
+ * REAL engine victory (checked at Cleanup as always) within a few rounds.
+ * Default off; loudly logged while active; garbage values ignored with a
+ * warning. The engine stays pure — the value rides on state from creation.
+ */
+export function prestigeTargetFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): number | null {
+  const raw = env.PRESTIGE_TARGET;
+  if (raw === undefined || raw.trim() === "") return null;
+  const value = Number(raw.trim());
+  if (!Number.isInteger(value) || value <= 0) {
+    log(
+      "warn",
+      "test_knob_invalid",
+      `PRESTIGE_TARGET=${raw.slice(0, 32)} is not a positive integer; ignored (ratified §13.2 thresholds used)`,
+    );
+    return null;
+  }
+  return value;
 }
 
 /** Constructor options; the clock is injectable for deterministic tests. */
@@ -304,8 +358,33 @@ export class LobbyManager {
     }));
 
     // Inject an unpredictable seed (NOT the public-room-code default) so the
-    // deck ordering cannot be reconstructed from the room code alone.
-    const state = createInitialState(room.code, seats, generateGameSeed());
+    // deck ordering cannot be reconstructed from the room code alone. The two
+    // TEST-ONLY env knobs below (GAME_SEED / PRESTIGE_TARGET) are default-off
+    // and warn loudly whenever they shape a game — never set in production.
+    const seedOverride = gameSeedFromEnv();
+    if (seedOverride !== null) {
+      log(
+        "warn",
+        "test_knob_active",
+        `GAME_SEED=${seedOverride} — TEST-ONLY deterministic seed override active; games are reproducible and deck order is NOT secret. Never set in production.`,
+        { roomCode: room.code },
+      );
+    }
+    const prestigeTarget = prestigeTargetFromEnv();
+    if (prestigeTarget !== null) {
+      log(
+        "warn",
+        "test_knob_active",
+        `PRESTIGE_TARGET=${prestigeTarget} — TEST-ONLY victory-threshold override active; §13.2 ratified thresholds are bypassed. Never set in production.`,
+        { roomCode: room.code },
+      );
+    }
+    const state = createInitialState(
+      room.code,
+      seats,
+      seedOverride ?? generateGameSeed(),
+      prestigeTarget !== null ? { prestigeTarget } : undefined,
+    );
     room.state = state;
     room.startedByHost = true;
     return { room, state };

@@ -60,6 +60,20 @@ export default defineConfig({
       env: {
         PORT: String(SERVER_PORT),
         CORS_ORIGIN: CLIENT_URL,
+        // Deterministic game E2E (see e2e/tests/helpers/game.ts and the
+        // ops env-var table in docs/ARCHITECTURE.md — both are TEST-ONLY
+        // server knobs that warn loudly when active):
+        //  - GAME_SEED pins every game's RNG seed, so deck order, tactic
+        //    draws, dice and merc offers replay exactly (the PLAYBOOK's
+        //    beats are keyed to this seed — do not change casually).
+        //  - PRESTIGE_TARGET lowers the §13.2 victory threshold so a
+        //    2-player game reaches a REAL engine victory at round III's
+        //    cleanup instead of round ~XIII.
+        //  - TURN_SECONDS=off disables the breath-timer's auto-advance so a
+        //    slow CI runner can never race the scripted phase advances.
+        GAME_SEED: "424242",
+        PRESTIGE_TARGET: "12",
+        TURN_SECONDS: "off",
       },
     },
     {

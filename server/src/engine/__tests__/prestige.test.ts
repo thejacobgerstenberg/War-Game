@@ -793,6 +793,36 @@ describe("checkVictory — §13.2 prestige threshold", () => {
     expect(checkVictory(s)).toBe(Faction.HUNGARY);
   });
 
+  it("TEST-ONLY prestigeTarget override lowers the threshold (PRESTIGE_TARGET knob)", () => {
+    // createInitialState carries options.prestigeTarget onto state…
+    const s = structuredClone(
+      createInitialState("ROOM01", seats2, 12345, { prestigeTarget: 8 }),
+    );
+    expect(s.prestigeTarget).toBe(8);
+    s.phase = GamePhase.END;
+    // …and decideWinner prefers it over PRESTIGE_THRESHOLDS[2] = 72.
+    s.players.find((p) => p.id === "p1")!.prestige = 7;
+    expect(checkVictory(s)).toBeNull();
+    s.players.find((p) => p.id === "p1")!.prestige = 8;
+    expect(checkVictory(s)).toBe(Faction.BYZANTIUM);
+  });
+
+  it("TEST-ONLY prestigeTarget override still only fires at Cleanup (CANON #3)", () => {
+    const s = structuredClone(
+      createInitialState("ROOM01", seats2, 12345, { prestigeTarget: 8 }),
+    );
+    s.players.find((p) => p.id === "p1")!.prestige = 99;
+    s.phase = GamePhase.MOVEMENT;
+    expect(checkVictory(s)).toBeNull();
+  });
+
+  it("without the override, the ratified thresholds are untouched", () => {
+    const s = fresh(seats2);
+    expect(s.prestigeTarget).toBeUndefined();
+    s.players.find((p) => p.id === "p1")!.prestige = 8;
+    expect(checkVictory(s)).toBeNull();
+  });
+
   it("§13.2 when several cross the same cleanup, highest prestige wins", () => {
     const s = fresh(seats2);
     s.players.find((p) => p.id === "p1")!.prestige = 74; // over 2p threshold 72

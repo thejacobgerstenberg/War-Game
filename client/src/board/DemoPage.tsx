@@ -28,8 +28,14 @@ export function DemoPage(): JSX.Element {
 
   // Test hook: /board-demo?svgUrl=<url> mounts an alternate board SVG
   // (e.g. the canon-id e2e fixture) instead of the vendored board.svg.
-  const [svgUrl] = useState<string | undefined>(
-    () => new URLSearchParams(window.location.search).get("svgUrl") ?? undefined,
+  // DEV-ONLY, same reasoning as screens/GameBoard.tsx: the URL is fetched and
+  // its markup injected into the live DOM, so a production build must never
+  // honour it (import.meta.env.DEV is statically false there and the branch
+  // is compiled out).
+  const [svgUrl] = useState<string | undefined>(() =>
+    import.meta.env.DEV
+      ? (new URLSearchParams(window.location.search).get("svgUrl") ?? undefined)
+      : undefined,
   );
 
   const [ownerProvince, setOwnerProvince] = useState<string>(
