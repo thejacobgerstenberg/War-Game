@@ -75,7 +75,10 @@ under the Ottomans because they receive it by default when in play (otherwise it
    train inflicts at most 1 Wall HP/round (`GAME_DESIGN.md` §8.3); only the **Great Bombard** (see
    Ottomans / event *The Great Bombard Forged*) lifts that cap and rolls enough wall damage to batter
    them down quickly (`GAME_DESIGN.md` §8.4).
-2. **Hagia Sophia.** `constantinople` yields **+2 ✝️ faith/round** on top of its listed yield. Byzantium may
+2. **Hagia Sophia.** The Great Church stands **intact from the game's start**: `constantinople` yields
+   **+2 ✝️ faith/round** on top of its listed yield **from round 1** (the *Hagia Sophia Repair* great work,
+   `GAME_DESIGN.md` §9.2, is an endowment/restoration of the standing building — prestige only, not
+   construction). Byzantium may
    spend faith to **sway Orthodox neutrals** (`serbia`, `trebizond`, `wallachia`, `epirus`, `thessaly`, `athens`)
    toward neutrality or alliance instead of paying gold.
 3. **Reconquista of the Romans.** Byzantium holds a standing **claim** on former imperial cities —
@@ -88,7 +91,8 @@ under the Ottomans because they receive it by default when in play (otherwise it
    `nicaea` / `athens` (a reborn imperial spine on both shores of the Aegean).
 3. **Faith of the Fathers.** Hold `constantinople` (with Hagia Sophia intact) and finish the game with
    **≥ 15 ✝️ faith banked**, having **refused Church Union** (never resolved *Council of Florence* in the
-   Union's favor). *Defiant Orthodoxy.*
+   Union's favor). *Defiant Orthodoxy.* — **"Intact"** means the city was **never captured by assault**
+   (a sack flag, `GAME_DESIGN.md` §9.2 note); a starvation **surrender does not** set the sack flag.
 
 ---
 
