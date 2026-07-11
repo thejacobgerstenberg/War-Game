@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Wallachian Revolt</title>
+
+  <!-- parchment field -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- vellum ground band and ink earth -->
+  <rect x="0" y="118" width="260" height="42" fill="#E2D3B3"/>
+  <rect x="0" y="148" width="260" height="12" fill="#2B2118"/>
+
+  <!-- the Voivode's lance, raised behind the horse -->
+  <polygon points="157,14 163,14 174,96 168,98" fill="#2B2118"/>
+  <!-- forked crimson pennon: the marches answer -->
+  <polygon points="162,16 218,24 200,34 218,44 160,50" fill="#7A1F2B"/>
+
+  <!-- the tribute rolls, burning -->
+  <polygon points="26,134 33,104 39,118 48,86 55,112 63,96 70,134" fill="#C9A227"/>
+  <polygon points="38,134 47,106 53,122 60,134" fill="#7A1F2B"/>
+  <rect x="20" y="132" width="56" height="14" fill="#F0E6D2"/>
+  <circle cx="23" cy="139" r="9" fill="#F0E6D2"/>
+  <circle cx="23" cy="139" r="3.5" fill="#2B2118"/>
+  <circle cx="73" cy="139" r="9" fill="#F0E6D2"/>
+  <circle cx="73" cy="139" r="3.5" fill="#2B2118"/>
+
+  <!-- the horse rears: focal subject -->
+  <ellipse cx="148" cy="96" rx="40" ry="22" transform="rotate(30 148 96)" fill="#2B2118"/>
+  <!-- neck and head -->
+  <polygon points="108,86 94,46 114,40 128,78" fill="#2B2118"/>
+  <polygon points="96,38 74,46 76,57 98,58" fill="#2B2118"/>
+  <polygon points="96,38 101,26 107,40" fill="#2B2118"/>
+  <!-- crimson mane, flying -->
+  <polygon points="115,42 121,60 133,48" fill="#7A1F2B"/>
+  <polygon points="121,58 127,76 139,64" fill="#7A1F2B"/>
+  <!-- forelegs pawing toward the fire -->
+  <polygon points="110,84 92,90 82,74 89,70 96,82 112,76" fill="#2B2118"/>
+  <polygon points="118,100 98,106 88,92 95,88 102,98 120,92" fill="#2B2118"/>
+  <!-- rear legs planted on the dark earth -->
+  <polygon points="148,108 140,148 150,148 158,112" fill="#2B2118"/>
+  <polygon points="168,110 168,148 178,148 178,112" fill="#2B2118"/>
+  <!-- tail -->
+  <polygon points="182,100 206,108 198,130 190,114" fill="#2B2118"/>
+</svg>

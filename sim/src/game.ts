@@ -18,7 +18,7 @@
  *   player attacks another player and end after 3 quiet rounds (net-capture
  *   leader gets warWon prestige). Eliminating a player also grants warWon
  *   prestige to the conqueror.
- * - Tactic cards (canon §7.7, 23 ratified designs / 47-card deck): each
+ * - Tactic cards (canon §7.7, 24 ratified designs / 48-card deck): each
  *   faction draws 1/round in the income window (hand cap 4, lowest-priority
  *   discard). Instant cards resolve on draw. In each battle/assault a side
  *   plays its best applicable card (max ONE per side per battle — canon
@@ -331,6 +331,16 @@ function goldWageOf(faction: FactionId, a: Army): number {
   let n = 0;
   for (const t of UNIT_TYPES) n += a[t] * statsFor(faction, t).goldUpkeep;
   return n;
+}
+
+/**
+ * ERRATA E2 monopoly prestige (canon §13.1 + diminishing returns): the FIRST
+ * simultaneous monopoly scores tradeMonopolyPerRound (+2), each ADDITIONAL
+ * one tradeMonopolyAdditionalPerRound (+1). Pure — unit-tested by sim:test.
+ */
+export function monopolyPrestige(monopolies: number): number {
+  const pr = CONFIG.prestige;
+  return monopolies > 0 ? pr.tradeMonopolyPerRound + (monopolies - 1) * pr.tradeMonopolyAdditionalPerRound : 0;
 }
 
 export function unitGoldCost(faction: FactionId, t: UnitType): number {
@@ -850,7 +860,9 @@ export class Game {
     for (let i = 0; i < fs.hand.length; i++) {
       const c = this.cardBySlug.get(fs.hand[i])!;
       if (!scopes.includes(c.scope)) continue;
-      if (c.zeroWallBonus && wallBonus <= 0) continue; // Bribed Gatekeeper is dead vs a breach
+      // Bribed Gatekeeper is dead vs a breach; Master Founders Hired stays
+      // live there (its +1 assault die still fires when wall bonus is 0).
+      if (c.zeroWallBonus && wallBonus <= 0 && !c.extraDice && !c.rerollsPerRound) continue;
       if (c.costGold && fs.gold < c.costGold) continue;
       if (c.costFaith && fs.faith < c.costFaith) continue;
       if (best === null || c.priority > best.priority) {
@@ -2015,9 +2027,7 @@ export class Game {
       for (const r of open) {
         if (this.provinces.get(r.a)!.owner === f && this.provinces.get(r.b)!.owner === f) monopolies++;
       }
-      const monopolyPts =
-        monopolies > 0 ? pr.tradeMonopolyPerRound + (monopolies - 1) * pr.tradeMonopolyAdditionalPerRound : 0;
-      fs.ledger.tradeRoutes += open.length * pr.tradeRoutePerRound + monopolyPts;
+      fs.ledger.tradeRoutes += open.length * pr.tradeRoutePerRound + monopolyPrestige(monopolies);
       // secret objectives are NOT scored here — canon §13.1: revealed and
       // scored at GAME END only (see run()).
       this.recomputeTotal(fs);

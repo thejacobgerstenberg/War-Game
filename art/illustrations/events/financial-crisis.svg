@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Financial Crisis (Bank Run)</title>
+  <rect x="0" y="0" width="260" height="160" fill="#E2D3B3"/>
+  <rect x="0" y="146" width="260" height="14" fill="#2B2118"/>
+
+  <!-- the counting-house facade -->
+  <rect x="110" y="16" width="150" height="130" fill="#4B1F3F"/>
+  <rect x="104" y="8" width="156" height="10" fill="#2B2118"/>
+  <rect x="126" y="28" width="16" height="20" fill="#2B2118"/>
+  <rect x="218" y="28" width="16" height="20" fill="#2B2118"/>
+
+  <!-- the great door, barred from within: focal subject -->
+  <path d="M148 146 L148 80 Q148 52 183 52 Q218 52 218 80 L218 146 Z" fill="#2B2118"/>
+  <path d="M154 146 L154 82 Q154 58 183 58 Q212 58 212 82 L212 146 Z" fill="#7A1F2B"/>
+  <rect x="181" y="62" width="4" height="84" fill="#2B2118"/>
+  <polygon points="150,70 158,64 216,134 208,140" fill="#2B2118"/>
+  <polygon points="208,64 216,70 158,140 150,134" fill="#2B2118"/>
+  <polygon points="176,48 190,48 193,58 173,58" fill="#C9A227"/>
+
+  <!-- the crowd pressing at the doors -->
+  <circle cx="32" cy="92" r="7" fill="#2B2118"/>
+  <polygon points="24,146 26,100 38,100 40,146" fill="#2B2118"/>
+  <circle cx="62" cy="86" r="8" fill="#2B2118"/>
+  <polygon points="52,146 55,96 69,96 72,146" fill="#2B2118"/>
+  <polygon points="68,100 88,92 90,98 70,108" fill="#2B2118"/>
+  <circle cx="92" cy="76" r="9" fill="#2B2118"/>
+  <polygon points="80,146 84,88 100,88 102,146" fill="#2B2118"/>
+  <polygon points="98,90 116,66 122,72 104,98" fill="#2B2118"/>
+  <circle cx="119" cy="69" r="5" fill="#2B2118"/>
+
+  <!-- the toppled strongbox, paying its tithe -->
+  <polygon points="102,126 96,106 132,100 138,120" fill="#2B2118"/>
+  <polygon points="102,126 138,120 141,138 105,144" fill="#2B2118"/>
+  <polygon points="105,124 134,119 135,124 106,129" fill="#C9A227"/>
+  <circle cx="98" cy="140" r="5" fill="#C9A227"/>
+  <circle cx="88" cy="147" r="5" fill="#C9A227"/>
+  <circle cx="77" cy="151" r="5" fill="#C9A227"/>
+  <circle cx="110" cy="149" r="4" fill="#C9A227"/>
+  <circle cx="69" cy="141" r="4" fill="#C9A227"/>
+</svg>

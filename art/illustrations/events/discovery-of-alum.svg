@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Discovery of Alum</title>
+  <!-- parchment field -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- the hills behind Phocaea -->
+  <polygon points="30,160 110,80 152,58 186,42 228,76 260,106 260,160" fill="#4A5D3A"/>
+  <!-- dark socket of the mine cut -->
+  <polygon points="122,74 140,62 162,54 184,64 200,82 196,104 184,116 150,118 130,110 118,92" fill="#2B2118"/>
+  <!-- woodcut rays: the humble stone shines -->
+  <polygon points="158,18 152,32 164,32" fill="#C9A227"/>
+  <polygon points="192,30 180,38 190,46" fill="#C9A227"/>
+  <polygon points="124,32 136,38 126,46" fill="#C9A227"/>
+  <polygon points="212,58 198,58 206,68" fill="#C9A227"/>
+  <polygon points="106,60 120,58 112,68" fill="#C9A227"/>
+  <!-- the alum crystal: main shard -->
+  <polygon points="158,44 176,80 168,110 148,110 141,78" fill="#F0E6D2"/>
+  <polygon points="158,44 163,80 158,110 150,110 148,78" fill="#C9A227"/>
+  <!-- flanking shards -->
+  <polygon points="134,66 148,90 142,112 127,110 124,86" fill="#F0E6D2"/>
+  <polygon points="134,66 138,90 134,111 129,110 128,86" fill="#C9A227"/>
+  <polygon points="184,64 196,88 190,112 174,110 176,84" fill="#F0E6D2"/>
+  <polygon points="184,64 188,88 183,111 178,110 180,84" fill="#C9A227"/>
+  <!-- the miner, pick raised mid-swing -->
+  <circle cx="84" cy="58" r="7" fill="#2B2118"/>
+  <polygon points="75,66 93,66 97,94 71,94" fill="#2B2118"/>
+  <polygon points="74,94 83,94 81,114 72,114" fill="#2B2118"/>
+  <polygon points="87,94 96,94 96,112 87,112" fill="#2B2118"/>
+  <polygon points="78,70 84,65 103,42 109,48" fill="#2B2118"/>
+  <polygon points="90,73 96,68 107,47 113,53" fill="#2B2118"/>
+  <!-- pick haft and curved head -->
+  <polygon points="103,44 109,39 137,15 142,21" fill="#2B2118"/>
+  <polygon points="118,6 127,6 152,20 162,32 148,30 121,14" fill="#2B2118"/>
+  <!-- coin fetched finer than the color: gold spilling downhill -->
+  <circle cx="150" cy="126" r="5" fill="#C9A227"/>
+  <circle cx="166" cy="136" r="5" fill="#C9A227"/>
+  <circle cx="134" cy="140" r="5" fill="#C9A227"/>
+  <circle cx="182" cy="146" r="5" fill="#C9A227"/>
+  <!-- bolt of scarlet cloth, the dye that now holds -->
+  <path d="M0,136 C 18,124 38,146 58,132 C 78,118 98,144 122,132 L 128,160 L 0,160 Z" fill="#7A1F2B"/>
+  <path d="M8,146 C 26,136 44,152 62,142 C 80,132 98,150 116,142" fill="none" stroke="#F0E6D2" stroke-width="3"/>
+  <circle cx="42" cy="148" r="5" fill="#C9A227"/>
+</svg>

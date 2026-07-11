@@ -14,6 +14,9 @@
     "sim:all": "npm run sim:combat && npm run sim:siege && npm run sim:economy && npm run sim:pacing && npm run sim:fullgame",
     "sim:smoke": "SMOKE=1 npm run sim:all",
     "sim:full": "npm run sim:all",
+    "sim:test": "tsx src/run/tests.ts",
+    "sim:regression": "tsx src/run/regression.ts",
+    "test": "npm run sim:test",
     "sim:report": "tsx src/run/report.ts"
   },
   "devDependencies": {

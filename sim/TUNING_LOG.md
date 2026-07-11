@@ -1342,3 +1342,81 @@ NEEDS-DECISION -> **RESOLVED** (+ §1 addendum, §2.6b pointer, headline
 row, §3.2 tables/curves, §5.A E3 note), RULES_MODEL.md "Stacking" +
 "Great Bombard" sections carry the ruled semantics and the placement
 rule.
+
+## Marshal-review fold-in round (2026-07-11) — 24th tactic card, sim:regression CI gate, sim:test, precision bounds
+
+**Context:** PR #11 ruled LAND-READY by the marshal with four non-blocking
+fold-ins; canon moved past the 2b42386 snapshot (PR #8 added a 24th tactic
+card to GD §7.7, read from origin/main).
+
+**1. Deck drift — `master-founders-hired` added (deck 47 → 48).** New Rare
+×1 in `CONFIG.tacticCards` per the GD §7.7 row on origin/main: one siege
+you are pressing, for one FULL round — defender wall bonus 0 (Wall HP
+unchanged; escalade −1 still applies) AND +1 die in each melee step of the
+assault; hires the founders, not the gun (no siege engine created, no
+Great Bombard interaction). Sim encoding: `scope 'assault'`, `zeroWallBonus`
++ `extraDice 1`, priority 9 (above Bribed Gatekeeper 8 — strictly
+stronger); the assault battle IS that siege round's engagement (same
+mapping as the Gatekeeper), so no `firstRoundOnly`. One agent-policy
+refinement in `pickBattleCard`: a zero-wall-bonus card is now skipped at a
+breach only if it carries NO other combat effect — the pure Gatekeeper
+stays dead there, Master Founders stays live for its die.
+
+- **Fullgame re-measure (3,000g SEED=24681357, committed protocol),
+  before → after:** byz 14.8 → 15.6 / ott 14.2 → 14.7 / ven 17.7 → 17.7 /
+  gen 25.9 → 24.8 / hun 27.4 → 27.3 (max |Δ| 1.1pp, se ≈ 0.8pp);
+  policies 14.3/29.5/12.5/23.7 → 14.6/28.9/12.2/24.3;
+  threshold/cap/SD 60.7/34.5/4.8% → 61.4/34.1/4.5%; median 15 (mean
+  14.93 → 14.91), eliminations 0. **Sub-noise, all §3.5 bands hold** —
+  as expected for 1 rare in 48 draws.
+- **All six adversarial JSONs regenerated** at committed scales/seeds
+  (evidence must match the shipped deck): every §4 bar still passes.
+  Notables: beeline solo_ottoman SD-by-beeliner 18.9% → 15.3% and sd≤r8
+  10.0% → **8.7%** — the §4.1 AT-the-bar watch item steps off its bar
+  (the extra rare dilutes treason draws and the stronger assault card
+  converts sieges to straight assaults earlier); merc-rush paired
+  cycle-vs-honest z **3.35 → −0.29** (the stacking-round stiffing
+  gradient was reshuffle-fragile; §5 item 7 stays filed as scope note);
+  runaway r8 70.8% → 71.2% (§5 item 3 unchanged); monoculture ceilings
+  61.3% → 63.7% max (same class, §5 items 1–2); turtle near-ties 57.8%
+  (unchanged); floor mixed ceiling 68.3% → 67.3%, eliminations 0.
+
+**2. `sim:regression` (CI gate for balance-regression.yml).** New
+`src/run/regression.ts` + npm script: runs the six adversarial runners at
+the COMMITTED scales and seeds (beeline 1,000g / merc 500/fac/var /
+runaway 2,000/arm / turtle 400/250/600 / econ 400/1,000/1,000 / floor
+300×80+1,000×4 — fully deterministic, so zero sampling flake), evaluates
+21 bars (hunt-brief bars verbatim where they PASS at ship; adjudicated-open
+warts get a regression line at baseline + headroom: merc z ≤ 5, runaway r8
+≤ 75%, monoculture ≤ 67%, near-ties ≤ 70%, mixed ceiling ≤ 75%), prints a
+verdict table, exits 1 on any regression. Outputs go to `sim/out/regression/`
+via a new `SIM_RESULTS_DIR` override in util.ts (committed results/
+untouched; CI archives sim/out). Measured: **21/21 bars PASS in 153 s**
+wall-clock on 4 cores (runner split: runaway 26 s / turtle 29 s /
+beeline 31 s / merc 34 s / floor 96 s / econ 126 s — ~5.7 min
+single-threaded, comfortably under the ~15-min CI budget). Determinism
+verified: the regression outputs are byte-identical to the committed
+results/adversarial_*.json modulo config.elapsedMs.
+
+**3. Housekeeping.** (a) `.gitignore`: sim/results/ was already
+NOT-ignored (note kept); added `out/` for the regression scratch dir.
+(b) `sim:test` — `src/run/tests.ts`, 54 pure assertions (kernel §7.1/§7.4
+worked examples, clamp edges 2/6, §6.4 caps + headroom arithmetic, E2
+monopoly prestige via the newly extracted pure `monopolyPrestige()`
+(game.ts — same formula, now unit-testable), 24/48 deck composition + the
+new card's definition, RNG/battle determinism). (c) PR #11 body:
+stale "VICTORY_THRESHOLD 84" headline corrected to 78 (72/75/80/78 by
+count) via the GitHub API.
+
+**4. Precision bounds.** TUNING_REPORT gains §7.1 "Precision & board
+specificity": thresholds are calibrated on the sim's 56-province board
+(11 filler provinces vs canon MAP.md's 55; Constantinople/Bosphorus/Pera
+chokepoints canon-aligned) → board-specific ballpark, re-verify after the
+final map lands; canon §11 diplomacy is unmodeled — the E5a −1
+unjustified-war charge is a diplomacy-free proxy (alliances, tribute
+peace, gang-up dynamics absent).
+
+No CONFIG number moved besides the card addition; `victoryThreshold`
+stays 78. Docs: TUNING_REPORT §2.9 (card row + 24/48 counts), §7 scripts,
+§7.1 new, fold-in provenance note; RULES_MODEL tactic sections 24/48 +
+card semantics.

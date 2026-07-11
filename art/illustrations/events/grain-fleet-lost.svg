@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>The Grain Fleet Is Lost</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- an empty sky over Tenedos; one gull where the convoy should be -->
+  <path d="M36 28 Q43 21 50 28 M50 28 Q57 21 64 28" stroke="#2B2118" stroke-width="3" fill="none"/>
+
+  <!-- the sea that keeps its accounts -->
+  <path d="M-4 76 Q9 64 22 76 Q35 64 48 76 Q61 64 74 76 Q87 64 100 76 Q113 64 126 76 Q139 64 152 76 Q165 64 178 76 Q191 64 204 76 Q217 64 230 76 Q243 64 256 76 Q269 64 282 76 L282 164 L-4 164 Z" fill="#2C5F7C"/>
+  <path d="M18 92 Q31 84 44 92 Q57 84 70 92" stroke="#F0E6D2" stroke-width="3" fill="none"/>
+  <path d="M210 96 Q223 88 236 96 Q249 88 262 96" stroke="#F0E6D2" stroke-width="3" fill="none"/>
+
+  <!-- focal subject: the laden grain galley going down by the bow -->
+  <polygon points="200,48 92,100 108,116 192,66" fill="#2B2118"/>
+  <polygon points="194,54 204,34 210,38 200,58" fill="#2B2118"/>
+  <polygon points="206,34 232,38 208,45" fill="#7A1F2B"/>
+  <path d="M152 72 L118 18" stroke="#2B2118" stroke-width="5" fill="none"/>
+  <path d="M102 44 L150 27" stroke="#2B2118" stroke-width="4" fill="none"/>
+  <polygon points="104,44 146,29 138,64 110,62" fill="#7A1F2B"/>
+
+  <!-- the harvest sliding off the tilted deck -->
+  <circle cx="170" cy="58" r="5" fill="#C9A227"/>
+  <circle cx="156" cy="64" r="5" fill="#C9A227"/>
+  <circle cx="142" cy="71" r="5" fill="#C9A227"/>
+
+  <!-- grain sinking into the deep -->
+  <circle cx="120" cy="96" r="4.5" fill="#C9A227"/>
+  <circle cx="108" cy="112" r="4" fill="#C9A227"/>
+  <circle cx="96" cy="128" r="4" fill="#C9A227"/>
+  <circle cx="84" cy="142" r="3.5" fill="#C9A227"/>
+
+  <!-- bread on the seabed feeds only the fishes -->
+  <path d="M48 138 L64 131 L64 145 Z M64 138 L72 133 L72 143 Z" fill="#F0E6D2"/>
+  <path d="M42 120 L26 114 L26 126 Z M26 120 L18 116 L18 124 Z" fill="#F0E6D2"/>
+
+  <!-- the seabed, and the loaves already lost -->
+  <rect x="0" y="150" width="260" height="10" fill="#2B2118"/>
+  <circle cx="140" cy="147" r="4" fill="#C9A227"/>
+  <circle cx="153" cy="149" r="3" fill="#C9A227"/>
+</svg>

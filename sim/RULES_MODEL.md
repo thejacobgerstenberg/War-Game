@@ -9,7 +9,9 @@ team can diff it against the real rules. All numbers live in
 `docs/EVENT_CARDS.md`. Section references (§) point to GD unless noted.
 This revision is the **final canon re-derivation** (coordinator rulings
 R1-R11, 2026-07-11): per-unit d6 kernel with per-faction unique-unit CVs,
-walls T1-T5, the 23 ratified tactic cards, sea resupply, the Great Bombard
+walls T1-T5, the 24 ratified tactic cards (23 @ 2b42386 + the PR #8 24th
+rare `master-founders-hired`, read from GD §7.7 on origin/main at the
+marshal-review fold-in round), sea resupply, the Great Bombard
 omen, and the canon §13.1 prestige table — **plus the RATIFIED ERRATA E1-E5
 (coordinator, 2026-07-11)**: E1 Treason-at-the-Gate gates (garrison ≤ 4,
 siege clock counts only from game round 6), E2 diminishing monopoly prestige
@@ -290,12 +292,13 @@ professional (CV def 3) garrison, wall tiers +2/+3/+4 all clamp the defender
 to 2+ and the attacker to 6 — tiers differentiate through wall HP (siege
 length), starvation, and vs low-CV garrisons, not through assault odds.
 
-## Tactic cards (§7.7) — the 23 RATIFIED designs
+## Tactic cards (§7.7) — the 24 RATIFIED designs
 
-`CONFIG.tacticCards` encodes all 23 ratified designs at their FINAL
-magnitudes; the deck is 47 cards (Common ×3 / Uncommon ×2 / Rare ×1),
-seeded-shuffled, discards reshuffled, `remove from game` respected
-(Greek Fire, Treason at the Gate).
+`CONFIG.tacticCards` encodes all 24 ratified designs at their FINAL
+magnitudes (23 @ 2b42386 plus the PR #8 24th rare `master-founders-hired`,
+read from GD §7.7 on origin/main); the deck is 48 cards (Common ×3 /
+Uncommon ×2 / Rare ×1), seeded-shuffled, discards reshuffled,
+`remove from game` respected (Greek Fire, Treason at the Gate).
 
 **Full-game bounded policy (documented simplifications):**
 
@@ -317,7 +320,14 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   battle, an underestimate), Locked Shields (reroll 1/round on defense),
   Ladders and Fascines (reroll 1, first round of an assault), The White
   Knight's Stroke (reroll 3, first round), The Bribed Gatekeeper (wall
-  bonus 0 for one assault; escalade −1 still applies), The Hexamilion
+  bonus 0 for one assault; escalade −1 still applies), **Master Founders
+  Hired** (PR #8 24th design, Rare ×1: for one full round the defender's
+  wall bonus is 0 AND the besieger rolls +1 die in each melee step of the
+  assault — assault-scoped like the Gatekeeper; the sim's assault battle
+  IS that siege round's engagement, so both effects span the whole
+  `resolveBattle` call; unlike the pure Gatekeeper it stays playable at a
+  breach, where the +1 die still fires; creates no siege engine and never
+  interacts with the §8.4 Great Bombard), The Hexamilion
   Manned (defender +2 in an unwalled province), Night Sortie (siege round:
   no store depletion, besieger −1 unit), Sails from the West (no depletion
   even under full blockade, +2 stores restored), Treason at the Gate (4g:
@@ -334,7 +344,7 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   no pure fleet battles; note: this is a Common ×3), Ears in the Bazaar
   (hidden information), Feigned Retreat (pre-dice withdrawal), Chain
   Across the Horn (amphibious denial), Greek Fire (fleet auto-win),
-  A Death in the Palace (truce). 15 of 47 cards are dead in the sim —
+  A Death in the Palace (truce). 15 of 48 cards are dead in the sim —
   the measured card-layer impact is therefore a mild UNDERestimate.
 - Combat-MC evidence (results/combat.json): the modifier sets
   `attVeterans` (+1 die, the median ratified combat card),
@@ -612,8 +622,9 @@ than the game.
   prestige ±2. Max gold swing = 0.20-0.35× a faction's mean round income
   (0.38-0.55× p10) — measured under the 1.5× "economy-warping" bar
   (adversarial economy hunt, results/adversarial_economy_exploit.json).
-- **Tactic-card magnitudes** are the 23 RATIFIED designs verbatim (§7.7
-  table at 2b42386) — magnitudes are fixed inputs to tuning. Measured
+- **Tactic-card magnitudes** are the 24 RATIFIED designs verbatim (§7.7
+  table at 2b42386 + the PR #8 24th rare from origin/main) — magnitudes
+  are fixed inputs to tuning. Measured
   combat impact: +1 die ≈ +8-11pp attacker win, +2 dice ≈ +14-16pp
   (results/combat.json attVeterans/attCondottieri vs openField).
 - **Unit-loss omen floor**: ≥1 combatant in any garrison; ≥3 in a walled

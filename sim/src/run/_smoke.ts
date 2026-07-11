@@ -86,17 +86,17 @@ const kernelChecks: Array<[string, number, number]> = [
   ['T5 masonry cap = 1 HP/round', CONFIG.siege.t5MasonryCapPerRound, 1],
   ['Great Bombard rolls 2 wall-damage dice', CONFIG.siege.greatBombard.damageDice, 2],
 ];
-// §7.7 ratified tactic deck: 23 designs, 47 cards (8 common x3, 8 uncommon x2, 7 rare x1)
+// §7.7 ratified tactic deck: 24 designs, 48 cards (8 common x3, 8 uncommon x2, 8 rare x1)
 const designs = CONFIG.tacticCards.length;
 const deckSize = CONFIG.tacticCards.reduce((s, c) => s + c.copies, 0);
 const byTier = { common: 0, uncommon: 0, rare: 0 } as Record<string, number>;
 for (const c of CONFIG.tacticCards) byTier[c.tier]++;
 kernelChecks.push(
-  ['tactic designs = 23', designs, 23],
-  ['tactic deck = 47 cards', deckSize, 47],
+  ['tactic designs = 24', designs, 24],
+  ['tactic deck = 48 cards', deckSize, 48],
   ['8 common designs', byTier.common, 8],
   ['8 uncommon designs', byTier.uncommon, 8],
-  ['7 rare designs', byTier.rare, 7],
+  ['8 rare designs', byTier.rare, 8],
 );
 let kernelFails = 0;
 for (const [name, got, want] of kernelChecks) {

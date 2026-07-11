@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Fire of the Arsenal</title>
+  <rect x="0" y="0" width="260" height="160" fill="#E2D3B3"/>
+
+  <!-- smoke rolling off the yards at midnight -->
+  <circle cx="52" cy="30" r="9" fill="#2B2118"/>
+  <circle cx="70" cy="22" r="12" fill="#2B2118"/>
+  <circle cx="92" cy="15" r="14" fill="#2B2118"/>
+  <circle cx="114" cy="12" r="10" fill="#2B2118"/>
+  <circle cx="82" cy="32" r="8" fill="#2B2118"/>
+
+  <!-- the second sunset: fire consuming the unfinished hull -->
+  <polygon points="92,112 100,82 94,60 108,74 113,44 122,68 131,28 140,64 150,38 156,72 168,48 172,80 185,62 181,92 192,112" fill="#7A1F2B"/>
+  <polygon points="112,112 118,86 127,60 133,84 139,52 145,82 153,66 157,94 166,112" fill="#C9A227"/>
+
+  <!-- exposed ribs of the half-built galley, black against the blaze -->
+  <rect x="92" y="64" width="5" height="48" fill="#2B2118"/>
+  <rect x="112" y="54" width="5" height="58" fill="#2B2118"/>
+  <rect x="132" y="47" width="5" height="65" fill="#2B2118"/>
+  <rect x="152" y="54" width="5" height="58" fill="#2B2118"/>
+  <rect x="172" y="62" width="5" height="50" fill="#2B2118"/>
+
+  <!-- the keel and strakes, twenty years of seasoned timber -->
+  <polygon points="60,78 66,96 84,110 180,110 202,100 218,74 214,98 196,118 82,118 68,100" fill="#2B2118"/>
+
+  <!-- slipway sloping to the water -->
+  <polygon points="56,120 226,112 230,120 58,130" fill="#2B2118"/>
+  <rect x="80" y="120" width="5" height="20" fill="#2B2118"/>
+  <rect x="190" y="116" width="5" height="24" fill="#2B2118"/>
+
+  <!-- arsenal shed, fire already at its door -->
+  <rect x="4" y="70" width="44" height="58" fill="#2B2118"/>
+  <polygon points="0,72 26,50 52,72" fill="#2B2118"/>
+  <rect x="18" y="100" width="16" height="28" fill="#7A1F2B"/>
+  <polygon points="21,128 24,112 26,119 29,106 31,116 33,128" fill="#C9A227"/>
+
+  <!-- the harbor, mirroring the blaze -->
+  <rect x="0" y="128" width="260" height="32" fill="#2C5F7C"/>
+  <path d="M104 140 Q114 134 124 140 Q134 134 144 140 Q154 134 164 140" fill="none" stroke="#C9A227" stroke-width="3"/>
+  <path d="M118 150 Q128 144 138 150 Q148 144 158 150" fill="none" stroke="#7A1F2B" stroke-width="3"/>
+  <path d="M206 144 Q216 138 226 144 Q236 138 246 144" fill="none" stroke="#E2D3B3" stroke-width="3"/>
+</svg>

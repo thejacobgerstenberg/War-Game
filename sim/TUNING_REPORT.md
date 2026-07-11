@@ -425,8 +425,10 @@ sensitivity: shifts T5d capture from ~2–4 to ~4–6 siege rounds (§6).
 
 ### 2.9 Tactic cards (canon §7.7) — ratified magnitudes as fixed inputs
 
-The 23 ratified designs at final magnitudes are encoded verbatim in
-`CONFIG.tacticCards` (deck 47: Common ×3, Uncommon ×2, Rare ×1). **Magnitudes
+The 24 ratified designs at final magnitudes are encoded verbatim in
+`CONFIG.tacticCards` (deck 48: Common ×3, Uncommon ×2, Rare ×1; 23 designs @
+2b42386 plus the PR #8 24th rare `master-founders-hired`, folded in at the
+marshal-review round from GD §7.7 on origin/main). **Magnitudes
 were fixed inputs to tuning** — do not retune them; the one ratified errata
 is E1 (Treason at the Gate, §5.A). Sim plays at most ONE card per side per battle (canon allows one per
 battle *round* — the measured card impact is a mild underestimate).
@@ -442,6 +444,7 @@ vs openField 6v4 = 52.2%):
 | Condottieri Contract | U×2 | +2 dice, 2g | **63.3%** (+11.1pp) |
 | Locked Shields | C×3 | defender reroll 1/round | attacker → **36.2%** (−16.0pp) |
 | The Bribed Gatekeeper | U×2 | wall bonus 0 for one assault (escalade −1 stands) | intact-T3 assault 0.1% → **25.7%** (= escalade-only odds) |
+| **Master Founders Hired** | R×1 | wall bonus 0 for one full round **+1 die** each melee step of the assault (Gatekeeper-plus; no siege engine created, never touches the §8.4 Bombard). Sim: assault-scoped like the Gatekeeper, but stays live at a breach (the +1 die still fires) | 24th design (PR #8). Fullgame re-measure at 48 cards: **sub-noise** — largest faction delta 1.1pp (genoa 25.9→24.8) at 3,000 games (se ≈ 0.8pp); SD 4.8→4.5%, threshold 60.7→61.4%, median 15; all §3.5 bands hold. §4 hunts re-run: all bars still pass (solo_ottoman sd≤r8 eases 10.0→8.7% — the watch item steps off the bar) |
 | Ladders and Fascines | C×3 | reroll 1, first assault round | (folded into assault grids) |
 | The White Knight's Stroke | R×1 | reroll 3, first round | (see combat.json sets) |
 | Holy War Proclaimed | R×1 | +1 die, 2 faith (canon: all battles until next turn; sim: one battle — underestimate) | ≈ Veterans |
@@ -453,7 +456,7 @@ vs openField 6v4 = 52.2%):
 | Counting-House / Grain Barges / Papal Indulgence / Pay Chest | C×3/C×3/U×2/R×1 | instants: +2g / +2 grain / 2g→3 faith / steal ≤3g from prestige leader | resolve on draw |
 
 **The 7 dead designs in the sim** (movement/info/naval/diplomacy scope —
-15/47 cards occupy deck/hand slots but never fire, so measured card impact is
+15/48 cards occupy deck/hand slots but never fire, so measured card impact is
 an *under*estimate): Forced March, The Pilot of the Narrows (C×3!), Ears in
 the Bazaar, Feigned Retreat, Chain Across the Horn, Greek Fire, A Death in
 the Palace. Re-measure the card layer when fleets/movement/diplomacy land
@@ -466,7 +469,7 @@ be updated to 3**). RATIFIED (coordinator, engine reconciliation
 2026-07-11): the tactic-card hand limit is **3**; GD §7.7's "4" is a docs
 error (this report's pre-reconciliation revisions tuned against it).
 Re-measured at 3: sub-noise fullgame impact (largest faction delta 0.7pp at
-1000 games, se ≈ 1.2pp — with 15/47 deck cards dead in-sim, hand pressure
+1000 games, se ≈ 1.2pp — with 15/48 deck cards dead in-sim, hand pressure
 rarely binds; TUNING_LOG engine-reconciliation round). Re-check when the
 movement/info/naval cards go live in the engine (§6).
 
@@ -1362,7 +1365,7 @@ different numbers.
 | 4 | **Royal marriage** (+2/round to both, §13.1) | Worth ~+24–32 prestige over a game to a stable pair — comparable to a monopoly. Directly inflates winner accrual: **re-sweep `VICTORY_THRESHOLD` when diplomacy lands** (start from ~15.2× the new measured accrual, §2.13). |
 | 5 | **Diplomacy layer** (§11): alliances, NAPs, tribute peace, treaty-break betrayal −2…−4 | Wars in-sim are implicit; E5a now prices an unjustified DECLARATION (−1) but treaties, tribute peace, and break penalties stay unmodeled (→ §5.B item 5). Negotiated peace mostly *reduces* grief viability; expect trader floors to rise slightly. |
 | 6 | **Fleet battles** (§7.6, §5.3 escort/sever duels) | Sim computes sea-zone presence from ported galleys; no pure fleet battles, so blockades vs fleet-holding ports are under-produced and 2 tactic cards (Pilot ×3, Greek Fire) are dead. The siege module measures the fully-blockaded case directly, so T5 targets stand; naval-identity factions (Venice) likely *gain* when real fleet combat lands. |
-| 7 | **Movement/info tactic cards** (Forced March, Ears in the Bazaar, Feigned Retreat, Chain Across the Horn, A Death in the Palace) | 7 designs / 15 of 47 cards are dead draws in-sim → measured card-layer impact (§2.9) is an underestimate, and hand pressure (limit 4) is softer than it will be. Re-measure card impact in engine playtests. |
+| 7 | **Movement/info tactic cards** (Forced March, Ears in the Bazaar, Feigned Retreat, Chain Across the Horn, A Death in the Palace) | 7 designs / 15 of 48 cards are dead draws in-sim → measured card-layer impact (§2.9) is an underestimate, and hand pressure (limit 4) is softer than it will be. Re-measure card impact in engine playtests. |
 | 8 | **Secret objectives: sim shape vs canon flavor**: E4's 3 independent objectives are modeled as "hold seeded province i at game end" ×3; canon/FACTIONS objectives are richer (faith goals, route goals, named conquests) | The +12 hidden swing and kingmaker channel are now measured (§4.4: 6.0% per-objective completion, 9.6% reveal flips); richer objective TYPES may change completion rates — re-check flip share when the real objective cards are authored. |
 | 9 | **Byzantine auto-repel power** (FACTIONS: first two siege rounds of Constantinople take no bombardment damage) | Stacks with the E3 emplacement: first Bombard damage would slip from siege round 2 to ~4, shifting capture to ~5–7 siege rounds; with late draws (r14–16) the City then often survives to the cap — would cut SD below the current 4.8–4.9% (stacking config) and strengthen Byzantium. T5 targets were calibrated without it per the coordinator's spec; re-run the siege module when implemented. |
 | 10 | **Province stacking & rout-retreat surrender (§6.4/§7.5) — CLOSED: MODELED since the stacking round (2026-07-11)** | No longer a divergence: §6.4 caps (8/12 land per (owner,province), naval 6/zone declared) and §7.5 headroom-clamped retreat with overflow surrender are enforced RAW under the engine-matched co-location reading — see §2.6b, RULES_MODEL.md "Stacking", and the TUNING_LOG stacking round. The pre-enforcement exposure this row used to quantify (8.1% of attack stacks / 35.5% of siege camps over cap; the 19-unit T5 evidence stack) drove a full re-derivation: T5 evidence re-run on legal 12-unit stacks (all targets MET, §3.2), fullgame + 5,000-game verify green with SD halved to 4.8–4.9%, per-count thresholds re-swept (72/75/80/78), adversarial suite re-passed. Residual §6.4 gaps (both conservative): naval 6/zone has no at-sea stacks to bind on, and retreats into an *empty non-owned* province are narrowed to owned destinations. The invariant is machine-checked: `src/run/stacking_probe.ts` → `results/stacking_probe.json`, 0 over-cap stacks / 1,000 games. |
@@ -1382,6 +1385,13 @@ npm install            # tsx + typescript only
 
 npm run sim:smoke      # SMOKE=1 sim:all — fast CI pass (~seconds), asserts the §7.4 kernel checks
 npm run sim:full       # = sim:all: combat, siege, economy, pacing, fullgame at full scale
+npm run sim:test       # pure unit assertions (~1 s): kernel worked examples, clamp edges,
+                       #   §6.4 headroom math, E2 monopoly prestige, deck composition, determinism
+npm run sim:regression # CI regression gate (balance-regression.yml): the six adversarial
+                       #   hunts at COMMITTED scale/seeds, verdict table, exit 1 on any bar
+                       #   regression (measured 153 s on 4 cores / ~5.7 min single-threaded;
+#   outputs -> sim/out/regression/,
+                       #   committed results/ untouched; bars documented in src/run/regression.ts)
 npm run sim:report     # read-only headline summary of results/*.json (never simulates)
 
 # individual modules
@@ -1471,3 +1481,49 @@ now a post-enforcement invariant check (1,000 games seed 24681357: 0
 over-cap stacks; §7.5 overflow surrenders observed live). The config is
 seed-robust across three independent seed sets (14530000, 24681357,
 987654321).
+
+**Marshal-review fold-in provenance (2026-07-11).** The 24th tactic card
+(`master-founders-hired`, PR #8) was added to `CONFIG.tacticCards`
+(deck 47 → 48) and `results/fullgame.json` plus all six
+`results/adversarial_*.json` were regenerated at the SAME scales and base
+seeds. Fullgame deltas are sub-noise (§2.9); adversarial: every §4 bar
+still passes — beeline worst single-beeliner SD 18.9% → 15.3%, sd≤r8
+10.0% → **8.7%** (the §4.1 watch item steps off its bar), merc paired
+cycle-vs-honest z **3.35 → −0.29** (the §4.3 stacking-round stiffing
+gradient does not survive the reshuffled 48-card deck; §5 item 7 stays
+filed as a scope note), runaway r8 predictivity 70.8% → 71.2% (still
+≈ the 70% line, §5 item 3 unchanged), monoculture ceilings 61.3% →
+63.7% max (same >50% class, §5 items 1–2), floor/econ verdicts
+unchanged (mixed ceiling 67.3%, eliminations 0, flood deltas all
+negative, blockade attribution 2.2pp). `sim:test` and `sim:regression`
+were added in the same round (see the §7 script list).
+
+### 7.1 Precision & board specificity
+
+Two structural caveats bound the precision of every number in this report:
+
+- **Board specificity.** All thresholds and bands were calibrated on the
+  sim's **56-province board**, which is NOT the canon map: 11 provinces
+  (friuli, tuscany, apulia, corsica, macedonia, moldavia, vidin,
+  nicopolis, slavonia, banat, upper_hungary — see `map.ts`) are sim-
+  authored filler against canon MAP.md's **55 land provinces**, and several
+  canon provinces are folded/renamed (bithynia→nicaea, selymbria~mesembria,
+  thessalonica~salonica, dalmatia~zara, konya~karaman, kaffa~caffa). The
+  strategic core is canon-aligned — the Constantinople / Bosphorus / Pera
+  chokepoints, strait adjacencies, walled-city tiers and key cities follow
+  MAP.md — but province counts, yield totals and route geometry differ at
+  the edges. Treat `VICTORY_THRESHOLD` 78 (72/75/80/78 by player count)
+  and every band in §1–§4 as a **board-specific ballpark**: re-verify with
+  a fullgame + threshold re-sweep once the final map data lands in the
+  engine (the sweep protocol in this section reproduces the derivation
+  end-to-end).
+- **Diplomacy unmodeled (canon §11).** The sim plays no alliances, no
+  tribute peace, no negotiated gang-ups. The E5a **unjustified-war −1**
+  charge is a diplomacy-FREE proxy for canon's full §11 justification
+  economy, and the §4.4 lead-stickiness / §4.2 war-poke residuals both
+  point at the same gap: canon's real catch-up and deterrence levers
+  (coalition dog-piles on the leader, bought peace, tribute) are absent
+  here. Numbers that depend on war-declaration friction — aggression
+  pricing, leader pressure, peace timing — carry wider error bars than
+  their seeds suggest, and §5 open items 3 and 5 should be re-judged
+  only with diplomacy in play.

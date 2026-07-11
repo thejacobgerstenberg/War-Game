@@ -5,6 +5,11 @@ All vignettes under `art/illustrations/` are **original vector work** created fo
 or third-party sources of any kind were used — every path was drawn from scratch
 as hand-written SVG.
 
+A second commission of 26 vignettes (branch `feature/card-illustrations-2`)
+completed card coverage: all 46 Omen Deck cards in `docs/EVENT_CARDS.md` now
+have card-bound art. These pieces were produced under the same process, locked
+palette, and CC0 1.0 terms as the original set.
+
 ## Directories
 
 - **`events/`** — card-bound art for the Omen Deck (`docs/EVENT_CARDS.md`); see
