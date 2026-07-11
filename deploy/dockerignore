@@ -1,0 +1,49 @@
+# =============================================================================
+# Recommended .dockerignore for the IMPERIUM Docker builds (server + client).
+#
+# This file lives in deploy/ because the repo ROOT is owned by the scaffold
+# team: copy it to the repo root as `.dockerignore` when adopting — Docker only
+# reads it from the root of the build context (which is the repo root for both
+# deploy/Dockerfile.server and deploy/Dockerfile.client).
+# TODO(scaffold): adopt by copying deploy/dockerignore to the repo root as .dockerignore (root is owned by the scaffold team).
+#
+# NOTE: do NOT add a bare `deploy` exclusion here — Dockerfile.client COPYs
+# deploy/nginx.conf from the build context.
+# =============================================================================
+
+# VCS / CI
+.git
+.github
+
+# Dependencies (reinstalled inside the image)
+node_modules
+**/node_modules
+
+# Build output (rebuilt inside the image)
+dist
+**/dist
+build
+**/build
+coverage
+**/coverage
+
+# Non-code workstreams — never needed in server/client images
+audio
+art
+docs
+sim
+lore
+
+# Environment files — never bake secrets/local config into images
+.env
+.env.*
+
+# Docs — no markdown is needed at build or run time
+*.md
+**/*.md
+
+# Editor / OS noise
+.vscode
+.idea
+*.log
+.DS_Store
