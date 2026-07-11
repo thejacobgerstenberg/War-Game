@@ -13,6 +13,7 @@
     "sim:all": "npm run sim:combat && npm run sim:siege && npm run sim:economy && npm run sim:pacing && npm run sim:fullgame"
   },
   "devDependencies": {
+    "@types/node": "^26.1.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
