@@ -253,6 +253,14 @@ One **unique siege engine — the Great Bombard —** exists outside this roster
 cannot be recruited; it enters play only through the Era III omen
 `great-bombard-forged` and is governed by §8.4.
 
+Every other named **unique unit** — Varangian Guard, Greek-Fire Dromon,
+Janissary, Ghazi Akıncı, Stradioti, Great Galley (Galeazza), Genoese
+Crossbowmen, Carrack (Nave), Black Army, Banderial Knights — is a **faction
+variant of a base type above**: it uses its base type's raise cost, CV and
+upkeep unless its entry says otherwise. The full unit → base-type mapping and
+each variant's layered powers live in [`FACTIONS.md`](./FACTIONS.md) (*Unique
+units and the engine roster*).
+
 ### 6.2 Recruitment
 
 **Recruit** is an action (§10.1). You may raise units in any owned province that
@@ -635,14 +643,17 @@ state-machine realisation of these five conceptual phases.
 |---|---|---|---|
 | 1 | **Omen** | (front of `INCOME`) | The table draws & resolves **one** event card from the current era's Omen deck (§12) |
 | 2 | **Income & upkeep** | `INCOME` | Collect province yields net of grain upkeep (`computeIncome`), resolve starvation (§4) |
-| 3 | **Action phases** | `RECRUITMENT` → `MOVEMENT` → `DIPLOMACY` | In turn order, each player spends **~4 actions** (§10.0) |
+| 3 | **Action phases** | `RECRUITMENT` → `MOVEMENT` → `DIPLOMACY` | In turn order, each player spends **4 actions** (§10.0) |
 | 4 | **Battle resolution** | `COMBAT` | Resolve all declared battles, assaults, sieges, naval clashes (§7, §8) |
 | 5 | **Cleanup / reshuffle** | `END` | Flip contested ownership, score prestige, check victory, **re-sort turn order by prestige** |
 
-### 10.0 The action economy (~4 actions)
+### 10.0 The action economy (4 actions)
 
 Each player receives **4 actions** per round (certain cards
-can raise this to 5). Actions may be spent in any mix from the list below; a Move
+can raise this to 5). Actions may be spent in **any mix and any order** from the
+list below — the engine's `RECRUITMENT` → `MOVEMENT` → `DIPLOMACY` phases
+together form the player's single **action window** and do **not** gate which
+action types may be played when (see `ARCHITECTURE.md` §10). A Move
 that starts a battle **queues** it for the Battle phase.
 
 ### 10.1 Recruit
@@ -802,15 +813,17 @@ and a **seeded RNG** to draw deterministically (see
 | Win a **war** (force peace, tribute, or vassalage) | **+3** |
 | Take a **walled city** (T1+) by storm or siege | **+2** (**+3** if T4–T5) |
 | Win a field battle **outnumbered** (enemy's starting stack larger than yours) | **+1** (stacks with the decisive-battle award) |
-| Complete a **secret objective** | **+4** each (3 per faction, see `FACTIONS.md`) |
+| Complete a **secret objective** | **+4** each — hidden; revealed & scored only at **game end** (§13.3; 3 per faction, see `FACTIONS.md`) |
 | Royal-marriage bond, per round it holds | **+2** |
 | **Betray** a treaty | **−2 … −4** (§11) |
 | **Lose your capital** | **−3** |
 
 ### 13.2 Victory threshold
 
-The game ends the instant a player reaches the **prestige threshold**, scaled to
-player count (checked at cleanup). The values below are **pre-tuning
+The game ends at the **Cleanup** (§10, phase 5) in which a player reaches the
+**prestige threshold**, scaled to player count — all prestige is scored at
+Cleanup (§13), so Cleanup is the only point where victory is checked. The
+values below are **pre-tuning
 placeholders** *(tuning: threshold supplied by balance TUNING_REPORT)* — the
 conquest rows added to §13.1 raise total prestige inflow, and the ratified
 thresholds will come from the balance pass:
@@ -842,7 +855,7 @@ tense to the final year.
 
 ## 14. Balance & Session-Length Notes
 
-* **Length** — 16 rounds × ~4 actions × 2–5 players lands at **60–120 min**.
+* **Length** — 16 rounds × 4 actions × 2–5 players lands at **60–120 min**.
   Reduce to a **12-round** "short 1440–1453" scenario for a ~60-min game.
 * **Catch-up levers** — (a) turn-order reshuffle (§13.4); (b) the Omen deck's
   late-game crisis weighting; (c) diplomacy ganging up on the leader is

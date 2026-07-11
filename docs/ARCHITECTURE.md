@@ -484,8 +484,10 @@ disconnected or idle player from stalling the table, the server enforces a
 * **Budget** — each player gets a configurable **action-phase clock** (default
   **90 seconds** per action phase, host-adjustable at lobby: e.g. 45s "blitz" /
   90s "standard" / 180s "relaxed", or **off** for hot-seat/casual). The clock runs
-  only during that player's slice of the Action phase (`GAMEPHASE` RECRUITMENT→
-  MOVEMENT→DIPLOMACY for the active player).
+  only during that player's slice of the Action phase (`GamePhase` RECRUITMENT→
+  MOVEMENT→DIPLOMACY for the active player — together these form the player's
+  single **action window**; the phase names do not gate action types, which may
+  be spent in any mix and order per `GAME_DESIGN.md` §10.0).
 * **Ownership** — the **server owns the clock** (it holds authoritative time);
   clients render a countdown from a `turn_timer { playerId, deadline }` tick. The
   engine stays pure — timing lives in the transport layer, and any timeout is

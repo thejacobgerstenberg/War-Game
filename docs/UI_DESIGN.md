@@ -202,7 +202,7 @@ The Game Board is a full-viewport grid: manuscript chrome around a central map.
 ├───────────┬──────────────────────────────────────────┬───────────────┤
 │  PLAYER   │                                          │   ACTIONS /    │
 │  STATUS   │            CENTRAL SVG MAP                │   CARDS panel  │
-│  (rows of │   (provinces = tiles, sea zones = lapis,  │  (4 action     │
+│  (rows of │   (provinces = tiles, sea zones = lapis,  │  (action       │
 │  faction  │    army/fleet roundel tokens, hover &     │   buttons,     │
 │  badges,  │    selection highlights)                  │   hand of      │
 │  prestige)│                                          │   illuminated  │
@@ -221,9 +221,10 @@ The Game Board is a full-viewport grid: manuscript chrome around a central map.
   Pan/zoom; hover and selection states per §6.
 * **Left panel — player status** — one row per power: faction badge, name,
   prestige, headline resources, treaty icons. Click to focus that power.
-* **Right panel — actions & cards** — the **~4 action** buttons (Recruit, Move,
+* **Right panel — actions & cards** — the **action buttons** (Recruit, Move,
   Build, Trade, Diplomacy, Play Card, Spy — see `GAME_DESIGN.md` §10) with an
-  action-counter, and the player's **hand** of illuminated cards.
+  action-counter (**4 actions**/round, `GAME_DESIGN.md` §10.0), and the
+  player's **hand** of illuminated cards.
 * **Bottom — event/log feed** — the running **chronicle**: Omen draws, battles,
   betrayals, prestige changes, each a drop-cap line. This is the human-readable
   face of the server's structured event log (`ARCHITECTURE.md`).
