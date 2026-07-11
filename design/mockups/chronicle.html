@@ -1,0 +1,486 @@
+<!-- =========================================================================
+  IMPERIUM: Twilight of Empires — Phase 3 UI mockups
+  chronicle.html — Victory & the end-of-game Chronicle: winner banner,
+  final Prestige reckoning, faction epilogues, the illuminated history
+  book in three eras, the era timeline rail, and "Bind the Volume".
+
+  THIS FILE IS A PHASE 3 IMPLEMENTATION CONTRACT.
+  What is annotated here is deliberate. Where this page and README.md
+  disagree, README.md wins.
+
+  - Static HTML/CSS only. Renders fully offline: no CDNs, no external
+    fonts, no external anything. No JS on this screen.
+  - Tokens and components come from mockups.css (linked below); only the
+    small screen-specific CSS in the <style> block belongs to this page.
+  - Game art is referenced by RELATIVE path (../../art/...) and wrapped in
+    the .asset fallback box: on this branch, unmerged assets render as
+    labeled hatched placeholders. That is expected and correct.
+  - CHRONICLE TEXT CONTRACT: every recap sentence below is a filled line
+    from lore/chronicle/TEMPLATES.md (origin/feature/narrative). At match
+    end the engine walks the log, matches each notable moment to an event
+    template, fills the {braces}, and picks one of three variants. The
+    sample match shown: the Ottomans take Constantinople in round XIV of
+    fourteen; Venice corners the grain trade of Thrace in Era I; Hungary
+    breaks the pact of Szeged in Era II. Rounds render as roman-numeral
+    counters; Prestige braces fill with numerals; all other numbers are
+    words, per the template rules.
+  - Numbered .callout circles and the .legend at the foot are spec
+    apparatus for the client team — they do not ship.
+  - Audio contract (README §4): horn_fanfare on entering this screen as
+    victor; defeat_drum for the fallen; page_turn when the book paginates;
+    quill_scratch on "Bind the Volume".
+========================================================================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IMPERIUM — Twilight of Empires · The Chronicle</title>
+  <link rel="stylesheet" href="mockups.css">
+  <style>
+    /* ---- chronicle.html screen-specific styles (kept small) ------------ */
+
+    /* Victory banner — gold on porphyry, the conqueror's strip */
+    .victory-head {
+      text-align: center;
+      padding: var(--space-6) var(--space-4);
+      background: linear-gradient(180deg, var(--night), var(--porphyry));
+      color: var(--parchment);
+      border-bottom: 4px double var(--gold);
+    }
+    .victory-head h1 {
+      color: var(--gold);
+      font-size: clamp(var(--text-2xl), 5vw, 3rem);
+      letter-spacing: 0.1em;
+      margin: var(--space-3) 0 var(--space-2);
+    }
+    .victory-crest {
+      width: 6.5rem;
+      aspect-ratio: 1 / 1;
+      margin: 0 auto;
+      padding: var(--space-2);
+      background: var(--parchment);
+      border: 2px solid var(--gold);
+      border-radius: 50%;
+    }
+    .victory-sub {
+      font-family: var(--font-display);
+      font-variant: small-caps;
+      font-size: var(--text-lg);
+      letter-spacing: 0.18em;
+      margin: 0 0 var(--space-3);
+    }
+    .victory-quote {
+      max-width: 58ch;
+      margin: 0 auto;
+      font-style: italic;
+      color: var(--gold-soft);
+    }
+
+    .chronicle-main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: var(--space-6) var(--space-4);
+      display: grid;
+      gap: var(--space-6);
+    }
+
+    /* Final reckoning + epilogues, side by side */
+    .verdict-grid { display: grid; grid-template-columns: 3fr 2fr; gap: var(--space-5); align-items: start; }
+    .standings tr.is-first td { background: var(--gold-soft); }
+    .epilogue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+    .epilogue-list li { display: grid; grid-template-columns: 2.2rem 1fr; gap: var(--space-3); align-items: start; }
+    .epilogue-list .asset--crest { width: 2.2rem; }
+    .epilogue-list b { font-family: var(--font-display); font-variant: small-caps; letter-spacing: 0.04em; }
+    .epilogue-list p { margin: 0; font-style: italic; font-size: var(--text-sm); }
+
+    /* The book — a parchment double-page spread with a center spine */
+    .book {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--parchment);
+      color: var(--ink);
+      border: 2px solid var(--gold);
+      border-radius: var(--radius-2);
+      box-shadow: var(--shadow-3);
+    }
+    .book::before {                     /* the spine's shadowed gutter */
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 50%;
+      width: 28px;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, transparent, var(--ink-ghost), transparent);
+      pointer-events: none;
+    }
+    .page { padding: var(--space-6); min-width: 0; }
+    .chapter-head { text-align: center; margin-bottom: var(--space-5); }
+    .chapter-head .ornament { display: block; color: var(--gold); letter-spacing: 0.9em; padding-left: 0.9em; }
+    .era-when {
+      font-family: var(--font-display);
+      font-variant: small-caps;
+      font-size: var(--text-xs);
+      letter-spacing: 0.1em;
+      color: var(--porphyry);
+      margin: var(--space-5) 0 0;
+    }
+    .era-when:first-child { margin-top: 0; }
+    .chronicle-body p { text-align: justify; hyphens: auto; margin: 0 0 var(--space-3); }
+    .drop-cap {
+      float: left;
+      font-family: var(--font-display);
+      font-size: 3.1rem;
+      line-height: 0.9;
+      padding: 0.16em 0.24em;
+      margin: 0.1em 0.4em 0 0;
+      background: var(--porphyry);
+      color: var(--gold);
+      border: 1px solid var(--gold);
+      box-shadow: var(--shadow-1);
+    }
+    .plate { margin: var(--space-4) 0 0; }
+    .plate-caption {
+      font-size: var(--text-sm);
+      font-style: italic;
+      text-align: center;
+      margin: var(--space-2) 0 0;
+    }
+    .colophon { text-align: center; font-style: italic; margin: var(--space-5) 0 0; }
+
+    /* Era timeline rail — three eras, three-to-four pips apiece */
+    .era-rail { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-5); align-items: start; }
+    .pip-list { list-style: none; margin: 0; padding: 0 0 0 var(--space-4); border-left: 2px solid var(--gold); }
+    .pip { position: relative; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; }
+    .pip::before {
+      content: "";
+      position: absolute;
+      left: calc(-1 * var(--space-4) - 6px);
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      transform: translateY(-50%);
+      background: var(--gold);
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+    }
+    .pip--fatal::before { background: var(--crimson); }
+    .pip-art { width: 2.4rem; height: 2.4rem; flex: none; }
+    .pip-name { display: block; font-size: var(--text-sm); }
+    .pip-when { display: block; font-size: var(--text-xs); color: color-mix(in srgb, var(--ink) 66%, var(--vellum)); }
+
+    .bind-row { display: flex; justify-content: center; gap: var(--space-4); flex-wrap: wrap; }
+    .bind-row .btn--grand { font-size: var(--text-md); padding: 0.7em 1.6em; }
+
+    @media (max-width: 920px) {
+      .verdict-grid, .era-rail { grid-template-columns: 1fr; }
+      .book { grid-template-columns: 1fr; }
+      .book::before { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ZONE 1 · Winner banner — the victor's crest, sudden-death verdict,
+       and the winning epilogue (Ottomans, win set, variant one). -->
+  <header class="victory-head zone">
+    <b class="callout" style="top: var(--space-3); left: var(--space-3);">1</b>
+    <span class="pill pill--gold">Sudden Death · The Reckoning Closed at the Walls</span>
+    <figure class="asset asset--crest victory-crest" data-faction="ottomans">
+      <img src="../../art/crests/ottomans.svg" alt="Crest of the Ottomans, the victors">
+    </figure>
+    <h1>The Crescent over the Golden Horn</h1>
+    <p class="victory-sub">— The Ottomans have taken the City —</p>
+    <p class="victory-quote">“The crescent rises over the Golden Horn. Sultan Mehmed takes
+      Constantinople, the two continents are stitched into one dominion, and the Sublime
+      Porte becomes the center of the world.”</p>
+  </header>
+
+  <main class="chronicle-main">
+
+    <div class="verdict-grid">
+
+      <!-- ZONE 2 · The final reckoning — Prestige standings for the five
+           powers. Winner row is gilded; every row carries data-faction so
+           the colorblind hatches (mockups.css §16) apply to the swatches. -->
+      <section class="panel panel--parchment zone" aria-label="The final reckoning of Prestige">
+        <b class="callout" style="top: var(--space-2); right: var(--space-2);">2</b>
+        <h3 class="panel-title"><span class="asset asset--icon"><img
+          src="../../art/icons/prestige.svg" alt="Prestige laurel"></span> The Final Reckoning</h3>
+        <table class="table standings">
+          <thead>
+            <tr><th>Seat</th><th>Power</th><th>Ruler</th><th class="num">Prestige</th><th>Fate</th></tr>
+          </thead>
+          <tbody>
+            <tr class="is-first" data-faction="ottomans">
+              <td class="counter">I</td>
+              <td><span class="faction-swatch" aria-hidden="true"></span> The Ottomans</td>
+              <td>Sultan Mehmed</td>
+              <td class="num">24</td>
+              <td><span class="pill pill--laurel">Victor — the City taken</span></td>
+            </tr>
+            <tr data-faction="venice">
+              <td class="counter">II</td>
+              <td><span class="faction-swatch" aria-hidden="true"></span> Venice</td>
+              <td>Doge Francesco Foscari</td>
+              <td class="num">21</td>
+              <td>Mistress of ledgers, not of walls</td>
+            </tr>
+            <tr data-faction="hungary">
+              <td class="counter">III</td>
+              <td><span class="faction-swatch" aria-hidden="true"></span> Hungary</td>
+              <td>King Ladislaus</td>
+              <td class="num">15</td>
+              <td>The marches held, barely</td>
+            </tr>
+            <tr data-faction="genoa">
+              <td class="counter">IV</td>
+              <td><span class="faction-swatch" aria-hidden="true"></span> Genoa</td>
+              <td>Doge Pietro di Campofregoso</td>
+              <td class="num">12</td>
+              <td>Eclipsed at sea</td>
+            </tr>
+            <tr data-faction="byzantium">
+              <td class="counter">V</td>
+              <td><span class="faction-swatch" aria-hidden="true"></span> Byzantium</td>
+              <td>Constantine Palaiologos</td>
+              <td class="num">9</td>
+              <td><span class="pill pill--crimson">Fallen — the purple folded away</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="font-size: var(--text-sm); font-style: italic; margin: var(--space-3) 0 0;">
+          The fall of the City ends the reckoning outright, whoever holds the walls when they
+          break. Had Constantinople stood, the track would have judged; the walls judged first.</p>
+      </section>
+
+      <!-- ZONE 3 · Epilogues — one line closes each power's book, drawn
+           from the faction win/lose sets in lore/chronicle/TEMPLATES.md. -->
+      <section class="panel zone" aria-label="The epilogues">
+        <b class="callout" style="top: var(--space-2); right: var(--space-2);">3</b>
+        <h3 class="panel-title">The Epilogues</h3>
+        <ul class="epilogue-list">
+          <li data-faction="ottomans">
+            <figure class="asset asset--crest"><img src="../../art/crests/ottomans.svg" alt="Crest of the Ottomans"></figure>
+            <div><b>The Ottomans.</b>
+              <p>From Adrianople (Edirne) to the Bosporus, the road is now all one realm. The City
+                is taken, and Sultan Mehmed is hailed conqueror beneath the great dome.</p></div>
+          </li>
+          <li data-faction="venice">
+            <figure class="asset asset--crest"><img src="../../art/crests/venice.svg" alt="Crest of Venice"></figure>
+            <div><b>Venice.</b>
+              <p>The counting-house falls silent. The routes that fed the lagoon feed a rival now,
+                and Venice watches its ducats sail under another's flag.</p></div>
+          </li>
+          <li data-faction="hungary">
+            <figure class="asset asset--crest"><img src="../../art/crests/hungary.svg" alt="Crest of Hungary"></figure>
+            <div><b>Hungary.</b>
+              <p>The frontier gives way. The marches are overrun, Buda's bells fall silent, and the
+                shield of Christendom is beaten from Hungary's arm.</p></div>
+          </li>
+          <li data-faction="genoa">
+            <figure class="asset asset--crest"><img src="../../art/crests/genoa.svg" alt="Crest of Genoa"></figure>
+            <div><b>Genoa.</b>
+              <p>Genoa is eclipsed. The colonies slip away, the banks fall quiet, and the Superba
+                yields her seat at the world's table to the lion of Saint Mark.</p></div>
+          </li>
+          <li data-faction="byzantium">
+            <figure class="asset asset--crest"><img src="../../art/crests/byzantium.svg" alt="Crest of Byzantium"></figure>
+            <div><b>Byzantium.</b>
+              <p>The Queen of Cities kneels. The cross comes down from the great church, and what
+                was Byzantium passes into memory and lament.</p></div>
+          </li>
+        </ul>
+      </section>
+
+    </div>
+
+    <hr>
+
+    <!-- ZONE 4 · The Chronicle — an illuminated double-page spread. Every
+         sentence is a filled template line; the drop-cap opener and the
+         colophon are the scribes' fixed framing text. -->
+    <section class="book zone" aria-label="The chronicle of the game">
+      <b class="callout" style="top: var(--space-3); left: var(--space-3);">4</b>
+
+      <article class="page chronicle-body">
+        <header class="chapter-head">
+          <span class="ornament" aria-hidden="true">✦ ❦ ✦</span>
+          <h2>The Chronicle of a Game,<br>in Three Eras</h2>
+          <p class="rubric">Set down fair by the scribes, who saw it all and wagered nothing.</p>
+        </header>
+
+        <p><span class="drop-cap" aria-hidden="true">H</span>ere begins the true chronicle of
+          five powers in a failing age, from the first muster to the fall of the City,
+          fourteen rounds in the playing and fifty-three years in the telling.</p>
+
+        <p class="era-when">Era the First · Rounds I–V · Anno 1400–1420</p>
+        <h3>The Gathering Storm</h3>
+        <p>Renown finds a new favorite. Venice overtakes Genoa and stands first in Prestige.
+          No herald softens it: Genoa takes the field against Venice. Let Negroponte run red.</p>
+        <p>Venice closes its fist on the trade of Thrace. What flows, flows for it, and the
+          ducats flow after.</p>
+
+        <p class="era-when">Era the Second · Rounds VI–X · Anno 1421–1444</p>
+        <h3>Oaths and Ashes</h3>
+        <p>Thessalonica is taken. The Ottomans' banners climb the walls, and Venice counts the
+          loss in stone and blood.</p>
+        <p>The seal is broken by King Ladislaus's own hand. Where there stood a pact with
+          Sultan Murad, now there is only the field. The standing shifts in round IX: the
+          Ottomans outpace Venice and stand first in Prestige, 17 to its name.</p>
+      </article>
+
+      <article class="page chronicle-body">
+        <p class="era-when">Era the Third · Rounds XI–XIV · Anno 1445–1453</p>
+        <h3>The Reckoning</h3>
+        <p>In the year 1451, from Adrianople (Edirne), Sultan Mehmed proclaims open war upon
+          Byzantium. The truce is ash; the levies muster. The walls of Selymbria hold no
+          longer. The Ottomans enter as master, and Byzantium is poorer by a city.</p>
+        <p>Constantinople falls, and with it the age. The Ottomans stand within the walls,
+          and where the City ends, the chronicle can hold no more.</p>
+        <p class="era-when">Round XIV · Anno 1453</p>
+
+        <figure class="asset asset--wide plate">
+          <img src="../../art/illustrations/events/fall-of-constantinople.svg"
+               alt="The Fall of Constantinople — the crescent over the Queen of Cities">
+        </figure>
+        <p class="plate-caption">“On the twenty-ninth of May the crescent rises over the Queen
+          of Cities, and the Roman Empire, that had stood since Augustus, is no more. An age
+          closes with the great doors; the world, not yet knowing it, has become new.”</p>
+
+        <p class="colophon">❦ Here ends the chronicle of this game. Fourteen rounds were played;
+          five powers contended; one City fell. The scribes beg pardon for all errors of the pen. ❦</p>
+      </article>
+    </section>
+
+    <!-- ZONE 5 · The era timeline rail — three-to-four omen pips per era,
+         each keyed to a real event slug and its illustration. The final
+         pip is crimson AND labeled: color is never the only channel. -->
+    <section class="zone" aria-label="The age at a glance">
+      <b class="callout" style="top: -0.75rem; left: -0.75rem;">5</b>
+      <h2 style="text-align: center;">The Age at a Glance</h2>
+      <p class="rubric" style="text-align: center; margin-bottom: var(--space-5);">
+        Twelve omens that mattered, strung upon three eras.</p>
+      <div class="era-rail">
+
+        <section class="panel panel--parchment">
+          <h4 class="panel-title">Era I · The Gathering Storm</h4>
+          <ol class="pip-list">
+            <li class="pip">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/timur-shadow.svg" alt="The Shadow of Timur"></figure>
+              <span><span class="pip-name">The Shadow of Timur</span><span class="pip-when">Round I · 1402</span></span>
+            </li>
+            <li class="pip">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/good-harvest.svg" alt="A Good Harvest"></figure>
+              <span><span class="pip-name">A Good Harvest</span><span class="pip-when">Round II · 1408</span></span>
+            </li>
+            <li class="pip">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/janissary-recruitment.svg" alt="Janissary Recruitment"></figure>
+              <span><span class="pip-name">Janissary Recruitment</span><span class="pip-when">Round IV · 1415</span></span>
+            </li>
+            <li class="pip">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/venetian-galley-launched.svg" alt="A Venetian Galley Launched"></figure>
+              <span><span class="pip-name">A Venetian Galley Launched</span><span class="pip-when">Round V · 1419</span></span>
+            </li>
+          </ol>
+        </section>
+
+        <section class="panel panel--parchment">
+          <h4 class="panel-title">Era II · Oaths and Ashes</h4>
+          <ol class="pip-list">
+            <li class="pip">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/fall-of-thessalonica.svg" alt="The Fall of Thessalonica"></figure>
+              <span><span class="pip-name">The Fall of Thessalonica</span><span class="pip-when">Round VII · 1430</span></span>
+            </li>
+            <li class="pip">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/council-of-florence.svg" alt="The Council of Florence"></figure>
+              <span><span class="pip-name">The Council of Florence</span><span class="pip-when">Round VIII · 1439</span></span>
+            </li>
+            <li class="pip">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/treaty-of-szeged.svg" alt="The Treaty of Szeged"></figure>
+              <span><span class="pip-name">The Treaty of Szeged</span><span class="pip-when">Round IX · 1444</span></span>
+            </li>
+            <li class="pip">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/battle-of-varna.svg" alt="The Battle of Varna"></figure>
+              <span><span class="pip-name">The Battle of Varna</span><span class="pip-when">Round X · 1444</span></span>
+            </li>
+          </ol>
+        </section>
+
+        <section class="panel panel--parchment">
+          <h4 class="panel-title">Era III · The Reckoning</h4>
+          <ol class="pip-list">
+            <li class="pip">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/great-bombard-forged.svg" alt="The Great Bombard Forged"></figure>
+              <span><span class="pip-name">The Great Bombard Forged</span><span class="pip-when">Round XII · 1452</span></span>
+            </li>
+            <li class="pip">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/rumeli-hisari.svg" alt="Rumeli Hisarı, the Throat-Cutter"></figure>
+              <span><span class="pip-name">Rumeli Hisarı</span><span class="pip-when">Round XIII · 1452</span></span>
+            </li>
+            <li class="pip">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/ships-over-land.svg" alt="Ships over Land"></figure>
+              <span><span class="pip-name">Ships over Land</span><span class="pip-when">Round XIV · 1453</span></span>
+            </li>
+            <li class="pip pip--fatal">
+              <figure class="asset pip-art"><img src="../../art/illustrations/events/fall-of-constantinople.svg" alt="The Fall of Constantinople"></figure>
+              <span><span class="pip-name">The Fall of Constantinople — the age ends</span><span class="pip-when">Round XIV · 1453</span></span>
+            </li>
+          </ol>
+        </section>
+
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ZONE 6 · The closing actions — bind (save) the chronicle, or leave
+         the scriptorium. Binding is not destructive; no confirm needed. -->
+    <section class="bind-row zone" aria-label="Closing actions">
+      <b class="callout" style="top: -0.75rem; left: -0.75rem;">6</b>
+      <button class="btn btn--primary btn--grand" type="button">
+        <span aria-hidden="true">❦</span> Bind the Volume
+      </button>
+      <a class="btn btn--grand" href="lobby.html">Convene Another Age</a>
+      <a class="btn btn--quiet btn--grand" href="home.html">Return to the Great Hall</a>
+    </section>
+
+    <!-- Spec legend — apparatus for the client team; does not ship. -->
+    <ol class="legend">
+      <li><b class="callout">1</b> <b>Winner banner.</b> Victor's crest
+        (<code>../../art/crests/ottomans.svg</code>) in a gilded roundel on porphyry; the headline
+        is fixed copy per victory kind, the quote beneath is the victor's <i>win</i> epilogue
+        (variant chosen by the engine). Entering as victor plays <code>horn_fanfare</code>; the
+        fallen hear <code>defeat_drum</code> instead. The sudden-death pill names how the game
+        ended — for a Prestige win it reads <i>“The Track Has Judged”</i>.</li>
+      <li><b class="callout">2</b> <b>The final reckoning.</b> Standings table, seats in roman
+        counters, Prestige in monospace numerals. Winner row gilded (<code>.is-first</code>) and
+        doubled by the laurel pill — never color alone. Every row carries
+        <code>data-faction</code> for the colorblind hatches (mockups.css §16). The footnote
+        states the sudden-death rule; omit it when the game ends on the track.</li>
+      <li><b class="callout">3</b> <b>Epilogues.</b> One line per power from the win/lose sets in
+        <code>lore/chronicle/TEMPLATES.md</code> — the victor draws from its <i>win</i> set, all
+        others from <i>lose</i>. Order matches the standings.</li>
+      <li><b class="callout">4</b> <b>The Chronicle.</b> Double-page spread, ornamental drop cap,
+        justified body. Every recap sentence is a filled template line stitched by the engine from
+        the match log (this page shows a worked sample match). On narrow viewports the spread
+        stacks to a single page; when the real client paginates a long chronicle, each turn plays
+        <code>page_turn</code>. The plate is the era-ending event's illustration
+        (<code>../../art/illustrations/events/&lt;slug&gt;.svg</code>) with its flavor text
+        (<code>lore/events/flavor.md</code>) as caption.</li>
+      <li><b class="callout">5</b> <b>Era timeline rail.</b> Three eras, three-to-four pips each,
+        keyed to real event slugs with their illustrations as thumbs. Pips are chosen by the
+        engine as the era's most consequential omens. The fatal pip (game-ending event) is crimson
+        <i>and</i> labeled <i>“the age ends”</i>. Tapping a pip opens that event's reveal record
+        (see <code>game.html</code> event flow).</li>
+      <li><b class="callout">6</b> <b>Bind the Volume.</b> Saves this chronicle to the player's
+        shelf and offers it as a page for sharing; plays <code>quill_scratch</code>, then a
+        triumph toast: <i>“So it is written.”</i> Not destructive — no confirm modal.
+        “Convene Another Age” returns to the lobby (<code>lobby.html</code>); “Return to the
+        Great Hall” goes home (<code>home.html</code>).</li>
+    </ol>
+
+  </main>
+
+</body>
+</html>

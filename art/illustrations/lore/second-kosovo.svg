@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Second Kosovo</title>
+  <!-- vellum field -->
+  <rect x="0" y="0" width="260" height="160" fill="#E2D3B3"/>
+  <!-- crescent rising over the plain -->
+  <circle cx="218" cy="36" r="17" fill="#C9A227"/>
+  <circle cx="225" cy="31" r="15" fill="#E2D3B3"/>
+  <!-- distant ravens -->
+  <path d="M28,42 Q40,32 50,42 Q60,32 72,42 L50,50 Z" fill="#2B2118"/>
+  <path d="M58,64 Q66,58 72,64 Q78,58 86,64 L72,69 Z" fill="#2B2118"/>
+  <!-- the plain, drunk with its old vintage -->
+  <polygon points="0,138 40,133 90,136 150,131 210,135 260,132 260,160 0,160" fill="#7A1F2B"/>
+  <!-- fallen spear -->
+  <polygon points="18,126 80,144 79,148 17,130" fill="#2B2118"/>
+  <polygon points="6,120 22,126 14,132" fill="#2B2118"/>
+  <!-- half-buried shield with boss -->
+  <circle cx="200" cy="150" r="16" fill="#2B2118"/>
+  <circle cx="200" cy="147" r="5" fill="#C9A227"/>
+  <!-- broken banner pole -->
+  <polygon points="96,152 138,60 144,62 102,154" fill="#2B2118"/>
+  <!-- torn crimson pennant -->
+  <polygon points="124,94 156,102 146,109 158,116 114,122" fill="#7A1F2B"/>
+  <!-- the raven, keeper of the field -->
+  <path d="M100,58 L120,46 Q134,36 146,42 Q166,50 172,64 Q182,74 180,88
+           L202,118 L190,112 L194,126 L172,104 Q160,92 152,84 Q142,76 138,72
+           L134,74 Q120,72 112,66 Z" fill="#2B2118"/>
+  <circle cx="126" cy="51" r="3" fill="#C9A227"/>
+</svg>
