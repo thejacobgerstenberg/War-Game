@@ -1,0 +1,503 @@
+<!-- =========================================================================
+  IMPERIUM: Twilight of Empires — Phase 3 UI mockups
+  diplomacy.html — THE COURT OF ENVOYS: standing arrangements (alliance,
+  pact, tribute, truce), the incoming-offer modal (shown open, as the
+  contract demands), vassal management, and the scribes' caution on
+  truce-breaking.
+
+  THIS FILE IS A PHASE 3 IMPLEMENTATION CONTRACT.
+  What is annotated here is deliberate. Where this page and README.md
+  disagree, README.md wins. Numbered .callout circles and the .legend at
+  the foot are spec apparatus — they do not ship.
+
+  Point of view: BYZANTIUM, Round VII, Era II — Crises (continuity with
+  game.html: the Ottomans have loosed their hosts upon Hungary; Byzantium
+  stands first in Prestige at eleven; Demetrios Choumnos keeps the ledger).
+  The Porte, busy on the Danube, buys quiet on its Roman flank: hence the
+  envoy and his truce of two rounds, shown open over the table.
+
+  Static HTML/CSS only. No JS — the "dismiss / recall the envoy" control
+  is the sanctioned CSS checkbox technique, and is itself spec apparatus.
+  No external requests: art is referenced by RELATIVE path (../../art/...)
+  inside .asset fallback boxes; unmerged assets render as labeled hatched
+  placeholders. That is expected and correct on this branch.
+
+  Sound contract (README §4): crowd_murmur loops for the life of this
+  screen; ui_click on generic presses; quill_scratch when an offer is
+  sealed ("Seal It" — the two-step commit collapses to one here because
+  accepting a rival's terms IS the commit); page_turn when the player
+  returns to the board.
+========================================================================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IMPERIUM — Twilight of Empires · The Court of Envoys</title>
+  <link rel="stylesheet" href="mockups.css">
+  <style>
+    /* ---- diplomacy.html screen-specific styles (kept small) ------------ */
+
+    .court { position: relative; max-width: 72rem; margin: 0 auto;
+      padding: var(--space-5) var(--space-4) var(--space-6); }
+    .court-head { display: flex; align-items: flex-end; justify-content: space-between;
+      gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-5); }
+    .court-when { display: flex; gap: var(--space-2); align-items: center; }
+
+    /* ---- The offers table: standing arrangements ------------------------ */
+    .treaty-scroll { overflow-x: auto; }   /* wide ledger scrolls in place  */
+    .treaty-table { min-width: 56rem; }
+    .treaty-table .arrangement-kind {
+      display: block; font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-xs); letter-spacing: 0.08em; color: var(--porphyry); }
+    .treaty-table .arrangement-name { font-weight: 700; }
+    .party-pair { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+    .party { display: inline-flex; align-items: center; gap: 0.4em;
+      font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-sm); letter-spacing: 0.04em; white-space: nowrap; }
+    .party .asset--glyph { width: 1.9em; height: 1.9em; }
+    .pair-tie { color: var(--gold); font-weight: 700; }
+    .treaty-table .endures { font-style: italic; }
+    .treaty-table .pill { white-space: nowrap; }  /* standing never breaks mid-word */
+    @media (max-width: 68rem) {  /* fit all five columns at 1024px — no sideways scroll */
+      .treaty-table th, .treaty-table td { padding-left: var(--space-2); padding-right: var(--space-2); }
+    }
+    /* The proposed row is gold-washed until answered; the wash is doubled
+       by the "Awaiting your word" pill — color is never the only channel. */
+    .treaty-table tr.is-proposed td {
+      background: color-mix(in srgb, var(--gold) 18%, transparent); }
+    .treaty-table tr.is-proposed td:first-child { border-left: 4px solid var(--gold); }
+
+    /* ---- Vassal management ---------------------------------------------- */
+    .vassal-row { display: grid; grid-template-columns: auto 1fr auto;
+      gap: var(--space-4); align-items: start;
+      padding: var(--space-3); background: var(--parchment);
+      border: 1px solid var(--vellum-shade); border-radius: var(--radius-2);
+      box-shadow: var(--shadow-1); }
+    @media (max-width: 48rem) { .vassal-row { grid-template-columns: auto 1fr; } }
+    .vassal-crest { width: 3.6rem; }
+    .vassal-name { font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-md); letter-spacing: 0.04em; }
+    .vassal-obligations { margin: var(--space-1) 0 var(--space-3);
+      font-size: var(--text-sm); }
+    .vassal-obligations dt { float: left; clear: left; margin-right: 0.5em;
+      font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-xs); letter-spacing: 0.06em; color: var(--porphyry); }
+    .vassal-obligations dd { margin: 0 0 2px; }
+    .vassal-actions { display: grid; gap: var(--space-2); justify-items: stretch; }
+
+    /* Unrest gauge — pattern-filled, ten steps; hue is never the only channel */
+    .unrest-gauge { position: relative; height: 1.05rem; max-width: 22rem;
+      background: var(--parchment); border: 1px solid var(--ink);
+      border-radius: var(--radius-1); overflow: hidden; }
+    .unrest-gauge::after {  /* step ticks, one per point of unrest */
+      content: ""; position: absolute; inset: 0;
+      background: repeating-linear-gradient(90deg,
+        transparent 0 calc(10% - 1px), var(--ink-faint) calc(10% - 1px) 10%); }
+    .unrest-fill { position: absolute; top: 0; bottom: 0; left: 0;
+      background: repeating-linear-gradient(-45deg,
+        var(--crimson) 0 5px,
+        color-mix(in srgb, var(--crimson) 45%, var(--parchment)) 5px 10px);
+      border-right: 2px solid var(--crimson); }
+    .unrest-meta { display: flex; gap: var(--space-3); align-items: baseline;
+      flex-wrap: wrap; font-size: var(--text-sm); margin-top: var(--space-1); }
+    .unrest-label { font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-xs); letter-spacing: 0.06em; }
+    .risk-line { font-style: italic; color: var(--crimson); }
+
+    /* ---- The scribes' caution (truce-breaking) --------------------------- */
+    .truce-warning { display: flex; gap: var(--space-3); align-items: center;
+      margin-top: var(--space-5); padding: var(--space-3) var(--space-4);
+      background: var(--vellum); border: 1px solid var(--vellum-shade);
+      border-left: 5px solid var(--crimson); border-radius: var(--radius-1);
+      font-size: var(--text-sm); }
+    .truce-warning .asset--glyph { flex: 0 0 auto; width: 2.2em; height: 2.2em; }
+    .truce-warning .caution-kicker { display: block;
+      font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-xs); letter-spacing: 0.08em; color: var(--crimson); }
+    .truce-warning p { margin: 0; font-style: italic; }
+
+    /* ---- The envoy: incoming-offer modal, shown open over the table ------ */
+    /* Spec-apparatus toggle (CSS checkbox; does not ship): lets reviewers
+       lift the scrim to read the table beneath the modal. */
+    .envoy-view-toggle { position: absolute; opacity: 0; pointer-events: none; }
+    .envoy-view-label { position: fixed; right: var(--space-4);
+      bottom: var(--space-4); z-index: 130; }
+    .envoy-view-toggle:not(:checked) ~ .court .envoy-overlay { display: none; }
+
+    .envoy-overlay {  /* local stand-in for the standard .modal-scrim */
+      position: absolute; inset: 0; z-index: 100;
+      display: grid; justify-items: center; align-items: start;
+      padding: 7rem var(--space-4) var(--space-4);
+      background: color-mix(in srgb, var(--ink) 62%, transparent); }
+    .envoy-modal { position: sticky; top: var(--space-5); }
+
+    .envoy-seal { position: relative; width: fit-content;
+      margin: calc(-1 * var(--space-6)) auto var(--space-2); }
+    .seal-tail { position: absolute; top: 62%; width: 0.9rem; height: 2.1rem;
+      background: var(--crimson); border: 1px solid var(--gold); }
+    .seal-tail--left  { left: 24%; transform: rotate(16deg); }
+    .seal-tail--right { right: 24%; transform: rotate(-16deg); }
+    .seal-disc { position: relative; width: 4.6rem; height: 4.6rem;
+      padding: 0.5rem; border-radius: 50%; border: 3px double var(--gold);
+      background: var(--crimson); box-shadow: var(--shadow-1); }
+    .seal-disc > img { color: var(--parchment); }  /* fallback label legible on wax */
+
+    .envoy-kicker { margin: 0; text-align: center;
+      font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-xs); letter-spacing: 0.1em; color: var(--porphyry); }
+    .envoy-modal h3 { text-align: center; margin-bottom: var(--space-3); }
+    .offer-words { margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4);
+      background: var(--vellum); border-left: 4px solid var(--gold);
+      border-radius: var(--radius-1); font-size: var(--text-lg); font-style: italic; }
+    .offer-terms { margin: 0 0 var(--space-4); font-size: var(--text-sm); }
+    .offer-terms dt { font-family: var(--font-display); font-variant: small-caps;
+      font-size: var(--text-xs); letter-spacing: 0.08em; color: var(--porphyry);
+      margin-top: var(--space-2); }
+    .offer-terms dd { margin: 2px 0 0; }
+    .envoy-word { margin: 0 0 var(--space-4); font-size: var(--text-sm);
+      font-style: italic; text-align: center;
+      color: color-mix(in srgb, var(--ink) 74%, var(--parchment)); }
+    .envoy-modal .advisor-bubble { max-width: none; }
+    .envoy-modal .advisor-bubble::after { display: none; }  /* no tail in modal */
+    .seal-caution { margin: var(--space-3) 0 0; font-size: var(--text-xs);
+      font-style: italic; color: var(--crimson); text-align: right; }
+  </style>
+</head>
+<body>
+
+  <!-- SPEC APPARATUS — dismiss / recall the envoy so reviewers can read the
+       table beneath the scrim. CSS checkbox technique; none of it ships. -->
+  <input type="checkbox" id="envoy-view" class="envoy-view-toggle" checked>
+  <label class="btn envoy-view-label" for="envoy-view">Dismiss / Recall the Envoy (spec toggle)</label>
+
+  <div class="court">
+
+    <header class="court-head">
+      <div>
+        <h1>The Court of Envoys</h1>
+        <p class="rubric">Where wars are ended on parchment, and begun in whispers.</p>
+      </div>
+      <div class="court-when">
+        <span class="pill">Round <b class="counter">VII</b></span>
+        <span class="pill">Era II — Crises</span>
+        <a class="btn btn--quiet" href="game.html">Return to the Board</a>
+      </div>
+    </header>
+
+    <main>
+
+    <!-- ZONE 1 · The offers table: every standing arrangement -->
+    <section class="panel zone" aria-label="Standing arrangements">
+      <b class="callout" style="top:-10px; left:-10px">1</b>
+      <h2 class="panel-title">Seals in Force</h2>
+
+      <div class="treaty-scroll">
+      <table class="table treaty-table">
+        <thead>
+          <tr>
+            <th scope="col">Arrangement</th>
+            <th scope="col">Parties</th>
+            <th scope="col">The Terms</th>
+            <th scope="col">Endures</th>
+            <th scope="col">Standing</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <tr>
+            <td><span class="arrangement-kind">Alliance</span>
+                <span class="arrangement-name">The Danube Compact</span></td>
+            <td>
+              <span class="party-pair">
+                <span class="party" data-faction="byzantium">
+                  <span class="asset asset--glyph"><img src="../../art/crests/byzantium.svg" alt="Byzantium"></span>
+                  Byzantium</span>
+                <span class="pair-tie" aria-hidden="true">&amp;</span>
+                <span class="party" data-faction="hungary">
+                  <span class="asset asset--glyph"><img src="../../art/crests/hungary.svg" alt="Hungary"></span>
+                  Hungary</span>
+              </span>
+            </td>
+            <td>Each crown answers the other's call to war, and neither takes the
+                field against the other. Hungarian steel keeps the Danube; Roman
+                gold remembers the kindness.</td>
+            <td class="endures">Until Era III</td>
+            <td><span class="pill pill--laurel">In force</span></td>
+          </tr>
+
+          <tr>
+            <td><span class="arrangement-kind">Pact</span>
+                <span class="arrangement-name">Pact of the Open Horn</span></td>
+            <td>
+              <span class="party-pair">
+                <span class="party" data-faction="byzantium">
+                  <span class="asset asset--glyph"><img src="../../art/crests/byzantium.svg" alt="Byzantium"></span>
+                  Byzantium</span>
+                <span class="pair-tie" aria-hidden="true">&amp;</span>
+                <span class="party" data-faction="venice">
+                  <span class="asset asset--glyph"><img src="../../art/crests/venice.svg" alt="Venice"></span>
+                  Venice</span>
+              </span>
+            </td>
+            <td>The chain across the Horn stays down for the lion of Saint Mark,
+                and Venetian galleys carry Roman grain at half the toll.</td>
+            <td class="endures">Two rounds remain</td>
+            <td><span class="pill pill--laurel">In force</span></td>
+          </tr>
+
+          <tr>
+            <td><span class="arrangement-kind">Tribute</span>
+                <span class="arrangement-name">Tribute of the Straits</span></td>
+            <td>
+              <span class="party-pair">
+                <span class="party" data-faction="byzantium">
+                  <span class="asset asset--glyph"><img src="../../art/crests/byzantium.svg" alt="Byzantium"></span>
+                  Byzantium</span>
+                <span class="pair-tie" aria-hidden="true" title="renders to">⟶</span>
+                <span class="party" data-faction="ottomans">
+                  <span class="asset asset--glyph"><img src="../../art/crests/ottomans.svg" alt="The Ottomans"></span>
+                  The Porte</span>
+              </span>
+            </td>
+            <td>Two Gold rendered to the Porte at each Income, for which the
+                Sultan's hosts stayed their hand.</td>
+            <td class="endures">Lapsed when Era II opened</td>
+            <td><span class="pill">Lapsed</span></td>
+          </tr>
+
+          <tr>
+            <td><span class="arrangement-kind">Truce</span>
+                <span class="arrangement-name">Truce of Gallipoli</span></td>
+            <td>
+              <span class="party-pair">
+                <span class="party" data-faction="venice">
+                  <span class="asset asset--glyph"><img src="../../art/crests/venice.svg" alt="Venice"></span>
+                  Venice</span>
+                <span class="pair-tie" aria-hidden="true">&amp;</span>
+                <span class="party" data-faction="ottomans">
+                  <span class="asset asset--glyph"><img src="../../art/crests/ottomans.svg" alt="The Ottomans"></span>
+                  The Porte</span>
+              </span>
+            </td>
+            <td>Neither fleet to pass the straits under arms. Venice kept the
+                truce exactly until it was useful to break — and the scribes
+                struck two Prestige from her name.</td>
+            <td class="endures">Broken in round five</td>
+            <td><span class="pill pill--crimson">Broken</span></td>
+          </tr>
+
+          <tr class="is-proposed">
+            <td><span class="arrangement-kind">Truce</span>
+                <span class="arrangement-name">A Truce of Two Rounds</span></td>
+            <td>
+              <span class="party-pair">
+                <span class="party" data-faction="byzantium">
+                  <span class="asset asset--glyph"><img src="../../art/crests/byzantium.svg" alt="Byzantium"></span>
+                  Byzantium</span>
+                <span class="pair-tie" aria-hidden="true">&amp;</span>
+                <span class="party" data-faction="ottomans">
+                  <span class="asset asset--glyph"><img src="../../art/crests/ottomans.svg" alt="The Ottomans"></span>
+                  The Porte</span>
+              </span>
+            </td>
+            <td>Quiet on the walls for two rounds; tribute of three Gold each
+                round. The envoy waits upon your word.</td>
+            <td class="endures">Two rounds, if sealed</td>
+            <td class="zone"><b class="callout" style="top:2px; right:-10px">2</b>
+                <span class="pill pill--gold">Awaiting your word</span></td>
+          </tr>
+
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <hr>
+
+    <!-- ZONE 3 & 4 · Vassal management -->
+    <section class="panel zone" aria-label="Vassals of the crown">
+      <b class="callout" style="top:-10px; left:-10px">3</b>
+      <h2 class="panel-title">Beneath the Yoke</h2>
+
+      <div class="vassal-row" data-faction="genoa">
+        <figure class="asset asset--crest vassal-crest">
+          <img src="../../art/crests/genoa.svg" alt="Crest of Genoa">
+        </figure>
+
+        <div>
+          <b class="vassal-name">Genoa, the Superba</b>
+          <span class="pill">Kneels since round four</span>
+
+          <dl class="vassal-obligations">
+            <dt>Owes</dt>
+            <dd>Two Gold and one Timber, rendered at each Income.</dd>
+            <dt>Lends</dt>
+            <dd>One levy, whenever Byzantium calls the muster.</dd>
+            <dt>Suffers</dt>
+            <dd>Her galleys pass the Horn only by leave.</dd>
+          </dl>
+
+          <div class="zone" style="max-width: 22rem">
+            <b class="callout" style="top:-10px; right:-10px">4</b>
+            <div class="unrest-gauge" role="img"
+                 aria-label="Unrest stands at seven of ten; risk of revolt rising">
+              <span class="unrest-fill" style="width: 70%"></span>
+            </div>
+            <p class="unrest-meta">
+              <span class="unrest-label">Unrest</span>
+              <b class="counter">7 / 10</b>
+              <span class="risk-line">▲ Risk of revolt: rising</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="vassal-actions">
+          <button class="btn" type="button"
+                  title="Take two Gold at once. The yoke galls: unrest climbs two steps.">
+            Demand Tribute</button>
+          <button class="btn btn--quiet" type="button"
+                  title="Forgive a season's tribute. Mercy is remembered: unrest falls two steps.">
+            Ease the Yoke</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ZONE 5 · The scribes' caution: what truce-breaking costs -->
+    <aside class="truce-warning zone" role="note" aria-label="The cost of breaking a truce">
+      <b class="callout" style="top:-10px; left:-10px">5</b>
+      <span class="asset asset--glyph"><img src="../../art/icons/prestige.svg" alt="Prestige"></span>
+      <div>
+        <span class="caution-kicker">The Scribes' Caution</span>
+        <p>Break a sealed truce and the chronicle is unsparing: two Prestige struck
+           from your name, and no envoy of yours received at any court for a round
+           thereafter. The scribes forget nothing.</p>
+      </div>
+    </aside>
+
+    <!-- ZONE 6 & 7 · The envoy: incoming offer, shown OPEN over the table.
+         In the shipped client this is the standard .modal-scrim / .modal pair
+         over the whole screen; here the scrim is local to the page so the
+         legend below stays legible. -->
+    <div class="envoy-overlay">
+      <section class="modal envoy-modal zone" role="dialog" aria-modal="true"
+               aria-labelledby="envoy-title">
+        <b class="callout" style="top:-10px; left:-10px">6</b>
+
+        <div class="envoy-seal" aria-hidden="true">
+          <span class="seal-tail seal-tail--left"></span>
+          <span class="seal-tail seal-tail--right"></span>
+          <figure class="asset seal-disc">
+            <img src="../../art/crests/ottomans.svg" alt="The seal of the Sublime Porte">
+          </figure>
+        </div>
+
+        <p class="envoy-kicker">An envoy of the Sublime Porte is received</p>
+        <h3 id="envoy-title">The Porte Proposes a Truce</h3>
+
+        <blockquote class="offer-words">The Porte proposes a truce of two rounds.
+          Tribute: three Gold each round.</blockquote>
+
+        <dl class="offer-terms">
+          <dt>The quiet</dt>
+          <dd>Neither host nor fleet of either crown takes the field against the
+              other while the truce holds.</dd>
+          <dt>The price</dt>
+          <dd><span class="resource-chip">
+                <span class="asset asset--icon"><img src="../../art/icons/gold.svg" alt="Gold"></span>
+                <b class="value">3</b><span class="name">Gold</span>
+              </span>
+              rendered to the Porte at each Income, for two rounds.</dd>
+          <dt>The term</dt>
+          <dd>Two rounds; the truce lapses as Era III opens.</dd>
+        </dl>
+
+        <p class="envoy-word">"My master buys quiet the way wise men do — before
+          the price of it rises." — given under the hand of Yakub Pasha, Grand
+          Vizier of the Sublime Porte</p>
+
+        <div class="advisor-bubble">
+          Three Gold a round is cheaper than one span of wall, Basileus. The
+          ledger counsels the seal — though it sits ill, paying for quiet to the
+          very man whose drums our Hungarian friends can already hear.
+          <cite>— Demetrios Choumnos, Grand Logothete</cite>
+        </div>
+
+        <div class="modal-actions zone">
+          <b class="callout" style="top:-10px; left:-10px">7</b>
+          <button class="btn btn--quiet" type="button"
+                  title="Refuse the offer. The envoy departs; the Porte is told.">
+            Send the Envoy Home</button>
+          <button class="btn" type="button"
+                  title="Keep the truce, change the terms; your counter rides back with the envoy.">
+            Name Another Price</button>
+          <button class="btn btn--primary" type="button"
+                  title="Accept, and the truce is written into the table above.">
+            Seal It</button>
+        </div>
+
+        <p class="seal-caution">A sealed truce binds. Break it, and two Prestige
+          are struck from your name.</p>
+      </section>
+    </div>
+
+    </main>
+
+  </div>
+
+  <hr>
+
+  <!-- SPEC LEGEND — annotation apparatus, does not ship -->
+  <ol class="legend" style="max-width: 72rem; margin-inline: auto;">
+    <li><b class="callout">1</b> <strong>Seals in force (the offers table)</strong> — every arrangement the
+      viewer's crown is party to, plus those publicly known between rivals (the Gallipoli row: broken seals
+      are common knowledge). One row per arrangement; four kinds — <em>alliance, pact, tribute, truce</em> —
+      named in the small-caps kicker of the first column. Parties render as crest pairs
+      (<code>../../art/crests/*.svg</code> in <code>.asset</code> boxes) with the faction name beside each
+      crest — color is never the only channel. Tribute is directional: the gilded arrow reads
+      <em>renders to</em>. Terms are in voice, two lines at most. "Endures" counts down in words
+      (<em>"Until Era III", "Two rounds remain"</em>); rows stand in the order sworn, and the proposed offer
+      sits last, gold-washed, until answered.</li>
+    <li><b class="callout">2</b> <strong>Standing pills</strong> — <em>In force</em> (laurel),
+      <em>Awaiting your word</em> (gold), <em>Lapsed</em> (plain), <em>Broken</em> (crimson). Each hue is
+      doubled by the word itself. A lapsed or broken row stays in the table until the era turns, so the
+      grudge is legible.</li>
+    <li><b class="callout">3</b> <strong>Vassal management</strong> — one <code>.vassal-row</code> per crown
+      that kneels: crest, name, since-when pill, and the three obligations (<em>owes / lends / suffers</em>),
+      all enforced by the engine at the phases named — the vassal player does not click to comply.
+      <em>Demand Tribute</em> takes two Gold at once and raises unrest two steps; <em>Ease the Yoke</em>
+      forgives a season's tribute and lowers unrest two steps. Both are ordinary orders (one deed each,
+      <code>ui_click</code>); neither is destructive, so neither confirms.</li>
+    <li><b class="callout">4</b> <strong>The unrest gauge</strong> — ten steps, tick-marked, filled with the
+      crimson hatch pattern (<em>never</em> a flat hue alone — README §3). The counter and the risk line
+      (<em>"Risk of revolt: rising"</em>, with its leading glyph) double the reading. At eight steps or
+      above, revolt may fire in the Council phase and the chronicle writes it (see the vassal-revolt
+      templates in the narrative session's lore). Rising/falling is judged against last round's value.</li>
+    <li><b class="callout">5</b> <strong>The scribes' caution</strong> — a quiet standing strip, always
+      present on this screen; it is not a toast and never animates. It states the truce-breaking price in
+      voice: two Prestige struck, envoys refused for a round. The Gallipoli row above demonstrates the same
+      figure in the table, so the player has seen the law applied before being asked to swear by it.</li>
+    <li><b class="callout">6</b> <strong>The incoming-offer modal</strong> — arrives when a rival's offer
+      names the viewer. On the board it is announced by a default toast (<em>"An envoy of the Porte craves
+      audience."</em>); entering the Court opens it over the standard <code>.modal-scrim</code>, exactly as
+      shown. The scrim does not dismiss on click — an envoy is answered, not ignored. The wax seal bears the
+      proposing faction's crest; the offer sentence is quoted verbatim from the proposer, then unpacked in
+      the terms list; the advisor's counsel attends every offer (one bubble, newest counsel replacing old).
+      While the Court is open, <code>crowd_murmur</code> loops (README §4).</li>
+    <li><b class="callout">7</b> <strong>Answering</strong> — three answers, no more. <em>Seal It</em>
+      (primary) accepts: plays <code>quill_scratch</code>, writes the row into the table as <em>In force</em>,
+      and raises the triumph toast <em>"So it is written."</em> <em>Name Another Price</em> opens the
+      counter-offer composer with these terms pre-filled (composer specced with the trade ledger, a
+      follow-up screen). <em>Send the Envoy Home</em> refuses: not destructive, so no confirmation — the
+      offer lapses and the herald tells the Porte. An unanswered offer expires when the round ends, which
+      counts as refusal.</li>
+    <li><strong>Spec toggle</strong> — the fixed "Dismiss / Recall the Envoy" control at the foot of the
+      viewport is review apparatus (a CSS checkbox), letting reviewers lift the scrim to read the table
+      beneath. It does not ship, and no such dismissal exists in the client.</li>
+    <li><strong>Sound</strong> — <code>crowd_murmur</code> loops for the life of this screen;
+      <code>ui_click</code> on generic presses; <code>quill_scratch</code> on <em>Seal It</em>;
+      <code>page_turn</code> on <em>Return to the Board</em> (README §4).</li>
+  </ol>
+
+</body>
+</html>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>salt tax riot</title>
+  <rect width="260" height="160" fill="#E2D3B3"/>
+  <circle cx="34" cy="30" r="15" fill="#C9A227"/>
+  <rect x="0" y="138" width="260" height="22" fill="#2B2118"/>
+  <path d="M18 141 Q40 100 62 120 Q82 102 102 141 Z" fill="#F0E6D2"/>
+  <circle cx="48" cy="90" r="3" fill="#F0E6D2"/>
+  <circle cx="70" cy="84" r="3" fill="#F0E6D2"/>
+  <circle cx="88" cy="94" r="3" fill="#F0E6D2"/>
+  <circle cx="60" cy="76" r="2.5" fill="#F0E6D2"/>
+  <polygon points="70,118 138,86 152,112 84,144" fill="#2B2118"/>
+  <polygon points="70,118 84,144 58,140 50,120" fill="#F0E6D2"/>
+  <path d="M150 104 L166 82" stroke="#2B2118" stroke-width="5" fill="none"/>
+  <circle cx="168" cy="66" r="21" fill="#7A1F2B"/>
+  <circle cx="168" cy="66" r="13" fill="#E2D3B3"/>
+  <path d="M168 48 V84 M150 66 H186" stroke="#7A1F2B" stroke-width="4" fill="none"/>
+  <circle cx="168" cy="66" r="5" fill="#7A1F2B"/>
+  <circle cx="110" cy="147" r="4" fill="#C9A227"/>
+  <circle cx="122" cy="151" r="4" fill="#C9A227"/>
+  <circle cx="100" cy="153" r="4" fill="#C9A227"/>
+  <circle cx="118" cy="128" r="4" fill="#C9A227"/>
+  <path d="M203 160 L199 58" stroke="#2B2118" stroke-width="5" fill="none"/>
+  <path d="M187 72 V50 M199 70 V48 M211 72 V50" stroke="#2B2118" stroke-width="4" fill="none"/>
+  <path d="M185 70 H213" stroke="#2B2118" stroke-width="4" fill="none"/>
+  <path d="M230 160 L236 106" stroke="#2B2118" stroke-width="9" fill="none"/>
+  <circle cx="237" cy="98" r="9" fill="#2B2118"/>
+  <path d="M254 160 L252 94" stroke="#2B2118" stroke-width="9" fill="none"/>
+  <circle cx="252" cy="86" r="9" fill="#2B2118"/>
+</svg>

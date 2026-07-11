@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Relics of the Saints</title>
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- gold halo starburst behind the reliquary -->
+  <polygon fill="#C9A227" points="182,52 154,42 167,15 140,28 130,0 120,28 93,15 106,42 78,52 106,62 93,89 120,76 130,104 140,76 167,89 154,62"/>
+  <!-- processional cross rising from the ridge -->
+  <rect x="127" y="20" width="6" height="20" fill="#2B2118"/>
+  <rect x="119" y="26" width="22" height="6" fill="#2B2118"/>
+  <!-- ink silhouette of the chasse -->
+  <polygon fill="#2B2118" points="90,88 90,55 104,36 156,36 170,55 170,88"/>
+  <!-- gilded casket body and gabled roof -->
+  <polygon fill="#C9A227" points="94,58 108,40 152,40 166,58"/>
+  <rect x="98" y="58" width="64" height="26" fill="#C9A227"/>
+  <!-- three crimson saint-niches -->
+  <path fill="#7A1F2B" d="M104,84 L104,74 a8,8 0 0 1 16,0 L120,84 Z"/>
+  <path fill="#7A1F2B" d="M122,84 L122,74 a8,8 0 0 1 16,0 L138,84 Z"/>
+  <path fill="#7A1F2B" d="M140,84 L140,74 a8,8 0 0 1 16,0 L156,84 Z"/>
+  <!-- carrying pole -->
+  <rect x="34" y="86" width="192" height="7" fill="#2B2118"/>
+  <!-- crimson cloth draped beneath the bier -->
+  <polygon fill="#7A1F2B" points="100,93 160,93 150,114 110,114"/>
+  <!-- left bearer -->
+  <circle cx="44" cy="78" r="9" fill="#4B1F3F"/>
+  <polygon fill="#4B1F3F" points="34,160 54,160 52,96 48,86 40,86 36,96"/>
+  <!-- right bearer -->
+  <circle cx="216" cy="78" r="9" fill="#4B1F3F"/>
+  <polygon fill="#4B1F3F" points="206,160 226,160 224,96 220,86 212,86 208,96"/>
+  <!-- the faithful press close: heads and reaching hands -->
+  <circle cx="92" cy="155" r="10" fill="#4B1F3F"/>
+  <circle cx="130" cy="150" r="11" fill="#4B1F3F"/>
+  <circle cx="168" cy="155" r="10" fill="#4B1F3F"/>
+  <polygon fill="#4B1F3F" points="74,160 86,160 84,120 78,121"/>
+  <circle cx="81" cy="118" r="5" fill="#4B1F3F"/>
+  <polygon fill="#4B1F3F" points="98,160 110,160 109,106 101,107"/>
+  <circle cx="105" cy="104" r="5" fill="#4B1F3F"/>
+  <polygon fill="#4B1F3F" points="150,160 162,160 159,107 151,106"/>
+  <circle cx="155" cy="104" r="5" fill="#4B1F3F"/>
+  <polygon fill="#4B1F3F" points="174,160 186,160 182,121 176,120"/>
+  <circle cx="179" cy="118" r="5" fill="#4B1F3F"/>
+</svg>

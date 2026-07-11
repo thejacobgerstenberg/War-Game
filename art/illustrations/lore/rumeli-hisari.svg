@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Rumeli Hisari</title>
+
+  <!-- parchment sky -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- the strait -->
+  <rect x="0" y="110" width="260" height="50" fill="#2C5F7C"/>
+  <path d="M14,124 q13,-8 26,0 q-13,6 -26,0 z" fill="#2B2118"/>
+  <path d="M84,136 q13,-8 26,0 q-13,6 -26,0 z" fill="#2B2118"/>
+  <path d="M180,142 q13,-8 26,0 q-13,6 -26,0 z" fill="#2B2118"/>
+
+  <!-- rocky European shore -->
+  <polygon points="0,110 0,84 30,90 70,84 120,88 150,96 158,110" fill="#2B2118"/>
+
+  <!-- left round tower with conical cap -->
+  <rect x="20" y="50" width="34" height="50" fill="#2B2118"/>
+  <polygon points="14,50 60,50 37,24" fill="#2B2118"/>
+  <rect x="36" y="12" width="2" height="14" fill="#2B2118"/>
+  <polygon points="38,12 58,17 38,22" fill="#7A1F2B"/>
+  <rect x="33" y="62" width="7" height="14" fill="#F0E6D2"/>
+
+  <!-- curtain wall with merlons -->
+  <rect x="54" y="66" width="58" height="34" fill="#2B2118"/>
+  <rect x="56" y="59" width="8" height="7" fill="#2B2118"/>
+  <rect x="72" y="59" width="8" height="7" fill="#2B2118"/>
+  <rect x="88" y="59" width="8" height="7" fill="#2B2118"/>
+  <rect x="104" y="59" width="8" height="7" fill="#2B2118"/>
+  <rect x="64" y="74" width="5" height="12" fill="#F0E6D2"/>
+  <rect x="81" y="74" width="5" height="12" fill="#F0E6D2"/>
+  <rect x="98" y="74" width="5" height="12" fill="#F0E6D2"/>
+
+  <!-- great tower with crescent -->
+  <rect x="112" y="40" width="36" height="64" fill="#2B2118"/>
+  <polygon points="106,42 154,42 130,16" fill="#2B2118"/>
+  <circle cx="130" cy="9" r="6.5" fill="#C9A227"/>
+  <circle cx="133" cy="6.5" r="5.5" fill="#F0E6D2"/>
+  <rect x="126" y="52" width="8" height="16" fill="#F0E6D2"/>
+
+  <!-- the great gun at the waterline -->
+  <rect x="140" y="96" width="56" height="11" fill="#2B2118"/>
+  <rect x="160" y="93.5" width="5" height="16" fill="#C9A227"/>
+  <rect x="176" y="93.5" width="5" height="16" fill="#C9A227"/>
+  <rect x="190" y="93" width="7" height="17" fill="#2B2118"/>
+
+  <!-- the shot that closes the strait -->
+  <polygon points="220,101 212,99 216,91 208,96 206,87 204,96 196,91 200,99 192,101 200,103 196,111 204,106 206,115 208,106 216,111 212,103" fill="#7A1F2B"/>
+
+  <!-- halted merchant hull -->
+  <polygon points="244,90 244,112 226,112" fill="#C9A227"/>
+  <rect x="240" y="88" width="4" height="26" fill="#2B2118"/>
+  <polygon points="226,114 258,114 250,126 232,126" fill="#2B2118"/>
+</svg>

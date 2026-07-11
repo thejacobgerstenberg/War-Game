@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Hussite Mercenaries</title>
+  <!-- parchment field -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- ground band -->
+  <rect x="0" y="126" width="260" height="34" fill="#4A5D3A"/>
+  <!-- banner pole and forked pennant -->
+  <rect x="193" y="14" width="5" height="38" fill="#2B2118"/>
+  <polygon points="198,14 248,21 230,26 248,31 198,38" fill="#7A1F2B"/>
+  <!-- war-wagon body: boarded pavise walls, wider at the top -->
+  <polygon points="58,118 208,118 216,54 50,54" fill="#2B2118"/>
+  <rect x="42" y="46" width="182" height="10" fill="#2B2118"/>
+  <!-- handgonne barrels through the loopholes -->
+  <polygon points="54,62 12,74 14,81 54,71" fill="#2B2118"/>
+  <polygon points="54,88 22,98 24,105 54,97" fill="#2B2118"/>
+  <!-- muzzle flash -->
+  <polygon points="14,77 2,66 7,77 2,88" fill="#C9A227"/>
+  <!-- Hussite chalice emblem on the wagon wall -->
+  <polygon points="111,68 155,68 145,88 121,88" fill="#C9A227"/>
+  <rect x="129" y="88" width="8" height="13" fill="#C9A227"/>
+  <rect x="118" y="101" width="30" height="7" fill="#C9A227"/>
+  <!-- front wheel -->
+  <circle cx="85" cy="122" r="24" fill="#2B2118"/>
+  <circle cx="85" cy="122" r="14" fill="#F0E6D2"/>
+  <rect x="83" y="106" width="4" height="32" fill="#2B2118"/>
+  <rect x="69" y="120" width="32" height="4" fill="#2B2118"/>
+  <circle cx="85" cy="122" r="6" fill="#2B2118"/>
+  <!-- rear wheel -->
+  <circle cx="185" cy="122" r="24" fill="#2B2118"/>
+  <circle cx="185" cy="122" r="14" fill="#F0E6D2"/>
+  <rect x="183" y="106" width="4" height="32" fill="#2B2118"/>
+  <rect x="169" y="120" width="32" height="4" fill="#2B2118"/>
+  <circle cx="185" cy="122" r="6" fill="#2B2118"/>
+</svg>

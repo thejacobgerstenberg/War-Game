@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Condottiere Contract</title>
+  <!-- parchment field -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- scroll rolls, left and right -->
+  <rect x="20" y="28" width="18" height="106" rx="9" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <rect x="27" y="36" width="4" height="90" fill="#2B2118"/>
+  <rect x="222" y="28" width="18" height="106" rx="9" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+  <rect x="229" y="36" width="4" height="90" fill="#2B2118"/>
+
+  <!-- unfurled contract body -->
+  <rect x="36" y="40" width="188" height="84" fill="#E2D3B3" stroke="#2B2118" stroke-width="3"/>
+
+  <!-- lines of terms, read twice -->
+  <rect x="54" y="54" width="118" height="5" fill="#2B2118"/>
+  <rect x="54" y="66" width="152" height="5" fill="#2B2118"/>
+  <rect x="54" y="78" width="96" height="5" fill="#2B2118"/>
+  <rect x="54" y="102" width="70" height="5" fill="#2B2118"/>
+
+  <!-- the captain's signature -->
+  <path d="M132 113 l11 -7 l9 7 l11 -7 l9 7" fill="none" stroke="#2B2118" stroke-width="3"/>
+
+  <!-- seal ribbons hanging past the page -->
+  <polygon points="188,108 182,144 194,136" fill="#7A1F2B"/>
+  <polygon points="201,110 208,144 215,132" fill="#7A1F2B"/>
+
+  <!-- wax seal -->
+  <circle cx="196" cy="102" r="14" fill="#2B2118"/>
+  <circle cx="196" cy="102" r="9" fill="#7A1F2B"/>
+
+  <!-- the sword laid across the terms -->
+  <polygon points="84,104 92,116 244,26" fill="#2B2118"/>
+  <polygon points="100,127 94,129 76,93 82,91" fill="#C9A227"/>
+  <polygon points="90,113 86,107 67,117 71,123" fill="#2B2118"/>
+  <circle cx="64" cy="123" r="7" fill="#C9A227" stroke="#2B2118" stroke-width="3"/>
+
+  <!-- the pay that buys the blade -->
+  <circle cx="44" cy="126" r="11" fill="#C9A227" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="38" cy="141" r="11" fill="#C9A227" stroke="#2B2118" stroke-width="3"/>
+  <circle cx="58" cy="146" r="11" fill="#C9A227" stroke="#2B2118" stroke-width="3"/>
+</svg>

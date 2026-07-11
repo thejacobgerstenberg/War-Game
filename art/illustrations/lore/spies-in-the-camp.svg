@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Spies in the Camp</title>
+  <!-- parchment field -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- crescent moon: war fought first in the dark -->
+  <circle cx="34" cy="28" r="15" fill="#C9A227"/>
+  <circle cx="41" cy="23" r="13" fill="#F0E6D2"/>
+  <!-- night ground -->
+  <rect x="0" y="140" width="260" height="20" fill="#2B2118"/>
+  <!-- the war tent -->
+  <polygon points="185,22 250,140 120,140" fill="#7A1F2B"/>
+  <!-- gold trim at the tent hem -->
+  <polygon points="128,126 242,126 247,134 123,134" fill="#C9A227"/>
+  <!-- dark doorway -->
+  <polygon points="185,58 201,140 169,140" fill="#2B2118"/>
+  <!-- pole and pennant -->
+  <rect x="183" y="2" width="4" height="22" fill="#2B2118"/>
+  <polygon points="187,3 214,9 187,15" fill="#C9A227"/>
+  <!-- the listener: hooded spy pressed to the canvas -->
+  <path fill="#2B2118" d="M60 140 Q54 102 76 70 Q86 52 100 49 Q113 48 118 60 L127 69 L117 76 Q116 87 110 95 L150 78 L153 92 L113 104 Q109 122 105 140 Z"/>
+  <!-- the intercepted cipher, clutched behind his back -->
+  <polygon points="32,94 58,85 61,94 35,103" fill="#C9A227"/>
+</svg>
