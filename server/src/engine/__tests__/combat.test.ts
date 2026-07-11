@@ -550,10 +550,13 @@ function bombardArmy(id: string, ownerId: string, locationId: string, count = 1)
 }
 
 describe("Great Bombard (§8.4)", () => {
-  it("an UNLOCKED Great Bombard rolls bombardDice dice/round vs the walls", () => {
-    const p1 = { ...player("p1", Faction.OTTOMAN), greatBombardUnlocked: true };
+  it("a #34-spawned Great Bombard rolls bombardDice dice/round vs the walls once emplaced", () => {
+    // The piece enters play the CANON way: the GameState.greatBombard singleton (set
+    // by Omen #34) + a GREAT_BOMBARD variant unit in the besieging force. Its physical
+    // presence — not any Player flag — authorizes enhanced fire. emplacedRound 2 with
+    // the default round 3 means it is past its 1-round emplacement and may fire.
     const state = makeState({
-      players: [p1, player("p2", Faction.BYZANTIUM)],
+      players: [player("p1", Faction.OTTOMAN), player("p2", Faction.BYZANTIUM)],
       provinces: [
         province("keep", {
           ownerId: "p2",
@@ -563,6 +566,7 @@ describe("Great Bombard (§8.4)", () => {
         }),
       ],
       armies: [bombardArmy("gb", "p1", "keep")],
+      greatBombard: { inPlay: true, ownerId: "p1", provinceId: "keep", emplacedRound: 2 },
       siegeStates: [siegeState({ besiegingArmyIds: ["gb"] })],
     });
     // No generic guns roll first → the Bombard's `bombardDice` dice are the first
@@ -573,34 +577,13 @@ describe("Great Bombard (§8.4)", () => {
     expected = Math.min(expected, GREAT_BOMBARD.maxWallDamagePerRound);
     const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
     expect(res.wallHpRemaining).toBe(10 - expected);
-    // enhanced fire: a single Bombard removes more than a single ordinary die could
-    // when both dice are non-trivial (sanity: at least the smaller single die).
+    // enhanced fire: the Bombard fires its full bombardDice (not one ordinary die).
     expect(10 - res.wallHpRemaining).toBe(expected);
   });
 
-  it("a LOCKED Great Bombard fires as an ordinary single-die siege gun", () => {
-    // p1 has NOT unlocked it → the piece is treated as one generic SIEGE gun.
+  it("a #34-spawned Great Bombard cracks Theodosian walls despite the T5 masonry cap (§8.3/§8.4)", () => {
     const state = makeState({
-      provinces: [
-        province("keep", {
-          ownerId: "p2",
-          terrain: TerrainType.CITY,
-          walls: { tier: 3, hp: 10 }, // FL-14: 10 HP is T3 (10/+3) in the restored 5-tier model
-          garrison: 1,
-        }),
-      ],
-      armies: [bombardArmy("gb", "p1", "keep")],
-      siegeStates: [siegeState({ besiegingArmyIds: ["gb"] })],
-    });
-    const singleDie = SIEGE.bombardDamage[makeRng(SEED, 0).rollD6()];
-    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
-    expect(res.wallHpRemaining).toBe(10 - singleDie);
-  });
-
-  it("an UNLOCKED Great Bombard cracks Theodosian walls despite the T5 masonry cap (§8.3/§8.4)", () => {
-    const p1 = { ...player("p1", Faction.OTTOMAN), greatBombardUnlocked: true };
-    const state = makeState({
-      players: [p1, player("p2", Faction.BYZANTIUM)],
+      players: [player("p1", Faction.OTTOMAN), player("p2", Faction.BYZANTIUM)],
       provinces: [
         province("constantinople", {
           ownerId: "p2",
@@ -610,12 +593,14 @@ describe("Great Bombard (§8.4)", () => {
         }),
       ],
       armies: [bombardArmy("gb", "p1", "constantinople")],
+      // Canon spawn: singleton + variant piece; emplaced (emplacedRound 2 < round 3).
+      greatBombard: { inPlay: true, ownerId: "p1", provinceId: "constantinople", emplacedRound: 2 },
       siegeStates: [siegeState({ provinceId: "constantinople", besiegingArmyIds: ["gb"] })],
     });
-    // An ordinary train would be held to SIEGE.t5MasonryCapPerRound, but an unlocked
-    // Bombard lifts the cap for the whole train → the walls take real damage.
+    // An ordinary train would be held to SIEGE.t5MasonryCapPerRound, but the presence
+    // of the emplaced Bombard lifts the cap for the whole train → real wall damage.
     const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
-    expect(res.wallHpRemaining).toBeLessThan(16);
+    expect(res.wallHpRemaining).toBeLessThan(16 - SIEGE.t5MasonryCapPerRound);
   });
 });
 
@@ -629,11 +614,10 @@ describe("Great Bombard (§8.4)", () => {
 describe("Great Bombard 1-round emplacement (§8.4, delta 3)", () => {
   /** A siege state where the ONLY besieger is the emplacing Great Bombard. */
   const emplacingState = (round: number, emplacedRound: number): GameState => {
-    const p1 = { ...player("p1", Faction.OTTOMAN), greatBombardUnlocked: true };
     return makeState({
       round,
       turn: round,
-      players: [p1, player("p2", Faction.BYZANTIUM)],
+      players: [player("p1", Faction.OTTOMAN), player("p2", Faction.BYZANTIUM)],
       provinces: [
         province("keep", {
           ownerId: "p2",
