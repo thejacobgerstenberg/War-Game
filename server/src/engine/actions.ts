@@ -638,6 +638,18 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       return resolveCard(state, action.cardId);
     }
 
+    // PREP2 stubs — new GameAction variants wired for typecheck exhaustiveness.
+    // The tactic / diplomacy / vassal agents replace these bodies (see CONTRACT2).
+    case "PLAY_TACTIC":
+    case "DECLARE_WAR":
+    case "LEVY_CALL": {
+      requirePlayer(state, action.player);
+      throw new EngineError(
+        "NOT_IMPLEMENTED",
+        `Action ${action.type} is not yet implemented.`,
+      );
+    }
+
     default: {
       // Exhaustiveness guard.
       const _never: never = action;

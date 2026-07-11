@@ -425,6 +425,35 @@ export const COMBAT_MODS = {
   routThreshold: 3,
 } as const;
 
+// ---------------------------------------------------------------------------
+// §7.7 Tactic cards
+// ---------------------------------------------------------------------------
+
+/** Max tactic cards a player may hold; discard down to this at Cleanup (§7.7 / CANON). */
+export const TACTIC_HAND_LIMIT = 3;
+
+/**
+ * Tactic-deck timing/composition constants (§7.7 / CANON clarification 2).
+ * The per-design copy DATA lives in `engine/tactics/cards.ts` (tactic agent);
+ * these are the deck-wide rules the round loop / combat layer read.
+ */
+export const TACTIC = {
+  /** Cards a player draws each Income phase (before University bonuses). */
+  drawPerIncome: 1,
+  /** Hand limit (mirrors {@link TACTIC_HAND_LIMIT}). */
+  handLimit: 3,
+  /** Max tactic cards a side may play per battle ROUND (reactions exempt). */
+  maxPlaysPerBattleRound: 1,
+  /** University adds this many extra tactic draws per round (§9.1). */
+  universityDrawBonus: 1,
+  /** Great University adds this many extra tactic draws per round (§9.2). */
+  greatUniversityDrawBonus: 2,
+  /** Physical deck size once all 24 designs are shipped (48 copies). */
+  deckSize: 48,
+  /** Unique tactic designs (CANON: 24, incl. `master-founders-hired` rare #8). */
+  uniqueDesigns: 24,
+} as const;
+
 /** Siege bombardment, garrison starvation and special-bombard values (§8). */
 export const SIEGE = {
   /** Wall HP damage per SIEGE unit, indexed by the d6 roll (1..6). */
@@ -443,6 +472,43 @@ export const SIEGE = {
   greatBombardTierDamage: 2,
   /** Walls repair this many HP per round when out of siege. */
   wallRepairPerRound: 1,
+} as const;
+
+// ---------------------------------------------------------------------------
+// §8.4 The Great Bombard — standalone siege engine (the 11th unit), unlock-gated
+// ---------------------------------------------------------------------------
+
+/**
+ * The Great Bombard (§8.4): one per game, entering only via the Era III Omen
+ * `great-bombard-forged` (EVENT_CARDS.md #34). Modelled as a reserved
+ * `UnitVariantStack` variant tag (base `SIEGE`), consistent with the 10 faction
+ * uniques — it is NOT a `UnitType` member and NOT recruitable. Its per-die wall
+ * damage reuses `SIEGE.bombardDamage`; it rolls `bombardDice` dice per round.
+ */
+export const GREAT_BOMBARD = {
+  /** Reserved {@link UnitVariantStack.variant} tag; base type is SIEGE. */
+  variant: "GREAT_BOMBARD",
+  base: UnitType.SIEGE,
+  /** Free entry — no recruit cost (enters via the Omen only). */
+  cost: {} as Partial<ResourceBundle>,
+  /** Grain upkeep/round; if unpaid it falls SILENT (no bombard) — it never deserts. */
+  grainUpkeep: 3,
+  /** Wall-damage dice rolled per siege round (§8.2 step 2); each uses SIEGE.bombardDamage. */
+  bombardDice: 2,
+  /** Practical ceiling of Wall HP removed per round (2 dice × up to 3). */
+  maxWallDamagePerRound: 6,
+  /** Adds this to assault dice vs walls (standard SIEGE +3). */
+  bombardVsWalls: 3,
+  /** Ignores the T5 masonry cap (§8.3) and un-caps the whole besieging train. */
+  ignoresMasonryCap: true,
+  /** Exactly one exists per game. */
+  onePerGame: true,
+  /** Cannot be recruited, rebuilt or duplicated. */
+  recruitable: false,
+  /** The Omen card (EVENT_CARDS.md #34) that forges/unlocks it. */
+  unlockOmenId: "omen-34",
+  /** Moves 1 province/round (a full Move action); may NOT enter MOUNTAINS. */
+  movePerRound: 1,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -606,6 +672,27 @@ export const PRESTIGE_VALUES = {
     [GreatWorkType.GREAT_UNIVERSITY]: 6,
     [GreatWorkType.GRAND_BAZAAR]: 5,
   } as Record<GreatWorkType, number>,
+} as const;
+
+/**
+ * §13 conquest prestige track: the conquest-related rows of the §13.1 table,
+ * grouped for the prestige subsystem. Battle/war/hold awards mirror the values in
+ * {@link PRESTIGE_VALUES}; the walled-city rows are the §13.1 storm/siege awards.
+ * See CONTRACT2 for the exact §13 scoring rule these encode.
+ */
+export const CONQUEST_PRESTIGE = {
+  /** Take a walled city (T1+) by storm or siege. */
+  takeWalledCity: 2,
+  /** A taken city that is T4–T5 scores this instead (HP-tier ≥ 2 / MAP T4–T5). */
+  takeWalledCityHighTier: 3,
+  /** Win a decisive battle (attacker or defender wipes/routs the enemy). */
+  decisiveBattle: 1,
+  /** Win a field battle while outnumbered (stacks with the decisive award). */
+  outnumberedWin: 1,
+  /** Win a war (force peace, tribute, or vassalage). */
+  winWar: 3,
+  /** Hold an enemy capital, per round (passive). */
+  holdEnemyCapitalPerRound: 3,
 } as const;
 
 /** Prestige victory threshold by player count (§13.2). */

@@ -220,6 +220,52 @@ export interface Card {
   cost: Partial<ResourceBundle>;
 }
 
+// ---------------------------------------------------------------------------
+// Distinct card keyspaces (CANON clarification 2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Nominal id of an **Omen/event-deck** card. Event and tactic slugs live in
+ * SEPARATE keyspaces — `papal-indulgence` and `chain-across-the-horn` legitimately
+ * exist in BOTH decks — so their ids are branded distinctly and are NOT a shared
+ * string-union: a cross-deck slug collision can never silently become a bug.
+ *
+ * A raw string is NOT assignable to a branded id without {@link asEventCardId};
+ * a branded id IS assignable back to `string`, so it flows through the frozen
+ * events subsystem (whose `omenDeck`/`resolveCard` still speak `string`) unchanged.
+ */
+export type EventCardId = string & { readonly __cardDeck: "event" };
+
+/** Nominal id of a **tactic-deck** card (distinct keyspace from {@link EventCardId}). */
+export type TacticCardId = string & { readonly __cardDeck: "tactic" };
+
+/** Cast a raw slug/id to an {@link EventCardId} (events-subsystem boundary helper). */
+export const asEventCardId = (id: string): EventCardId => id as EventCardId;
+
+/** Cast a raw slug/id to a {@link TacticCardId} (tactic-subsystem boundary helper). */
+export const asTacticCardId = (id: string): TacticCardId => id as TacticCardId;
+
+/**
+ * A tactic-deck card design (§7.7). The full 24-design / 48-copy DATA lives in
+ * the server (`engine/tactics/cards.ts`, authored by the tactic agent); this is
+ * the shared shape both the engine and client build against.
+ */
+export interface TacticCard {
+  /** Namespaced tactic slug (distinct keyspace — see {@link TacticCardId}). */
+  id: TacticCardId;
+  name: string;
+  /** Physical copies of this design in the shuffled 48-card deck. */
+  copies: number;
+  /** Printed effect text (human-readable). */
+  effect: string;
+  /** When it may be played (e.g. "battle" | "assault" | "siege" | "play-card" | "reaction"). */
+  timing?: string;
+  /** True for cards that leave the game after resolving (e.g. `greek-fire`). */
+  removedFromGameOnPlay?: boolean;
+  /** Structured effect payload for the tactic resolver. */
+  data?: Record<string, unknown>;
+}
+
 /** A hidden victory goal dealt to a player (3 per faction, scored at game end). */
 export interface SecretObjective {
   id: string;
@@ -334,6 +380,10 @@ export interface PendingBattle {
   amphibious?: boolean;
   /** This battle is an assault on walls (drives siege resolution). */
   isSiege?: boolean;
+  /** Tactic cards the attacker has queued to play in this battle (§7.7). */
+  attackerTactics?: TacticCardId[];
+  /** Tactic cards the defender has queued to play in this battle (§7.7). */
+  defenderTactics?: TacticCardId[];
 }
 
 /**
@@ -447,6 +497,25 @@ export interface Player {
   /** Per-round prestige-accrual scratch: net prestige gained this round (reset
    *  each round by the prestige subsystem; used for the End-phase log/summary). */
   prestigeThisRound?: number;
+  /**
+   * Tactic cards held in hand (§7.7). One is drawn each Income phase; the hand is
+   * pruned to `balance.TACTIC_HAND_LIMIT` at Cleanup. Optional so pre-existing
+   * fixtures/test literals stay valid; `createInitialState` initialises it to `[]`.
+   */
+  tacticHand?: TacticCardId[];
+  /**
+   * True once this player has unlocked the Great Bombard (§8.4). Set by the actions
+   * layer in response to the Omen #34 `kind:'unlock'` modifier whose
+   * `data.unlock === "GREAT_BOMBARD"` targets this player's faction (see CONTRACT2).
+   */
+  greatBombardUnlocked?: boolean;
+  /**
+   * Cumulative conquest-derived prestige awarded to this player (§13 conquest track:
+   * taken walled cities, decisive/outnumbered wins, wars, held enemy capitals).
+   * A running total for the End-phase summary; the prestige subsystem also folds
+   * these into `prestige`.
+   */
+  conquestPrestige?: number;
 }
 
 /**
@@ -477,6 +546,16 @@ export interface GameState {
   omenDiscard: string[];
   /** Card id lists for eras not yet entered (retired eras are deleted). */
   eraDecksRemaining: Partial<Record<1 | 2 | 3, string[]>>;
+  /**
+   * The tactic draw deck (§7.7): built from `TACTIC_CARDS` copies and shuffled by
+   * the seeded RNG at game start; draw from the front each Income phase. Optional
+   * so pre-existing GameState fixtures stay valid; initialised in `createInitialState`.
+   */
+  tacticDeck?: TacticCardId[];
+  /** Tactic discard pile — reshuffled into `tacticDeck` when the deck empties. */
+  tacticDiscard?: TacticCardId[];
+  /** Tactic cards removed from the game (e.g. `greek-fire` after play; never return). */
+  tacticRemoved?: TacticCardId[];
   /** Open bids in this round's mercenary market. */
   mercMarket: MercCompanyOffer[];
   /** NPC minor states on the board. */
