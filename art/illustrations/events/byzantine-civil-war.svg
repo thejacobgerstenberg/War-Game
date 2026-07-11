@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Byzantine Civil War</title>
+
+  <!-- vellum ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#E2D3B3"/>
+
+  <!-- earth line -->
+  <rect x="0" y="146" width="260" height="14" fill="#2B2118"/>
+
+  <!-- left half of the double eagle: the Basileus, in porphyry -->
+  <!-- half body -->
+  <polygon points="128,52 112,58 106,74 108,96 116,112 128,118" fill="#4B1F3F"/>
+  <!-- stepped wing -->
+  <polygon points="112,60 84,46 52,42 24,50 40,60 26,68 44,74 34,86 52,88 46,102 66,98 64,112 84,104 90,118 104,108 110,96" fill="#4B1F3F"/>
+  <!-- neck and head, beak turned outward -->
+  <polygon points="128,56 118,54 108,44 96,36 84,36 76,31 90,26 104,22 116,30 124,42 128,48" fill="#4B1F3F"/>
+  <circle cx="99" cy="30" r="2.5" fill="#E2D3B3"/>
+  <!-- half tail -->
+  <polygon points="128,118 112,124 104,142 118,136 122,146 128,140" fill="#4B1F3F"/>
+  <!-- crown -->
+  <polygon points="88,22 106,20 104,10 98,15 92,9 90,15 84,12" fill="#C9A227"/>
+
+  <!-- right half: the claimant of the second rank, in crimson -->
+  <polygon points="132,52 148,58 154,74 152,96 144,112 132,118" fill="#7A1F2B"/>
+  <polygon points="148,60 176,46 208,42 236,50 220,60 234,68 216,74 226,86 208,88 214,102 194,98 196,112 176,104 170,118 156,108 150,96" fill="#7A1F2B"/>
+  <polygon points="132,56 142,54 152,44 164,36 176,36 184,31 170,26 156,22 144,30 136,42 132,48" fill="#7A1F2B"/>
+  <circle cx="161" cy="30" r="2.5" fill="#E2D3B3"/>
+  <polygon points="132,118 148,124 156,142 142,136 138,146 132,140" fill="#7A1F2B"/>
+  <polygon points="172,22 154,20 156,10 162,15 168,9 170,15 176,12" fill="#C9A227"/>
+
+  <!-- the fissure: empire torn to bare vellum between the two heads -->
+  <polygon points="133,0 128,16 137,34 126,50 138,68 127,86 137,102 126,118 136,134 131,146 121,146 126,134 116,118 127,102 117,86 128,68 116,50 127,34 118,16 123,0" fill="#E2D3B3"/>
+
+  <!-- the purse at the ground: gold that may yet settle the quarrel -->
+  <circle cx="112" cy="139" r="7" fill="#C9A227"/>
+  <circle cx="148" cy="139" r="7" fill="#C9A227"/>
+  <circle cx="130" cy="142" r="7" fill="#C9A227"/>
+  <circle cx="130" cy="142" r="3" fill="#2B2118"/>
+</svg>

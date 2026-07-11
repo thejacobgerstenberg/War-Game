@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Knights of Rhodes Sortie</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- morning sun over Rhodes -->
+  <circle cx="28" cy="26" r="10" fill="#C9A227"/>
+
+  <!-- corsairs scatter as gulls before a hawk -->
+  <path d="M190 34 Q196 27 202 34 M202 34 Q208 27 214 34" stroke="#2B2118" stroke-width="3" fill="none"/>
+  <path d="M216 52 Q221 46 226 52 M226 52 Q231 46 236 52" stroke="#2B2118" stroke-width="3" fill="none"/>
+
+  <!-- the sea that keeps its manners -->
+  <path d="M-4 96 Q9 84 22 96 Q35 84 48 96 Q61 84 74 96 Q87 84 100 96 Q113 84 126 96 Q139 84 152 96 Q165 84 178 96 Q191 84 204 96 Q217 84 230 96 Q243 84 256 96 Q269 84 282 96 L282 164 L-4 164 Z" fill="#2C5F7C"/>
+  <path d="M12 132 Q25 124 38 132 Q51 124 64 132" stroke="#F0E6D2" stroke-width="3" fill="none"/>
+  <path d="M104 144 Q117 136 130 144 Q143 136 156 144" stroke="#F0E6D2" stroke-width="3" fill="none"/>
+
+  <!-- fleeing corsair galliot, heeling away -->
+  <polygon points="226,124 258,118 254,134 232,136" fill="#2B2118"/>
+  <path d="M244 121 L256 94" stroke="#2B2118" stroke-width="3" fill="none"/>
+  <polygon points="256,94 240,114 252,118" fill="#2B2118"/>
+
+  <!-- a second sail running for the horizon -->
+  <polygon points="238,94 258,90 255,100 242,100" fill="#2B2118"/>
+  <polygon points="252,76 245,92 253,92" fill="#2B2118"/>
+
+  <!-- focal subject: the black galley of Saint John, prow to the chase -->
+  <polygon points="44,100 186,100 204,86 210,104 194,120 56,120 42,110" fill="#2B2118"/>
+  <polygon points="204,102 232,95 208,112" fill="#2B2118"/>
+  <path d="M76 118 L64 142 M100 118 L88 142 M124 118 L112 142 M148 118 L136 142 M170 116 L180 140" stroke="#2B2118" stroke-width="4" fill="none"/>
+
+  <!-- the white cross upon the hull -->
+  <rect x="84" y="102" width="6" height="14" fill="#F0E6D2"/>
+  <rect x="78" y="106" width="18" height="6" fill="#F0E6D2"/>
+
+  <!-- mast, lateen yard, and the crossed sail of the Order -->
+  <rect x="116" y="12" width="5" height="90" fill="#2B2118"/>
+  <path d="M76 64 L172 24" stroke="#2B2118" stroke-width="4" fill="none"/>
+  <polygon points="78,62 170,26 134,92" fill="#7A1F2B"/>
+  <rect x="122" y="46" width="9" height="28" fill="#F0E6D2"/>
+  <rect x="112" y="55" width="29" height="9" fill="#F0E6D2"/>
+
+  <!-- the swallowtail banner of the Religion -->
+  <polygon points="121,14 158,18 148,24 158,30 121,34" fill="#7A1F2B"/>
+</svg>
