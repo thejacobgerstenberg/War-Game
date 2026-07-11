@@ -4,11 +4,14 @@ import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-// Screenshots/evidence land in e2e/output by default; QA runs override with
-// BOARD_SHOTS_DIR to collect evidence outside the repo. No __dirname here:
-// the workspace is ESM ("type":"module"), so derive it from import.meta.url.
+// Screenshots/evidence land under the harness's gitignored e2e/test-results
+// dir by default; QA runs override with BOARD_SHOTS_DIR to collect evidence
+// outside the repo. No __dirname here: the workspace is ESM
+// ("type":"module"), so derive it from import.meta.url.
 const SPEC_DIR = path.dirname(fileURLToPath(import.meta.url));
-const SHOTS_DIR = process.env.BOARD_SHOTS_DIR ?? path.join(SPEC_DIR, "output");
+const SHOTS_DIR =
+  process.env.BOARD_SHOTS_DIR ??
+  path.join(SPEC_DIR, "..", "..", "test-results", "board-output");
 
 // The canon-id fixture SVG (a test asset, not art) is served to the page via
 // route interception and mounted through the Board's `svgUrl` override.
@@ -79,6 +82,11 @@ async function pointOnShape(page: Page, id: string): Promise<{ x: number; y: num
 }
 
 test.describe.configure({ mode: "serial" });
+
+// The root harness project uses Desktop Chrome's default 1280x720; the board
+// evidence shots and hit-scan geometry were built against the desktop size
+// the retired client-local config used, so pin it per-suite here.
+test.use({ viewport: { width: 1440, height: 900 } });
 
 // ---------------------------------------------------------------------------
 // Real demo: the vendored hand-drawn SVG with the RETIRED id scheme. Canon
