@@ -5,7 +5,7 @@
 This is the canonical province registry. Every province ID here is authoritative; `FACTIONS.md`
 and `EVENT_CARDS.md` reference these exact IDs. IDs are kebab-case (e.g. `constantinople`).
 
-- **55 land provinces** across 8 broad regions.
+- **55 land provinces** across 8 broad regions (canonical region list in §3).
 - **12 named sea zones** for fleet movement, trade and blockade.
 - A fully connected adjacency graph. Italy connects to the East only by sea; the Bosphorus
   bridges Europe and Asia at Constantinople.
@@ -21,7 +21,7 @@ Five resources. **Gold** and **Grain** are the core economy; the other three bui
 | **Gold** | 🪙 | Raise & pay all units (esp. mercenaries, Janissaries, knights); buildings; bribes; loans |
 | **Grain** | 🌾 | Sustain armies each round (upkeep); population; famine is deadly |
 | **Timber** | 🪵 | War galleys, merchant galleys, siege engines, wall repairs |
-| **Stone** | 🪨 | Walls & fortresses (raise/repair wall tiers), great works, stone-throwing siege engines. Includes marble/silver where noted |
+| **Marble** | 🪨 | Walls & fortresses (raise/repair wall tiers), great works, stone-throwing siege engines. Covers quarried stone/silver where noted |
 | **Faith** | ✝️ | Church income; sway Orthodox/Catholic neutrals; call crusades; indulgences → gold; prestige |
 
 Each land province lists a **Primary Yield** (produced every round it is controlled and unpillaged)
@@ -33,80 +33,97 @@ and often a **Secondary Yield** (smaller amount). Ports additionally enable trad
 |---------|--------------------|---------------|
 | **city** | gold/faith (trade & population) | Usually walled; the prestige nodes |
 | **plains** | grain | Open; fast cavalry country |
-| **hills** | grain/stone/gold(silver) | Slows movement slightly |
-| **mountains** | timber/stone | Hard to move through; strong on defense |
+| **hills** | grain/marble/gold(silver) | Slows movement slightly |
+| **mountains** | timber/marble | Hard to move through; strong on defense |
 | **forest** | timber | Slows movement; ambush terrain |
 | **coast** | grain(fishing)/gold(trade) | Always a port; embark/disembark fleets |
 
 **Walled City tier** = fortification grade **T1** (light wall) to **T5** (Theodosian Walls). Each tier
 maps to a Wall-HP pool and defender bonus in `GAME_DESIGN.md` §8.1; siege engines batter Wall HP down
-(a city may be assaulted before breach at the escalade penalty), and a lost tier is rebuilt with 🪨 stone
+(a city may be assaulted before breach at the escalade penalty), and a lost tier is rebuilt with 🪨 marble
 via the Build action.
 
 ---
 
 ## 3. Province Registry (55 land provinces)
 
+### Canonical Regions (the 8 broad regions)
+
+Every province belongs to exactly one of these eight regions; the **Region** column below uses
+only these values. Regions are broad groupings for objectives, events and at-a-glance geography —
+they have no adjacency meaning of their own.
+
+| Region | Provinces |
+|--------|-----------|
+| **Italy** (5) | `venice`, `milan`, `genoa`, `rome`, `naples` |
+| **Western Mediterranean** (2) | `sicily`, `tunis` |
+| **Balkans** (12) | `philippopolis`, `sofia`, `wallachia`, `serbia`, `bosnia`, `albania`, `croatia`, `buda`, `belgrade`, `transylvania`, `dalmatia`, `ragusa` |
+| **Thrace & Constantinople** (5) | `constantinople`, `selymbria`, `pera`, `edirne`, `gallipoli` |
+| **Greece & Aegean** (14) | `epirus`, `thessaly`, `thessalonica`, `athens`, `morea`, `modon`, `negroponte`, `chios`, `lesbos`, `lemnos`, `naxos`, `crete`, `corfu`, `rhodes` |
+| **Anatolia** (8) | `bithynia`, `bursa`, `nicaea`, `ankara`, `konya`, `kastamonu`, `smyrna`, `antalya` |
+| **Black Sea** (4) | `varna`, `sinope`, `trebizond`, `kaffa` |
+| **Levant & Egypt** (5) | `aleppo`, `antioch`, `cairo`, `alexandria`, `cyprus` |
+
 Prestige/Value nodes (high-value economic & scoring cities) are flagged in **Notes** as `HV(n)`.
 
 | ID | Name | Region | Terrain | Primary | Secondary | Port? | Walls | Starting Owner | Notes |
 |----|------|--------|---------|---------|-----------|-------|-------|----------------|-------|
-| `constantinople` | Constantinople | Thrace / Marmara | city | 🪙 gold | ✝️ faith | Y | **T5** | **Byzantium** | Capital. Theodosian Walls. **HV(5)**. Sudden-death objective. |
-| `selymbria` | Selymbria | Thrace | coast | 🌾 grain | — | Y | — | **Byzantium** | Byzantine buffer on the Marmara shore. |
-| `pera` | Pera (Galata) | Bosphorus | city | 🪙 gold | — | Y | T1 | **Genoa** | Genoese enclave across the Golden Horn from Constantinople. |
-| `edirne` | Edirne (Adrianople) | Thrace | plains | 🌾 grain | 🪙 gold | N | T3 | **Ottomans** | Ottoman European capital. |
-| `gallipoli` | Gallipoli | Thrace / Dardanelles | coast | 🌾 grain | 🪵 timber | Y | T2 | **Ottomans** | Controls the Dardanelles; Ottoman naval base. |
-| `philippopolis` | Philippopolis (Plovdiv) | Bulgaria | plains | 🌾 grain | — | N | — | **Ottomans** | Thracian road hub. |
-| `sofia` | Sofia | Bulgaria | hills | 🌾 grain | 🪨 stone | N | — | **Ottomans** | Balkan crossroads. |
-| `varna` | Varna | Bulgaria (coast) | coast | 🌾 grain | 🪙 gold | Y | T1 | Independent | Battlefield of 1444. |
-| `wallachia` | Wallachia | Danube | plains | 🌾 grain | 🪵 timber | N | — | Independent | Voivodship; Danube frontier. NPC minor. |
-| `serbia` | Serbia (Smederevo) | Serbia | hills | 🪙 gold | 🪨 stone | N | T2 | Independent | Despotate; Novo Brdo silver. NPC minor. |
-| `bosnia` | Bosnia | Bosnia | mountains | 🪨 stone | 🪵 timber | N | T1 | Independent | Silver & lead; heretic frontier. |
-| `albania` | Albania (Krujë) | Albania | mountains | 🪵 timber | 🪨 stone | Y | T1 | Independent | Highland clans (Skanderbeg country). |
-| `epirus` | Epirus (Arta) | NW Greece | mountains | 🪵 timber | 🌾 grain | Y | — | Independent | Despotate of Epirus. |
-| `thessaly` | Thessaly (Larissa) | Greece | plains | 🌾 grain | — | N | — | Independent | Fertile plain. |
-| `thessalonica` | Thessalonica | Macedonia | city | 🪙 gold | ✝️ faith | Y | T3 | **Byzantium** | Second Byzantine city. **HV(3)**. |
-| `athens` | Athens | Greece | city | 🪨 stone | ✝️ faith | Y | T2 | Independent | Duchy of Athens (Acciaioli). **HV(3)**. Marble. |
-| `morea` | Morea (Mistra) | Peloponnese | hills | 🌾 grain | ✝️ faith | N | T2 | **Byzantium** | Despotate of the Morea; Mistra. |
-| `modon` | Modon & Coron | Peloponnese | coast | 🪙 gold | 🌾 grain | Y | T1 | **Venice** | "The eyes of the Republic." |
-| `venice` | Venice | Veneto | city | 🪙 gold | 🪵 timber | Y | T3 | **Venice** | Capital; the Arsenal. **HV(4)**. |
-| `milan` | Milan | Lombardy | plains | 🪙 gold | 🪨 stone | N | T2 | Independent | Armorers & condottieri (Duchy of Milan). |
-| `genoa` | Genoa | Liguria | city | 🪙 gold | 🪨 stone | Y | T3 | **Genoa** | Capital; the Bank of St George. **HV(4)**. |
-| `rome` | Rome | Latium | city | ✝️ faith | 🪙 gold | Y | T4 | Independent | Papal States. **HV(4)**. Source of indulgences & crusades. |
-| `naples` | Naples | Campania | city | 🌾 grain | 🪙 gold | Y | T3 | Independent | Aragonese kingdom. **HV(3)**. |
-| `sicily` | Sicily (Palermo) | Sicily | coast | 🌾 grain | 🪙 gold | Y | T2 | Independent | Aragon's granary. |
-| `tunis` | Tunis | Ifriqiya | coast | 🪙 gold | 🌾 grain | Y | T1 | Independent | Hafsid corsair nest. |
-| `dalmatia` | Dalmatia (Zara/Split) | Dalmatia | coast | 🪵 timber | 🪨 stone | Y | T1 | **Venice** | Arsenal oak & stone. |
-| `ragusa` | Ragusa | Dalmatia | city | 🪙 gold | — | Y | T2 | Independent | Merchant republic; tribute-payer. NPC minor. |
-| `croatia` | Croatia (Zagreb) | Croatia | forest | 🪵 timber | 🌾 grain | N | — | **Hungary** | Frontier march. |
-| `buda` | Buda | Hungary | city | 🪙 gold | 🌾 grain | R | T3 | **Hungary** | Capital; Danube river port. |
-| `belgrade` | Belgrade (Nándorfehérvár) | Danube | city | 🌾 grain | 🪨 stone | R | **T4** | **Hungary** | Key Danube fortress guarding the Balkans. |
-| `transylvania` | Transylvania | Carpathia | forest | 🪙 gold | 🪵 timber | N | T1 | **Hungary** | Gold & salt mines. |
-| `bithynia` | Bithynia (Nicomedia) | NW Anatolia | hills | 🌾 grain | 🪵 timber | Y | — | **Ottomans** | Asian shore of the Bosphorus. |
-| `bursa` | Bursa | NW Anatolia | hills | 🪙 gold | 🌾 grain | N | T3 | **Ottomans** | First Ottoman capital; silk. |
-| `nicaea` | Nicaea (İznik) | NW Anatolia | city | 🌾 grain | ✝️ faith | N | T2 | **Ottomans** | Council city; lake fortress. |
-| `ankara` | Ankara | Central Anatolia | plains | 🌾 grain | 🪨 stone | N | T1 | Independent | Post-Timur contested; angora wool. NPC minor (Karaman league). |
-| `konya` | Konya | S-Central Anatolia | plains | 🌾 grain | 🪨 stone | N | T1 | Independent | Karaman beylik seat. NPC minor. |
-| `kastamonu` | Kastamonu | N Anatolia | mountains | 🪵 timber | 🪨 stone | N | — | Independent | Candar / İsfendiyar beylik. |
-| `sinope` | Sinope | N Anatolia | coast | 🪵 timber | 🪙 gold | Y | T1 | Independent | Black Sea shipyards. |
-| `smyrna` | Smyrna (İzmir) | W Anatolia | coast | 🪙 gold | 🌾 grain | Y | T1 | Independent | Aydın beylik port. |
-| `antalya` | Antalya (Attaleia) | S Anatolia | coast | 🌾 grain | 🪙 gold | Y | — | Independent | Teke coast. |
-| `trebizond` | Trebizond | Pontus | city | 🪙 gold | ✝️ faith | Y | T3 | Independent | Empire of Trebizond. **HV(3)**. Silk terminus. NPC minor. |
-| `aleppo` | Aleppo | Levant | plains | 🪙 gold | 🌾 grain | N | T1 | Independent | Mamluk caravan city. |
-| `antioch` | Antioch | Levant | coast | 🌾 grain | 🪙 gold | Y | T1 | Independent | Mamluk frontier. |
+| `constantinople` | Constantinople | Thrace & Constantinople | city | 🪙 gold | ✝️ faith | Y | **T5** | **Byzantium** | Capital. Theodosian Walls. **HV(5)**. Sudden-death objective. |
+| `selymbria` | Selymbria | Thrace & Constantinople | coast | 🌾 grain | — | Y | — | **Byzantium** | Byzantine buffer on the Marmara shore. |
+| `pera` | Pera (Galata) | Thrace & Constantinople | city | 🪙 gold | — | Y | T1 | **Genoa** | Genoese enclave across the Golden Horn from Constantinople. |
+| `edirne` | Edirne (Adrianople) | Thrace & Constantinople | plains | 🌾 grain | 🪙 gold | N | T3 | **Ottomans** | Ottoman European capital. |
+| `gallipoli` | Gallipoli | Thrace & Constantinople | coast | 🌾 grain | 🪵 timber | Y | T2 | **Ottomans** | Controls the Dardanelles; Ottoman naval base. |
+| `philippopolis` | Philippopolis (Plovdiv) | Balkans | plains | 🌾 grain | — | N | — | **Ottomans** | Thracian road hub. |
+| `sofia` | Sofia | Balkans | hills | 🌾 grain | 🪨 marble | N | — | **Ottomans** | Balkan crossroads. |
+| `varna` | Varna | Black Sea | coast | 🌾 grain | 🪙 gold | Y | T1 | Independent | Battlefield of 1444. |
+| `wallachia` | Wallachia | Balkans | plains | 🌾 grain | 🪵 timber | N | — | Independent | Voivodship; Danube frontier. NPC minor. |
+| `serbia` | Serbia (Smederevo) | Balkans | hills | 🪙 gold | 🪨 marble | N | T2 | Independent | Despotate; Novo Brdo silver. NPC minor. |
+| `bosnia` | Bosnia | Balkans | mountains | 🪨 marble | 🪵 timber | N | T1 | Independent | Silver & lead; heretic frontier. |
+| `albania` | Albania (Krujë) | Balkans | mountains | 🪵 timber | 🪨 marble | Y | T1 | Independent | Highland clans (Skanderbeg country). |
+| `epirus` | Epirus (Arta) | Greece & Aegean | mountains | 🪵 timber | 🌾 grain | Y | — | Independent | Despotate of Epirus. |
+| `thessaly` | Thessaly (Larissa) | Greece & Aegean | plains | 🌾 grain | — | N | — | Independent | Fertile plain. |
+| `thessalonica` | Thessalonica | Greece & Aegean | city | 🪙 gold | ✝️ faith | Y | T3 | **Byzantium** | Second Byzantine city. **HV(3)**. |
+| `athens` | Athens | Greece & Aegean | city | 🪨 marble | ✝️ faith | Y | T2 | Independent | Duchy of Athens (Acciaioli). **HV(3)**. Marble. |
+| `morea` | Morea (Mistra) | Greece & Aegean | hills | 🌾 grain | ✝️ faith | N | T2 | **Byzantium** | Despotate of the Morea; Mistra. |
+| `modon` | Modon & Coron | Greece & Aegean | coast | 🪙 gold | 🌾 grain | Y | T1 | **Venice** | "The eyes of the Republic." |
+| `venice` | Venice | Italy | city | 🪙 gold | 🪵 timber | Y | T3 | **Venice** | Capital; the Arsenal. **HV(4)**. |
+| `milan` | Milan | Italy | plains | 🪙 gold | 🪨 marble | N | T2 | Independent | Armorers & condottieri (Duchy of Milan). |
+| `genoa` | Genoa | Italy | city | 🪙 gold | 🪨 marble | Y | T3 | **Genoa** | Capital; the Bank of St George. **HV(4)**. |
+| `rome` | Rome | Italy | city | ✝️ faith | 🪙 gold | Y | T4 | Independent | Papal States. **HV(4)**. Source of indulgences & crusades. |
+| `naples` | Naples | Italy | city | 🌾 grain | 🪙 gold | Y | T3 | Independent | Aragonese kingdom. **HV(3)**. |
+| `sicily` | Sicily (Palermo) | Western Mediterranean | coast | 🌾 grain | 🪙 gold | Y | T2 | Independent | Aragon's granary. |
+| `tunis` | Tunis | Western Mediterranean | coast | 🪙 gold | 🌾 grain | Y | T1 | Independent | Hafsid corsair nest. |
+| `dalmatia` | Dalmatia (Zara/Split) | Balkans | coast | 🪵 timber | 🪨 marble | Y | T1 | **Venice** | Arsenal oak & marble. |
+| `ragusa` | Ragusa | Balkans | city | 🪙 gold | — | Y | T2 | Independent | Merchant republic; tribute-payer. NPC minor. |
+| `croatia` | Croatia (Zagreb) | Balkans | forest | 🪵 timber | 🌾 grain | N | — | **Hungary** | Frontier march. |
+| `buda` | Buda | Balkans | city | 🪙 gold | 🌾 grain | R | T3 | **Hungary** | Capital; Danube river port. |
+| `belgrade` | Belgrade (Nándorfehérvár) | Balkans | city | 🌾 grain | 🪨 marble | R | **T4** | **Hungary** | Key Danube fortress guarding the Balkans. |
+| `transylvania` | Transylvania | Balkans | forest | 🪙 gold | 🪵 timber | N | T1 | **Hungary** | Gold & salt mines. |
+| `bithynia` | Bithynia (Nicomedia) | Anatolia | hills | 🌾 grain | 🪵 timber | Y | — | **Ottomans** | Asian shore of the Bosphorus. |
+| `bursa` | Bursa | Anatolia | hills | 🪙 gold | 🌾 grain | N | T3 | **Ottomans** | First Ottoman capital; silk. |
+| `nicaea` | Nicaea (İznik) | Anatolia | city | 🌾 grain | ✝️ faith | N | T2 | **Ottomans** | Council city; lake fortress. |
+| `ankara` | Ankara | Anatolia | plains | 🌾 grain | 🪨 marble | N | T1 | Independent | Post-Timur contested; angora wool. NPC minor (Karaman league). |
+| `konya` | Konya | Anatolia | plains | 🌾 grain | 🪨 marble | N | T1 | Independent | Karaman beylik seat. NPC minor. |
+| `kastamonu` | Kastamonu | Anatolia | mountains | 🪵 timber | 🪨 marble | N | — | Independent | Candar / İsfendiyar beylik. |
+| `sinope` | Sinope | Black Sea | coast | 🪵 timber | 🪙 gold | Y | T1 | Independent | Black Sea shipyards. |
+| `smyrna` | Smyrna (İzmir) | Anatolia | coast | 🪙 gold | 🌾 grain | Y | T1 | Independent | Aydın beylik port. |
+| `antalya` | Antalya (Attaleia) | Anatolia | coast | 🌾 grain | 🪙 gold | Y | — | Independent | Teke coast. |
+| `trebizond` | Trebizond | Black Sea | city | 🪙 gold | ✝️ faith | Y | T3 | Independent | Empire of Trebizond. **HV(3)**. Silk terminus. NPC minor. |
+| `aleppo` | Aleppo | Levant & Egypt | plains | 🪙 gold | 🌾 grain | N | T1 | Independent | Mamluk caravan city. |
+| `antioch` | Antioch | Levant & Egypt | coast | 🌾 grain | 🪙 gold | Y | T1 | Independent | Mamluk frontier. |
 | `damascus`? — *(not used)* | — | — | — | — | — | — | — | — | *(Levant folded into Aleppo/Cairo)* |
-| `cairo` | Cairo | Egypt | city | 🪙 gold | ✝️ faith | N | T2 | Independent | Mamluk capital. **HV(3)**. |
-| `alexandria` | Alexandria | Egypt | coast | 🌾 grain | 🪙 gold | Y | T2 | Independent | Nile grain + spice. **HV(3)**. |
-| `cyprus` | Cyprus | E Mediterranean | coast | 🪙 gold | 🌾 grain | Y | T2 | Independent | Lusignan kingdom; sugar & wine. |
-| `rhodes` | Rhodes | Dodecanese | coast | 🪙 gold | ✝️ faith | Y | T3 | Independent | Knights Hospitaller. NPC minor. |
-| `chios` | Chios | Aegean | coast | 🪙 gold | — | Y | T1 | **Genoa** | Mastic & alum; the Maona. |
-| `lesbos` | Lesbos (Mytilene) | Aegean | hills | 🪵 timber | 🪙 gold | Y | T1 | **Genoa** | Gattilusio lordship. |
-| `lemnos` | Lemnos | Aegean | plains | 🌾 grain | — | Y | T1 | **Byzantium** | Byzantine granary isle. |
-| `negroponte` | Negroponte (Euboea) | Aegean | coast | 🌾 grain | 🪙 gold | Y | T2 | **Venice** | Venetian bailo's seat. |
-| `naxos` | Naxos | Cyclades | hills | 🪙 gold | 🪨 stone | Y | T1 | Independent | Duchy of the Archipelago; marble. |
-| `crete` | Crete (Candia) | Sea of Crete | hills | 🪙 gold | 🌾 grain | Y | T2 | **Venice** | **HV(3)**. Wine; Arsenal timber depot. |
-| `corfu` | Corfu | Ionian | coast | 🪙 gold | 🌾 grain | Y | T2 | **Venice** | Venetian gate of the Adriatic. |
-| `kaffa` | Kaffa (Caffa) | Crimea | city | 🪙 gold | 🌾 grain | Y | T2 | **Genoa** | Black Sea colony. **HV(3)**. Grain & slave trade. |
+| `cairo` | Cairo | Levant & Egypt | city | 🪙 gold | ✝️ faith | N | T2 | Independent | Mamluk capital. **HV(3)**. |
+| `alexandria` | Alexandria | Levant & Egypt | coast | 🌾 grain | 🪙 gold | Y | T2 | Independent | Nile grain + spice. **HV(3)**. |
+| `cyprus` | Cyprus | Levant & Egypt | coast | 🪙 gold | 🌾 grain | Y | T2 | Independent | Lusignan kingdom; sugar & wine. |
+| `rhodes` | Rhodes | Greece & Aegean | coast | 🪙 gold | ✝️ faith | Y | T3 | Independent | Knights Hospitaller. NPC minor. |
+| `chios` | Chios | Greece & Aegean | coast | 🪙 gold | — | Y | T1 | **Genoa** | Mastic & alum; the Maona. |
+| `lesbos` | Lesbos (Mytilene) | Greece & Aegean | hills | 🪵 timber | 🪙 gold | Y | T1 | **Genoa** | Gattilusio lordship. |
+| `lemnos` | Lemnos | Greece & Aegean | plains | 🌾 grain | — | Y | T1 | **Byzantium** | Byzantine granary isle. |
+| `negroponte` | Negroponte (Euboea) | Greece & Aegean | coast | 🌾 grain | 🪙 gold | Y | T2 | **Venice** | Venetian bailo's seat. |
+| `naxos` | Naxos | Greece & Aegean | hills | 🪙 gold | 🪨 marble | Y | T1 | Independent | Duchy of the Archipelago; marble. |
+| `crete` | Crete (Candia) | Greece & Aegean | hills | 🪙 gold | 🌾 grain | Y | T2 | **Venice** | **HV(3)**. Wine; Arsenal timber depot. |
+| `corfu` | Corfu | Greece & Aegean | coast | 🪙 gold | 🌾 grain | Y | T2 | **Venice** | Venetian gate of the Adriatic. |
+| `kaffa` | Kaffa (Caffa) | Black Sea | city | 🪙 gold | 🌾 grain | Y | T2 | **Genoa** | Black Sea colony. **HV(3)**. Grain & slave trade. |
 
 > **Note on the registry:** the line for `damascus` is deliberately marked *not used* — the Syrian
 > interior is folded into `aleppo` and `cairo` to keep the Mamluk edge compact. **The board is 55 live
@@ -248,9 +265,18 @@ if adjacent (Bosphorus, Strait of Messina). Sea zones a province borders are lis
 
 ## 7. Sea Zones (12)
 
-Fleets move between adjacent sea zones and may enter/leave any bordering port province. War galleys
+Fleets move between adjacent sea zones and may enter/leave any bordering **port** province. War galleys
 fight for control of a zone; a zone controlled by an enemy fleet is **blockaded** (trade gold through it
 is denied, and ports on it cannot be reinforced by sea).
+
+> **Coastal vs Port.** A province that appears in a zone's *Provinces Touched* column (equivalently,
+> lists that zone under *Sea Zones* in §6) is **coastal**: fleets in that zone are adjacent to it, and
+> naval landings against it are possible. **Port? = Y** grants strictly more — a port additionally
+> enables **trade routes**, **naval recruitment/berthing**, and army **embark/disembark without
+> penalty**. Five provinces — `wallachia`, `thessaly`, `morea`, `bursa`, `kastamonu` — are deliberately
+> **coastal non-ports** (Port = N): their shores are open beach or cliff with no fleet-grade harbor, so
+> they can be raided or invaded from the sea but cannot base fleets, anchor trade, or embark without
+> the non-port penalty. (`buda` and `belgrade` are **R** river ports — Danube only, on no sea zone.)
 
 | Sea Zone | Connects To (zones) | Provinces Touched | Piracy / Blockade Notes |
 |----------|---------------------|-------------------|-------------------------|
@@ -266,6 +292,13 @@ is denied, and ports on it cannot be reinforced by sea).
 | `black-sea-west` | `bosphorus`, `black-sea-east` | `varna`, `wallachia`, `kaffa` | Entered only via the Bosphorus — closing the strait strands western Black Sea trade. |
 | `black-sea-east` | `black-sea-west`, `sea-of-azov` | `sinope`, `trebizond`, `kastamonu`, `kaffa` | Genoese/Trapezuntine grain & silk. Freezes in the *Hard Winter* event. |
 | `sea-of-azov` | `black-sea-east` | `kaffa` | Shallow northern gulf; grain & slave markets. Dead-end zone; frozen in winter. |
+
+**Why `eastern-mediterranean` is so wide:** the zone intentionally spans the whole southern open
+water in a single belt, from `tunis` in the west to `alexandria` in the east. This is a design
+decision, not a bug: the south of the board is one long, hazardous open-sea transit — high piracy
+(Mamluk & Hafsid corsairs), few friendly ports, long supply lines — rather than a zone-by-zone
+contested theatre like the Aegean. The **12-zone scheme is frozen**: the art board is built on it,
+so this belt must not be subdivided.
 
 **Genoa's lifeline:** from `genoa` (Tyrrhenian) the shortest fleet route to `kaffa` is the long chain
 `tyrrhenian → ionian → sea-of-crete → aegean → sea-of-marmara → bosphorus → black-sea-west` (a southern
