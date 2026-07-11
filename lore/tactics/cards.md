@@ -108,9 +108,9 @@ is ratified. Flavor text follows `lore/STYLE.md`; effect lines follow UI convent
 *The sea itself burned, and water would not put it out.*
 **Effect:** Win one fleet battle outright, before any dice are cast; then discard this card. *(proposed — design to ratify)*
 
-### `the-guns-of-orban`
-**The Guns of Orban**
-*The City could not meet the founder's price, so the wall met his gun.*
+### `master-founders-hired`
+**Master Founders Hired**
+*Men who cast thunder in bronze did not come cheap; the treasury paid, and did not haggle.*
 **Effect:** In one siege, cancel the wall bonus for one full round and add 1 die to your assault. *(proposed — design to ratify)*
 
 ### `treason-at-the-gate`
