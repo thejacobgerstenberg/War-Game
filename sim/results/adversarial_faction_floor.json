@@ -12,7 +12,7 @@
       "allOpportunist"
     ],
     "smoke": false,
-    "elapsedMs": 57347,
+    "elapsedMs": 89928,
     "thresholds": {
       "floor": 0.05,
       "ceiling": 0.55,
@@ -29,23 +29,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 256702427,
-          "focalWins": 126,
-          "focalWinRate": 0.42,
+          "focalWins": 38,
+          "focalWinRate": 0.12666666666666668,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 180,
-            "cap": 101,
-            "suddenDeath": 19,
+            "threshold": 148,
+            "cap": 126,
+            "suddenDeath": 26,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.733333333333333,
-          "capCloseMargin": 39,
-          "capCloseMarginRate": 0.13,
+          "meanRounds": 15.256666666666666,
+          "capCloseMargin": 22,
+          "capCloseMarginRate": 0.07333333333333333,
           "focalWinTypes": {
-            "threshold": 86,
-            "cap": 40,
+            "threshold": 32,
+            "cap": 6,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -56,23 +56,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 391196674,
-          "focalWins": 218,
-          "focalWinRate": 0.7266666666666667,
+          "focalWins": 35,
+          "focalWinRate": 0.11666666666666667,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 199,
-            "cap": 87,
-            "suddenDeath": 14,
+            "threshold": 90,
+            "cap": 156,
+            "suddenDeath": 54,
             "elimination": 0
           },
-          "medianRounds": 15,
-          "meanRounds": 14.24,
-          "capCloseMargin": 13,
-          "capCloseMarginRate": 0.043333333333333335,
+          "medianRounds": 16,
+          "meanRounds": 15.276666666666667,
+          "capCloseMargin": 23,
+          "capCloseMarginRate": 0.07666666666666666,
           "focalWinTypes": {
-            "threshold": 145,
-            "cap": 73,
+            "threshold": 29,
+            "cap": 6,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -83,22 +83,22 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 1740232575,
-          "focalWins": 42,
-          "focalWinRate": 0.14,
+          "focalWins": 50,
+          "focalWinRate": 0.16666666666666666,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 234,
-            "cap": 9,
-            "suddenDeath": 57,
+            "threshold": 281,
+            "cap": 15,
+            "suddenDeath": 4,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.223333333333333,
-          "capCloseMargin": 8,
-          "capCloseMarginRate": 0.02666666666666667,
+          "meanRounds": 15.303333333333333,
+          "capCloseMargin": 6,
+          "capCloseMarginRate": 0.02,
           "focalWinTypes": {
-            "threshold": 42,
+            "threshold": 50,
             "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
@@ -110,23 +110,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 396049228,
-          "focalWins": 259,
-          "focalWinRate": 0.8633333333333333,
+          "focalWins": 40,
+          "focalWinRate": 0.13333333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 184,
-            "cap": 109,
-            "suddenDeath": 7,
+            "threshold": 160,
+            "cap": 87,
+            "suddenDeath": 53,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.63,
-          "capCloseMargin": 5,
-          "capCloseMarginRate": 0.016666666666666666,
+          "meanRounds": 14.946666666666667,
+          "capCloseMargin": 6,
+          "capCloseMarginRate": 0.02,
           "focalWinTypes": {
-            "threshold": 156,
-            "cap": 103,
+            "threshold": 38,
+            "cap": 2,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -139,23 +139,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 810716578,
-          "focalWins": 17,
-          "focalWinRate": 0.056666666666666664,
+          "focalWins": 56,
+          "focalWinRate": 0.18666666666666668,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 113,
-            "cap": 146,
-            "suddenDeath": 41,
+            "threshold": 159,
+            "cap": 123,
+            "suddenDeath": 18,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.576666666666666,
-          "capCloseMargin": 32,
-          "capCloseMarginRate": 0.10666666666666667,
+          "meanRounds": 15.376666666666667,
+          "capCloseMargin": 16,
+          "capCloseMarginRate": 0.05333333333333334,
           "focalWinTypes": {
-            "threshold": 5,
-            "cap": 12,
+            "threshold": 31,
+            "cap": 25,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -166,23 +166,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 1772428625,
-          "focalWins": 16,
-          "focalWinRate": 0.05333333333333334,
+          "focalWins": 58,
+          "focalWinRate": 0.19333333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 88,
-            "cap": 136,
-            "suddenDeath": 76,
+            "threshold": 66,
+            "cap": 182,
+            "suddenDeath": 52,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.913333333333334,
-          "capCloseMargin": 37,
-          "capCloseMarginRate": 0.12333333333333334,
+          "meanRounds": 15.596666666666666,
+          "capCloseMargin": 36,
+          "capCloseMarginRate": 0.12,
           "focalWinTypes": {
-            "threshold": 1,
-            "cap": 15,
+            "threshold": 19,
+            "cap": 39,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -193,22 +193,22 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 330222387,
-          "focalWins": 0,
-          "focalWinRate": 0,
+          "focalWins": 13,
+          "focalWinRate": 0.043333333333333335,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 289,
-            "cap": 11,
+            "threshold": 291,
+            "cap": 9,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.953333333333333,
+          "meanRounds": 15.436666666666667,
           "capCloseMargin": 8,
           "capCloseMarginRate": 0.02666666666666667,
           "focalWinTypes": {
-            "threshold": 0,
+            "threshold": 13,
             "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
@@ -220,23 +220,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1073561361,
-          "focalWins": 61,
-          "focalWinRate": 0.20333333333333334,
+          "focalWins": 48,
+          "focalWinRate": 0.16,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 57,
-            "cap": 171,
-            "suddenDeath": 72,
+            "threshold": 152,
+            "cap": 117,
+            "suddenDeath": 31,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.163333333333334,
-          "capCloseMargin": 33,
-          "capCloseMarginRate": 0.11,
+          "meanRounds": 15.106666666666667,
+          "capCloseMargin": 8,
+          "capCloseMarginRate": 0.02666666666666667,
           "focalWinTypes": {
-            "threshold": 7,
-            "cap": 54,
+            "threshold": 31,
+            "cap": 17,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -249,23 +249,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 1707220357,
-          "focalWins": 1,
-          "focalWinRate": 0.0033333333333333335,
+          "focalWins": 44,
+          "focalWinRate": 0.14666666666666667,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 121,
-            "cap": 158,
-            "suddenDeath": 21,
+            "threshold": 157,
+            "cap": 123,
+            "suddenDeath": 20,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.76,
-          "capCloseMargin": 37,
-          "capCloseMarginRate": 0.12333333333333334,
+          "meanRounds": 15.49,
+          "capCloseMargin": 22,
+          "capCloseMarginRate": 0.07333333333333333,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 1,
+            "threshold": 23,
+            "cap": 21,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -276,23 +276,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 2029831106,
-          "focalWins": 2,
-          "focalWinRate": 0.006666666666666667,
+          "focalWins": 50,
+          "focalWinRate": 0.16666666666666666,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 83,
-            "cap": 177,
-            "suddenDeath": 40,
+            "threshold": 56,
+            "cap": 203,
+            "suddenDeath": 41,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.146666666666667,
-          "capCloseMargin": 58,
-          "capCloseMarginRate": 0.19333333333333333,
+          "meanRounds": 15.723333333333333,
+          "capCloseMargin": 35,
+          "capCloseMarginRate": 0.11666666666666667,
           "focalWinTypes": {
-            "threshold": 1,
-            "cap": 1,
+            "threshold": 10,
+            "cap": 40,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -303,22 +303,22 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 2142586444,
-          "focalWins": 0,
-          "focalWinRate": 0,
+          "focalWins": 10,
+          "focalWinRate": 0.03333333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 286,
-            "cap": 14,
+            "threshold": 285,
+            "cap": 15,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.926666666666666,
-          "capCloseMargin": 7,
-          "capCloseMarginRate": 0.023333333333333334,
+          "meanRounds": 15.333333333333334,
+          "capCloseMargin": 12,
+          "capCloseMarginRate": 0.04,
           "focalWinTypes": {
-            "threshold": 0,
+            "threshold": 10,
             "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
@@ -330,23 +330,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1214018418,
-          "focalWins": 9,
-          "focalWinRate": 0.03,
+          "focalWins": 25,
+          "focalWinRate": 0.08333333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 57,
-            "cap": 218,
-            "suddenDeath": 25,
+            "threshold": 134,
+            "cap": 138,
+            "suddenDeath": 28,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.41,
-          "capCloseMargin": 37,
-          "capCloseMarginRate": 0.12333333333333334,
+          "meanRounds": 15.463333333333333,
+          "capCloseMargin": 11,
+          "capCloseMarginRate": 0.03666666666666667,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 9,
+            "threshold": 6,
+            "cap": 19,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -359,23 +359,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 1602774727,
-          "focalWins": 71,
-          "focalWinRate": 0.23666666666666666,
+          "focalWins": 123,
+          "focalWinRate": 0.41,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 139,
-            "cap": 126,
-            "suddenDeath": 35,
+            "threshold": 183,
+            "cap": 80,
+            "suddenDeath": 37,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.846666666666666,
-          "capCloseMargin": 36,
-          "capCloseMarginRate": 0.12,
+          "meanRounds": 15,
+          "capCloseMargin": 10,
+          "capCloseMarginRate": 0.03333333333333333,
           "focalWinTypes": {
-            "threshold": 60,
-            "cap": 11,
+            "threshold": 104,
+            "cap": 19,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -386,23 +386,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 270542993,
-          "focalWins": 89,
-          "focalWinRate": 0.2966666666666667,
+          "focalWins": 56,
+          "focalWinRate": 0.18666666666666668,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 96,
-            "cap": 122,
-            "suddenDeath": 82,
+            "threshold": 93,
+            "cap": 129,
+            "suddenDeath": 78,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.073333333333334,
-          "capCloseMargin": 37,
-          "capCloseMarginRate": 0.12333333333333334,
+          "meanRounds": 15.146666666666667,
+          "capCloseMargin": 21,
+          "capCloseMarginRate": 0.07,
           "focalWinTypes": {
-            "threshold": 56,
-            "cap": 33,
+            "threshold": 46,
+            "cap": 10,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -413,22 +413,22 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 1083234571,
-          "focalWins": 54,
-          "focalWinRate": 0.18,
+          "focalWins": 114,
+          "focalWinRate": 0.38,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 280,
-            "cap": 9,
-            "suddenDeath": 11,
+            "threshold": 291,
+            "cap": 7,
+            "suddenDeath": 2,
             "elimination": 0
           },
-          "medianRounds": 16,
-          "meanRounds": 15.166666666666666,
-          "capCloseMargin": 7,
-          "capCloseMarginRate": 0.023333333333333334,
+          "medianRounds": 15,
+          "meanRounds": 14.896666666666667,
+          "capCloseMargin": 2,
+          "capCloseMarginRate": 0.006666666666666667,
           "focalWinTypes": {
-            "threshold": 54,
+            "threshold": 114,
             "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
@@ -440,23 +440,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1326860979,
-          "focalWins": 149,
-          "focalWinRate": 0.49666666666666665,
+          "focalWins": 49,
+          "focalWinRate": 0.16333333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 118,
-            "cap": 143,
-            "suddenDeath": 39,
+            "threshold": 153,
+            "cap": 95,
+            "suddenDeath": 52,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.31,
-          "capCloseMargin": 15,
-          "capCloseMarginRate": 0.05,
+          "meanRounds": 14.963333333333333,
+          "capCloseMargin": 9,
+          "capCloseMarginRate": 0.03,
           "focalWinTypes": {
-            "threshold": 83,
-            "cap": 66,
+            "threshold": 43,
+            "cap": 6,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -471,24 +471,24 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 130802393,
-          "focalWins": 55,
-          "focalWinRate": 0.18333333333333332,
+          "focalWins": 91,
+          "focalWinRate": 0.30333333333333334,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 137,
-            "cap": 111,
-            "suddenDeath": 52,
+            "threshold": 140,
+            "cap": 114,
+            "suddenDeath": 46,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.053333333333333,
-          "capCloseMargin": 21,
-          "capCloseMarginRate": 0.07,
+          "meanRounds": 15.416666666666666,
+          "capCloseMargin": 18,
+          "capCloseMarginRate": 0.06,
           "focalWinTypes": {
-            "threshold": 2,
-            "cap": 1,
-            "suddenDeath": 52,
+            "threshold": 24,
+            "cap": 21,
+            "suddenDeath": 46,
             "elimination": 0
           }
         },
@@ -498,24 +498,24 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 1103959080,
-          "focalWins": 11,
-          "focalWinRate": 0.03666666666666667,
+          "focalWins": 151,
+          "focalWinRate": 0.5033333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 201,
-            "cap": 88,
-            "suddenDeath": 11,
+            "threshold": 74,
+            "cap": 159,
+            "suddenDeath": 67,
             "elimination": 0
           },
-          "medianRounds": 15,
-          "meanRounds": 14.533333333333333,
-          "capCloseMargin": 12,
-          "capCloseMarginRate": 0.04,
+          "medianRounds": 16,
+          "meanRounds": 15.45,
+          "capCloseMargin": 16,
+          "capCloseMarginRate": 0.05333333333333334,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 0,
-            "suddenDeath": 11,
+            "threshold": 28,
+            "cap": 56,
+            "suddenDeath": 67,
             "elimination": 0
           }
         },
@@ -525,24 +525,24 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 527193960,
-          "focalWins": 93,
-          "focalWinRate": 0.31,
+          "focalWins": 57,
+          "focalWinRate": 0.19,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 194,
-            "cap": 13,
-            "suddenDeath": 93,
+            "threshold": 252,
+            "cap": 10,
+            "suddenDeath": 38,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.426666666666666,
+          "meanRounds": 15.243333333333334,
           "capCloseMargin": 9,
           "capCloseMarginRate": 0.03,
           "focalWinTypes": {
-            "threshold": 0,
+            "threshold": 19,
             "cap": 0,
-            "suddenDeath": 93,
+            "suddenDeath": 38,
             "elimination": 0
           }
         },
@@ -552,24 +552,24 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1707184472,
-          "focalWins": 80,
-          "focalWinRate": 0.26666666666666666,
+          "focalWins": 92,
+          "focalWinRate": 0.30666666666666664,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 109,
-            "cap": 126,
-            "suddenDeath": 65,
+            "threshold": 167,
+            "cap": 77,
+            "suddenDeath": 56,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.073333333333334,
-          "capCloseMargin": 25,
-          "capCloseMarginRate": 0.08333333333333333,
+          "meanRounds": 15.043333333333333,
+          "capCloseMargin": 11,
+          "capCloseMarginRate": 0.03666666666666667,
           "focalWinTypes": {
-            "threshold": 1,
-            "cap": 15,
-            "suddenDeath": 64,
+            "threshold": 18,
+            "cap": 18,
+            "suddenDeath": 56,
             "elimination": 0
           }
         }
@@ -581,24 +581,24 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 930740028,
-          "focalWins": 12,
-          "focalWinRate": 0.04,
-          "focalEliminated": 1,
-          "focalElimRate": 0.0033333333333333335,
+          "focalWins": 4,
+          "focalWinRate": 0.013333333333333334,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 128,
-            "cap": 160,
-            "suddenDeath": 12,
+            "threshold": 154,
+            "cap": 145,
+            "suddenDeath": 1,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.296666666666667,
-          "capCloseMargin": 34,
-          "capCloseMarginRate": 0.11333333333333333,
+          "meanRounds": 15.35,
+          "capCloseMargin": 35,
+          "capCloseMarginRate": 0.11666666666666667,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 0,
-            "suddenDeath": 12,
+            "threshold": 1,
+            "cap": 2,
+            "suddenDeath": 1,
             "elimination": 0
           }
         },
@@ -608,24 +608,24 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 178338621,
-          "focalWins": 66,
-          "focalWinRate": 0.22,
-          "focalEliminated": 3,
-          "focalElimRate": 0.01,
+          "focalWins": 37,
+          "focalWinRate": 0.12333333333333334,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 114,
-            "cap": 127,
-            "suddenDeath": 59,
+            "threshold": 90,
+            "cap": 205,
+            "suddenDeath": 5,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 13.676666666666666,
-          "capCloseMargin": 44,
-          "capCloseMarginRate": 0.14666666666666667,
+          "meanRounds": 15.336666666666666,
+          "capCloseMargin": 26,
+          "capCloseMarginRate": 0.08666666666666667,
           "focalWinTypes": {
-            "threshold": 2,
-            "cap": 5,
-            "suddenDeath": 59,
+            "threshold": 7,
+            "cap": 25,
+            "suddenDeath": 5,
             "elimination": 0
           }
         },
@@ -640,15 +640,15 @@
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 287,
-            "cap": 13,
+            "threshold": 289,
+            "cap": 11,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.926666666666666,
-          "capCloseMargin": 9,
-          "capCloseMarginRate": 0.03,
+          "meanRounds": 15.296666666666667,
+          "capCloseMargin": 10,
+          "capCloseMarginRate": 0.03333333333333333,
           "focalWinTypes": {
             "threshold": 0,
             "cap": 0,
@@ -662,24 +662,24 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1526025286,
-          "focalWins": 96,
-          "focalWinRate": 0.32,
-          "focalEliminated": 2,
-          "focalElimRate": 0.006666666666666667,
+          "focalWins": 11,
+          "focalWinRate": 0.03666666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 96,
-            "cap": 193,
-            "suddenDeath": 11,
+            "threshold": 217,
+            "cap": 82,
+            "suddenDeath": 1,
             "elimination": 0
           },
-          "medianRounds": 16,
-          "meanRounds": 14.976666666666667,
-          "capCloseMargin": 28,
-          "capCloseMarginRate": 0.09333333333333334,
+          "medianRounds": 15,
+          "meanRounds": 14.79,
+          "capCloseMargin": 10,
+          "capCloseMarginRate": 0.03333333333333333,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 86,
-            "suddenDeath": 10,
+            "threshold": 3,
+            "cap": 7,
+            "suddenDeath": 1,
             "elimination": 0
           }
         }
@@ -691,23 +691,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 844283886,
-          "focalWins": 14,
-          "focalWinRate": 0.04666666666666667,
-          "focalEliminated": 2,
-          "focalElimRate": 0.006666666666666667,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 153,
-            "cap": 146,
-            "suddenDeath": 1,
+            "threshold": 184,
+            "cap": 116,
+            "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.663333333333334,
-          "capCloseMargin": 49,
-          "capCloseMarginRate": 0.16333333333333333,
+          "meanRounds": 15.283333333333333,
+          "capCloseMargin": 17,
+          "capCloseMarginRate": 0.056666666666666664,
           "focalWinTypes": {
             "threshold": 0,
-            "cap": 14,
+            "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -718,23 +718,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 685128295,
-          "focalWins": 2,
-          "focalWinRate": 0.006666666666666667,
+          "focalWins": 0,
+          "focalWinRate": 0,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 128,
-            "cap": 170,
-            "suddenDeath": 2,
+            "threshold": 71,
+            "cap": 229,
+            "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.156666666666666,
-          "capCloseMargin": 33,
-          "capCloseMarginRate": 0.11,
+          "meanRounds": 15.47,
+          "capCloseMargin": 26,
+          "capCloseMarginRate": 0.08666666666666667,
           "focalWinTypes": {
             "threshold": 0,
-            "cap": 2,
+            "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -756,7 +756,7 @@
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.886666666666667,
+          "meanRounds": 15.263333333333334,
           "capCloseMargin": 8,
           "capCloseMarginRate": 0.02666666666666667,
           "focalWinTypes": {
@@ -772,23 +772,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1924730679,
-          "focalWins": 70,
-          "focalWinRate": 0.23333333333333334,
-          "focalEliminated": 1,
-          "focalElimRate": 0.0033333333333333335,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 88,
-            "cap": 212,
+            "threshold": 261,
+            "cap": 39,
             "suddenDeath": 0,
             "elimination": 0
           },
-          "medianRounds": 16,
-          "meanRounds": 15.443333333333333,
-          "capCloseMargin": 39,
-          "capCloseMarginRate": 0.13,
+          "medianRounds": 15,
+          "meanRounds": 14.516666666666667,
+          "capCloseMargin": 11,
+          "capCloseMarginRate": 0.03666666666666667,
           "focalWinTypes": {
             "threshold": 0,
-            "cap": 70,
+            "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -801,24 +801,24 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 1838743686,
-          "focalWins": 30,
-          "focalWinRate": 0.1,
+          "focalWins": 51,
+          "focalWinRate": 0.17,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 147,
-            "cap": 125,
-            "suddenDeath": 28,
+            "threshold": 156,
+            "cap": 103,
+            "suddenDeath": 41,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.213333333333333,
-          "capCloseMargin": 38,
-          "capCloseMarginRate": 0.12666666666666668,
+          "meanRounds": 15.266666666666667,
+          "capCloseMargin": 14,
+          "capCloseMarginRate": 0.04666666666666667,
           "focalWinTypes": {
-            "threshold": 2,
-            "cap": 1,
-            "suddenDeath": 27,
+            "threshold": 8,
+            "cap": 2,
+            "suddenDeath": 41,
             "elimination": 0
           }
         },
@@ -828,24 +828,24 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 1729522056,
-          "focalWins": 9,
-          "focalWinRate": 0.03,
+          "focalWins": 112,
+          "focalWinRate": 0.37333333333333335,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 188,
-            "cap": 106,
-            "suddenDeath": 6,
+            "threshold": 72,
+            "cap": 152,
+            "suddenDeath": 76,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.58,
-          "capCloseMargin": 17,
-          "capCloseMarginRate": 0.056666666666666664,
+          "meanRounds": 15.396666666666667,
+          "capCloseMargin": 20,
+          "capCloseMarginRate": 0.06666666666666667,
           "focalWinTypes": {
-            "threshold": 2,
-            "cap": 1,
-            "suddenDeath": 6,
+            "threshold": 15,
+            "cap": 21,
+            "suddenDeath": 76,
             "elimination": 0
           }
         },
@@ -855,24 +855,24 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 1381031350,
-          "focalWins": 79,
-          "focalWinRate": 0.2633333333333333,
+          "focalWins": 45,
+          "focalWinRate": 0.15,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 212,
-            "cap": 9,
-            "suddenDeath": 79,
+            "threshold": 261,
+            "cap": 5,
+            "suddenDeath": 34,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.476666666666667,
-          "capCloseMargin": 7,
-          "capCloseMarginRate": 0.023333333333333334,
+          "meanRounds": 15.34,
+          "capCloseMargin": 4,
+          "capCloseMarginRate": 0.013333333333333334,
           "focalWinTypes": {
-            "threshold": 0,
+            "threshold": 11,
             "cap": 0,
-            "suddenDeath": 79,
+            "suddenDeath": 34,
             "elimination": 0
           }
         },
@@ -882,24 +882,24 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 2142803763,
-          "focalWins": 84,
-          "focalWinRate": 0.28,
+          "focalWins": 60,
+          "focalWinRate": 0.2,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 117,
-            "cap": 135,
-            "suddenDeath": 48,
+            "threshold": 173,
+            "cap": 84,
+            "suddenDeath": 43,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.046666666666667,
-          "capCloseMargin": 20,
-          "capCloseMarginRate": 0.06666666666666667,
+          "meanRounds": 14.76,
+          "capCloseMargin": 5,
+          "capCloseMarginRate": 0.016666666666666666,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 38,
-            "suddenDeath": 46,
+            "threshold": 7,
+            "cap": 10,
+            "suddenDeath": 43,
             "elimination": 0
           }
         }
@@ -913,23 +913,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 108718257,
-          "focalWins": 43,
-          "focalWinRate": 0.14333333333333334,
+          "focalWins": 2,
+          "focalWinRate": 0.006666666666666667,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 125,
-            "cap": 148,
-            "suddenDeath": 27,
+            "threshold": 136,
+            "cap": 150,
+            "suddenDeath": 14,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.126666666666667,
-          "capCloseMargin": 34,
-          "capCloseMarginRate": 0.11333333333333333,
+          "meanRounds": 15.38,
+          "capCloseMargin": 16,
+          "capCloseMarginRate": 0.05333333333333334,
           "focalWinTypes": {
-            "threshold": 6,
-            "cap": 37,
+            "threshold": 0,
+            "cap": 2,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -940,23 +940,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 210072521,
-          "focalWins": 11,
-          "focalWinRate": 0.03666666666666667,
+          "focalWins": 6,
+          "focalWinRate": 0.02,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 200,
-            "cap": 85,
-            "suddenDeath": 15,
+            "threshold": 72,
+            "cap": 146,
+            "suddenDeath": 82,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.54,
-          "capCloseMargin": 13,
-          "capCloseMarginRate": 0.043333333333333335,
+          "meanRounds": 15.55,
+          "capCloseMargin": 22,
+          "capCloseMarginRate": 0.07333333333333333,
           "focalWinTypes": {
-            "threshold": 11,
-            "cap": 0,
+            "threshold": 0,
+            "cap": 6,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -967,22 +967,22 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 2037320825,
-          "focalWins": 2,
-          "focalWinRate": 0.006666666666666667,
+          "focalWins": 0,
+          "focalWinRate": 0,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 253,
-            "cap": 47,
+            "threshold": 275,
+            "cap": 25,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.883333333333333,
-          "capCloseMargin": 3,
-          "capCloseMarginRate": 0.01,
+          "meanRounds": 15.36,
+          "capCloseMargin": 4,
+          "capCloseMarginRate": 0.013333333333333334,
           "focalWinTypes": {
-            "threshold": 2,
+            "threshold": 0,
             "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
@@ -994,23 +994,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1167373555,
-          "focalWins": 71,
-          "focalWinRate": 0.23666666666666666,
+          "focalWins": 3,
+          "focalWinRate": 0.01,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 123,
-            "cap": 148,
-            "suddenDeath": 29,
+            "threshold": 163,
+            "cap": 91,
+            "suddenDeath": 46,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.503333333333334,
-          "capCloseMargin": 21,
-          "capCloseMarginRate": 0.07,
+          "meanRounds": 14.94,
+          "capCloseMargin": 8,
+          "capCloseMarginRate": 0.02666666666666667,
           "focalWinTypes": {
             "threshold": 0,
-            "cap": 71,
+            "cap": 3,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1023,23 +1023,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 1254224682,
-          "focalWins": 140,
-          "focalWinRate": 0.4666666666666667,
+          "focalWins": 106,
+          "focalWinRate": 0.35333333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 185,
-            "cap": 78,
-            "suddenDeath": 37,
+            "threshold": 220,
+            "cap": 63,
+            "suddenDeath": 17,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.266666666666667,
-          "capCloseMargin": 21,
-          "capCloseMarginRate": 0.07,
+          "meanRounds": 15.256666666666666,
+          "capCloseMargin": 9,
+          "capCloseMarginRate": 0.03,
           "focalWinTypes": {
-            "threshold": 96,
-            "cap": 44,
+            "threshold": 90,
+            "cap": 16,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1050,23 +1050,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 1711777574,
-          "focalWins": 79,
-          "focalWinRate": 0.2633333333333333,
+          "focalWins": 47,
+          "focalWinRate": 0.15666666666666668,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 231,
-            "cap": 57,
-            "suddenDeath": 12,
+            "threshold": 87,
+            "cap": 150,
+            "suddenDeath": 63,
             "elimination": 0
           },
-          "medianRounds": 15,
-          "meanRounds": 14.296666666666667,
-          "capCloseMargin": 25,
-          "capCloseMarginRate": 0.08333333333333333,
+          "medianRounds": 16,
+          "meanRounds": 15.433333333333334,
+          "capCloseMargin": 52,
+          "capCloseMarginRate": 0.17333333333333334,
           "focalWinTypes": {
-            "threshold": 54,
-            "cap": 25,
+            "threshold": 10,
+            "cap": 37,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1077,23 +1077,23 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 2060881681,
-          "focalWins": 199,
-          "focalWinRate": 0.6633333333333333,
+          "focalWins": 150,
+          "focalWinRate": 0.5,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 287,
-            "cap": 13,
+            "threshold": 291,
+            "cap": 9,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.913333333333334,
-          "capCloseMargin": 10,
-          "capCloseMarginRate": 0.03333333333333333,
+          "meanRounds": 15.39,
+          "capCloseMargin": 7,
+          "capCloseMarginRate": 0.023333333333333334,
           "focalWinTypes": {
-            "threshold": 190,
-            "cap": 9,
+            "threshold": 145,
+            "cap": 5,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1104,23 +1104,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1743223967,
-          "focalWins": 88,
-          "focalWinRate": 0.29333333333333333,
+          "focalWins": 14,
+          "focalWinRate": 0.04666666666666667,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 107,
-            "cap": 146,
-            "suddenDeath": 47,
+            "threshold": 176,
+            "cap": 80,
+            "suddenDeath": 44,
             "elimination": 0
           },
-          "medianRounds": 16,
-          "meanRounds": 14.206666666666667,
-          "capCloseMargin": 16,
-          "capCloseMarginRate": 0.05333333333333334,
+          "medianRounds": 15,
+          "meanRounds": 14.743333333333334,
+          "capCloseMargin": 12,
+          "capCloseMarginRate": 0.04,
           "focalWinTypes": {
-            "threshold": 6,
-            "cap": 82,
+            "threshold": 8,
+            "cap": 6,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1133,23 +1133,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 1148890292,
-          "focalWins": 91,
-          "focalWinRate": 0.30333333333333334,
+          "focalWins": 73,
+          "focalWinRate": 0.24333333333333335,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 137,
-            "cap": 133,
-            "suddenDeath": 30,
+            "threshold": 168,
+            "cap": 98,
+            "suddenDeath": 34,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.183333333333334,
-          "capCloseMargin": 38,
-          "capCloseMarginRate": 0.12666666666666668,
+          "meanRounds": 15.156666666666666,
+          "capCloseMargin": 19,
+          "capCloseMarginRate": 0.06333333333333334,
           "focalWinTypes": {
-            "threshold": 14,
-            "cap": 77,
+            "threshold": 15,
+            "cap": 58,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1160,23 +1160,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 1617720953,
-          "focalWins": 33,
-          "focalWinRate": 0.11,
+          "focalWins": 49,
+          "focalWinRate": 0.16333333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 192,
-            "cap": 93,
-            "suddenDeath": 15,
+            "threshold": 91,
+            "cap": 140,
+            "suddenDeath": 69,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.48,
-          "capCloseMargin": 38,
-          "capCloseMarginRate": 0.12666666666666668,
+          "meanRounds": 15.323333333333334,
+          "capCloseMargin": 40,
+          "capCloseMarginRate": 0.13333333333333333,
           "focalWinTypes": {
             "threshold": 2,
-            "cap": 31,
+            "cap": 47,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1187,23 +1187,23 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 1103326615,
-          "focalWins": 9,
-          "focalWinRate": 0.03,
+          "focalWins": 4,
+          "focalWinRate": 0.013333333333333334,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 264,
-            "cap": 36,
+            "threshold": 280,
+            "cap": 20,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.976666666666667,
-          "capCloseMargin": 10,
-          "capCloseMarginRate": 0.03333333333333333,
+          "meanRounds": 15.573333333333334,
+          "capCloseMargin": 3,
+          "capCloseMarginRate": 0.01,
           "focalWinTypes": {
-            "threshold": 4,
-            "cap": 5,
+            "threshold": 3,
+            "cap": 1,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1214,23 +1214,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1131931732,
-          "focalWins": 79,
-          "focalWinRate": 0.2633333333333333,
+          "focalWins": 9,
+          "focalWinRate": 0.03,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 121,
-            "cap": 143,
-            "suddenDeath": 36,
+            "threshold": 172,
+            "cap": 87,
+            "suddenDeath": 41,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.21,
-          "capCloseMargin": 24,
-          "capCloseMarginRate": 0.08,
+          "meanRounds": 14.793333333333333,
+          "capCloseMargin": 11,
+          "capCloseMarginRate": 0.03666666666666667,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 79,
+            "threshold": 3,
+            "cap": 6,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1243,23 +1243,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 1329766905,
-          "focalWins": 8,
-          "focalWinRate": 0.02666666666666667,
+          "focalWins": 0,
+          "focalWinRate": 0,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 107,
-            "cap": 162,
-            "suddenDeath": 31,
+            "threshold": 134,
+            "cap": 146,
+            "suddenDeath": 20,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.263333333333334,
-          "capCloseMargin": 27,
-          "capCloseMarginRate": 0.09,
+          "meanRounds": 15.31,
+          "capCloseMargin": 19,
+          "capCloseMarginRate": 0.06333333333333334,
           "focalWinTypes": {
-            "threshold": 4,
-            "cap": 4,
+            "threshold": 0,
+            "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1270,22 +1270,22 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 802410313,
-          "focalWins": 3,
-          "focalWinRate": 0.01,
+          "focalWins": 0,
+          "focalWinRate": 0,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 197,
-            "cap": 89,
-            "suddenDeath": 14,
+            "threshold": 83,
+            "cap": 156,
+            "suddenDeath": 61,
             "elimination": 0
           },
-          "medianRounds": 15,
-          "meanRounds": 14.226666666666667,
-          "capCloseMargin": 10,
-          "capCloseMarginRate": 0.03333333333333333,
+          "medianRounds": 16,
+          "meanRounds": 15.45,
+          "capCloseMargin": 19,
+          "capCloseMarginRate": 0.06333333333333334,
           "focalWinTypes": {
-            "threshold": 3,
+            "threshold": 0,
             "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
@@ -1302,15 +1302,15 @@
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 264,
-            "cap": 36,
+            "threshold": 281,
+            "cap": 19,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.906666666666666,
-          "capCloseMargin": 3,
-          "capCloseMarginRate": 0.01,
+          "meanRounds": 15.356666666666667,
+          "capCloseMargin": 1,
+          "capCloseMarginRate": 0.0033333333333333335,
           "focalWinTypes": {
             "threshold": 0,
             "cap": 0,
@@ -1324,23 +1324,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1801519173,
-          "focalWins": 1,
-          "focalWinRate": 0.0033333333333333335,
+          "focalWins": 0,
+          "focalWinRate": 0,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 123,
-            "cap": 138,
-            "suddenDeath": 39,
+            "threshold": 155,
+            "cap": 95,
+            "suddenDeath": 50,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.253333333333334,
-          "capCloseMargin": 14,
-          "capCloseMarginRate": 0.04666666666666667,
+          "meanRounds": 14.94,
+          "capCloseMargin": 8,
+          "capCloseMarginRate": 0.02666666666666667,
           "focalWinTypes": {
             "threshold": 0,
-            "cap": 1,
+            "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1355,23 +1355,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 2098985762,
-          "focalWins": 22,
-          "focalWinRate": 0.07333333333333333,
+          "focalWins": 1,
+          "focalWinRate": 0.0033333333333333335,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 94,
-            "cap": 178,
-            "suddenDeath": 28,
+            "threshold": 145,
+            "cap": 133,
+            "suddenDeath": 22,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.376666666666667,
-          "capCloseMargin": 48,
-          "capCloseMarginRate": 0.16,
+          "meanRounds": 15.43,
+          "capCloseMargin": 29,
+          "capCloseMarginRate": 0.09666666666666666,
           "focalWinTypes": {
             "threshold": 0,
-            "cap": 22,
+            "cap": 1,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1387,15 +1387,15 @@
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 202,
-            "cap": 87,
-            "suddenDeath": 11,
+            "threshold": 82,
+            "cap": 149,
+            "suddenDeath": 69,
             "elimination": 0
           },
-          "medianRounds": 15,
-          "meanRounds": 14.23,
-          "capCloseMargin": 10,
-          "capCloseMarginRate": 0.03333333333333333,
+          "medianRounds": 16,
+          "meanRounds": 15.536666666666667,
+          "capCloseMargin": 21,
+          "capCloseMarginRate": 0.07,
           "focalWinTypes": {
             "threshold": 0,
             "cap": 0,
@@ -1420,9 +1420,9 @@
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.956666666666667,
-          "capCloseMargin": 8,
-          "capCloseMarginRate": 0.02666666666666667,
+          "meanRounds": 15.73,
+          "capCloseMargin": 2,
+          "capCloseMarginRate": 0.006666666666666667,
           "focalWinTypes": {
             "threshold": 0,
             "cap": 0,
@@ -1436,23 +1436,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 2009415052,
-          "focalWins": 64,
-          "focalWinRate": 0.21333333333333335,
+          "focalWins": 0,
+          "focalWinRate": 0,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 111,
-            "cap": 141,
-            "suddenDeath": 48,
+            "threshold": 155,
+            "cap": 81,
+            "suddenDeath": 64,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.236666666666666,
-          "capCloseMargin": 22,
-          "capCloseMarginRate": 0.07333333333333333,
+          "meanRounds": 15.043333333333333,
+          "capCloseMargin": 4,
+          "capCloseMarginRate": 0.013333333333333334,
           "focalWinTypes": {
             "threshold": 0,
-            "cap": 64,
+            "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1465,23 +1465,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 1188941176,
-          "focalWins": 184,
-          "focalWinRate": 0.6133333333333333,
+          "focalWins": 163,
+          "focalWinRate": 0.5433333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
             "threshold": 242,
-            "cap": 27,
-            "suddenDeath": 31,
+            "cap": 35,
+            "suddenDeath": 23,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.196666666666667,
-          "capCloseMargin": 4,
-          "capCloseMarginRate": 0.013333333333333334,
+          "meanRounds": 15.083333333333334,
+          "capCloseMargin": 5,
+          "capCloseMarginRate": 0.016666666666666666,
           "focalWinTypes": {
-            "threshold": 160,
-            "cap": 24,
+            "threshold": 146,
+            "cap": 17,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1492,23 +1492,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 698772031,
-          "focalWins": 129,
-          "focalWinRate": 0.43,
+          "focalWins": 161,
+          "focalWinRate": 0.5366666666666666,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 280,
-            "cap": 15,
-            "suddenDeath": 5,
+            "threshold": 208,
+            "cap": 41,
+            "suddenDeath": 51,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.51,
-          "capCloseMargin": 6,
-          "capCloseMarginRate": 0.02,
+          "meanRounds": 15.163333333333334,
+          "capCloseMargin": 4,
+          "capCloseMarginRate": 0.013333333333333334,
           "focalWinTypes": {
-            "threshold": 116,
-            "cap": 13,
+            "threshold": 140,
+            "cap": 21,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1519,22 +1519,22 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 1627853200,
-          "focalWins": 89,
-          "focalWinRate": 0.2966666666666667,
+          "focalWins": 121,
+          "focalWinRate": 0.4033333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 283,
-            "cap": 17,
+            "threshold": 282,
+            "cap": 18,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.906666666666666,
-          "capCloseMargin": 13,
-          "capCloseMarginRate": 0.043333333333333335,
+          "meanRounds": 15.373333333333333,
+          "capCloseMargin": 15,
+          "capCloseMarginRate": 0.05,
           "focalWinTypes": {
-            "threshold": 86,
+            "threshold": 118,
             "cap": 3,
             "suddenDeath": 0,
             "elimination": 0
@@ -1546,23 +1546,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 672128171,
-          "focalWins": 145,
-          "focalWinRate": 0.48333333333333334,
+          "focalWins": 101,
+          "focalWinRate": 0.33666666666666667,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 237,
-            "cap": 21,
-            "suddenDeath": 42,
+            "threshold": 240,
+            "cap": 23,
+            "suddenDeath": 37,
             "elimination": 0
           },
-          "medianRounds": 16,
-          "meanRounds": 14.156666666666666,
+          "medianRounds": 15,
+          "meanRounds": 14.653333333333334,
           "capCloseMargin": 3,
           "capCloseMarginRate": 0.01,
           "focalWinTypes": {
-            "threshold": 125,
-            "cap": 20,
+            "threshold": 92,
+            "cap": 9,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1575,23 +1575,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 1395126124,
-          "focalWins": 76,
-          "focalWinRate": 0.25333333333333335,
+          "focalWins": 114,
+          "focalWinRate": 0.38,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 99,
-            "cap": 175,
+            "threshold": 152,
+            "cap": 122,
             "suddenDeath": 26,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.236666666666666,
-          "capCloseMargin": 37,
-          "capCloseMarginRate": 0.12333333333333334,
+          "meanRounds": 15.26,
+          "capCloseMargin": 19,
+          "capCloseMarginRate": 0.06333333333333334,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 76,
+            "threshold": 29,
+            "cap": 85,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1602,23 +1602,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 1958834309,
-          "focalWins": 1,
-          "focalWinRate": 0.0033333333333333335,
+          "focalWins": 121,
+          "focalWinRate": 0.4033333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 207,
-            "cap": 79,
-            "suddenDeath": 14,
+            "threshold": 106,
+            "cap": 129,
+            "suddenDeath": 65,
             "elimination": 0
           },
-          "medianRounds": 15,
-          "meanRounds": 14.12,
-          "capCloseMargin": 9,
-          "capCloseMarginRate": 0.03,
+          "medianRounds": 16,
+          "meanRounds": 15.326666666666666,
+          "capCloseMargin": 20,
+          "capCloseMarginRate": 0.06666666666666667,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 1,
+            "threshold": 25,
+            "cap": 96,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1629,23 +1629,23 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 1389232326,
-          "focalWins": 0,
-          "focalWinRate": 0,
+          "focalWins": 17,
+          "focalWinRate": 0.056666666666666664,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 271,
-            "cap": 29,
+            "threshold": 275,
+            "cap": 25,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.946666666666667,
-          "capCloseMargin": 7,
-          "capCloseMarginRate": 0.023333333333333334,
+          "meanRounds": 15.653333333333334,
+          "capCloseMargin": 6,
+          "capCloseMarginRate": 0.02,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 0,
+            "threshold": 15,
+            "cap": 2,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1656,23 +1656,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1635661077,
-          "focalWins": 80,
-          "focalWinRate": 0.26666666666666666,
+          "focalWins": 68,
+          "focalWinRate": 0.22666666666666666,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 122,
-            "cap": 141,
-            "suddenDeath": 37,
+            "threshold": 163,
+            "cap": 79,
+            "suddenDeath": 58,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.316666666666666,
-          "capCloseMargin": 11,
-          "capCloseMarginRate": 0.03666666666666667,
+          "meanRounds": 14.966666666666667,
+          "capCloseMargin": 13,
+          "capCloseMarginRate": 0.043333333333333335,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 80,
+            "threshold": 14,
+            "cap": 54,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1685,23 +1685,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 586446574,
-          "focalWins": 1,
-          "focalWinRate": 0.0033333333333333335,
+          "focalWins": 0,
+          "focalWinRate": 0,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 97,
-            "cap": 174,
-            "suddenDeath": 29,
+            "threshold": 117,
+            "cap": 158,
+            "suddenDeath": 25,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.343333333333334,
-          "capCloseMargin": 26,
-          "capCloseMarginRate": 0.08666666666666667,
+          "meanRounds": 15.41,
+          "capCloseMargin": 15,
+          "capCloseMarginRate": 0.05,
           "focalWinTypes": {
             "threshold": 0,
-            "cap": 1,
+            "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1717,15 +1717,15 @@
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 191,
-            "cap": 100,
-            "suddenDeath": 9,
+            "threshold": 76,
+            "cap": 147,
+            "suddenDeath": 77,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.516666666666667,
-          "capCloseMargin": 14,
-          "capCloseMarginRate": 0.04666666666666667,
+          "meanRounds": 15.363333333333333,
+          "capCloseMargin": 31,
+          "capCloseMarginRate": 0.10333333333333333,
           "focalWinTypes": {
             "threshold": 0,
             "cap": 0,
@@ -1744,15 +1744,15 @@
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 260,
-            "cap": 40,
+            "threshold": 268,
+            "cap": 32,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.966666666666667,
-          "capCloseMargin": 7,
-          "capCloseMarginRate": 0.023333333333333334,
+          "meanRounds": 15.71,
+          "capCloseMargin": 5,
+          "capCloseMarginRate": 0.016666666666666666,
           "focalWinTypes": {
             "threshold": 0,
             "cap": 0,
@@ -1766,23 +1766,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 920956577,
-          "focalWins": 19,
-          "focalWinRate": 0.06333333333333334,
+          "focalWins": 0,
+          "focalWinRate": 0,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 123,
-            "cap": 138,
-            "suddenDeath": 39,
+            "threshold": 168,
+            "cap": 78,
+            "suddenDeath": 54,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.25,
-          "capCloseMargin": 20,
-          "capCloseMarginRate": 0.06666666666666667,
+          "meanRounds": 14.916666666666666,
+          "capCloseMargin": 3,
+          "capCloseMarginRate": 0.01,
           "focalWinTypes": {
             "threshold": 0,
-            "cap": 19,
+            "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1797,24 +1797,24 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 1270244242,
-          "focalWins": 94,
-          "focalWinRate": 0.31333333333333335,
+          "focalWins": 64,
+          "focalWinRate": 0.21333333333333335,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 129,
-            "cap": 127,
-            "suddenDeath": 44,
+            "threshold": 142,
+            "cap": 138,
+            "suddenDeath": 20,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.083333333333334,
-          "capCloseMargin": 26,
-          "capCloseMarginRate": 0.08666666666666667,
+          "meanRounds": 15.386666666666667,
+          "capCloseMargin": 28,
+          "capCloseMarginRate": 0.09333333333333334,
           "focalWinTypes": {
-            "threshold": 45,
-            "cap": 46,
-            "suddenDeath": 3,
+            "threshold": 24,
+            "cap": 40,
+            "suddenDeath": 0,
             "elimination": 0
           }
         },
@@ -1824,23 +1824,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 622897636,
-          "focalWins": 63,
-          "focalWinRate": 0.21,
-          "focalEliminated": 1,
-          "focalElimRate": 0.0033333333333333335,
+          "focalWins": 114,
+          "focalWinRate": 0.38,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 214,
-            "cap": 81,
-            "suddenDeath": 5,
+            "threshold": 91,
+            "cap": 132,
+            "suddenDeath": 77,
             "elimination": 0
           },
-          "medianRounds": 15,
-          "meanRounds": 14.323333333333334,
-          "capCloseMargin": 6,
-          "capCloseMarginRate": 0.02,
+          "medianRounds": 16,
+          "meanRounds": 15.386666666666667,
+          "capCloseMargin": 14,
+          "capCloseMarginRate": 0.04666666666666667,
           "focalWinTypes": {
-            "threshold": 57,
-            "cap": 6,
+            "threshold": 39,
+            "cap": 75,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1851,23 +1851,23 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 1659999502,
-          "focalWins": 33,
-          "focalWinRate": 0.11,
+          "focalWins": 18,
+          "focalWinRate": 0.06,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 278,
-            "cap": 22,
+            "threshold": 274,
+            "cap": 26,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.643333333333333,
-          "capCloseMargin": 8,
-          "capCloseMarginRate": 0.02666666666666667,
+          "meanRounds": 15.21,
+          "capCloseMargin": 1,
+          "capCloseMarginRate": 0.0033333333333333335,
           "focalWinTypes": {
-            "threshold": 32,
-            "cap": 1,
+            "threshold": 18,
+            "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1878,23 +1878,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 987033917,
-          "focalWins": 124,
-          "focalWinRate": 0.41333333333333333,
-          "focalEliminated": 1,
-          "focalElimRate": 0.0033333333333333335,
+          "focalWins": 135,
+          "focalWinRate": 0.45,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 135,
-            "cap": 128,
-            "suddenDeath": 37,
+            "threshold": 85,
+            "cap": 151,
+            "suddenDeath": 64,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.3,
-          "capCloseMargin": 17,
-          "capCloseMarginRate": 0.056666666666666664,
+          "meanRounds": 15.276666666666667,
+          "capCloseMargin": 13,
+          "capCloseMarginRate": 0.043333333333333335,
           "focalWinTypes": {
-            "threshold": 44,
-            "cap": 80,
+            "threshold": 25,
+            "cap": 110,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1907,23 +1907,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 894637858,
-          "focalWins": 72,
-          "focalWinRate": 0.24,
+          "focalWins": 34,
+          "focalWinRate": 0.11333333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 172,
-            "cap": 97,
-            "suddenDeath": 31,
+            "threshold": 171,
+            "cap": 104,
+            "suddenDeath": 25,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.453333333333333,
-          "capCloseMargin": 16,
-          "capCloseMarginRate": 0.05333333333333334,
+          "meanRounds": 15.51,
+          "capCloseMargin": 14,
+          "capCloseMarginRate": 0.04666666666666667,
           "focalWinTypes": {
-            "threshold": 15,
-            "cap": 57,
+            "threshold": 16,
+            "cap": 18,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1934,23 +1934,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 662842036,
-          "focalWins": 72,
-          "focalWinRate": 0.24,
+          "focalWins": 100,
+          "focalWinRate": 0.3333333333333333,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 182,
-            "cap": 100,
-            "suddenDeath": 18,
+            "threshold": 76,
+            "cap": 138,
+            "suddenDeath": 86,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.133333333333333,
-          "capCloseMargin": 30,
-          "capCloseMarginRate": 0.1,
+          "meanRounds": 15.62,
+          "capCloseMargin": 24,
+          "capCloseMarginRate": 0.08,
           "focalWinTypes": {
-            "threshold": 40,
-            "cap": 32,
+            "threshold": 14,
+            "cap": 86,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -1961,22 +1961,22 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 1063211091,
-          "focalWins": 3,
-          "focalWinRate": 0.01,
+          "focalWins": 4,
+          "focalWinRate": 0.013333333333333334,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 285,
-            "cap": 15,
+            "threshold": 286,
+            "cap": 14,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.913333333333334,
-          "capCloseMargin": 11,
-          "capCloseMarginRate": 0.03666666666666667,
+          "meanRounds": 15.296666666666667,
+          "capCloseMargin": 9,
+          "capCloseMarginRate": 0.03,
           "focalWinTypes": {
-            "threshold": 3,
+            "threshold": 4,
             "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
@@ -1988,23 +1988,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 693487946,
-          "focalWins": 141,
-          "focalWinRate": 0.47,
+          "focalWins": 123,
+          "focalWinRate": 0.41,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 124,
-            "cap": 142,
-            "suddenDeath": 34,
+            "threshold": 87,
+            "cap": 135,
+            "suddenDeath": 78,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.613333333333333,
-          "capCloseMargin": 23,
-          "capCloseMarginRate": 0.07666666666666666,
+          "meanRounds": 15.333333333333334,
+          "capCloseMargin": 10,
+          "capCloseMarginRate": 0.03333333333333333,
           "focalWinTypes": {
-            "threshold": 32,
-            "cap": 109,
+            "threshold": 12,
+            "cap": 111,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -2017,23 +2017,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 2097167906,
-          "focalWins": 25,
-          "focalWinRate": 0.08333333333333333,
+          "focalWins": 32,
+          "focalWinRate": 0.10666666666666667,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 133,
-            "cap": 135,
-            "suddenDeath": 32,
+            "threshold": 148,
+            "cap": 125,
+            "suddenDeath": 27,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.263333333333334,
-          "capCloseMargin": 24,
-          "capCloseMarginRate": 0.08,
+          "meanRounds": 15.506666666666666,
+          "capCloseMargin": 25,
+          "capCloseMarginRate": 0.08333333333333333,
           "focalWinTypes": {
-            "threshold": 1,
-            "cap": 24,
+            "threshold": 5,
+            "cap": 27,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -2044,23 +2044,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 1823156574,
-          "focalWins": 4,
-          "focalWinRate": 0.013333333333333334,
+          "focalWins": 92,
+          "focalWinRate": 0.30666666666666664,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 176,
-            "cap": 112,
-            "suddenDeath": 12,
+            "threshold": 53,
+            "cap": 160,
+            "suddenDeath": 87,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.736666666666666,
-          "capCloseMargin": 10,
-          "capCloseMarginRate": 0.03333333333333333,
+          "meanRounds": 15.746666666666666,
+          "capCloseMargin": 34,
+          "capCloseMarginRate": 0.11333333333333333,
           "focalWinTypes": {
-            "threshold": 0,
-            "cap": 4,
+            "threshold": 6,
+            "cap": 86,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -2071,22 +2071,22 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 1148364439,
-          "focalWins": 0,
-          "focalWinRate": 0,
+          "focalWins": 4,
+          "focalWinRate": 0.013333333333333334,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 288,
-            "cap": 12,
+            "threshold": 291,
+            "cap": 9,
             "suddenDeath": 0,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 15.933333333333334,
+          "meanRounds": 15.343333333333334,
           "capCloseMargin": 8,
           "capCloseMarginRate": 0.02666666666666667,
           "focalWinTypes": {
-            "threshold": 0,
+            "threshold": 4,
             "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
@@ -2098,23 +2098,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 1468494976,
-          "focalWins": 65,
-          "focalWinRate": 0.21666666666666667,
-          "focalEliminated": 2,
-          "focalElimRate": 0.006666666666666667,
+          "focalWins": 145,
+          "focalWinRate": 0.48333333333333334,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 93,
-            "cap": 167,
-            "suddenDeath": 40,
+            "threshold": 76,
+            "cap": 158,
+            "suddenDeath": 66,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.583333333333334,
-          "capCloseMargin": 22,
-          "capCloseMarginRate": 0.07333333333333333,
+          "meanRounds": 15.453333333333333,
+          "capCloseMargin": 15,
+          "capCloseMarginRate": 0.05,
           "focalWinTypes": {
-            "threshold": 1,
-            "cap": 64,
+            "threshold": 13,
+            "cap": 132,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -2127,23 +2127,23 @@
           "field": "mixed",
           "games": 300,
           "firstSeed": 523583732,
-          "focalWins": 51,
-          "focalWinRate": 0.17,
+          "focalWins": 162,
+          "focalWinRate": 0.54,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 120,
-            "cap": 145,
-            "suddenDeath": 35,
+            "threshold": 202,
+            "cap": 89,
+            "suddenDeath": 9,
             "elimination": 0
           },
-          "medianRounds": 16,
-          "meanRounds": 15.043333333333333,
-          "capCloseMargin": 35,
-          "capCloseMarginRate": 0.11666666666666667,
+          "medianRounds": 15,
+          "meanRounds": 14.933333333333334,
+          "capCloseMargin": 19,
+          "capCloseMarginRate": 0.06333333333333334,
           "focalWinTypes": {
-            "threshold": 40,
-            "cap": 11,
+            "threshold": 122,
+            "cap": 40,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -2154,23 +2154,23 @@
           "field": "allRusher",
           "games": 300,
           "firstSeed": 1984625640,
-          "focalWins": 25,
-          "focalWinRate": 0.08333333333333333,
+          "focalWins": 171,
+          "focalWinRate": 0.57,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 181,
-            "cap": 108,
-            "suddenDeath": 11,
+            "threshold": 150,
+            "cap": 97,
+            "suddenDeath": 53,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.703333333333333,
+          "meanRounds": 15.146666666666667,
           "capCloseMargin": 7,
           "capCloseMarginRate": 0.023333333333333334,
           "focalWinTypes": {
-            "threshold": 17,
-            "cap": 8,
+            "threshold": 96,
+            "cap": 75,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -2181,22 +2181,22 @@
           "field": "allTrader",
           "games": 300,
           "firstSeed": 1517560890,
-          "focalWins": 22,
-          "focalWinRate": 0.07333333333333333,
+          "focalWins": 111,
+          "focalWinRate": 0.37,
           "focalEliminated": 0,
           "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 273,
-            "cap": 27,
+            "threshold": 289,
+            "cap": 11,
             "suddenDeath": 0,
             "elimination": 0
           },
-          "medianRounds": 16,
-          "meanRounds": 15.713333333333333,
-          "capCloseMargin": 0,
-          "capCloseMarginRate": 0,
+          "medianRounds": 15,
+          "meanRounds": 14.743333333333334,
+          "capCloseMargin": 2,
+          "capCloseMarginRate": 0.006666666666666667,
           "focalWinTypes": {
-            "threshold": 22,
+            "threshold": 111,
             "cap": 0,
             "suddenDeath": 0,
             "elimination": 0
@@ -2208,23 +2208,23 @@
           "field": "allOpportunist",
           "games": 300,
           "firstSeed": 2053046844,
-          "focalWins": 70,
-          "focalWinRate": 0.23333333333333334,
-          "focalEliminated": 1,
-          "focalElimRate": 0.0033333333333333335,
+          "focalWins": 170,
+          "focalWinRate": 0.5666666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
           "victoryTypes": {
-            "threshold": 110,
-            "cap": 141,
-            "suddenDeath": 49,
+            "threshold": 174,
+            "cap": 78,
+            "suddenDeath": 48,
             "elimination": 0
           },
           "medianRounds": 16,
-          "meanRounds": 14.066666666666666,
-          "capCloseMargin": 16,
-          "capCloseMarginRate": 0.05333333333333334,
+          "meanRounds": 14.76,
+          "capCloseMargin": 5,
+          "capCloseMarginRate": 0.016666666666666666,
           "focalWinTypes": {
-            "threshold": 39,
-            "cap": 31,
+            "threshold": 103,
+            "cap": 67,
             "suddenDeath": 0,
             "elimination": 0
           }
@@ -2237,29 +2237,29 @@
       "policy": "rusher",
       "games": 1000,
       "firstSeed": 97284472,
-      "medianRounds": 15,
-      "meanRounds": 14.367,
-      "earlyEndRate": 0.069,
+      "medianRounds": 16,
+      "meanRounds": 15.477,
+      "earlyEndRate": 0.012,
       "victoryTypes": {
-        "threshold": 661,
-        "cap": 297,
-        "suddenDeath": 42,
+        "threshold": 248,
+        "cap": 518,
+        "suddenDeath": 234,
         "elimination": 0
       },
       "victoryRates": {
-        "threshold": 0.661,
-        "cap": 0.297,
-        "suddenDeath": 0.042,
+        "threshold": 0.248,
+        "cap": 0.518,
+        "suddenDeath": 0.234,
         "elimination": 0
       },
-      "capCloseMargin": 37,
-      "capCloseMarginRate": 0.037,
+      "capCloseMargin": 70,
+      "capCloseMarginRate": 0.07,
       "winsByFaction": {
-        "byzantium": 739,
-        "ottomans": 48,
-        "venice": 40,
-        "genoa": 3,
-        "hungary": 170
+        "byzantium": 116,
+        "ottomans": 500,
+        "venice": 16,
+        "genoa": 1,
+        "hungary": 367
       }
     },
     {
@@ -2267,28 +2267,28 @@
       "games": 1000,
       "firstSeed": 1544501420,
       "medianRounds": 16,
-      "meanRounds": 15.924,
+      "meanRounds": 15.37,
       "earlyEndRate": 0,
       "victoryTypes": {
-        "threshold": 957,
-        "cap": 43,
+        "threshold": 968,
+        "cap": 32,
         "suddenDeath": 0,
         "elimination": 0
       },
       "victoryRates": {
-        "threshold": 0.957,
-        "cap": 0.043,
+        "threshold": 0.968,
+        "cap": 0.032,
         "suddenDeath": 0,
         "elimination": 0
       },
-      "capCloseMargin": 32,
-      "capCloseMarginRate": 0.032,
+      "capCloseMargin": 27,
+      "capCloseMarginRate": 0.027,
       "winsByFaction": {
-        "byzantium": 0,
+        "byzantium": 63,
         "ottomans": 0,
-        "venice": 687,
-        "genoa": 296,
-        "hungary": 17
+        "venice": 536,
+        "genoa": 382,
+        "hungary": 19
       }
     },
     {
@@ -2296,28 +2296,28 @@
       "games": 1000,
       "firstSeed": 594372764,
       "medianRounds": 16,
-      "meanRounds": 15.992,
+      "meanRounds": 15.89,
       "earlyEndRate": 0,
       "victoryTypes": {
-        "threshold": 122,
-        "cap": 878,
+        "threshold": 349,
+        "cap": 651,
         "suddenDeath": 0,
         "elimination": 0
       },
       "victoryRates": {
-        "threshold": 0.122,
-        "cap": 0.878,
+        "threshold": 0.349,
+        "cap": 0.651,
         "suddenDeath": 0,
         "elimination": 0
       },
-      "capCloseMargin": 92,
-      "capCloseMarginRate": 0.092,
+      "capCloseMargin": 453,
+      "capCloseMarginRate": 0.453,
       "winsByFaction": {
-        "byzantium": 7,
+        "byzantium": 134,
         "ottomans": 0,
-        "venice": 945,
-        "genoa": 6,
-        "hungary": 42
+        "venice": 538,
+        "genoa": 293,
+        "hungary": 35
       }
     },
     {
@@ -2325,59 +2325,43 @@
       "games": 1000,
       "firstSeed": 1778696278,
       "medianRounds": 16,
-      "meanRounds": 14.198,
-      "earlyEndRate": 0.09,
+      "meanRounds": 14.951,
+      "earlyEndRate": 0.028,
       "victoryTypes": {
-        "threshold": 387,
-        "cap": 471,
-        "suddenDeath": 142,
+        "threshold": 539,
+        "cap": 280,
+        "suddenDeath": 181,
         "elimination": 0
       },
       "victoryRates": {
-        "threshold": 0.387,
-        "cap": 0.471,
-        "suddenDeath": 0.142,
+        "threshold": 0.539,
+        "cap": 0.28,
+        "suddenDeath": 0.181,
         "elimination": 0
       },
-      "capCloseMargin": 59,
-      "capCloseMarginRate": 0.059,
+      "capCloseMargin": 15,
+      "capCloseMarginRate": 0.015,
       "winsByFaction": {
-        "byzantium": 449,
-        "ottomans": 265,
-        "venice": 1,
-        "genoa": 59,
-        "hungary": 226
+        "byzantium": 188,
+        "ottomans": 228,
+        "venice": 0,
+        "genoa": 0,
+        "hungary": 584
       }
     }
   ],
   "flags": [
     {
       "kind": "floor",
-      "detail": "byzantium+trader vs allTrader: 0.0% (0/300, elim 0.0%)"
+      "detail": "byzantium+trader vs allTrader: 4.3% (13/300, elim 0.0%)"
     },
     {
       "kind": "floor",
-      "detail": "byzantium+turtler vs mixed: 0.3% (1/300, elim 0.0%)"
+      "detail": "byzantium+turtler vs allTrader: 3.3% (10/300, elim 0.0%)"
     },
     {
       "kind": "floor",
-      "detail": "byzantium+turtler vs allRusher: 0.7% (2/300, elim 0.0%)"
-    },
-    {
-      "kind": "floor",
-      "detail": "byzantium+turtler vs allTrader: 0.0% (0/300, elim 0.0%)"
-    },
-    {
-      "kind": "floor",
-      "detail": "byzantium+turtler vs allOpportunist: 3.0% (9/300, elim 0.0%)"
-    },
-    {
-      "kind": "floor",
-      "detail": "ottomans+rusher vs allRusher: 3.7% (11/300, elim 0.0%)"
-    },
-    {
-      "kind": "floor",
-      "detail": "ottomans+trader vs mixed: 4.0% (12/300, elim 0.3%)"
+      "detail": "ottomans+trader vs mixed: 1.3% (4/300, elim 0.0%)"
     },
     {
       "kind": "floor",
@@ -2385,11 +2369,15 @@
     },
     {
       "kind": "floor",
-      "detail": "ottomans+turtler vs mixed: 4.7% (14/300, elim 0.7%)"
+      "detail": "ottomans+trader vs allOpportunist: 3.7% (11/300, elim 0.0%)"
     },
     {
       "kind": "floor",
-      "detail": "ottomans+turtler vs allRusher: 0.7% (2/300, elim 0.0%)"
+      "detail": "ottomans+turtler vs mixed: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "ottomans+turtler vs allRusher: 0.0% (0/300, elim 0.0%)"
     },
     {
       "kind": "floor",
@@ -2397,27 +2385,43 @@
     },
     {
       "kind": "floor",
-      "detail": "ottomans+opportunist vs allRusher: 3.0% (9/300, elim 0.0%)"
+      "detail": "ottomans+turtler vs allOpportunist: 0.0% (0/300, elim 0.0%)"
     },
     {
       "kind": "floor",
-      "detail": "venice+rusher vs allRusher: 3.7% (11/300, elim 0.0%)"
+      "detail": "venice+rusher vs mixed: 0.7% (2/300, elim 0.0%)"
     },
     {
       "kind": "floor",
-      "detail": "venice+rusher vs allTrader: 0.7% (2/300, elim 0.0%)"
+      "detail": "venice+rusher vs allRusher: 2.0% (6/300, elim 0.0%)"
     },
     {
       "kind": "floor",
-      "detail": "venice+turtler vs allTrader: 3.0% (9/300, elim 0.0%)"
+      "detail": "venice+rusher vs allTrader: 0.0% (0/300, elim 0.0%)"
     },
     {
       "kind": "floor",
-      "detail": "venice+opportunist vs mixed: 2.7% (8/300, elim 0.0%)"
+      "detail": "venice+rusher vs allOpportunist: 1.0% (3/300, elim 0.0%)"
     },
     {
       "kind": "floor",
-      "detail": "venice+opportunist vs allRusher: 1.0% (3/300, elim 0.0%)"
+      "detail": "venice+trader vs allOpportunist: 4.7% (14/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+turtler vs allTrader: 1.3% (4/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+turtler vs allOpportunist: 3.0% (9/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+opportunist vs mixed: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+opportunist vs allRusher: 0.0% (0/300, elim 0.0%)"
     },
     {
       "kind": "floor",
@@ -2425,7 +2429,11 @@
     },
     {
       "kind": "floor",
-      "detail": "venice+opportunist vs allOpportunist: 0.3% (1/300, elim 0.0%)"
+      "detail": "venice+opportunist vs allOpportunist: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "genoa+rusher vs mixed: 0.3% (1/300, elim 0.0%)"
     },
     {
       "kind": "floor",
@@ -2436,20 +2444,12 @@
       "detail": "genoa+rusher vs allTrader: 0.0% (0/300, elim 0.0%)"
     },
     {
-      "kind": "ceiling",
-      "detail": "genoa+trader vs mixed field: 61.3% (184/300)"
+      "kind": "floor",
+      "detail": "genoa+rusher vs allOpportunist: 0.0% (0/300, elim 0.0%)"
     },
     {
       "kind": "floor",
-      "detail": "genoa+turtler vs allRusher: 0.3% (1/300, elim 0.0%)"
-    },
-    {
-      "kind": "floor",
-      "detail": "genoa+turtler vs allTrader: 0.0% (0/300, elim 0.0%)"
-    },
-    {
-      "kind": "floor",
-      "detail": "genoa+opportunist vs mixed: 0.3% (1/300, elim 0.0%)"
+      "detail": "genoa+opportunist vs mixed: 0.0% (0/300, elim 0.0%)"
     },
     {
       "kind": "floor",
@@ -2461,976 +2461,19 @@
     },
     {
       "kind": "floor",
-      "detail": "hungary+trader vs allTrader: 1.0% (3/300, elim 0.0%)"
+      "detail": "genoa+opportunist vs allOpportunist: 0.0% (0/300, elim 0.0%)"
     },
     {
       "kind": "floor",
-      "detail": "hungary+turtler vs allRusher: 1.3% (4/300, elim 0.0%)"
+      "detail": "hungary+trader vs allTrader: 1.3% (4/300, elim 0.0%)"
     },
     {
       "kind": "floor",
-      "detail": "hungary+turtler vs allTrader: 0.0% (0/300, elim 0.0%)"
+      "detail": "hungary+turtler vs allTrader: 1.3% (4/300, elim 0.0%)"
+    },
+    {
+      "kind": "ending",
+      "detail": "all-5-turtler: 45.3% of games are cap tiebreaks with margin<2"
     }
-  ],
-  "verification": {
-    "gamesPerCell": 1000,
-    "baseSeed": 111006,
-    "forkIds": "5000..5013",
-    "elapsedMs": 26580,
-    "cells": [
-      {
-        "focalFaction": "genoa",
-        "focalPolicy": "trader",
-        "field": "mixed",
-        "games": 1000,
-        "firstSeed": 217238484,
-        "focalWins": 649,
-        "focalWinRate": 0.649,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 810,
-          "cap": 89,
-          "suddenDeath": 101,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 15.252,
-        "capCloseMargin": 17,
-        "capCloseMarginRate": 0.017,
-        "focalWinTypes": {
-          "threshold": 573,
-          "cap": 76,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "ceiling"
-      },
-      {
-        "focalFaction": "venice",
-        "focalPolicy": "trader",
-        "field": "mixed",
-        "games": 1000,
-        "firstSeed": 2036206102,
-        "focalWins": 492,
-        "focalWinRate": 0.492,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 636,
-          "cap": 250,
-          "suddenDeath": 114,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 15.23,
-        "capCloseMargin": 60,
-        "capCloseMarginRate": 0.06,
-        "focalWinTypes": {
-          "threshold": 350,
-          "cap": 142,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "ceiling"
-      },
-      {
-        "focalFaction": "venice",
-        "focalPolicy": "trader",
-        "field": "allTrader",
-        "games": 1000,
-        "firstSeed": 433322332,
-        "focalWins": 687,
-        "focalWinRate": 0.687,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 944,
-          "cap": 56,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 15.938,
-        "capCloseMargin": 48,
-        "capCloseMarginRate": 0.048,
-        "focalWinTypes": {
-          "threshold": 650,
-          "cap": 37,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "ceiling"
-      },
-      {
-        "focalFaction": "byzantium",
-        "focalPolicy": "rusher",
-        "field": "allRusher",
-        "games": 1000,
-        "firstSeed": 1186564116,
-        "focalWins": 764,
-        "focalWinRate": 0.764,
-        "focalEliminated": 1,
-        "focalElimRate": 0.001,
-        "victoryTypes": {
-          "threshold": 646,
-          "cap": 328,
-          "suddenDeath": 26,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 14.445,
-        "capCloseMargin": 38,
-        "capCloseMarginRate": 0.038,
-        "focalWinTypes": {
-          "threshold": 478,
-          "cap": 286,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "ceiling"
-      },
-      {
-        "focalFaction": "byzantium",
-        "focalPolicy": "rusher",
-        "field": "allOpportunist",
-        "games": 1000,
-        "firstSeed": 1410374819,
-        "focalWins": 857,
-        "focalWinRate": 0.857,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 605,
-          "cap": 365,
-          "suddenDeath": 30,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 14.439,
-        "capCloseMargin": 19,
-        "capCloseMarginRate": 0.019,
-        "focalWinTypes": {
-          "threshold": 526,
-          "cap": 331,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "ceiling"
-      },
-      {
-        "focalFaction": "byzantium",
-        "focalPolicy": "rusher",
-        "field": "mixed",
-        "games": 1000,
-        "firstSeed": 1198452736,
-        "focalWins": 460,
-        "focalWinRate": 0.46,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 586,
-          "cap": 358,
-          "suddenDeath": 56,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 14.898,
-        "capCloseMargin": 79,
-        "capCloseMarginRate": 0.079,
-        "focalWinTypes": {
-          "threshold": 313,
-          "cap": 147,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "ceiling"
-      },
-      {
-        "focalFaction": "byzantium",
-        "focalPolicy": "turtler",
-        "field": "allRusher",
-        "games": 1000,
-        "firstSeed": 1577897350,
-        "focalWins": 3,
-        "focalWinRate": 0.003,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 271,
-          "cap": 566,
-          "suddenDeath": 163,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 15.186,
-        "capCloseMargin": 162,
-        "capCloseMarginRate": 0.162,
-        "focalWinTypes": {
-          "threshold": 1,
-          "cap": 2,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "floor"
-      },
-      {
-        "focalFaction": "byzantium",
-        "focalPolicy": "turtler",
-        "field": "mixed",
-        "games": 1000,
-        "firstSeed": 1553394585,
-        "focalWins": 8,
-        "focalWinRate": 0.008,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 378,
-          "cap": 554,
-          "suddenDeath": 68,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 15.741,
-        "capCloseMargin": 127,
-        "capCloseMarginRate": 0.127,
-        "focalWinTypes": {
-          "threshold": 0,
-          "cap": 8,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "floor"
-      },
-      {
-        "focalFaction": "ottomans",
-        "focalPolicy": "trader",
-        "field": "mixed",
-        "games": 1000,
-        "firstSeed": 1752836900,
-        "focalWins": 78,
-        "focalWinRate": 0.078,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 453,
-          "cap": 484,
-          "suddenDeath": 63,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 15.153,
-        "capCloseMargin": 92,
-        "capCloseMarginRate": 0.092,
-        "focalWinTypes": {
-          "threshold": 6,
-          "cap": 9,
-          "suddenDeath": 63,
-          "elimination": 0
-        },
-        "why": "floor"
-      },
-      {
-        "focalFaction": "ottomans",
-        "focalPolicy": "turtler",
-        "field": "mixed",
-        "games": 1000,
-        "firstSeed": 1387752542,
-        "focalWins": 47,
-        "focalWinRate": 0.047,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 479,
-          "cap": 520,
-          "suddenDeath": 1,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 15.684,
-        "capCloseMargin": 147,
-        "capCloseMarginRate": 0.147,
-        "focalWinTypes": {
-          "threshold": 0,
-          "cap": 47,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "floor"
-      },
-      {
-        "focalFaction": "venice",
-        "focalPolicy": "opportunist",
-        "field": "mixed",
-        "games": 1000,
-        "firstSeed": 2099669308,
-        "focalWins": 20,
-        "focalWinRate": 0.02,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 401,
-          "cap": 494,
-          "suddenDeath": 105,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 15.288,
-        "capCloseMargin": 84,
-        "capCloseMarginRate": 0.084,
-        "focalWinTypes": {
-          "threshold": 5,
-          "cap": 15,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "floor"
-      },
-      {
-        "focalFaction": "genoa",
-        "focalPolicy": "opportunist",
-        "field": "mixed",
-        "games": 1000,
-        "firstSeed": 1719136345,
-        "focalWins": 6,
-        "focalWinRate": 0.006,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 341,
-          "cap": 543,
-          "suddenDeath": 116,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 15.143,
-        "capCloseMargin": 96,
-        "capCloseMarginRate": 0.096,
-        "focalWinTypes": {
-          "threshold": 0,
-          "cap": 6,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "floor"
-      },
-      {
-        "focalFaction": "hungary",
-        "focalPolicy": "trader",
-        "field": "allTrader",
-        "games": 1000,
-        "firstSeed": 4957741,
-        "focalWins": 17,
-        "focalWinRate": 0.017,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 965,
-          "cap": 35,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "medianRounds": 16,
-        "meanRounds": 15.922,
-        "capCloseMargin": 23,
-        "capCloseMarginRate": 0.023,
-        "focalWinTypes": {
-          "threshold": 16,
-          "cap": 1,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "floor"
-      },
-      {
-        "focalFaction": "genoa",
-        "focalPolicy": "rusher",
-        "field": "allRusher",
-        "games": 1000,
-        "firstSeed": 319758543,
-        "focalWins": 0,
-        "focalWinRate": 0,
-        "focalEliminated": 0,
-        "focalElimRate": 0,
-        "victoryTypes": {
-          "threshold": 678,
-          "cap": 294,
-          "suddenDeath": 28,
-          "elimination": 0
-        },
-        "medianRounds": 15,
-        "meanRounds": 14.283,
-        "capCloseMargin": 31,
-        "capCloseMarginRate": 0.031,
-        "focalWinTypes": {
-          "threshold": 0,
-          "cap": 0,
-          "suddenDeath": 0,
-          "elimination": 0
-        },
-        "why": "floor"
-      }
-    ]
-  },
-  "fixCheck": {
-    "note": "in-memory CONFIG mutations, restored after each scenario; grid cells use fork ids 6000+, fullgame seeds BASE+900000+i",
-    "gamesPerCell": 1000,
-    "fullgamesPerScenario": 800,
-    "baseSeed": 111006,
-    "elapsedMs": 89069,
-    "scenarios": {
-      "baseline": {
-        "genoaTraderMixed": {
-          "rate": 0.645,
-          "wins": 645,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 550,
-            "cap": 95,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.497,
-          "wins": 497,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.437,
-          "wins": 437,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.175,
-            "ottomans": 0.105,
-            "venice": 0.23375,
-            "genoa": 0.24875,
-            "hungary": 0.2375
-          },
-          "policyWinRates": {
-            "rusher": 0.3,
-            "trader": 0.42375,
-            "turtler": 0.14375,
-            "opportunist": 0.1325
-          },
-          "victoryTypeRates": {
-            "threshold": 0.47625,
-            "cap": 0.445,
-            "suddenDeath": 0.07875,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      },
-      "routeP 0.6->0.5": {
-        "genoaTraderMixed": {
-          "rate": 0.615,
-          "wins": 615,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 168,
-            "cap": 447,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.473,
-          "wins": 473,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.569,
-          "wins": 569,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.21875,
-            "ottomans": 0.12,
-            "venice": 0.1975,
-            "genoa": 0.2175,
-            "hungary": 0.24625
-          },
-          "policyWinRates": {
-            "rusher": 0.32875,
-            "trader": 0.39,
-            "turtler": 0.13125,
-            "opportunist": 0.15
-          },
-          "victoryTypeRates": {
-            "threshold": 0.28875,
-            "cap": 0.63,
-            "suddenDeath": 0.08125,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      },
-      "genoaTrade 1.4->1.25": {
-        "genoaTraderMixed": {
-          "rate": 0.614,
-          "wins": 614,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 526,
-            "cap": 88,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.521,
-          "wins": 521,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.446,
-          "wins": 446,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.17625,
-            "ottomans": 0.105,
-            "venice": 0.235,
-            "genoa": 0.245,
-            "hungary": 0.23875
-          },
-          "policyWinRates": {
-            "rusher": 0.3025,
-            "trader": 0.42,
-            "turtler": 0.14375,
-            "opportunist": 0.13375
-          },
-          "victoryTypeRates": {
-            "threshold": 0.4725,
-            "cap": 0.44875,
-            "suddenDeath": 0.07875,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      },
-      "routeP 0.5 + genoaTrade 1.25": {
-        "genoaTraderMixed": {
-          "rate": 0.608,
-          "wins": 608,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 181,
-            "cap": 427,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.434,
-          "wins": 434,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.563,
-          "wins": 563,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.21875,
-            "ottomans": 0.12,
-            "venice": 0.1975,
-            "genoa": 0.2175,
-            "hungary": 0.24625
-          },
-          "policyWinRates": {
-            "rusher": 0.32875,
-            "trader": 0.38875,
-            "turtler": 0.1325,
-            "opportunist": 0.15
-          },
-          "victoryTypeRates": {
-            "threshold": 0.2875,
-            "cap": 0.63125,
-            "suddenDeath": 0.08125,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      },
-      "greatWorkP 5->4": {
-        "genoaTraderMixed": {
-          "rate": 0.618,
-          "wins": 618,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 163,
-            "cap": 455,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.512,
-          "wins": 512,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.548,
-          "wins": 548,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.2075,
-            "ottomans": 0.08625,
-            "venice": 0.23625,
-            "genoa": 0.23875,
-            "hungary": 0.23125
-          },
-          "policyWinRates": {
-            "rusher": 0.36125,
-            "trader": 0.3775,
-            "turtler": 0.12625,
-            "opportunist": 0.135
-          },
-          "victoryTypeRates": {
-            "threshold": 0.29,
-            "cap": 0.63125,
-            "suddenDeath": 0.07875,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      },
-      "threshold 70->78": {
-        "genoaTraderMixed": {
-          "rate": 0.643,
-          "wins": 643,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 19,
-            "cap": 624,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.518,
-          "wins": 518,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.48,
-          "wins": 480,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.17625,
-            "ottomans": 0.105,
-            "venice": 0.23125,
-            "genoa": 0.25125,
-            "hungary": 0.23625
-          },
-          "policyWinRates": {
-            "rusher": 0.2975,
-            "trader": 0.425,
-            "turtler": 0.14375,
-            "opportunist": 0.13375
-          },
-          "victoryTypeRates": {
-            "threshold": 0.1275,
-            "cap": 0.79375,
-            "suddenDeath": 0.07875,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      },
-      "maxRoutes 3->2": {
-        "genoaTraderMixed": {
-          "rate": 0.428,
-          "wins": 428,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 1,
-            "cap": 427,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.296,
-          "wins": 296,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.629,
-          "wins": 629,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.23375,
-            "ottomans": 0.13625,
-            "venice": 0.12375,
-            "genoa": 0.145,
-            "hungary": 0.36125
-          },
-          "policyWinRates": {
-            "rusher": 0.34625,
-            "trader": 0.37,
-            "turtler": 0.11625,
-            "opportunist": 0.1675
-          },
-          "victoryTypeRates": {
-            "threshold": 0.265,
-            "cap": 0.6525,
-            "suddenDeath": 0.0825,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      },
-      "maxRoutes 2 + threshold 66": {
-        "genoaTraderMixed": {
-          "rate": 0.429,
-          "wins": 429,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 50,
-            "cap": 379,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.302,
-          "wins": 302,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.643,
-          "wins": 643,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.23625,
-            "ottomans": 0.13625,
-            "venice": 0.12375,
-            "genoa": 0.145,
-            "hungary": 0.35875
-          },
-          "policyWinRates": {
-            "rusher": 0.345,
-            "trader": 0.37,
-            "turtler": 0.11625,
-            "opportunist": 0.16875
-          },
-          "victoryTypeRates": {
-            "threshold": 0.41625,
-            "cap": 0.50125,
-            "suddenDeath": 0.0825,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      },
-      "maxRoutes 2 + keyCityP 1.75": {
-        "genoaTraderMixed": {
-          "rate": 0.395,
-          "wins": 395,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 58,
-            "cap": 337,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.283,
-          "wins": 283,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.685,
-          "wins": 685,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.25125,
-            "ottomans": 0.135,
-            "venice": 0.12125,
-            "genoa": 0.13875,
-            "hungary": 0.35375
-          },
-          "policyWinRates": {
-            "rusher": 0.36375,
-            "trader": 0.35375,
-            "turtler": 0.11,
-            "opportunist": 0.1725
-          },
-          "victoryTypeRates": {
-            "threshold": 0.4325,
-            "cap": 0.485,
-            "suddenDeath": 0.0825,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      },
-      "maxR2 + thr66 + captureP 1.5": {
-        "genoaTraderMixed": {
-          "rate": 0.471,
-          "wins": 471,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 52,
-            "cap": 419,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.292,
-          "wins": 292,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.596,
-          "wins": 596,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.22875,
-            "ottomans": 0.13625,
-            "venice": 0.13,
-            "genoa": 0.1625,
-            "hungary": 0.3425
-          },
-          "policyWinRates": {
-            "rusher": 0.325,
-            "trader": 0.3825,
-            "turtler": 0.12625,
-            "opportunist": 0.16625
-          },
-          "victoryTypeRates": {
-            "threshold": 0.365,
-            "cap": 0.5525,
-            "suddenDeath": 0.0825,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      },
-      "maxR2 + thr66 + warWon 6->4": {
-        "genoaTraderMixed": {
-          "rate": 0.421,
-          "wins": 421,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 44,
-            "cap": 377,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.3,
-          "wins": 300,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.568,
-          "wins": 568,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.2225,
-            "ottomans": 0.1425,
-            "venice": 0.13,
-            "genoa": 0.155,
-            "hungary": 0.35
-          },
-          "policyWinRates": {
-            "rusher": 0.33,
-            "trader": 0.38875,
-            "turtler": 0.12375,
-            "opportunist": 0.1575
-          },
-          "victoryTypeRates": {
-            "threshold": 0.3925,
-            "cap": 0.52625,
-            "suddenDeath": 0.08125,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      },
-      "maxR2 + thr66 + byzCapGold 0": {
-        "genoaTraderMixed": {
-          "rate": 0.449,
-          "wins": 449,
-          "games": 1000,
-          "winTypes": {
-            "threshold": 51,
-            "cap": 398,
-            "suddenDeath": 0,
-            "elimination": 0
-          }
-        },
-        "veniceTraderMixed": {
-          "rate": 0.312,
-          "wins": 312,
-          "games": 1000
-        },
-        "byzRusherMixed": {
-          "rate": 0.625,
-          "wins": 625,
-          "games": 1000
-        },
-        "fullgame": {
-          "games": 800,
-          "factionWinRates": {
-            "byzantium": 0.22,
-            "ottomans": 0.14625,
-            "venice": 0.11875,
-            "genoa": 0.1425,
-            "hungary": 0.3725
-          },
-          "policyWinRates": {
-            "rusher": 0.33125,
-            "trader": 0.3875,
-            "turtler": 0.12125,
-            "opportunist": 0.16
-          },
-          "victoryTypeRates": {
-            "threshold": 0.4025,
-            "cap": 0.5125,
-            "suddenDeath": 0.085,
-            "elimination": 0
-          },
-          "medianLength": 16
-        }
-      }
-    }
-  }
+  ]
 }

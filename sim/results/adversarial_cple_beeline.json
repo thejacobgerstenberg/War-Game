@@ -1,9 +1,9 @@
 {
   "config": {
-    "games": 1000,
+    "games": 600,
     "baseSeed": 111002,
     "smoke": false,
-    "elapsedMs": 6592
+    "elapsedMs": 6385
   },
   "thresholds": {
     "exploitIfSuddenDeathOneBeelinerOver": 0.2,
@@ -13,7 +13,7 @@
   "scenarios": [
     {
       "name": "solo_ottoman",
-      "games": 1000,
+      "games": 600,
       "baseSeed": 111002,
       "beelinerFactions": [
         "ottomans"
@@ -26,73 +26,70 @@
         }
       },
       "suddenDeath": {
-        "count": 888,
-        "rate": 0.888,
-        "byBeeliner": 888,
-        "byBeelinerRate": 0.888
+        "count": 437,
+        "rate": 0.7283333333333334,
+        "byBeeliner": 437,
+        "byBeelinerRate": 0.7283333333333334
       },
       "beelinerWins": {
-        "count": 888,
-        "rate": 0.888,
+        "count": 437,
+        "rate": 0.7283333333333334,
         "byType": {
           "threshold": 0,
           "cap": 0,
-          "suddenDeath": 888,
+          "suddenDeath": 437,
           "elimination": 0
         }
       },
       "sdCompletionRounds": {
-        "3": 11,
-        "4": 39,
-        "5": 40,
-        "6": 54,
-        "7": 51,
-        "8": 503,
-        "9": 45,
-        "10": 76,
-        "11": 20,
-        "12": 14,
-        "13": 13,
-        "14": 9,
-        "15": 7,
-        "16": 6
+        "3": 19,
+        "4": 78,
+        "5": 34,
+        "6": 27,
+        "7": 33,
+        "8": 26,
+        "9": 18,
+        "10": 18,
+        "11": 16,
+        "12": 6,
+        "13": 6,
+        "14": 5,
+        "15": 4,
+        "16": 147
       },
       "sdBeforeRound9": {
-        "count": 698,
-        "rate": 0.698
+        "count": 217,
+        "rate": 0.3616666666666667
       },
       "captureRounds": {
-        "2": 11,
-        "3": 39,
-        "4": 40,
-        "5": 54,
-        "6": 51,
-        "7": 503,
-        "8": 45,
-        "9": 76,
-        "10": 20,
-        "11": 14,
-        "12": 13,
-        "13": 9,
-        "14": 7,
-        "15": 6
+        "2": 19,
+        "3": 78,
+        "4": 34,
+        "5": 27,
+        "6": 33,
+        "7": 26,
+        "8": 18,
+        "9": 18,
+        "10": 16,
+        "11": 6,
+        "12": 6,
+        "13": 5,
+        "14": 4,
+        "15": 147
       },
       "captureBeforeRound8": {
-        "count": 698,
-        "rate": 0.698
+        "count": 217,
+        "rate": 0.3616666666666667
       },
       "captureEver": {
-        "count": 888,
-        "rate": 0.888
+        "count": 437,
+        "rate": 0.7283333333333334
       },
       "siegeStartRounds": {
-        "2": 975,
+        "1": 29,
+        "2": 525,
         "3": 4,
-        "4": 1,
-        "6": 1,
-        "7": 1,
-        "11": 1,
-        "14": 1
+        "4": 1
       },
       "byzEliminated": {
         "count": 0,
@@ -101,42 +98,42 @@
         "beforeRound8Rate": 0
       },
       "victoryTypes": {
-        "threshold": 79,
-        "cap": 33,
-        "suddenDeath": 888,
+        "threshold": 161,
+        "cap": 2,
+        "suddenDeath": 437,
         "elimination": 0
       },
       "gameLength": {
-        "median": 8,
-        "mean": 8.811,
+        "median": 12,
+        "mean": 10.63,
         "histogram": {
-          "3": 11,
-          "4": 39,
-          "5": 40,
-          "6": 54,
-          "7": 51,
-          "8": 503,
-          "9": 45,
-          "10": 81,
-          "11": 21,
-          "12": 18,
-          "13": 23,
-          "14": 24,
-          "15": 20,
-          "16": 70
+          "3": 19,
+          "4": 78,
+          "5": 34,
+          "6": 27,
+          "7": 33,
+          "8": 26,
+          "9": 19,
+          "10": 21,
+          "11": 38,
+          "12": 50,
+          "13": 55,
+          "14": 25,
+          "15": 26,
+          "16": 149
         }
       },
       "winRateByFaction": {
-        "byzantium": 0.058,
-        "ottomans": 0.888,
-        "venice": 0.02,
-        "genoa": 0.016,
-        "hungary": 0.018
+        "byzantium": 0.18833333333333332,
+        "ottomans": 0.7283333333333334,
+        "venice": 0.005,
+        "genoa": 0.03,
+        "hungary": 0.04833333333333333
       }
     },
     {
       "name": "solo_genoa",
-      "games": 1000,
+      "games": 600,
       "baseSeed": 111002,
       "beelinerFactions": [
         "genoa"
@@ -149,76 +146,38 @@
         }
       },
       "suddenDeath": {
-        "count": 165,
-        "rate": 0.165,
-        "byBeeliner": 69,
-        "byBeelinerRate": 0.069
+        "count": 49,
+        "rate": 0.08166666666666667,
+        "byBeeliner": 0,
+        "byBeelinerRate": 0
       },
       "beelinerWins": {
-        "count": 112,
-        "rate": 0.112,
+        "count": 2,
+        "rate": 0.0033333333333333335,
         "byType": {
           "threshold": 0,
-          "cap": 43,
-          "suddenDeath": 69,
+          "cap": 2,
+          "suddenDeath": 0,
           "elimination": 0
         }
       },
       "sdCompletionRounds": {
-        "5": 7,
-        "6": 12,
-        "7": 11,
-        "8": 8,
-        "9": 9,
-        "10": 8,
-        "11": 3,
-        "12": 10,
-        "13": 13,
-        "14": 38,
-        "15": 21,
-        "16": 25
+        "16": 49
       },
       "sdBeforeRound9": {
-        "count": 38,
-        "rate": 0.038
+        "count": 0,
+        "rate": 0
       },
-      "captureRounds": {
-        "4": 1,
-        "5": 5,
-        "6": 5,
-        "7": 3,
-        "8": 9,
-        "9": 7,
-        "10": 2,
-        "11": 9,
-        "12": 5,
-        "13": 3,
-        "14": 8,
-        "15": 12
-      },
+      "captureRounds": {},
       "captureBeforeRound8": {
-        "count": 14,
-        "rate": 0.014
+        "count": 0,
+        "rate": 0
       },
       "captureEver": {
-        "count": 69,
-        "rate": 0.069
+        "count": 0,
+        "rate": 0
       },
-      "siegeStartRounds": {
-        "3": 1,
-        "4": 33,
-        "5": 11,
-        "6": 9,
-        "7": 7,
-        "8": 13,
-        "9": 6,
-        "10": 7,
-        "11": 2,
-        "12": 5,
-        "13": 8,
-        "14": 9,
-        "15": 5
-      },
+      "siegeStartRounds": {},
       "byzEliminated": {
         "count": 0,
         "rate": 0,
@@ -226,40 +185,36 @@
         "beforeRound8Rate": 0
       },
       "victoryTypes": {
-        "threshold": 319,
-        "cap": 516,
-        "suddenDeath": 165,
+        "threshold": 251,
+        "cap": 300,
+        "suddenDeath": 49,
         "elimination": 0
       },
       "gameLength": {
         "median": 16,
-        "mean": 14.919,
+        "mean": 15.455,
         "histogram": {
-          "5": 7,
-          "6": 12,
-          "7": 11,
-          "8": 8,
-          "9": 9,
-          "10": 8,
-          "11": 13,
-          "12": 31,
-          "13": 53,
-          "14": 97,
-          "15": 68,
-          "16": 683
+          "9": 2,
+          "10": 3,
+          "11": 4,
+          "12": 12,
+          "13": 31,
+          "14": 30,
+          "15": 74,
+          "16": 444
         }
       },
       "winRateByFaction": {
-        "byzantium": 0.187,
-        "ottomans": 0.137,
-        "venice": 0.263,
-        "genoa": 0.112,
-        "hungary": 0.301
+        "byzantium": 0.27,
+        "ottomans": 0.15166666666666667,
+        "venice": 0.125,
+        "genoa": 0.0033333333333333335,
+        "hungary": 0.45
       }
     },
     {
       "name": "solo_venice",
-      "games": 1000,
+      "games": 600,
       "baseSeed": 111002,
       "beelinerFactions": [
         "venice"
@@ -273,56 +228,38 @@
         }
       },
       "suddenDeath": {
-        "count": 99,
-        "rate": 0.099,
-        "byBeeliner": 4,
-        "byBeelinerRate": 0.004
+        "count": 40,
+        "rate": 0.06666666666666667,
+        "byBeeliner": 0,
+        "byBeelinerRate": 0
       },
       "beelinerWins": {
-        "count": 84,
-        "rate": 0.084,
+        "count": 5,
+        "rate": 0.008333333333333333,
         "byType": {
-          "threshold": 4,
-          "cap": 76,
-          "suddenDeath": 4,
+          "threshold": 0,
+          "cap": 5,
+          "suddenDeath": 0,
           "elimination": 0
         }
       },
       "sdCompletionRounds": {
-        "5": 6,
-        "6": 1,
-        "7": 8,
-        "8": 4,
-        "9": 3,
-        "10": 2,
-        "11": 3,
-        "12": 3,
-        "13": 11,
-        "14": 26,
-        "15": 25,
-        "16": 7
+        "16": 40
       },
       "sdBeforeRound9": {
-        "count": 19,
-        "rate": 0.019
+        "count": 0,
+        "rate": 0
       },
-      "captureRounds": {
-        "14": 2,
-        "15": 2
-      },
+      "captureRounds": {},
       "captureBeforeRound8": {
         "count": 0,
         "rate": 0
       },
       "captureEver": {
-        "count": 4,
-        "rate": 0.004
+        "count": 0,
+        "rate": 0
       },
-      "siegeStartRounds": {
-        "10": 1,
-        "13": 5,
-        "15": 2
-      },
+      "siegeStartRounds": {},
       "byzEliminated": {
         "count": 0,
         "rate": 0,
@@ -330,40 +267,36 @@
         "beforeRound8Rate": 0
       },
       "victoryTypes": {
-        "threshold": 380,
-        "cap": 521,
-        "suddenDeath": 99,
+        "threshold": 263,
+        "cap": 297,
+        "suddenDeath": 40,
         "elimination": 0
       },
       "gameLength": {
         "median": 16,
-        "mean": 15.155,
+        "mean": 15.396666666666667,
         "histogram": {
-          "5": 6,
-          "6": 1,
-          "7": 8,
-          "8": 4,
-          "9": 9,
-          "10": 9,
-          "11": 16,
-          "12": 26,
-          "13": 48,
-          "14": 69,
-          "15": 82,
-          "16": 722
+          "9": 2,
+          "10": 4,
+          "11": 9,
+          "12": 8,
+          "13": 28,
+          "14": 41,
+          "15": 81,
+          "16": 427
         }
       },
       "winRateByFaction": {
-        "byzantium": 0.148,
-        "ottomans": 0.116,
-        "venice": 0.084,
-        "genoa": 0.253,
-        "hungary": 0.399
+        "byzantium": 0.20333333333333334,
+        "ottomans": 0.13666666666666666,
+        "venice": 0.008333333333333333,
+        "genoa": 0.23666666666666666,
+        "hungary": 0.415
       }
     },
     {
       "name": "duo_gangup",
-      "games": 1000,
+      "games": 600,
       "baseSeed": 111002,
       "beelinerFactions": [
         "ottomans",
@@ -382,74 +315,70 @@
         }
       },
       "suddenDeath": {
-        "count": 812,
-        "rate": 0.812,
-        "byBeeliner": 812,
-        "byBeelinerRate": 0.812
+        "count": 453,
+        "rate": 0.755,
+        "byBeeliner": 453,
+        "byBeelinerRate": 0.755
       },
       "beelinerWins": {
-        "count": 814,
-        "rate": 0.814,
+        "count": 453,
+        "rate": 0.755,
         "byType": {
           "threshold": 0,
-          "cap": 2,
-          "suddenDeath": 812,
+          "cap": 0,
+          "suddenDeath": 453,
           "elimination": 0
         }
       },
       "sdCompletionRounds": {
-        "3": 13,
-        "4": 33,
-        "5": 38,
-        "6": 34,
-        "7": 35,
-        "8": 452,
-        "9": 54,
-        "10": 68,
-        "11": 23,
-        "12": 13,
-        "13": 15,
-        "14": 9,
-        "15": 14,
-        "16": 11
+        "3": 19,
+        "4": 78,
+        "5": 33,
+        "6": 30,
+        "7": 34,
+        "8": 23,
+        "9": 18,
+        "10": 19,
+        "11": 13,
+        "12": 7,
+        "13": 7,
+        "14": 6,
+        "15": 6,
+        "16": 160
       },
       "sdBeforeRound9": {
-        "count": 605,
-        "rate": 0.605
+        "count": 217,
+        "rate": 0.3616666666666667
       },
       "captureRounds": {
-        "2": 13,
-        "3": 33,
-        "4": 38,
-        "5": 34,
-        "6": 35,
-        "7": 456,
-        "8": 50,
-        "9": 68,
-        "10": 23,
-        "11": 13,
-        "12": 15,
-        "13": 9,
-        "14": 14,
-        "15": 11
+        "2": 19,
+        "3": 78,
+        "4": 33,
+        "5": 30,
+        "6": 34,
+        "7": 23,
+        "8": 18,
+        "9": 19,
+        "10": 13,
+        "11": 7,
+        "12": 7,
+        "13": 6,
+        "14": 6,
+        "15": 160
       },
       "captureBeforeRound8": {
-        "count": 609,
-        "rate": 0.609
+        "count": 217,
+        "rate": 0.3616666666666667
       },
       "captureEver": {
-        "count": 812,
-        "rate": 0.812
+        "count": 453,
+        "rate": 0.755
       },
       "siegeStartRounds": {
-        "2": 975,
+        "1": 29,
+        "2": 525,
         "3": 4,
-        "4": 13,
-        "5": 5,
-        "6": 1,
-        "7": 1,
-        "12": 1,
-        "13": 1
+        "4": 1
       },
       "byzEliminated": {
         "count": 0,
@@ -458,197 +387,38 @@
         "beforeRound8Rate": 0
       },
       "victoryTypes": {
-        "threshold": 109,
-        "cap": 79,
-        "suddenDeath": 812,
+        "threshold": 146,
+        "cap": 1,
+        "suddenDeath": 453,
         "elimination": 0
       },
       "gameLength": {
-        "median": 8,
-        "mean": 9.509,
+        "median": 12,
+        "mean": 10.683333333333334,
         "histogram": {
-          "3": 13,
-          "4": 33,
-          "5": 38,
-          "6": 34,
-          "7": 35,
-          "8": 452,
-          "9": 54,
-          "10": 74,
+          "3": 19,
+          "4": 78,
+          "5": 33,
+          "6": 30,
+          "7": 34,
+          "8": 23,
+          "9": 18,
+          "10": 22,
           "11": 31,
-          "12": 21,
-          "13": 30,
-          "14": 26,
-          "15": 34,
-          "16": 125
+          "12": 49,
+          "13": 58,
+          "14": 27,
+          "15": 17,
+          "16": 161
         }
       },
       "winRateByFaction": {
-        "byzantium": 0.085,
-        "ottomans": 0.799,
-        "venice": 0.059,
-        "genoa": 0.015,
-        "hungary": 0.042
+        "byzantium": 0.18666666666666668,
+        "ottomans": 0.755,
+        "venice": 0.006666666666666667,
+        "genoa": 0,
+        "hungary": 0.051666666666666666
       }
     }
-  ],
-  "fixCheck": {
-    "note": "solo_ottoman beeline re-run under candidate CONFIG mutations (applied at runtime; rules.ts untouched)",
-    "variants": [
-      {
-        "variant": "base",
-        "games": 500,
-        "baseSeed": 111002,
-        "suddenDeathRate": 0.878,
-        "suddenDeathByBeelinerRate": 0.878,
-        "sdCompleteByRound8Rate": 0.684,
-        "beelinerWinRate": 0.878,
-        "medianLength": 8,
-        "sdCaptureRounds": {
-          "2": 4,
-          "3": 14,
-          "4": 22,
-          "5": 28,
-          "6": 29,
-          "7": 245,
-          "8": 19,
-          "9": 37,
-          "10": 11,
-          "11": 7,
-          "12": 10,
-          "13": 6,
-          "14": 4,
-          "15": 3
-        }
-      },
-      {
-        "variant": "hp28",
-        "games": 500,
-        "baseSeed": 111002,
-        "suddenDeathRate": 0.702,
-        "suddenDeathByBeelinerRate": 0.702,
-        "sdCompleteByRound8Rate": 0.182,
-        "beelinerWinRate": 0.702,
-        "medianLength": 13,
-        "sdCaptureRounds": {
-          "2": 4,
-          "3": 11,
-          "4": 13,
-          "5": 23,
-          "6": 22,
-          "7": 18,
-          "8": 15,
-          "9": 18,
-          "10": 10,
-          "11": 10,
-          "12": 162,
-          "13": 15,
-          "14": 18,
-          "15": 12
-        }
-      },
-      {
-        "variant": "hp40",
-        "games": 500,
-        "baseSeed": 111002,
-        "suddenDeathRate": 0.604,
-        "suddenDeathByBeelinerRate": 0.604,
-        "sdCompleteByRound8Rate": 0.16,
-        "beelinerWinRate": 0.604,
-        "medianLength": 13,
-        "sdCaptureRounds": {
-          "2": 4,
-          "3": 10,
-          "4": 11,
-          "5": 14,
-          "6": 25,
-          "7": 16,
-          "8": 16,
-          "9": 13,
-          "10": 11,
-          "11": 10,
-          "12": 106,
-          "13": 20,
-          "14": 31,
-          "15": 15
-        }
-      },
-      {
-        "variant": "hp28+attr04",
-        "games": 500,
-        "baseSeed": 111002,
-        "suddenDeathRate": 0.692,
-        "suddenDeathByBeelinerRate": 0.692,
-        "sdCompleteByRound8Rate": 0.164,
-        "beelinerWinRate": 0.692,
-        "medianLength": 13,
-        "sdCaptureRounds": {
-          "2": 2,
-          "3": 12,
-          "4": 14,
-          "5": 21,
-          "6": 18,
-          "7": 15,
-          "8": 15,
-          "9": 16,
-          "10": 7,
-          "11": 11,
-          "12": 167,
-          "13": 14,
-          "14": 15,
-          "15": 19
-        }
-      },
-      {
-        "variant": "hp28+hold3",
-        "games": 500,
-        "baseSeed": 111002,
-        "suddenDeathRate": 0.668,
-        "suddenDeathByBeelinerRate": 0.668,
-        "sdCompleteByRound8Rate": 0.146,
-        "beelinerWinRate": 0.668,
-        "medianLength": 14,
-        "sdCaptureRounds": {
-          "3": 4,
-          "4": 11,
-          "5": 13,
-          "6": 23,
-          "7": 22,
-          "8": 18,
-          "9": 15,
-          "10": 18,
-          "11": 9,
-          "12": 9,
-          "13": 159,
-          "14": 15,
-          "15": 18
-        }
-      },
-      {
-        "variant": "hp28+hold3+resup0",
-        "games": 500,
-        "baseSeed": 111002,
-        "suddenDeathRate": 0.536,
-        "suddenDeathByBeelinerRate": 0.536,
-        "sdCompleteByRound8Rate": 0.094,
-        "beelinerWinRate": 0.536,
-        "medianLength": 14,
-        "sdCaptureRounds": {
-          "3": 1,
-          "4": 8,
-          "5": 8,
-          "6": 14,
-          "7": 16,
-          "8": 17,
-          "9": 17,
-          "10": 9,
-          "11": 6,
-          "12": 6,
-          "13": 142,
-          "14": 13,
-          "15": 11
-        }
-      }
-    ]
-  }
+  ]
 }

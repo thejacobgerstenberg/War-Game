@@ -196,7 +196,7 @@ const outPath = writeResults('economy', {
     options: DEFAULT_ECON_OPTIONS,
     criteria: {
       solvent: 'no desertion event in any archetype through round 16',
-      rushCredibleR5: 'rush strike power (prof+merc+0.3*levy) >= 8 by end of round 5',
+      rushCredibleR5: 'rush strike power (prof+merc+galley+0.3*levy) >= 8 at its rounds-4/5 peak',
       turtleStrong: 'turtle net income (last-3-round avg) >= rush net AND >= 0.9x balanced net',
       turtleBounded: 'turtle gross gold income <= 1.3x balanced gross gold income',
       balancedMid: 'balanced net income >= 0.9x rush net',

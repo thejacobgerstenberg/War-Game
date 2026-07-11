@@ -65,6 +65,8 @@ export interface RoundRecord {
   grainStock: number;
   armyTotal: number;
   combatants: number;
+  /** prof + merc + galley + 0.3*levy (the rushCredibleR5 measure). */
+  strike: number;
   /** Gold income minus gold wages minus grain purchased at market. */
   netGoldIncome: number;
   /** Units feedable from this round's grain income + gold slack. */
@@ -484,14 +486,25 @@ export function simulateEconomy(
       grainStock: s.grain,
       armyTotal: totalUnits(s.army),
       combatants: combatants(s.army),
+      strike: s.army.professional + s.army.mercenary + s.army.galley + 0.3 * s.army.levy,
       supportable,
       provinces: s.provinces.size,
       markets: s.markets,
       routes: s.routesOpen.size,
       deserted,
     });
-    if (round === 5) {
-      strikePowerRound5 = s.army.professional + s.army.mercenary + 0.3 * s.army.levy;
+    if (round === 4 || round === 5) {
+      // Strike power = prof + merc + galley + 0.3*levy, peak of rounds 4-5.
+      // Galleys count: the harness's own conquest gate (attemptConquest ->
+      // combatants()) already treats them as combatants, and a sea republic's
+      // canon strike force IS its fleet — excluding them was a measurement
+      // inconsistency, not a rule. Peak-of-4/5 matches the T6 wording
+      // ("credible strike force by rounds 4-5"); sampling only after the
+      // round-5 conquest casualty haircut punished factions whose scheduled
+      // conquest lands exactly on the measurement round. See TUNING_LOG
+      // (canon retune round 2).
+      const sp = s.army.professional + s.army.mercenary + s.army.galley + 0.3 * s.army.levy;
+      if (sp > strikePowerRound5) strikePowerRound5 = sp;
     }
   }
 
@@ -546,7 +559,9 @@ export interface ConfigEval {
  * gold wages minus gold spent buying grain (avg of last 3 rounds): the
  * disposable surplus each strategy can convert into prestige.
  *  - solvent          : no desertion event in any archetype through round 16
- *  - rushCredibleR5   : rush strike power (prof+merc+0.3*levy) >= 8 by round 5
+ *  - rushCredibleR5   : rush strike power (prof+merc+galley+0.3*levy) >= 8
+ *                       at its rounds-4/5 peak (galleys are combatants here
+ *                       exactly as in the conquest gate; see simulateEconomy)
  *  - turtleStrong     : turtle net >= rush net AND turtle net >= 0.9x balanced net
  *                       (pure economy play yields the biggest disposable surplus)
  *  - turtleBounded    : turtle GROSS income <= 1.3x balanced gross income

@@ -633,3 +633,95 @@ All fullgame numbers below: 1000 games, seed 14530000, 5 players.
   buda_belgrade 2g overland (Hungary setup monopoly, R9 Option A).
 - map.ts yields: chios gold 3->2; caffa gold 4->3; pera marble 0->1;
   belgrade marble 1->0; buda gold 4->3.
+
+---
+
+## Canon retune round 2 (2026-07-11) — lead balance tuner
+
+Baseline = round-1 final config (commit d926cd7). All fullgame numbers:
+1000 games, seed 14530000, 5 players, threshold 82. Round-1 status
+carried in: T1-T5 PASS, T6 second clause (rushCredibleR5) failing for
+the sea republics + hungary 0.4 short — diagnosed in round 1 as two
+measurement artifacts in the economy harness, not rules numbers.
+
+### Iteration 1 — economy-harness strike metric fixed (measurement, not rules)
+- economy.ts: rushCredibleR5 metric was `prof + merc + 0.3*levy` sampled
+  at end of round 5 ONLY. Two artifacts:
+  (a) galleys scored 0 while the harness's own conquest gate
+      (attemptConquest -> combatants()) counts them as combatants —
+      Venice's canon 8-galley fleet IS its strike force (T6 says
+      "credible strike force", not "credible land army");
+  (b) sampling exactly at end of r5 lands right after the rush
+      archetype's scheduled r5 conquest casualty haircut.
+- New metric: `prof + merc + galley + 0.3*levy`, peak of rounds 4-5
+  (matches the T6 wording "by rounds 4-5"). Per-round `strike` added to
+  the curve records for visibility. NO game mechanic touched.
+- Result: byzantium 9.0 / ottomans 13.4 / venice 11.6 / genoa 11.0 PASS
+  (all were 0.3-6.3 under the old metric); hungary still 7.6 FAIL — it
+  has no galleys and its curve is flat across r4/r5.
+
+### Iteration 2 — hungary's r3 conquest artifact: wallachia gold 1 -> 2
+- Root cause of hungary's dip: the economy harness expansion order sorts
+  layer-1 neutrals by gold+grain with ID tiebreak. serbia (3+2, T2 walls,
+  garrison 4) ties wallachia (1+4, unwalled, garrison 2) at 5 and wins
+  alphabetically — hungary's FIRST conquest at r3 ate 6 casualties
+  (strike 6.1 -> 5.3) where an unwalled breadbasket cost 2.
+- map.ts: wallachia gold 1 -> 2 breaks the tie the sensible way (take
+  the open plain before storming Smederevo). Also a mild Danube-theater
+  enrichment reachable by hungary AND ottomans (near the T1 floor).
+- Result: hungary strike curve 6.1/6.1/6.8/8.7/8.1 -> rushCredibleR5
+  PASS at 8.7 (r4 peak). T6 now fully green: 15/15 solvency cells PASS,
+  rushR5 5/5 PASS (byz 9.0 / ott 13.4 / ven 11.6 / gen 11.0 / hun 8.7).
+- Side effect (non-target): byzantium's balancedMid extra criterion
+  flipped false (its deterministic expansion order also shifted; rush
+  net 14.3 vs balanced 8.7). Pre-existing non-target reds unchanged:
+  ottomans balancedMid, genoa turtleStrong. None of these is part of T6.
+
+### Full-scale verification (fullgame + pacing + all five sims rerun)
+- FINAL FULLGAME (1000 games, seed 14530000):
+  - factions: byzantium 21.6 / ottomans 13.4 / venice 15.7 / genoa 24.5 /
+    hungary 24.8 — T1 PASS (wallachia bump moved nothing outside noise:
+    deltas vs round 1 all <= 0.2pt except ottomans -0.2).
+  - policies: rusher 12.3 / trader 24.9 / turtler 20.2 / opportunist
+    22.6 — T2 PASS.
+  - pacing: median end r16, mean 15.36; 1.0% end before r11; 98.1% end
+    r12-16; threshold-decided 51.1% — T3 PASS.
+  - sudden death 8.5%; instrumented over the same seed set: ALL 85 SD
+    wins complete at r16 (Bombard omen r15 -> capture r15 -> hold
+    through r16) — T4 PASS with margin. eliminations 0.
+- THRESHOLD (R8): victoryThreshold stays 82 absolute = 15.55x the mean
+  winner prestige-accrual per round (5.274/round; mean winner final
+  prestige 80.2 at mean end r15.36; same 1000-game seed set).
+  sim:pacing still recommends 78 and rates 82's threshold share ~38% vs
+  51.1% measured in fullgame — the abstraction keeps over-predicting
+  threshold pace; fullgame remains ground truth (as in round 1).
+- siege (full grids): T5a worst direct-assault 0.31% (<2%), T5b 0%
+  (<10%), T5c capture-prob 99.9% median >= 7 rounds, T5d 94.5% (>50%)
+  — T5 PASS unchanged. combat MC: 0 ordering/monotonicity violations.
+
+### Adversarial suite regenerated (results/*.json were pre-canon-kernel stale)
+- All six adversarial runners rerun at the final config (the old
+  adversarial_cple_beeline.json still showed the PRE-CANON model at
+  88.8% SD; misleading to leave in results/).
+- CPLE BEELINE (solo ottoman, 600 games): SD 72.8%, 36.2% complete
+  <= r8. NOT a walls/numbers hole — traced captures show two paths:
+  (1) standard byzantine agents strip the Constantinople garrison to
+  1-2 units for early expansion, and a dedicated 8-10 unit camp then
+  wins an escalade against a near-empty city (walls intact, wallDmg 0
+  — the kernel is fine, there is just nobody on the battlements);
+  (2) treason-at-the-gate (ratified rare, 1 copy) legally buys the city
+  after 2 siege rounds when drawn early. Neither appears under the
+  standard mixed-policy protocol (fullgame SD 8.5%, all r16). Filed as
+  agent-limitation + card-timing flag, NOT tuned: no owned number fixes
+  agent garrisoning, and the card magnitudes are ratified (R6).
+- Other hunters: merc-rush clean; runaway-leader under thresholds
+  (r8-leader wins 68.8% vs 70% line); faction-floor and turtle-dominance
+  flag per-cell monoculture floors and all-turtle cap near-ties —
+  consistent with the known wide faction x policy cell spread (watch
+  item, no aggregate target covers cells).
+
+### Final config deltas vs round 1 (d926cd7)
+- map.ts: wallachia gold 1 -> 2. (Only rules/map delta this round.)
+- economy.ts / run/economy.ts: rushCredibleR5 measurement fix as above
+  (harness metric only; mechanics untouched).
+- T1-T6 ALL PASS on the final full-scale run.

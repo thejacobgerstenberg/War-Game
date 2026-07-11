@@ -76,7 +76,7 @@ const P: Record<string, ProvinceSpec> = {
   transylvania: { name: 'Transylvania', owner: 'hungary', terrain: 'mountains', wall: 1, y: [2, 2, 2, 0, 0] },
   banat: { name: 'Banat', owner: null, terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0] },
   moldavia: { name: 'Moldavia', owner: null, terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0], coasts: ['black_sea_west'] },
-  wallachia: { name: 'Wallachia', owner: null, terrain: 'plains', wall: 0, y: [1, 4, 0, 0, 0] },
+  wallachia: { name: 'Wallachia', owner: null, terrain: 'plains', wall: 0, y: [2, 4, 0, 0, 0] }, // gold 1 -> 2 (retune r2): breaks the serbia/wallachia gold+grain tie so the Danube expansion order takes the unwalled breadbasket before T2 Smederevo — the alphabetical tie-break sent Hungary's FIRST conquest into 6 casualties at r3 (see TUNING_LOG)
   vidin: { name: 'Vidin', owner: null, terrain: 'hills', wall: 1, y: [1, 2, 0, 0, 0] },
   nicopolis: { name: 'Nicopolis', owner: null, terrain: 'plains', wall: 1, y: [1, 2, 0, 0, 0] },
   mesembria: { name: 'Mesembria', owner: 'byzantium', terrain: 'plains', wall: 1, y: [2, 3, 0, 0, 0], coasts: ['black_sea_west'] }, // canon selymbria (Byzantine buffer)
