@@ -26,6 +26,7 @@ import {
   BUILDING_COSTS,
   BUILDING_EFFECTS,
   DESERTION_ORDER,
+  FACTION_LEVY_ECONOMY,
   GREAT_WORK_COSTS,
   MARKET_RATIOS,
   MERC_REVOLT_PILLAGE,
@@ -456,9 +457,28 @@ function goldUpkeepDue(state: GameState, playerId: string): number {
   return Math.max(0, due);
 }
 
+/**
+ * faction-scoped base-LEVY economy (devshirme / strongest-levies) — balance A/B
+ * PR #11 @d332061. Effective GRAIN upkeep of a BASE unit for a faction: a base LEVY
+ * reads FACTION_LEVY_ECONOMY[faction].grainUpkeep when defined (`??` so an explicit
+ * 0 — the Ottoman devshirme rate — wins over the base 1); every other base unit,
+ * and any player with no faction, keeps UNIT_STATS[u].grainUpkeep. Shared by
+ * {@link grainDue} and the starvation-desertion relief so the ledger stays balanced
+ * (a 0-grain levy contributes nothing to the bill AND relieves nothing on desert).
+ * Only the base LEVY rate is faction-scoped; variant/mercenary upkeep is untouched.
+ */
+function baseGrainUpkeep(u: UnitType, faction: Faction | null): number {
+  if (u === UnitType.LEVY && faction != null) {
+    return FACTION_LEVY_ECONOMY[faction]?.grainUpkeep ?? UNIT_STATS[u].grainUpkeep;
+  }
+  return UNIT_STATS[u].grainUpkeep;
+}
+
 /** Grain a player owes this Income phase: Σ unit upkeep (mercenaries ×2, §4.4). */
 function grainDue(state: GameState, playerId: string): number {
   let due = 0;
+  const player = playerById(state, playerId);
+  const faction = player?.faction ?? null;
   const stacks: (Army | Fleet)[] = [
     ...state.armies.filter((a) => a.ownerId === playerId),
     ...state.fleets.filter((f) => f.ownerId === playerId),
@@ -469,7 +489,9 @@ function grainDue(state: GameState, playerId: string): number {
       if (total <= 0) continue;
       const mercs = mercCount(stack, u);
       const regular = total - mercs;
-      const per = UNIT_STATS[u].grainUpkeep;
+      // §LEVY faction lever (PR #11 @d332061): a base LEVY owes this faction's
+      // grain rate (Ottoman devshirme = 0); other base units keep UNIT_STATS.
+      const per = baseGrainUpkeep(u, faction);
       due += regular * per + mercs * per * MERC_UPKEEP_MULTIPLIER; // §4.4 merc double
     }
     for (const v of stack.variants ?? []) {
@@ -487,7 +509,6 @@ function grainDue(state: GameState, playerId: string): number {
   }
   // §4.4 event/tactic upkeep delta: an 'upkeep_mod' modifier (CONTRACT2 §12.10)
   // adds to (or, if negative, relieves) the grain a faction owes this phase.
-  const player = playerById(state, playerId);
   if (player?.faction) {
     due += sumModifierValues(state, "upkeep_mod", { faction: player.faction });
   }
@@ -717,7 +738,11 @@ export function upkeep(state: GameState): GameState {
     // train that created the doubled shortfall is exactly what unwinds it) rather
     // than culling a phantom second unit per grain owed.
     for (const u of DESERTION_ORDER) {
-      const per = UNIT_STATS[u].grainUpkeep * MERC_UPKEEP_MULTIPLIER;
+      // §LEVY faction lever (PR #11 @d332061): relief per deserting merc uses this
+      // faction's base grain rate ×2 (mirrors grainDue). A 0-grain base levy
+      // (Ottoman devshirme) relieves nothing, so it never deserts for grain.
+      const per = baseGrainUpkeep(u, player.faction) * MERC_UPKEEP_MULTIPLIER;
+      if (per <= 0) continue;
       for (const stack of stacks) {
         const m = stack.mercenaries;
         // Generic mercenary-tagged units of this type desert first (×2 relief).
@@ -753,7 +778,11 @@ export function upkeep(state: GameState): GameState {
     // Phase B: regular units desert lowest-value first (§4.4).
     if (deficit > 0) {
       for (const u of DESERTION_ORDER) {
-        const per = UNIT_STATS[u].grainUpkeep;
+        // §LEVY faction lever (PR #11 @d332061): a base LEVY relieves this faction's
+        // grain rate (Ottoman devshirme = 0). A 0-grain unit relieves nothing, so it
+        // never deserts for grain (and the loop can never stall on a 0-relief unit).
+        const per = baseGrainUpkeep(u, player.faction);
+        if (per <= 0) continue;
         for (const stack of stacks) {
           while (deficit > 0 && (stack.units[u] ?? 0) > 0) {
             stack.units[u] -= 1;

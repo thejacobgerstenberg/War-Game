@@ -916,6 +916,51 @@ describe("upkeep — §2.3 per-unique grain/gold upkeep overrides (§4.4)", () =
 // tests confirm the §4.3 gold→resource direction at 3:1 base / 2:1 with Market.
 // ---------------------------------------------------------------------------
 
+describe("upkeep — faction-scoped base-LEVY grain lever (Ottoman devshirme, PR #11 @d332061)", () => {
+  it("an OTTOMAN player's base levies owe 0 grain upkeep (devshirme)", () => {
+    const state = fresh();
+    // p2 is OTTOMAN — the FACTION_LEVY_ECONOMY[OTTOMAN].grainUpkeep = 0 holder.
+    state.armies = [army("p2", "edirne", { [UnitType.LEVY]: 3 })];
+    state.fleets = [];
+    state.players[1].treasury.grain = 5;
+    const out = upkeep(state);
+    // 0 grain owed (the base rate would have drawn 3 × 1 = 3, leaving 2). The
+    // explicit-0 override wins (`??`), so nothing is drawn from grain stores...
+    expect(out.players[1].treasury.grain).toBe(5);
+    // ...and with no deficit no levy deserts — the whole stack survives.
+    expect(out.armies[0].units[UnitType.LEVY]).toBe(3);
+  });
+
+  it("a non-Ottoman player's base levies still owe the base 1 grain each", () => {
+    const state = fresh();
+    // p1 is BYZANTIUM (no lever) — its levies pay the plain UNIT_STATS base rate.
+    state.armies = [army("p1", "selymbria", { [UnitType.LEVY]: 3 })];
+    state.fleets = [];
+    state.players[0].treasury.grain = 5;
+    const out = upkeep(state);
+    expect(out.players[0].treasury.grain).toBe(5 - 3); // 2 — base 1 grain/levy
+    expect(out.armies[0].units[UnitType.LEVY]).toBe(3);
+  });
+
+  it("Ottoman devshirme levies never desert for grain; other units still starve (shortfall/desertion intact)", () => {
+    const state = fresh();
+    // p2 (OTTOMAN) fields 2 base levies (0 grain each) + 1 INFANTRY (base 1 grain).
+    state.armies = [
+      army("p2", "edirne", { [UnitType.LEVY]: 2, [UnitType.INFANTRY]: 1 }),
+    ];
+    state.fleets = [];
+    // due = 2 × 0 (devshirme levy) + 1 × 1 (infantry) = 1; no grain → deficit 1.
+    state.players[1].treasury.grain = 0;
+    const out = upkeep(state);
+    const a = out.armies[0];
+    // The 0-grain levies relieve nothing, so they are NOT culled; the INFANTRY —
+    // the only unit that actually owes grain — starves to clear the 1-grain deficit.
+    expect(a.units[UnitType.LEVY]).toBe(2); // devshirme levies spared
+    expect(a.units[UnitType.INFANTRY]).toBe(0); // starved to cover the deficit
+    expect(out.players[1].treasury.grain).toBe(0);
+  });
+});
+
 describe("applyTrade CONVERT — §4.3 gold→resource direction (turtle archetype)", () => {
   it("buys grain WITH gold at the base 3:1 ratio (no infrastructure)", () => {
     const state = fresh();

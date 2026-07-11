@@ -134,6 +134,42 @@ describe("RECRUIT", () => {
     expect(stack.count).toBe(2);
   });
 
+  it("faction-scoped base-LEVY cost lever: a HUNGARY player pays gold 1 per levy (PR #11 @d332061)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    const p1 = s.players.find((p) => p.id === "p1")!;
+    p1.faction = Faction.HUNGARY; // devshirme / strongest-levies lever holder
+    p1.treasury.gold = 10;
+    p1.treasury.grain = 5;
+
+    // FACTION_LEVY_ECONOMY[HUNGARY].cost = { gold: 1 } overrides ONLY the gold
+    // component of the base LEVY cost { gold: 2, grain: 1 }; grain is absent from
+    // the override so it falls through to the base (1). So one levy costs gold 1
+    // (override, NOT the base 2) + grain 1 (base) — the §2.3-style component merge.
+    const next = applyAction(s, recruit({ units: { [UnitType.LEVY]: 1 } }));
+    const after = next.players.find((p) => p.id === "p1")!;
+    expect(after.treasury.gold).toBe(10 - 1); // 9 — override gold 1, not base gold 2
+    expect(after.treasury.gold).not.toBe(10 - UNIT_STATS[UnitType.LEVY].cost.gold!); // not 8
+    expect(after.treasury.grain).toBe(5 - 1); // 4 — grain falls through to base
+    const army = next.armies.find((a) => a.id === BYZ_ARMY)!;
+    expect(army.units[UnitType.LEVY]).toBe(1);
+  });
+
+  it("faction-scoped base-LEVY cost lever: a non-Hungary player pays the base LEVY gold (PR #11 @d332061)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    const p1 = s.players.find((p) => p.id === "p1")!; // BYZANTIUM (no lever)
+    p1.treasury.gold = 10;
+    p1.treasury.grain = 5;
+
+    // No FACTION_LEVY_ECONOMY entry for BYZANTIUM → the plain base LEVY cost
+    // { gold: 2, grain: 1 } is charged (the lever does not leak to other factions).
+    const next = applyAction(s, recruit({ units: { [UnitType.LEVY]: 1 } }));
+    const after = next.players.find((p) => p.id === "p1")!;
+    expect(after.treasury.gold).toBe(10 - UNIT_STATS[UnitType.LEVY].cost.gold!); // 8
+    expect(after.treasury.grain).toBe(5 - UNIT_STATS[UnitType.LEVY].cost.grain!); // 4
+  });
+
   it("§6.4 enforces the 12-unit CITY stacking limit", () => {
     const s = fresh();
     s.phase = GamePhase.RECRUITMENT;

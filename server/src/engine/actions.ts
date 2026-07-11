@@ -36,6 +36,7 @@ import {
   type ResourceBundle,
 } from "@imperium/shared";
 import {
+  FACTION_LEVY_ECONOMY,
   GREAT_BOMBARD,
   MERC_MARKET,
   STACKING,
@@ -204,6 +205,8 @@ function ownUnitsAt(
  * the UNIT_STATS base cost, or, for a unique variant with a §2.3 `cost` override in
  * UNIQUE_UNIT_OVERRIDES, that per-unique override (§6.1; mercenaries: ×1.5 gold —
  * Genoa ×1.0 — and 0 grain) — and enforces the per-player stacking limit (§6.4).
+ * A BASE LEVY additionally reads the faction-scoped FACTION_LEVY_ECONOMY.cost lever
+ * (balance A/B PR #11 @d332061: a Hungary levy pays gold 1 + base grain 1).
  * Assumes the reducer has spent the action.
  */
 function applyRecruit(state: GameState, action: GameAction): GameState {
@@ -290,9 +293,23 @@ function applyRecruit(state: GameState, action: GameAction): GameState {
   // (base WARSHIP gold), and the Genoese Crossbowmen — with NO override — pay the
   // plain base ARCHER cost (gold 3). The `variant` param threads the variant key so
   // the merc gold-premium / 0-grain rules still layer on top of the override cost.
+  // Faction-scoped base-LEVY economy (devshirme / strongest-levies) — balance A/B
+  // PR #11 @d332061: a BASE LEVY (UnitType.LEVY, no variant) reads this faction's
+  // FACTION_LEVY_ECONOMY.cost as a §2.3-style COMPONENT-LEVEL cost override.
+  const factionLevyCost =
+    player.faction != null ? FACTION_LEVY_ECONOMY[player.faction]?.cost : undefined;
   const addUnitCost = (base: UnitType, n: number, variant?: string): void => {
     const stat = UNIT_STATS[base];
-    const override = variant ? UNIQUE_UNIT_OVERRIDES[variant]?.cost : undefined;
+    // A unique variant reads its per-unique UNIQUE_UNIT_OVERRIDES cost; a BASE LEVY
+    // (no variant) reads the faction-scoped FACTION_LEVY_ECONOMY.cost lever. Both
+    // merge component-wise over the base UnitType cost via the `?? stat.cost[k]`
+    // below — a Hungary levy pays gold 1 (override) + grain 1 (base). No other
+    // base unit type has a faction cost lever, so they keep the plain base cost.
+    const override = variant
+      ? UNIQUE_UNIT_OVERRIDES[variant]?.cost
+      : base === UnitType.LEVY
+        ? factionLevyCost
+        : undefined;
     const merc = mercenary && !stat.naval;
     for (const k of RESOURCE_KEYS) {
       // `?? stat.cost[k]` does the §2.3 component merge; nullish-coalescing keeps

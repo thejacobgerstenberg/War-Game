@@ -962,3 +962,23 @@ export const FACTION_STARTING_RESOURCES: Record<Faction, ResourceBundle> = {
   [Faction.GENOA]: { gold: 8, grain: 3, timber: 4, marble: 3, faith: 1 },
   [Faction.HUNGARY]: { gold: 6, grain: 6, timber: 5, marble: 4, faith: 3 },
 };
+
+/**
+ * faction-scoped base-LEVY economy (devshirme / strongest-levies) — balance A/B PR #11 @d332061.
+ *
+ * A per-faction override on the BASE LEVY unit only (UnitType.LEVY, no unique
+ * variant). `cost` merges COMPONENT-WISE over UNIT_STATS[LEVY].cost — a resource
+ * PRESENT in the override wins via `??`, absent components fall through to the base
+ * (the same merge pattern as the per-unique UNIQUE_UNIT_OVERRIDES `cost`), so a
+ * Hungary levy costs gold 1 (override) + grain 1 (base). `grainUpkeep` REPLACES the
+ * base LEVY grain upkeep for that faction's base levies (`??` so an explicit 0 —
+ * the Ottoman devshirme rate — wins over the base 1). Affects ONLY base LEVY units:
+ * never other unit types, never unique variants, never mercenary/variant upkeep.
+ * Data-only and tunable — the §2 balance table may overwrite these values.
+ */
+export const FACTION_LEVY_ECONOMY: Partial<
+  Record<Faction, { cost?: Partial<ResourceBundle>; grainUpkeep?: number }>
+> = {
+  [Faction.OTTOMAN]: { grainUpkeep: 0 },
+  [Faction.HUNGARY]: { cost: { gold: 1 } },
+};
