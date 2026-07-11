@@ -1,7 +1,7 @@
 {
   "meta": {
-    "smoke": true,
-    "generated": "2026-07-11T05:41:59.308Z",
+    "smoke": false,
+    "generated": "2026-07-11T05:44:54.374Z",
     "options": {
       "rushConquestEveryRounds": 2,
       "rushConquestStartRound": 3,
@@ -4494,12 +4494,500 @@
         "default": 8
       }
     ],
-    "pointsEvaluated": 13,
-    "passingCount": 7,
+    "pointsEvaluated": 729,
+    "passingCount": 107,
     "passing": [
       {
         "levyGoldCost": 2,
+        "professionalGoldCost": 4,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
         "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 4,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 1.5,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 4,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 6
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 4,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 1.5,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 4,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 5,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 1.5,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 1.5,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
         "mercenaryGoldCost": 4,
         "grainUpkeepMult": 1,
         "tradeRouteIncomeBase": 3,
@@ -4514,19 +5002,91 @@
         "marketGoldCost": 8
       },
       {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 4,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 1.5,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 8
+      },
+      {
         "levyGoldCost": 2,
         "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 4,
         "mercenaryGoldCost": 4,
         "grainUpkeepMult": 0.75,
-        "tradeRouteIncomeBase": 3,
+        "tradeRouteIncomeBase": 4,
         "marketGoldCost": 8
       },
       {
         "levyGoldCost": 2,
         "professionalGoldCost": 5,
         "mercenaryGoldCost": 4,
-        "grainUpkeepMult": 1,
-        "tradeRouteIncomeBase": 2,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
         "marketGoldCost": 8
       },
       {
@@ -4538,12 +5098,156 @@
         "marketGoldCost": 8
       },
       {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 5,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 8
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 4,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 1.5,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 10
+      },
+      {
         "levyGoldCost": 2,
         "professionalGoldCost": 5,
         "mercenaryGoldCost": 4,
         "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 2,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 4,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
         "tradeRouteIncomeBase": 3,
-        "marketGoldCost": 6
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 1.5,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 10
       },
       {
         "levyGoldCost": 2,
@@ -4552,16 +5256,117 @@
         "grainUpkeepMult": 1,
         "tradeRouteIncomeBase": 3,
         "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 3,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 1.5,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 3,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 0.75,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 2,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 5,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 10
+      },
+      {
+        "levyGoldCost": 3,
+        "professionalGoldCost": 6,
+        "mercenaryGoldCost": 4,
+        "grainUpkeepMult": 1,
+        "tradeRouteIncomeBase": 4,
+        "marketGoldCost": 10
       }
     ],
     "viableRegion": {
       "levyGoldCost": [
-        2
+        1.5,
+        2,
+        3
       ],
       "professionalGoldCost": [
-        5
+        4,
+        5,
+        6
       ],
       "mercenaryGoldCost": [
+        3,
         4,
         5
       ],
@@ -4582,24 +5387,40 @@
     },
     "topFailures": [
       {
-        "mode": "hungary:balancedLags",
-        "count": 3
-      },
-      {
         "mode": "hungary:insolvent",
-        "count": 3
+        "count": 414
       },
       {
         "mode": "byzantium:balancedLags",
-        "count": 2
+        "count": 308
       },
       {
         "mode": "ottomans:balancedLags",
-        "count": 1
+        "count": 174
+      },
+      {
+        "mode": "hungary:balancedLags",
+        "count": 132
+      },
+      {
+        "mode": "venice:rushWeakR5",
+        "count": 108
       },
       {
         "mode": "ottomans:insolvent",
-        "count": 1
+        "count": 99
+      },
+      {
+        "mode": "byzantium:insolvent",
+        "count": 63
+      },
+      {
+        "mode": "venice:balancedLags",
+        "count": 58
+      },
+      {
+        "mode": "venice:insolvent",
+        "count": 9
       }
     ]
   },
