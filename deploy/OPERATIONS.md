@@ -308,7 +308,7 @@ implementations are pending.
 | 6 | socket.io at default `/socket.io/` on the same HTTP port as Express | Missing | TODO(scaffold): attach socket.io to the Express HTTP server; do not customize the path. |
 | 7 | SIGTERM graceful shutdown (refuse new rooms → broadcast `server_shutdown` `{reconnectAfterMs}` → ≤20s drain → exit 0) | Missing | TODO(scaffold): implement the §3 sequence; keep node as PID 1 (deploy images already ensure this). |
 | 8 | Disconnect grace window (120s) + rejoin via room code **and** server-issued session token | Missing | TODO(scaffold): issue a session token on join; hold disconnected seats 120s; require code+token to re-attach. |
-| 9 | Serve built client (`client/dist`) same-origin with SPA fallback (v1 single-container path, see `deploy/README.md` §8) | Missing | TODO(scaffold): add `express.static` + `index.html` fallback once the client build lands. |
+| 9 | Serve built client same-origin with SPA fallback when `SERVE_CLIENT` is set (v1 single-app path, see `deploy/README.md` §8) | In flight | Lands from the game-client workstream (`feature/game-client`): `express.static` + `index.html` fallback gated on `SERVE_CLIENT=<absolute dist path>` (unset/empty = static serving fully disabled; confirmed contract, frozen with the game-client workstream). Deploy side is done: `deploy/Dockerfile.server` ships `client/dist` and bakes `SERVE_CLIENT=/app/client/dist`. |
 
 Not asks (deploy-layer facts the scaffold can rely on): SIGTERM is delivered
 with ≥25s before SIGKILL; `PORT=8080`, `NODE_ENV=production`,
