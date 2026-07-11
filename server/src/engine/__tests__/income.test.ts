@@ -17,11 +17,11 @@ describe("computeIncome", () => {
     // thessalonica + morea + lemnos.
     // gold:   6 + 1 + 4 + 1 + 1 = 13
     // timber: 0 + 0 + 0 + 0 + 0 = 0
-    // stone:  1 + 0 + 0 + 1 + 0 = 2
+    // marble:  1 + 0 + 0 + 1 + 0 = 2
     // faith:  4 + 0 + 2 + 1 + 0 = 7
     expect(income.gold).toBe(13);
     expect(income.timber).toBe(0);
-    expect(income.stone).toBe(2);
+    expect(income.marble).toBe(2);
     expect(income.faith).toBe(7);
   });
 
@@ -62,7 +62,7 @@ describe("computeIncome", () => {
       gold: 0,
       grain: 0,
       timber: 0,
-      stone: 0,
+      marble: 0,
       faith: 0,
     });
   });

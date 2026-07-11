@@ -44,10 +44,10 @@ import { EngineError } from "./actions.js";
 // Small resource / lookup helpers
 // ---------------------------------------------------------------------------
 
-const RESOURCE_KEYS = ["gold", "grain", "timber", "stone", "faith"] as const;
+const RESOURCE_KEYS = ["gold", "grain", "timber", "marble", "faith"] as const;
 
 function emptyBundle(): ResourceBundle {
-  return { gold: 0, grain: 0, timber: 0, stone: 0, faith: 0 };
+  return { gold: 0, grain: 0, timber: 0, marble: 0, faith: 0 };
 }
 
 function addInto(target: ResourceBundle, add: Partial<ResourceBundle>): void {

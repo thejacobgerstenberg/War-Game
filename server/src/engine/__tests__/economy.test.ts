@@ -296,18 +296,18 @@ function build(player: string, provinceId: string, extra: Partial<BuildAction>):
 describe("applyBuild — §9.1 buildings", () => {
   it("charges BUILDING_COSTS and adds the building", () => {
     const state = fresh();
-    state.players[0].treasury = { gold: 10, grain: 0, timber: 0, stone: 5, faith: 0 };
+    state.players[0].treasury = { gold: 10, grain: 0, timber: 0, marble: 5, faith: 0 };
     const out = applyBuild(state, build("p1", "selymbria", { building: BuildingType.MARKET }));
     const prov = out.provinces.find((p) => p.id === "selymbria")!;
     expect(prov.buildings).toContain(BuildingType.MARKET);
-    // Market cost gold 4, stone 2.
+    // Market cost gold 4, marble 2.
     expect(out.players[0].treasury.gold).toBe(6);
-    expect(out.players[0].treasury.stone).toBe(3);
+    expect(out.players[0].treasury.marble).toBe(3);
   });
 
   it("adds the Market yield bonus (+1 gold/round) to income (§9.1)", () => {
     const state = fresh();
-    state.players[0].treasury = { gold: 10, grain: 0, timber: 0, stone: 5, faith: 0 };
+    state.players[0].treasury = { gold: 10, grain: 0, timber: 0, marble: 5, faith: 0 };
     const built = applyBuild(state, build("p1", "selymbria", { building: BuildingType.MARKET }));
     // Byzantium gross gold 13 + Market +1 = 14 (NORMAL tax).
     expect(computeIncome(built).perPlayer.p1.gold).toBe(14);
@@ -323,7 +323,7 @@ describe("applyBuild — §9.1 buildings", () => {
 
   it("rejects a build the player cannot afford (INSUFFICIENT_RESOURCES)", () => {
     const state = fresh();
-    state.players[0].treasury = { gold: 0, grain: 0, timber: 0, stone: 0, faith: 0 };
+    state.players[0].treasury = { gold: 0, grain: 0, timber: 0, marble: 0, faith: 0 };
     expect(() =>
       applyBuild(state, build("p1", "selymbria", { building: BuildingType.MARKET })),
     ).toThrow(EngineError);
@@ -331,7 +331,7 @@ describe("applyBuild — §9.1 buildings", () => {
 
   it("upgrades walls one tier and sets HP from WALL_TIERS (§8.1/§9)", () => {
     const state = fresh();
-    state.players[0].treasury = { gold: 20, grain: 0, timber: 0, stone: 20, faith: 0 };
+    state.players[0].treasury = { gold: 20, grain: 0, timber: 0, marble: 20, faith: 0 };
     const prov0 = state.provinces.find((p) => p.id === "selymbria")!;
     const out = applyBuild(state, build("p1", "selymbria", { building: BuildingType.WALLS }));
     const prov = out.provinces.find((p) => p.id === "selymbria")!;
@@ -348,7 +348,7 @@ describe("applyBuild — §9.2 great works", () => {
   it("charges cost up front, tracks progress across rounds, then awards prestige on completion", () => {
     const state = fresh();
     // Grand Bazaar: cost gold16/timber6/stone6, rounds 2, prestige 5.
-    state.players[0].treasury = { gold: 30, grain: 0, timber: 10, stone: 10, faith: 0 };
+    state.players[0].treasury = { gold: 30, grain: 0, timber: 10, marble: 10, faith: 0 };
     const gw = { greatWork: GreatWorkType.GRAND_BAZAAR };
 
     const r1 = applyBuild(state, build("p1", "selymbria", gw));
@@ -368,7 +368,7 @@ describe("applyBuild — §9.2 great works", () => {
 
   it("sets Theodosian Walls to tier 3 / 16 HP on completion", () => {
     const state = fresh();
-    state.players[0].treasury = { gold: 40, grain: 0, timber: 0, stone: 40, faith: 0 };
+    state.players[0].treasury = { gold: 40, grain: 0, timber: 0, marble: 40, faith: 0 };
     const gw = { greatWork: GreatWorkType.THEODOSIAN_WALLS }; // rounds 2
     const r1 = applyBuild(state, build("p1", "selymbria", gw));
     const r2 = applyBuild(r1, build("p1", "selymbria", gw));
@@ -379,7 +379,7 @@ describe("applyBuild — §9.2 great works", () => {
 
   it("rejects investing in an already-complete great work", () => {
     const state = fresh();
-    state.players[0].treasury = { gold: 40, grain: 0, timber: 40, stone: 40, faith: 0 };
+    state.players[0].treasury = { gold: 40, grain: 0, timber: 40, marble: 40, faith: 0 };
     const gw = { greatWork: GreatWorkType.GRAND_BAZAAR };
     const r1 = applyBuild(state, build("p1", "selymbria", gw));
     const r2 = applyBuild(r1, build("p1", "selymbria", gw)); // complete at 2/2
