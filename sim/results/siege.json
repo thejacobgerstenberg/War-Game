@@ -3,7 +3,7 @@
     "seed": 20260711,
     "iterationsPerCell": 20000,
     "smoke": false,
-    "elapsedMs": 12758,
+    "elapsedMs": 12912,
     "gridAttacker": "12 professionals + <engines> siege engines (landlocked city)",
     "cpleAttacker": {
       "professional": 12,
@@ -57,7 +57,7 @@
         "assaultAllowedAnytime": true,
         "seaResupplyEnabled": true,
         "greatBombard": {
-          "availableFromRound": 11,
+          "availableFromRound": 15,
           "goldCost": 40,
           "damageDice": 2
         }

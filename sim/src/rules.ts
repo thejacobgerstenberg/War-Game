@@ -233,7 +233,7 @@ export const CONFIG = {
     ottomans: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 2, tradeIncomeMult: 1.0, capitalExtraGold: 0, cityCapturePrestige: 1 }, // devshirme levy bulk + Ghaza city-capture prestige
     venice: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.5, capitalExtraGold: 0, cityCapturePrestige: 0 }, // canon §5.2 merchant x1.5
     genoa: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.5, capitalExtraGold: 0, cityCapturePrestige: 0 }, // canon §5.2 merchant x1.5
-    hungary: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.0, capitalExtraGold: 0, cityCapturePrestige: 0 }, // quality levies (see factionUnits)
+    hungary: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.0, capitalExtraGold: 0, cityCapturePrestige: 0 }, // quality levies (see factionUnits); R9 floor fix adopted = Option A overland routes (map.ts buda_belgrade; Option B crusade-prestige A/B recorded in TUNING_LOG)
   } satisfies Record<FactionId, FactionMods>,
 
   /**
@@ -304,7 +304,7 @@ export const CONFIG = {
      * T5 masonry cap for the whole besieging train.
      */
     greatBombard: {
-      availableFromRound: 11, // the round the great-bombard-forged Omen is revealed (Era III opens; canon §12)
+      availableFromRound: 15, // the round the great-bombard-forged Omen is revealed (canon §12 Era III opens r11; +4 rounds of tuning delay — the free Ottoman Bombard at r11 made sudden death 23.7% of games vs the 1-15% target, see TUNING_LOG; the 1453 anchor still holds: the City falls r15-16)
       goldCost: 40, // auction price when no Ottoman is in play (canon: Ottoman gets it free)
       damageDice: 2, // wall-damage dice per siege round (canon §8.4: up to 6 HP/round, ~4 avg)
     },
@@ -382,7 +382,7 @@ export const CONFIG = {
     warWon: 3, // canon §13.1: win a war (force peace / eliminate)
     loseCapital: -3, // canon §13.1: lose your own capital
     secretObjective: 4, // canon §13.1: +4 each, hidden, scored at GAME END only
-    victoryThreshold: 70, // reach this prestige at Cleanup => immediate win. PLACEHOLDER — the TUNING_REPORT owns this number (recalibrate vs canon sources)
+    victoryThreshold: 82, // reach this prestige at Cleanup => immediate win (owned by the TUNING_REPORT; recalibrated to canon §13.1 sources — see TUNING_LOG)
   },
 
   neutrals: {

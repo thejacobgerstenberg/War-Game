@@ -516,3 +516,120 @@ explicitly deferred to the next (tuning) phase.
   hungary floor regressed by the canon 4-province start (R9 levers —
   overland routes are authored, crusade/wars-won prestige and levy
   cost/CV are live knobs).
+
+---
+
+## Canon retune round 1 (2026-07-11) — lead balance tuner, first pass on the FINAL canon rules
+
+Baseline (commit 31f3c4d, stale threshold 70): byzantium 19.5% / ottomans
+17.1% / venice 0% / genoa 61.8% / hungary 1.6%; policies rusher 28.6 /
+trader 22.5 / turtler 20.0 / opportunist 9.0; median end r12; threshold-
+decided 78.5%; sudden death 12.3%. Root causes diagnosed up front:
+- Genoa held TWO owned-both-ends routes from setup (genoa_caffa +
+  genoa_chios) = +4 monopoly prestige/round for free.
+- Venice's crete monopoly never opened: the agents open routes by income
+  and venice_crete (2g) lost its 3 route slots to venice_constantinople
+  (4g), buda_venice (3g) and crete_cyprus (3g, one end owned).
+- Hungary had no monopoly access at all and the thinnest base stream
+  (capital+key = 2/round vs byz 3, republics 4).
+- Genoa produced ZERO marble (no great-work channel; venice has Zara).
+
+All fullgame numbers below: 1000 games, seed 14530000, 5 players.
+
+### Iteration 1 — threshold to the pacing rec + monopoly parity
+- prestige.victoryThreshold 70 -> 78 (sim:pacing recommendation)
+- map routes: genoa_chios REPLACED by chios_smyrna (2g, smyrna neutral —
+  Genoa keeps an Aegean route but must conquer for the 2nd monopoly);
+  venice_crete 2g -> 4g (flagship parity with genoa_caffa; now beats
+  crete_cyprus/buda_venice in the agents' income-sorted route choice)
+- Result: byz 33.7 / ott 32.5 / ven 21.4 / gen 7.4 / hun 5.0; SD 23.7%(!);
+  median 16; threshold-decided 36.4%. Genoa runaway broken, Venice alive.
+  New problems: Ottoman free Bombard at r11 turns 5-player games into a
+  sudden-death coin flip (ALL SD wins Ottoman, landing r13-14); Genoa
+  overcorrected (great-work drought).
+
+### Iterations 2-4 — Great Bombard omen delay sweep (SD knob)
+- siege.greatBombard.availableFromRound 11 -> 12 -> 13 -> 14 (chios given
+  marble 1 at iteration 2 — see below — confounds gen/ott slightly)
+- SD: 23.7% -> 21.7% -> 18.6% -> 13.4%. Every SD win in instrumented runs
+  had the Bombard; delaying the omen is a ~1:1 delay on the hold-2-rounds
+  completion, and games median r15-16 give it room until reveal >= r14.
+
+### Iterations 2/5/6/7 — Genoa reshape (marble on, gold trimmed)
+- map: chios marble 0 -> 1 (iteration 2), moved chios -> pera (iteration
+  6; Proconnesian entrepot on the Byzantine/Ottoman warpath, parity with
+  Venice's contestable Zara marble); genoa_caffa income 4 -> 3
+  (iteration 5); chios gold 3 -> 2 and caffa gold 4 -> 3 (iteration 7).
+- Genoa: 7.4% -> 28.3% (marble = the great-work channel was the whole
+  hole) -> 32.8% (Bombard delays fed it) -> 30.9% after the gold trims.
+  Ledger check: Genoa's excess was greatWorks 12.7 avg (18.6 in wins) —
+  highest of all factions — funded by an untouchable colonial surplus.
+
+### Iterations 7-8 — HUNGARY A/B per R9 (1000 games each, same seeds)
+- OPTION B (cheaper lever): hungary cityCapturePrestige 0 -> 2 ("crusade
+  zeal", +2 per walled city taken on top of canon capture prestige; levy
+  cost already at the canon 1g floor). Result: hungary 5.4% (from 3.9%).
+  VERDICT: fails — hungary's gap is a missing per-round stream (~15 pts
+  over a game), not a per-conquest bonus (its conquests avg 1.5/game).
+- OPTION A (ratified overland routes): NEW buda_belgrade overland route,
+  income 3 (75% of flagship sea 4), owned both ends at setup = the +2
+  monopoly. Result: hungary 42.4%(!) — massive overshoot; hungary also
+  won cap games (safe cheap 2/2 levies + T4 belgrade + uncontested
+  stream). threshold-decided 79.4%.
+- ADOPTED: Option A, moderated (iterations 9-12 below). Both A/B raw
+  results recorded here verbatim per the coordinator's instruction.
+
+### Iterations 9-12 — moderating Option A
+- it9: victoryThreshold 78 -> 82 (four setup monopolies compressed the
+  threshold race; also fixes threshold-decided share): hun still 41.2%.
+- it10: buda_belgrade income 3 -> 2 (60% floor of the R9 band), same for
+  buda_ragusa/buda_venice; belgrade marble 1 -> 0 (great-work trim):
+  hun 30.7 / byz 21.2 / ott 17.4 / ven 12.2 / gen 18.5. Nearly in band.
+- it11: buda gold 4 -> 3: hun 30.4 (gold isn't hungary's engine).
+- it12: buda_ragusa route REMOVED — hungary-opportunist took T2 Ragusa
+  for a cheap SECOND monopoly (won 72% of its seats, tradeRoutes ledger
+  28.9 ~= 2 monopolies/round). Result: byz 21.2 / ott 22.2 / ven 13.1 /
+  gen 20.8 / hun 22.7 — ALL FACTIONS IN 12-30 — but SD popped back to
+  18.3% (hungary's threshold wins no longer ended games before the
+  Ottoman hold completed).
+
+### Iteration 13 — FINAL: Bombard omen r14 -> r15
+- siege.greatBombard.availableFromRound 14 -> 15.
+- FINAL FULLGAME (1000 games, seed 14530000, threshold 82):
+  - factions: byzantium 21.5 / ottomans 13.6 / venice 15.5 / genoa 24.6 /
+    hungary 24.8 — T1 PASS (all 12-30).
+  - policies: rusher 11.8 / trader 25.2 / turtler 20.2 / opportunist 22.8
+    — T2 PASS (all 10-40).
+  - pacing: median end r16, mean 15.38; 1.7% end before r11; 98.3% end in
+    r12-16; threshold-decided 50.8% — T3 PASS.
+  - sudden death 8.7%, earliest completions r13+, all Bombard-driven —
+    T4 PASS. eliminations 0.
+- THRESHOLD (owned here per R8): victoryThreshold = 82 absolute =
+  15.6x the mean winner prestige-accrual per round (5.26/round measured
+  over the same 1000 games; mean winner total 80.0 at mean end r15.4).
+
+### T6 economy status (sim:economy, canon prices/treasuries)
+- All 15 faction x archetype cells SOLVENT through r16 (T6 first half
+  PASS). rushCredibleR5 (strike power >= 8 by r5): ottomans 12.4 PASS,
+  hungary 7.6 (0.4 short), byzantium 6.3, genoa 5.0, venice 0.3 FAIL.
+- Every owned knob was swept without fixing the sea republics:
+  neutrals.baseLevies 2->1 (fixes byz 9.6 + hun 8.5 but pushes Venice out
+  of T1 band in fullgame - 10.9% - and drops rusher to 11.5; REVERTED),
+  grain yield bumps on crete/negroponte/modon/caffa/pera (no effect),
+  grainMarket.buyGoldPerGrain 2 -> 1.5/1 (venice max 1.3), recruit
+  perAction professional 2 -> 3 (no effect). The binding constraint is
+  the economy harness's own conquest-loss abstraction (0.7 losses per
+  defender +0.3/wall tier, casualties eat levy->professional first) plus
+  galleys being excluded from "strike power" while eating 1 grain each —
+  Venice's 8-galley canon fleet IS its strike force but scores 0.
+  Left as a remaining issue (harness artifact, not a rules number);
+  fullgame ground truth has the rusher policy in band (11.8%).
+
+### Final config deltas vs 31f3c4d (rules.ts / map.ts only)
+- rules.ts: victoryThreshold 70 -> 82; greatBombard.availableFromRound
+  11 -> 15. (hungary cityCapturePrestige back at 0 after the A/B.)
+- map.ts routes: genoa_chios -> chios_smyrna (2g); venice_crete 2g -> 4g;
+  genoa_caffa 4g -> 3g; buda_ragusa removed; buda_venice 3g -> 2g; NEW
+  buda_belgrade 2g overland (Hungary setup monopoly, R9 Option A).
+- map.ts yields: chios gold 3->2; caffa gold 4->3; pera marble 0->1;
+  belgrade marble 1->0; buda gold 4->3.

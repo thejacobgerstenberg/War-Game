@@ -70,8 +70,8 @@ const P: Record<string, ProvinceSpec> = {
   morea: { name: 'Morea', owner: 'byzantium', terrain: 'hills', wall: 2, y: [2, 3, 0, 1, 0], coasts: ['ionian', 'sea_of_crete'] },
   modon: { name: 'Modon & Coron', owner: 'venice', terrain: 'hills', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['ionian', 'sea_of_crete'] }, // canon Venetian modon
   // ---- Hungary & lower Danube ----
-  buda: { name: 'Buda', owner: 'hungary', terrain: 'plains', wall: 3, key: true, y: [4, 3, 0, 0, 1] },
-  belgrade: { name: 'Belgrade', owner: 'hungary', terrain: 'plains', wall: 4, y: [1, 2, 0, 1, 0] }, // canon T4 Danube fortress
+  buda: { name: 'Buda', owner: 'hungary', terrain: 'plains', wall: 3, key: true, y: [3, 3, 0, 0, 1] }, // gold 4 -> 3: final Hungary trim (30.7% -> band, see TUNING_LOG)
+  belgrade: { name: 'Belgrade', owner: 'hungary', terrain: 'plains', wall: 4, y: [1, 2, 0, 0, 0] }, // canon T4 Danube fortress; marble 1 -> 0 (Hungary great-work trim, see TUNING_LOG)
   upper_hungary: { name: 'Upper Hungary', owner: null, terrain: 'mountains', wall: 0, y: [3, 1, 1, 1, 0] },
   transylvania: { name: 'Transylvania', owner: 'hungary', terrain: 'mountains', wall: 1, y: [2, 2, 2, 0, 0] },
   banat: { name: 'Banat', owner: null, terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0] },
@@ -89,7 +89,7 @@ const P: Record<string, ProvinceSpec> = {
   edirne: { name: 'Edirne', owner: 'ottomans', terrain: 'plains', wall: 3, key: true, y: [3, 3, 0, 0, 1] },
   gallipoli: { name: 'Gallipoli', owner: 'ottomans', terrain: 'plains', wall: 2, y: [2, 1, 0, 0, 0], coasts: ['aegean_north', 'sea_of_marmara'] },
   constantinople: { name: 'Constantinople', owner: 'byzantium', terrain: 'plains', wall: 5, key: true, y: [5, 2, 0, 1, 2], coasts: ['sea_of_marmara', 'black_sea_west'] }, // T5 Theodosian Walls
-  pera: { name: 'Pera (Galata)', owner: 'genoa', terrain: 'plains', wall: 1, y: [3, 0, 0, 0, 0], coasts: ['sea_of_marmara', 'black_sea_west'] }, // canon Genoese enclave on the Horn
+  pera: { name: 'Pera (Galata)', owner: 'genoa', terrain: 'plains', wall: 1, y: [3, 0, 0, 1, 0], coasts: ['sea_of_marmara', 'black_sea_west'] }, // canon Genoese enclave on the Horn; marble = Proconnesian entrepot — Genoa's great-work source lives on the warpath (parity with Venice's Zara)
   // ---- Anatolia ----
   bursa: { name: 'Bursa', owner: 'ottomans', terrain: 'plains', wall: 3, y: [3, 2, 0, 1, 0], coasts: ['sea_of_marmara'] },
   nicaea: { name: 'Nicaea', owner: 'ottomans', terrain: 'hills', wall: 2, y: [2, 2, 0, 0, 0] }, // canon nicaea + bithynia folded
@@ -104,12 +104,12 @@ const P: Record<string, ProvinceSpec> = {
   crete: { name: 'Crete', owner: 'venice', terrain: 'hills', wall: 2, y: [3, 2, 0, 0, 0], coasts: ['sea_of_crete', 'eastern_med'] },
   negroponte: { name: 'Negroponte', owner: 'venice', terrain: 'plains', wall: 2, y: [2, 1, 0, 0, 0], coasts: ['aegean_south'] },
   corfu: { name: 'Corfu', owner: 'venice', terrain: 'hills', wall: 2, y: [2, 1, 0, 0, 0], coasts: ['ionian', 'adriatic_south'] },
-  chios: { name: 'Chios', owner: 'genoa', terrain: 'hills', wall: 1, y: [3, 1, 0, 0, 0], coasts: ['aegean_south'] },
+  chios: { name: 'Chios', owner: 'genoa', terrain: 'hills', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['aegean_south'] }, // gold 3 -> 2: colonial extraction trimmed (Genoa ran away on great works funded by an untouchable surplus)
   lesbos: { name: 'Lesbos', owner: 'genoa', terrain: 'hills', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['aegean_north'] },
   lemnos: { name: 'Lemnos', owner: 'byzantium', terrain: 'plains', wall: 1, y: [1, 2, 0, 0, 0], coasts: ['aegean_north'] }, // canon Byzantine granary isle
   rhodes: { name: 'Rhodes', owner: null, terrain: 'hills', wall: 3, y: [2, 1, 0, 0, 2], coasts: ['aegean_south', 'eastern_med'] }, // canon T3 (Hospitallers)
   cyprus: { name: 'Cyprus', owner: null, terrain: 'plains', wall: 2, y: [3, 2, 1, 0, 0], coasts: ['eastern_med'] },
-  caffa: { name: 'Caffa', owner: 'genoa', terrain: 'plains', wall: 2, y: [4, 2, 0, 0, 0], coasts: ['black_sea_east'] }, // canon kaffa
+  caffa: { name: 'Caffa', owner: 'genoa', terrain: 'plains', wall: 2, y: [3, 2, 0, 0, 0], coasts: ['black_sea_east'] }, // canon kaffa; gold 4 -> 3 (same Genoa great-work trim as chios)
 };
 
 /** Land adjacency (symmetric; expanded below). */
@@ -264,16 +264,28 @@ export const KEY_CITY_IDS: string[] = PROVINCES.filter((p) => p.keyCity).map((p)
 
 export const TRADE_ROUTES: TradeRoute[] = [
   { id: 'venice_constantinople', a: 'venice', b: 'constantinople', seaZones: ['adriatic_north', 'adriatic_south', 'ionian', 'sea_of_crete', 'aegean_south', 'aegean_north', 'sea_of_marmara'], income: 4 },
-  { id: 'genoa_caffa', a: 'genoa', b: 'caffa', seaZones: ['ligurian', 'tyrrhenian', 'ionian', 'sea_of_crete', 'aegean_south', 'aegean_north', 'sea_of_marmara', 'black_sea_west', 'black_sea_east'], income: 4 },
-  { id: 'venice_crete', a: 'venice', b: 'crete', seaZones: ['adriatic_north', 'adriatic_south', 'ionian', 'sea_of_crete'], income: 2 },
-  { id: 'genoa_chios', a: 'genoa', b: 'chios', seaZones: ['ligurian', 'tyrrhenian', 'ionian', 'sea_of_crete', 'aegean_south'], income: 2 },
+  { id: 'genoa_caffa', a: 'genoa', b: 'caffa', seaZones: ['ligurian', 'tyrrhenian', 'ionian', 'sea_of_crete', 'aegean_south', 'aegean_north', 'sea_of_marmara', 'black_sea_west', 'black_sea_east'], income: 3 },
+  // Each maritime republic gets exactly ONE owned-both-ends route at setup
+  // (venice_crete / genoa_caffa): the canon §13.1 monopoly +2/round is a
+  // setup constant for them, and further monopolies must be conquered
+  // (Genoa's old second freebie genoa_chios made it a +4/round runaway).
+  { id: 'venice_crete', a: 'venice', b: 'crete', seaZones: ['adriatic_north', 'adriatic_south', 'ionian', 'sea_of_crete'], income: 4 },
+  { id: 'chios_smyrna', a: 'chios', b: 'smyrna', seaZones: ['aegean_south'], income: 2 },
   { id: 'ragusa_venice', a: 'ragusa', b: 'venice', seaZones: ['adriatic_south', 'adriatic_north'], income: 2 },
   { id: 'crete_cyprus', a: 'crete', b: 'cyprus', seaZones: ['eastern_med'], income: 3 },
   { id: 'trebizond_caffa', a: 'trebizond', b: 'caffa', seaZones: ['black_sea_east'], income: 2 },
-  // Overland caravan routes (cannot be blockaded): the Buda corridors give
-  // landlocked Hungary access to trade prestige/income.
-  { id: 'buda_ragusa', a: 'buda', b: 'ragusa', seaZones: [], income: 3, overland: true },
-  { id: 'buda_venice', a: 'buda', b: 'venice', seaZones: [], income: 3, overland: true },
+  // Overland caravan routes (R9 Option A, ratified): 60-75% of flagship sea
+  // income (4). Army-blockade on the path is NOT modeled (routeBlockaded is
+  // naval-only) — divergence noted in RULES_MODEL.md. The Buda corridors give
+  // landlocked Hungary access to trade prestige/income. buda_belgrade is
+  // the Danube run Hungary owns end-to-end at setup (its §13.1 monopoly,
+  // parity with venice_crete / genoa_caffa) — but all Hungarian caravans sit
+  // at the 60% floor of the R9 band (2 vs flagship sea 4 x 0.75 = 3) and
+  // Belgrade yields no marble, or Hungary runs away (41-42%, TUNING_LOG).
+  // (buda_ragusa removed: taking T2 Ragusa handed Hungary a cheap SECOND
+  //  monopoly — its opportunist won 72% of seats that way, TUNING_LOG.)
+  { id: 'buda_venice', a: 'buda', b: 'venice', seaZones: [], income: 2, overland: true },
+  { id: 'buda_belgrade', a: 'buda', b: 'belgrade', seaZones: [], income: 2, overland: true },
   // Silk Road terminus at Bursa (Ottoman caravan trade).
   { id: 'bursa_ankara', a: 'bursa', b: 'ankara', seaZones: [], income: 4, overland: true },
 ];

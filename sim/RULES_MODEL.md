@@ -19,7 +19,10 @@ omen, and the canon §13.1 prestige table.
    (`all | random | leader`), and a uniform-random magnitude within
    `CONFIG.events` bounds (the three era decks and persistent cards are not
    itemized). **Era III**: when round `siege.greatBombard.availableFromRound`
-   (11 — Era III opens at round 11, §12) begins, the omen
+   (15 — canon Era III opens at round 11, §12; the sim reveals this one card
+   four rounds late as a BALANCE divergence: a free Ottoman Bombard at r11
+   drove sudden-death wins to 23.7% of games vs the 1-15% target, see
+   TUNING_LOG canon retune round 1) begins, the omen
    **`great-bombard-forged`** (EVENT_CARDS #34) resolves — see "Great
    Bombard" below. *AI-knowledge simplification*: the 4–5-player face-up
    "gathering omen" preview (§12) is unmodeled — scripted agents gain no
@@ -221,7 +224,8 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
      §6.1 "+3 vs walls" dice during an escalade.
 - **The Great Bombard (GD §8.4, EVENT_CARDS #34)**: unique, one per game,
   never recruited. Enters when the Era III omen `great-bombard-forged`
-  resolves (round `availableFromRound`, 11): the **Ottoman player receives
+  resolves (round `availableFromRound`, 15 — tuned, canon 11; see Omen
+  note above): the **Ottoman player receives
   it FREE if alive** (canon); otherwise it is auctioned — sim rule: the
   richest faction able to pay `goldCost` (40) takes it (retried each round
   while unclaimed; `actBuyBombard` is the explicit fallback). It rolls
@@ -241,8 +245,8 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   12 siege rounds (sea resupply + masonry cap); (c) no Bombard + full
   blockade: starve-out works (≥ 99%), median capture at siege round 7/9/11
   for garrisons 6/8/10; (d) with the Bombard: breach on siege round 2 and
-  capture within 2-4 rounds with ≥ 95% probability — a round-13-to-15 fall
-  of the City when the omen lands at round 11, matching the 1453 anchor.
+  capture within 2-4 rounds with ≥ 95% probability — a round-15-to-16 fall
+  of the City when the omen lands at round 15, matching the 1453 anchor.
 
 ## Economy & map
 
@@ -261,10 +265,18 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   (3); **Venice and Genoa ×1.5** (canon §5.2 merchant bonus). The full §5.2
   route-income formula (port tiers, per-hop control) stays unmodeled
   (divergence appendix).
-- **Overland caravan routes** (rules-visible, Hungary-floor option A):
-  routes marked `overland: true` connect land provinces, cross no sea
-  zones, and can never be blockaded by fleets. Authored: Buda-Ragusa,
-  Buda-Venice, Bursa-Ankara.
+- **Overland caravan routes** (rules-visible, Hungary-floor option A —
+  ADOPTED, R9): routes marked `overland: true` connect land provinces,
+  cross no sea zones, and can never be blockaded by fleets. Canon R9 makes
+  them blockadable by hostile ARMIES on the path — army blockade is NOT
+  modeled (routeBlockaded is naval-only): a divergence that flatters
+  overland income slightly. Authored: Buda-Venice, Buda-Belgrade (both at
+  income 2 = 60% floor of the R9 band vs the flagship sea income 4),
+  Bursa-Ankara. Buda-Belgrade is Hungary's owned-both-ends §13.1 monopoly
+  at setup — deliberate parity with venice_crete / genoa_caffa: exactly
+  one setup monopoly per trade-identity faction, all further monopolies
+  must be conquered (a second cheap one — e.g. the removed buda_ragusa +
+  T2 Ragusa — made Hungary win 41-42% of games; see TUNING_LOG).
 - **Faction sheets = canon FACTIONS.md**: starting provinces (mapped ids:
   selymbria→mesembria, thessalonica→salonica, dalmatia→zara, konya→karaman,
   kaffa→caffa; bithynia folded into nicaea; canon-absent filler provinces
