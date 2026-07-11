@@ -3,13 +3,14 @@
  * agnostic: it knows nothing about Socket.IO. The socket layer in index.ts
  * translates its results and thrown {@link LobbyError}s into wire events.
  */
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomInt, randomUUID } from "node:crypto";
 import {
   Faction,
   type GameState,
   type LobbyUpdatePayload,
 } from "@imperium/shared";
 import { createInitialState, type SeatInput } from "../engine/gameState.js";
+import { isFaction, PLAYER_NAME_MAX_LENGTH } from "../validate.js";
 
 /** Domain error surfaced to clients as `error_msg`. */
 export class LobbyError extends Error {}
@@ -134,8 +135,9 @@ export class LobbyManager {
     do {
       code = "";
       for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
-        const idx = Math.floor(Math.random() * ROOM_CODE_ALPHABET.length);
-        code += ROOM_CODE_ALPHABET[idx];
+        // crypto.randomInt: room codes are capability-ish (they gate joins),
+        // so they must not come from a predictable Math.random() stream.
+        code += ROOM_CODE_ALPHABET[randomInt(ROOM_CODE_ALPHABET.length)];
       }
     } while (this.rooms.has(code));
     return code;
@@ -146,8 +148,7 @@ export class LobbyManager {
     if (this.shuttingDown) {
       throw new LobbyError("Server restarting, retry shortly.");
     }
-    const name = playerName.trim();
-    if (!name) throw new LobbyError("A player name is required.");
+    const name = normalizePlayerName(playerName);
 
     const code = this.generateRoomCode();
     const player: LobbyPlayerState = {
@@ -174,8 +175,7 @@ export class LobbyManager {
     roomCode: string,
     playerName: string,
   ): { room: Room; player: LobbyPlayerState } {
-    const name = playerName.trim();
-    if (!name) throw new LobbyError("A player name is required.");
+    const name = normalizePlayerName(playerName);
 
     const room = this.rooms.get(roomCode.toUpperCase());
     if (!room) throw new LobbyError(`No game found with code ${roomCode}.`);
@@ -234,6 +234,15 @@ export class LobbyManager {
     playerId: string,
     faction: Faction,
   ): { room: Room } {
+    // Canonical-enum check lives HERE, not just in the socket layer: no
+    // transport may ever get an arbitrary string assigned to a seat and
+    // broadcast to every player via lobby_update.
+    if (!isFaction(faction)) {
+      throw new LobbyError(
+        `Unknown faction: ${String(faction).slice(0, 32)}`,
+      );
+    }
+
     const room = this.rooms.get(roomCode);
     if (!room) throw new LobbyError(`No game found with code ${roomCode}.`);
 
@@ -338,6 +347,22 @@ export class LobbyManager {
       startedByHost: room.startedByHost,
     };
   }
+}
+
+/**
+ * Trim and bound a display name (1–{@link PLAYER_NAME_MAX_LENGTH} chars).
+ * Enforced here — not only in the socket guards — so every transport and
+ * internal caller gets the same limits.
+ */
+function normalizePlayerName(playerName: string): string {
+  const name = typeof playerName === "string" ? playerName.trim() : "";
+  if (!name) throw new LobbyError("A player name is required.");
+  if (name.length > PLAYER_NAME_MAX_LENGTH) {
+    throw new LobbyError(
+      `Player names are limited to ${PLAYER_NAME_MAX_LENGTH} characters.`,
+    );
+  }
+  return name;
 }
 
 /** Pick the first faction not yet claimed by an earlier seat. */

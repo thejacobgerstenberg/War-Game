@@ -90,6 +90,43 @@ describe("LobbyManager", () => {
     ).toThrow(/already been chosen/i);
   });
 
+  it("rejects a faction id that is not a canonical Faction enum value", () => {
+    const { room, player } = lobby.createGame("Basil");
+    expect(() =>
+      lobby.pickFaction(room.code, player.id, "SPARTA" as unknown as Faction),
+    ).toThrow(LobbyError);
+    expect(() =>
+      lobby.pickFaction(room.code, player.id, "SPARTA" as unknown as Faction),
+    ).toThrow(/unknown faction/i);
+    // The seat was never polluted and the wire payload stays enum-or-null.
+    expect(lobby.getRoom(room.code)!.players[0].faction).toBeNull();
+    const allowed = new Set<string | null>([...Object.values(Faction), null]);
+    for (const p of LobbyManager.toLobbyUpdate(lobby.getRoom(room.code)!)
+      .players) {
+      expect(allowed.has(p.faction)).toBe(true);
+    }
+  });
+
+  it("rejects non-string junk faction values (wrong-typed injection)", () => {
+    const { room, player } = lobby.createGame("Basil");
+    for (const junk of [null, undefined, 42, {}, [Faction.BYZANTIUM]]) {
+      expect(() =>
+        lobby.pickFaction(room.code, player.id, junk as unknown as Faction),
+      ).toThrow(/unknown faction/i);
+    }
+    expect(lobby.getRoom(room.code)!.players[0].faction).toBeNull();
+  });
+
+  it("caps player names at 32 chars in createGame and joinGame", () => {
+    expect(() => lobby.createGame("x".repeat(33))).toThrow(/32 characters/);
+    expect(() => lobby.createGame("x".repeat(32))).not.toThrow();
+    const { room } = lobby.createGame("Basil");
+    expect(() => lobby.joinGame(room.code, "y".repeat(33))).toThrow(
+      /32 characters/,
+    );
+    expect(() => lobby.joinGame(room.code, "y".repeat(32))).not.toThrow();
+  });
+
   it("allows a player to re-select their own faction", () => {
     const { room, player } = lobby.createGame("Basil");
     lobby.pickFaction(room.code, player.id, Faction.BYZANTIUM);
