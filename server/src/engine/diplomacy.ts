@@ -45,7 +45,7 @@ const NAP_DEFAULT_ROUNDS = 3;
 const REPUTATION_BETRAYAL_THRESHOLD = 2;
 const REPUTATION_ROLL_PENALTY = 1;
 
-const RESOURCE_KEYS = ["gold", "grain", "timber", "stone", "faith"] as const;
+const RESOURCE_KEYS = ["gold", "grain", "timber", "marble", "faith"] as const;
 
 function clone(state: GameState): GameState {
   return structuredClone(state) as GameState;

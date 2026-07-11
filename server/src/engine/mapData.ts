@@ -60,8 +60,8 @@ export const PROVINCES: MapProvince[] = [
     id: "constantinople",
     name: "Constantinople",
     terrain: TerrainType.CITY,
-    // city base (gold3/faith1) + capital HV(5) bonus: +3 gold, +2 grain, +1 stone, +3 faith
-    yields: { gold: 6, grain: 2, timber: 0, stone: 1, faith: 4 },
+    // city base (gold3/faith1) + capital HV(5) bonus: +3 gold, +2 grain, +1 marble, +3 faith
+    yields: { gold: 6, grain: 2, timber: 0, marble: 1, faith: 4 },
     coastal: true,
     position: { x: 52, y: 34 },
     startingFaction: Faction.BYZANTIUM,
@@ -73,7 +73,7 @@ export const PROVINCES: MapProvince[] = [
     id: "selymbria",
     name: "Selymbria",
     terrain: TerrainType.COAST,
-    yields: { gold: 1, grain: 2, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 1, grain: 2, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 48, y: 33 },
     startingFaction: Faction.BYZANTIUM,
@@ -84,7 +84,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Pera (Galata)",
     terrain: TerrainType.CITY,
     // Genoese trade enclave: primary gold only (no faith node); +1 gold, faith dropped
-    yields: { gold: 4, grain: 0, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 4, grain: 0, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 52, y: 31 },
     startingFaction: Faction.GENOA,
@@ -95,7 +95,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Edirne (Adrianople)",
     terrain: TerrainType.PLAINS,
     // Ottoman European capital: +1 gold, +1 grain
-    yields: { gold: 2, grain: 3, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 2, grain: 3, timber: 0, marble: 0, faith: 0 },
     coastal: false,
     position: { x: 44, y: 29 },
     startingFaction: Faction.OTTOMAN,
@@ -107,7 +107,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Gallipoli",
     terrain: TerrainType.COAST,
     // Ottoman naval base gating the Dardanelles: +1 grain, +1 timber
-    yields: { gold: 1, grain: 2, timber: 1, stone: 0, faith: 0 },
+    yields: { gold: 1, grain: 2, timber: 1, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 46, y: 39 },
     startingFaction: Faction.OTTOMAN,
@@ -118,7 +118,7 @@ export const PROVINCES: MapProvince[] = [
     id: "philippopolis",
     name: "Philippopolis (Plovdiv)",
     terrain: TerrainType.PLAINS,
-    yields: { gold: 1, grain: 2, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 1, grain: 2, timber: 0, marble: 0, faith: 0 },
     coastal: false,
     position: { x: 40, y: 27 },
     startingFaction: Faction.OTTOMAN,
@@ -129,7 +129,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Sofia",
     terrain: TerrainType.HILLS,
     // hills base (gold1/stone1) + grain crossroads: +1 grain
-    yields: { gold: 1, grain: 1, timber: 0, stone: 1, faith: 0 },
+    yields: { gold: 1, grain: 1, timber: 0, marble: 1, faith: 0 },
     coastal: false,
     position: { x: 36, y: 25 },
     startingFaction: Faction.OTTOMAN,
@@ -139,7 +139,7 @@ export const PROVINCES: MapProvince[] = [
     id: "varna",
     name: "Varna",
     terrain: TerrainType.COAST,
-    yields: { gold: 1, grain: 2, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 1, grain: 2, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 44, y: 21 },
     startingFaction: null,
@@ -151,7 +151,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Wallachia",
     terrain: TerrainType.PLAINS,
     // raider frontier: +1 timber
-    yields: { gold: 1, grain: 2, timber: 1, stone: 0, faith: 0 },
+    yields: { gold: 1, grain: 2, timber: 1, marble: 0, faith: 0 },
     coastal: false,
     position: { x: 40, y: 14 },
     startingFaction: null,
@@ -164,7 +164,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Serbia (Smederevo)",
     terrain: TerrainType.HILLS,
     // Novo Brdo silver: +1 gold
-    yields: { gold: 2, grain: 0, timber: 0, stone: 1, faith: 0 },
+    yields: { gold: 2, grain: 0, timber: 0, marble: 1, faith: 0 },
     coastal: false,
     position: { x: 28, y: 20 },
     startingFaction: null,
@@ -177,7 +177,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Bosnia",
     terrain: TerrainType.MOUNTAINS,
     // silver & lead: mountains base stone2 + timber
-    yields: { gold: 0, grain: 0, timber: 1, stone: 2, faith: 0 },
+    yields: { gold: 0, grain: 0, timber: 1, marble: 2, faith: 0 },
     coastal: false,
     position: { x: 24, y: 24 },
     startingFaction: null,
@@ -189,7 +189,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Albania (Krujë)",
     terrain: TerrainType.MOUNTAINS,
     // primary timber highland: timber2, stone1
-    yields: { gold: 0, grain: 0, timber: 2, stone: 1, faith: 0 },
+    yields: { gold: 0, grain: 0, timber: 2, marble: 1, faith: 0 },
     coastal: true,
     position: { x: 26, y: 34 },
     startingFaction: null,
@@ -201,7 +201,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Epirus (Arta)",
     terrain: TerrainType.MOUNTAINS,
     // primary timber, secondary grain
-    yields: { gold: 0, grain: 1, timber: 2, stone: 1, faith: 0 },
+    yields: { gold: 0, grain: 1, timber: 2, marble: 1, faith: 0 },
     coastal: true,
     position: { x: 28, y: 40 },
     startingFaction: null,
@@ -214,7 +214,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Thessaly (Larissa)",
     terrain: TerrainType.PLAINS,
     // fertile plain: +1 grain
-    yields: { gold: 1, grain: 3, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 1, grain: 3, timber: 0, marble: 0, faith: 0 },
     coastal: false,
     position: { x: 32, y: 44 },
     startingFaction: null,
@@ -226,7 +226,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Thessalonica",
     terrain: TerrainType.CITY,
     // second Byzantine city HV(3): +1 gold, +1 grain, +1 faith
-    yields: { gold: 4, grain: 1, timber: 0, stone: 0, faith: 2 },
+    yields: { gold: 4, grain: 1, timber: 0, marble: 0, faith: 2 },
     coastal: true,
     position: { x: 34, y: 38 },
     startingFaction: Faction.BYZANTIUM,
@@ -237,8 +237,8 @@ export const PROVINCES: MapProvince[] = [
     id: "athens",
     name: "Athens",
     terrain: TerrainType.CITY,
-    // Acciaioli duchy HV(3), marble: gold reduced, +2 stone, +1 faith
-    yields: { gold: 2, grain: 0, timber: 0, stone: 2, faith: 2 },
+    // Acciaioli duchy HV(3), marble: gold reduced, +2 marble, +1 faith
+    yields: { gold: 2, grain: 0, timber: 0, marble: 2, faith: 2 },
     coastal: true,
     position: { x: 36, y: 52 },
     startingFaction: null,
@@ -251,7 +251,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Morea (Mistra)",
     terrain: TerrainType.HILLS,
     // Despotate of the Morea: +1 grain, +1 faith
-    yields: { gold: 1, grain: 1, timber: 0, stone: 1, faith: 1 },
+    yields: { gold: 1, grain: 1, timber: 0, marble: 1, faith: 1 },
     coastal: false,
     position: { x: 32, y: 58 },
     startingFaction: Faction.BYZANTIUM,
@@ -262,7 +262,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Modon & Coron",
     terrain: TerrainType.COAST,
     // "eyes of the Republic": +1 gold
-    yields: { gold: 2, grain: 1, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 2, grain: 1, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 30, y: 60 },
     startingFaction: Faction.VENICE,
@@ -274,7 +274,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Venice",
     terrain: TerrainType.CITY,
     // capital, the Arsenal HV(4): +2 gold, +1 grain, +2 timber
-    yields: { gold: 5, grain: 1, timber: 2, stone: 0, faith: 1 },
+    yields: { gold: 5, grain: 1, timber: 2, marble: 0, faith: 1 },
     coastal: true,
     position: { x: 12, y: 20 },
     startingFaction: Faction.VENICE,
@@ -286,8 +286,8 @@ export const PROVINCES: MapProvince[] = [
     id: "milan",
     name: "Milan",
     terrain: TerrainType.PLAINS,
-    // armorers & condottieri: +1 gold, +1 stone
-    yields: { gold: 2, grain: 2, timber: 0, stone: 1, faith: 0 },
+    // armorers & condottieri: +1 gold, +1 marble
+    yields: { gold: 2, grain: 2, timber: 0, marble: 1, faith: 0 },
     coastal: false,
     position: { x: 8, y: 22 },
     startingFaction: null,
@@ -298,8 +298,8 @@ export const PROVINCES: MapProvince[] = [
     id: "genoa",
     name: "Genoa",
     terrain: TerrainType.CITY,
-    // capital, Bank of St George HV(4): +2 gold, +1 stone
-    yields: { gold: 5, grain: 0, timber: 0, stone: 1, faith: 1 },
+    // capital, Bank of St George HV(4): +2 gold, +1 marble
+    yields: { gold: 5, grain: 0, timber: 0, marble: 1, faith: 1 },
     coastal: true,
     position: { x: 8, y: 29 },
     startingFaction: Faction.GENOA,
@@ -312,7 +312,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Rome",
     terrain: TerrainType.CITY,
     // Papacy HV(4): primary faith, secondary gold: +3 faith
-    yields: { gold: 3, grain: 0, timber: 0, stone: 0, faith: 4 },
+    yields: { gold: 3, grain: 0, timber: 0, marble: 0, faith: 4 },
     coastal: true,
     position: { x: 12, y: 35 },
     startingFaction: null,
@@ -325,7 +325,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Naples",
     terrain: TerrainType.CITY,
     // Aragonese kingdom HV(3): primary grain, secondary gold
-    yields: { gold: 3, grain: 3, timber: 0, stone: 0, faith: 1 },
+    yields: { gold: 3, grain: 3, timber: 0, marble: 0, faith: 1 },
     coastal: true,
     position: { x: 15, y: 41 },
     startingFaction: null,
@@ -338,7 +338,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Sicily (Palermo)",
     terrain: TerrainType.COAST,
     // Aragon's granary: +1 gold, +2 grain
-    yields: { gold: 2, grain: 3, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 2, grain: 3, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 15, y: 50 },
     startingFaction: null,
@@ -350,7 +350,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Tunis",
     terrain: TerrainType.DESERT,
     // Hafsid corsair nest: desert base gold1 + caravan gold, +1 grain
-    yields: { gold: 2, grain: 1, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 2, grain: 1, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 10, y: 62 },
     startingFaction: null,
@@ -362,8 +362,8 @@ export const PROVINCES: MapProvince[] = [
     id: "dalmatia",
     name: "Dalmatia (Zara/Split)",
     terrain: TerrainType.COAST,
-    // Arsenal oak & stone: +2 timber, +1 stone
-    yields: { gold: 1, grain: 1, timber: 2, stone: 1, faith: 0 },
+    // Arsenal oak & marble: +2 timber, +1 marble
+    yields: { gold: 1, grain: 1, timber: 2, marble: 1, faith: 0 },
     coastal: true,
     position: { x: 20, y: 28 },
     startingFaction: Faction.VENICE,
@@ -374,7 +374,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Ragusa",
     terrain: TerrainType.CITY,
     // merchant republic, tribute-payer: primary gold only, faith dropped
-    yields: { gold: 4, grain: 1, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 4, grain: 1, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 22, y: 33 },
     startingFaction: null,
@@ -387,7 +387,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Croatia (Zagreb)",
     terrain: TerrainType.FOREST,
     // frontier march: forest base grain1/timber2
-    yields: { gold: 0, grain: 1, timber: 2, stone: 0, faith: 0 },
+    yields: { gold: 0, grain: 1, timber: 2, marble: 0, faith: 0 },
     coastal: false,
     position: { x: 20, y: 18 },
     startingFaction: Faction.HUNGARY,
@@ -398,7 +398,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Buda",
     terrain: TerrainType.CITY,
     // capital, Danube river port (not sea-reachable): +1 gold, +2 grain
-    yields: { gold: 4, grain: 2, timber: 0, stone: 0, faith: 1 },
+    yields: { gold: 4, grain: 2, timber: 0, marble: 0, faith: 1 },
     coastal: false,
     position: { x: 22, y: 10 },
     startingFaction: Faction.HUNGARY,
@@ -409,8 +409,8 @@ export const PROVINCES: MapProvince[] = [
     id: "belgrade",
     name: "Belgrade (Nándorfehérvár)",
     terrain: TerrainType.CITY,
-    // key Danube fortress, river port: primary grain, secondary stone
-    yields: { gold: 2, grain: 3, timber: 0, stone: 1, faith: 1 },
+    // key Danube fortress, river port: primary grain, secondary marble
+    yields: { gold: 2, grain: 3, timber: 0, marble: 1, faith: 1 },
     coastal: false,
     position: { x: 26, y: 16 },
     startingFaction: Faction.HUNGARY,
@@ -421,7 +421,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Transylvania",
     terrain: TerrainType.FOREST,
     // gold & salt mines: +2 gold
-    yields: { gold: 2, grain: 1, timber: 2, stone: 0, faith: 0 },
+    yields: { gold: 2, grain: 1, timber: 2, marble: 0, faith: 0 },
     coastal: false,
     position: { x: 32, y: 10 },
     startingFaction: Faction.HUNGARY,
@@ -433,7 +433,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Bithynia (Nicomedia)",
     terrain: TerrainType.HILLS,
     // Asian shore of the Bosphorus: primary grain, secondary timber
-    yields: { gold: 1, grain: 2, timber: 1, stone: 0, faith: 0 },
+    yields: { gold: 1, grain: 2, timber: 1, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 56, y: 36 },
     startingFaction: Faction.OTTOMAN,
@@ -444,7 +444,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Bursa",
     terrain: TerrainType.HILLS,
     // first Ottoman capital, silk: +2 gold, +1 grain
-    yields: { gold: 3, grain: 1, timber: 0, stone: 1, faith: 0 },
+    yields: { gold: 3, grain: 1, timber: 0, marble: 1, faith: 0 },
     coastal: false,
     position: { x: 58, y: 41 },
     startingFaction: Faction.OTTOMAN,
@@ -455,7 +455,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Nicaea (İznik)",
     terrain: TerrainType.CITY,
     // council city, lake fortress: primary grain, secondary faith
-    yields: { gold: 2, grain: 2, timber: 0, stone: 0, faith: 2 },
+    yields: { gold: 2, grain: 2, timber: 0, marble: 0, faith: 2 },
     coastal: false,
     position: { x: 58, y: 38 },
     startingFaction: Faction.OTTOMAN,
@@ -465,8 +465,8 @@ export const PROVINCES: MapProvince[] = [
     id: "ankara",
     name: "Ankara",
     terrain: TerrainType.PLAINS,
-    // angora wool, Karaman league: primary grain, secondary stone
-    yields: { gold: 1, grain: 2, timber: 0, stone: 1, faith: 0 },
+    // angora wool, Karaman league: primary grain, secondary marble
+    yields: { gold: 1, grain: 2, timber: 0, marble: 1, faith: 0 },
     coastal: false,
     position: { x: 66, y: 40 },
     startingFaction: null,
@@ -478,8 +478,8 @@ export const PROVINCES: MapProvince[] = [
     id: "konya",
     name: "Konya",
     terrain: TerrainType.PLAINS,
-    // Karaman beylik seat: primary grain, secondary stone
-    yields: { gold: 1, grain: 2, timber: 0, stone: 1, faith: 0 },
+    // Karaman beylik seat: primary grain, secondary marble
+    yields: { gold: 1, grain: 2, timber: 0, marble: 1, faith: 0 },
     coastal: false,
     position: { x: 68, y: 48 },
     startingFaction: null,
@@ -491,8 +491,8 @@ export const PROVINCES: MapProvince[] = [
     id: "kastamonu",
     name: "Kastamonu",
     terrain: TerrainType.MOUNTAINS,
-    // Candar / İsfendiyar beylik: primary timber, secondary stone
-    yields: { gold: 0, grain: 0, timber: 2, stone: 1, faith: 0 },
+    // Candar / İsfendiyar beylik: primary timber, secondary marble
+    yields: { gold: 0, grain: 0, timber: 2, marble: 1, faith: 0 },
     coastal: false,
     position: { x: 70, y: 32 },
     startingFaction: null,
@@ -504,7 +504,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Sinope",
     terrain: TerrainType.COAST,
     // Black Sea shipyards: +1 gold, +2 timber
-    yields: { gold: 2, grain: 1, timber: 2, stone: 0, faith: 0 },
+    yields: { gold: 2, grain: 1, timber: 2, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 74, y: 30 },
     startingFaction: null,
@@ -517,7 +517,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Smyrna (İzmir)",
     terrain: TerrainType.COAST,
     // Aydın beylik port: +1 gold, +1 grain
-    yields: { gold: 2, grain: 2, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 2, grain: 2, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 54, y: 50 },
     startingFaction: null,
@@ -529,7 +529,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Antalya (Attaleia)",
     terrain: TerrainType.COAST,
     // Teke coast: +1 gold, +1 grain (registry lists no walls)
-    yields: { gold: 2, grain: 2, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 2, grain: 2, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 64, y: 55 },
     startingFaction: null,
@@ -542,7 +542,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Trebizond",
     terrain: TerrainType.CITY,
     // Empire of Trebizond HV(3), silk terminus: +1 gold, +1 grain, +1 faith
-    yields: { gold: 4, grain: 1, timber: 0, stone: 0, faith: 2 },
+    yields: { gold: 4, grain: 1, timber: 0, marble: 0, faith: 2 },
     coastal: true,
     position: { x: 86, y: 30 },
     startingFaction: null,
@@ -557,7 +557,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Aleppo",
     terrain: TerrainType.PLAINS,
     // Mamluk caravan city: +2 gold
-    yields: { gold: 3, grain: 2, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 3, grain: 2, timber: 0, marble: 0, faith: 0 },
     coastal: false,
     position: { x: 78, y: 52 },
     startingFaction: null,
@@ -569,7 +569,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Antioch",
     terrain: TerrainType.COAST,
     // Mamluk frontier: +1 gold, +1 grain
-    yields: { gold: 2, grain: 2, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 2, grain: 2, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 74, y: 56 },
     startingFaction: null,
@@ -581,7 +581,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Cairo",
     terrain: TerrainType.DESERT,
     // Mamluk capital HV(3): desert base gold1 + +3 gold, +1 grain, +2 faith
-    yields: { gold: 4, grain: 1, timber: 0, stone: 0, faith: 2 },
+    yields: { gold: 4, grain: 1, timber: 0, marble: 0, faith: 2 },
     coastal: false,
     position: { x: 72, y: 72 },
     startingFaction: null,
@@ -594,7 +594,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Alexandria",
     terrain: TerrainType.COAST,
     // Nile grain + spice HV(3): +2 gold, +2 grain
-    yields: { gold: 3, grain: 3, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 3, grain: 3, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 68, y: 68 },
     startingFaction: null,
@@ -608,7 +608,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Cyprus",
     terrain: TerrainType.COAST,
     // Lusignan kingdom, sugar & wine: +2 gold, +1 grain
-    yields: { gold: 3, grain: 2, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 3, grain: 2, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 68, y: 60 },
     startingFaction: null,
@@ -620,7 +620,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Rhodes",
     terrain: TerrainType.COAST,
     // Knights Hospitaller: +2 gold, +2 faith
-    yields: { gold: 3, grain: 1, timber: 0, stone: 0, faith: 2 },
+    yields: { gold: 3, grain: 1, timber: 0, marble: 0, faith: 2 },
     coastal: true,
     position: { x: 54, y: 60 },
     startingFaction: null,
@@ -633,7 +633,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Chios",
     terrain: TerrainType.COAST,
     // mastic & alum, the Maona: +2 gold
-    yields: { gold: 3, grain: 1, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 3, grain: 1, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 50, y: 52 },
     startingFaction: Faction.GENOA,
@@ -644,7 +644,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Lesbos (Mytilene)",
     terrain: TerrainType.HILLS,
     // Gattilusio lordship: primary timber, secondary gold
-    yields: { gold: 2, grain: 0, timber: 2, stone: 1, faith: 0 },
+    yields: { gold: 2, grain: 0, timber: 2, marble: 1, faith: 0 },
     coastal: true,
     position: { x: 50, y: 46 },
     startingFaction: Faction.GENOA,
@@ -655,7 +655,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Lemnos",
     terrain: TerrainType.PLAINS,
     // Byzantine granary isle: +1 grain
-    yields: { gold: 1, grain: 3, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 1, grain: 3, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 44, y: 44 },
     startingFaction: Faction.BYZANTIUM,
@@ -666,7 +666,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Negroponte (Euboea)",
     terrain: TerrainType.COAST,
     // Venetian bailo's seat: +1 gold, +1 grain
-    yields: { gold: 2, grain: 2, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 2, grain: 2, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 40, y: 50 },
     startingFaction: Faction.VENICE,
@@ -676,8 +676,8 @@ export const PROVINCES: MapProvince[] = [
     id: "naxos",
     name: "Naxos",
     terrain: TerrainType.HILLS,
-    // Duchy of the Archipelago, marble: +1 gold, +1 stone
-    yields: { gold: 2, grain: 0, timber: 0, stone: 2, faith: 0 },
+    // Duchy of the Archipelago, marble: +1 gold, +1 marble
+    yields: { gold: 2, grain: 0, timber: 0, marble: 2, faith: 0 },
     coastal: true,
     position: { x: 46, y: 58 },
     startingFaction: null,
@@ -689,7 +689,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Crete (Candia)",
     terrain: TerrainType.HILLS,
     // HV(3), wine & Arsenal timber depot: +2 gold, +2 grain
-    yields: { gold: 3, grain: 2, timber: 0, stone: 1, faith: 0 },
+    yields: { gold: 3, grain: 2, timber: 0, marble: 1, faith: 0 },
     coastal: true,
     position: { x: 44, y: 66 },
     startingFaction: Faction.VENICE,
@@ -701,7 +701,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Corfu",
     terrain: TerrainType.COAST,
     // Venetian gate of the Adriatic: +1 gold, +1 grain
-    yields: { gold: 2, grain: 2, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 2, grain: 2, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 26, y: 44 },
     startingFaction: Faction.VENICE,
@@ -713,7 +713,7 @@ export const PROVINCES: MapProvince[] = [
     name: "Kaffa (Caffa)",
     terrain: TerrainType.CITY,
     // Genoese Black Sea colony HV(3), grain & slave trade: +1 gold, +2 grain, faith dropped
-    yields: { gold: 4, grain: 2, timber: 0, stone: 0, faith: 0 },
+    yields: { gold: 4, grain: 2, timber: 0, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 66, y: 12 },
     startingFaction: Faction.GENOA,

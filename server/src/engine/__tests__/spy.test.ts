@@ -209,7 +209,7 @@ describe("applySpy — mission effects (§10.7 (a)/(b)/(c))", () => {
     // The economy honours it: the owner's income strictly drops.
     const suppressed = computeIncome(next).perPlayer["p2"];
     const sum = (b: typeof baseline) =>
-      b.gold + b.grain + b.timber + b.stone + b.faith;
+      b.gold + b.grain + b.timber + b.marble + b.faith;
     expect(sum(suppressed)).toBeLessThan(sum(baseline));
 
     const entry = next.log.at(-1)!;

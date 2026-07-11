@@ -24,13 +24,13 @@ import {
 
 /** Base per-turn yield of each terrain (§3.1). DESERT authored: trade gold, no grain. */
 export const TERRAIN_YIELDS: Record<TerrainType, ResourceBundle> = {
-  [TerrainType.PLAINS]: { gold: 1, grain: 2, timber: 0, stone: 0, faith: 0 },
-  [TerrainType.HILLS]: { gold: 1, grain: 0, timber: 0, stone: 1, faith: 0 },
-  [TerrainType.MOUNTAINS]: { gold: 0, grain: 0, timber: 0, stone: 2, faith: 0 },
-  [TerrainType.FOREST]: { gold: 0, grain: 1, timber: 2, stone: 0, faith: 0 },
-  [TerrainType.COAST]: { gold: 1, grain: 1, timber: 0, stone: 0, faith: 0 },
-  [TerrainType.CITY]: { gold: 3, grain: 0, timber: 0, stone: 0, faith: 1 },
-  [TerrainType.DESERT]: { gold: 1, grain: 0, timber: 0, stone: 0, faith: 0 },
+  [TerrainType.PLAINS]: { gold: 1, grain: 2, timber: 0, marble: 0, faith: 0 },
+  [TerrainType.HILLS]: { gold: 1, grain: 0, timber: 0, marble: 1, faith: 0 },
+  [TerrainType.MOUNTAINS]: { gold: 0, grain: 0, timber: 0, marble: 2, faith: 0 },
+  [TerrainType.FOREST]: { gold: 0, grain: 1, timber: 2, marble: 0, faith: 0 },
+  [TerrainType.COAST]: { gold: 1, grain: 1, timber: 0, marble: 0, faith: 0 },
+  [TerrainType.CITY]: { gold: 3, grain: 0, timber: 0, marble: 0, faith: 1 },
+  [TerrainType.DESERT]: { gold: 1, grain: 0, timber: 0, marble: 0, faith: 0 },
 };
 
 /** Movement point cost to enter a terrain (§3.1). */
@@ -127,7 +127,7 @@ export const UNIT_STATS: Record<UnitType, UnitStat> = {
     special: ["charge-plains", "pursuit"],
   },
   [UnitType.SIEGE]: {
-    cost: { gold: 8, stone: 2, timber: 2 },
+    cost: { gold: 8, marble: 2, timber: 2 },
     grainUpkeep: 1,
     atk: 0, // no offensive field dice
     def: 1,
@@ -277,12 +277,12 @@ export const UNIQUE_UNIT_OVERRIDES: Record<string, UniqueUnitDef> = {
 /** Build cost per building (§9). WALLS cost is the Lv1 build; see WALL_BUILD_COST. */
 export const BUILDING_COSTS: Record<BuildingType, Partial<ResourceBundle>> = {
   [BuildingType.BARRACKS]: { gold: 4, timber: 2 },
-  [BuildingType.MARKET]: { gold: 4, stone: 2 },
+  [BuildingType.MARKET]: { gold: 4, marble: 2 },
   [BuildingType.GRANARY]: { gold: 4, timber: 3 },
   [BuildingType.SHIPYARD]: { gold: 6, timber: 4 },
-  [BuildingType.TEMPLE]: { gold: 5, stone: 3, faith: 1 },
-  [BuildingType.WALLS]: { gold: 5, stone: 4 },
-  [BuildingType.UNIVERSITY]: { gold: 10, stone: 4, faith: 2 },
+  [BuildingType.TEMPLE]: { gold: 5, marble: 3, faith: 1 },
+  [BuildingType.WALLS]: { gold: 5, marble: 4 },
+  [BuildingType.UNIVERSITY]: { gold: 10, marble: 4, faith: 2 },
 };
 
 export interface BuildingEffect {
@@ -330,25 +330,25 @@ export interface GreatWorkDef {
 /** Great works: cost, build rounds, prestige and effect tags (§9 / §13). */
 export const GREAT_WORK_COSTS: Record<GreatWorkType, GreatWorkDef> = {
   [GreatWorkType.HAGIA_SOPHIA]: {
-    cost: { gold: 20, stone: 10, faith: 8 },
+    cost: { gold: 20, marble: 10, faith: 8 },
     rounds: 3,
     prestige: 10,
     effects: ["+2-faith-per-round", "unlock-byzantine-cards"],
   },
   [GreatWorkType.THEODOSIAN_WALLS]: {
-    cost: { gold: 15, stone: 12 },
+    cost: { gold: 15, marble: 12 },
     rounds: 2,
     prestige: 6,
     effects: ["wall-hp-16", "def+4"],
   },
   [GreatWorkType.GREAT_UNIVERSITY]: {
-    cost: { gold: 18, stone: 8, faith: 4 },
+    cost: { gold: 18, marble: 8, faith: 4 },
     rounds: 3,
     prestige: 6,
     effects: ["+2-card-draw-per-round", "tactic-reroll-aura"],
   },
   [GreatWorkType.GRAND_BAZAAR]: {
-    cost: { gold: 16, timber: 6, stone: 6 },
+    cost: { gold: 16, timber: 6, marble: 6 },
     rounds: 2,
     prestige: 5,
     effects: ["best-trade-ratio", "+3-gold-per-port-route"],
@@ -393,9 +393,9 @@ export const MAP_WALL_TIER: Record<number, number> = {
 
 /** Cost to build/upgrade walls to a given HP-model tier (§9). */
 export const WALL_BUILD_COST: Record<number, Partial<ResourceBundle>> = {
-  1: { gold: 5, stone: 4 },
-  2: { gold: 8, stone: 6 },
-  3: { gold: 15, stone: 12 }, // Theodosian (also a great work)
+  1: { gold: 5, marble: 4 },
+  2: { gold: 8, marble: 6 },
+  3: { gold: 15, marble: 12 }, // Theodosian (also a great work)
 };
 
 // ---------------------------------------------------------------------------
@@ -673,9 +673,9 @@ export const STACKING = {
 
 /** Turn-1 treasury per faction (FACTIONS.md). */
 export const FACTION_STARTING_RESOURCES: Record<Faction, ResourceBundle> = {
-  [Faction.BYZANTIUM]: { gold: 5, grain: 4, timber: 1, stone: 2, faith: 5 },
-  [Faction.OTTOMAN]: { gold: 6, grain: 7, timber: 3, stone: 3, faith: 2 },
-  [Faction.VENICE]: { gold: 9, grain: 4, timber: 5, stone: 3, faith: 1 },
-  [Faction.GENOA]: { gold: 8, grain: 3, timber: 4, stone: 3, faith: 1 },
-  [Faction.HUNGARY]: { gold: 6, grain: 6, timber: 5, stone: 4, faith: 3 },
+  [Faction.BYZANTIUM]: { gold: 5, grain: 4, timber: 1, marble: 2, faith: 5 },
+  [Faction.OTTOMAN]: { gold: 6, grain: 7, timber: 3, marble: 3, faith: 2 },
+  [Faction.VENICE]: { gold: 9, grain: 4, timber: 5, marble: 3, faith: 1 },
+  [Faction.GENOA]: { gold: 8, grain: 3, timber: 4, marble: 3, faith: 1 },
+  [Faction.HUNGARY]: { gold: 6, grain: 6, timber: 5, marble: 4, faith: 3 },
 };

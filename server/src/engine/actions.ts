@@ -68,7 +68,7 @@ const ACTION_PHASES: ReadonlySet<GamePhase> = new Set([
   GamePhase.DIPLOMACY,
 ]);
 
-const RESOURCE_KEYS = ["gold", "grain", "timber", "stone", "faith"] as const;
+const RESOURCE_KEYS = ["gold", "grain", "timber", "marble", "faith"] as const;
 
 // ---------------------------------------------------------------------------
 // Small shared helpers
@@ -110,7 +110,7 @@ function zeroUnits(): Record<UnitType, number> {
 }
 
 function emptyBundle(): ResourceBundle {
-  return { gold: 0, grain: 0, timber: 0, stone: 0, faith: 0 };
+  return { gold: 0, grain: 0, timber: 0, marble: 0, faith: 0 };
 }
 
 /** Live units (generic + variant) in a stack. */

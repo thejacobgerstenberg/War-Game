@@ -105,8 +105,7 @@ export enum GamePhase {
 
 /**
  * The five tradeable/consumable resources. Every economic figure in the game
- * is expressed as a {@link ResourceBundle}. "marble" == stone. Faith is
- * non-tradeable.
+ * is expressed as a {@link ResourceBundle}. Faith is non-tradeable.
  */
 export interface ResourceBundle {
   gold: number;

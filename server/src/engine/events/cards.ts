@@ -164,7 +164,7 @@ function addRes(t: ResourceBundle, d: Partial<ResourceBundle>): ResourceBundle {
     gold: Math.max(0, t.gold + (d.gold ?? 0)),
     grain: Math.max(0, t.grain + (d.grain ?? 0)),
     timber: Math.max(0, t.timber + (d.timber ?? 0)),
-    stone: Math.max(0, t.stone + (d.stone ?? 0)),
+    marble: Math.max(0, t.marble + (d.marble ?? 0)),
     faith: Math.max(0, t.faith + (d.faith ?? 0)),
   };
 }
@@ -606,7 +606,7 @@ const e24: EventEffect = (state, ctx) => {
 const e25: EventEffect = (state, ctx) => {
   const target = pickFrom(ctx, EARTHQUAKE_CITIES);
   const s = mapProvince(state, target, (p) => shiftWall(p, -1));
-  return eventLog(s, ctx, `Earthquake: ${target} loses a wall tier (repairable later with stone).`);
+  return eventLog(s, ctx, `Earthquake: ${target} loses a wall tier (repairable later with marble).`);
 };
 
 // #26 The Grain Fleet Is Lost — target coastal faction −3 grain + 1 galley, else a levy starves.
@@ -697,14 +697,14 @@ const e31: EffectPlaceholder = (state, ctx) => {
   });
 };
 
-// #32 Hexamilion Rebuilt — morea holder may spend stone: +1 wall tier, +1 def vs Athens (STANDING).
+// #32 Hexamilion Rebuilt — morea holder may spend marble: +1 wall tier, +1 def vs Athens (STANDING).
 const e32: EventEffect = (state, ctx) => {
   const owner = controllerId(state, "morea");
   if (owner == null) return eventLog(state, ctx, "Hexamilion Rebuilt: Morea is unclaimed — neutral.");
   const holder = state.players.find((p) => p.id === owner);
-  const canPay = (holder?.treasury.stone ?? 0) >= 2;
-  if (!canPay) return eventLog(state, ctx, "Hexamilion Rebuilt: Morea's holder cannot spare the stone to fortify.");
-  let s = grantRes(state, owner, { stone: -2 });
+  const canPay = (holder?.treasury.marble ?? 0) >= 2;
+  if (!canPay) return eventLog(state, ctx, "Hexamilion Rebuilt: Morea's holder cannot spare the marble to fortify.");
+  let s = grantRes(state, owner, { marble: -2 });
   s = mapProvince(s, "morea", (p) => shiftWall(p, 1));
   return eventLog(s, ctx, "Hexamilion Rebuilt at Corinth: Morea gains +1 wall tier and +1 defence vs any land attack from Athens for the rest of the game (until breached).", {
     standing: true,
@@ -740,7 +740,7 @@ const e34: EventEffect = (state, ctx) => {
       grantedTo: ott.id,
     });
   }
-  return eventLog(state, ctx, "The Great Bombard Forged: no Ottoman in play — Orban sells to the highest bidder (gold + stone auction), granting them one bombard.", {
+  return eventLog(state, ctx, "The Great Bombard Forged: no Ottoman in play — Orban sells to the highest bidder (gold + marble auction), granting them one bombard.", {
     standing: true,
     unlock: "GREAT_BOMBARD",
     auction: true,
@@ -762,9 +762,9 @@ const e35: EventEffect = (state, ctx) => {
   });
 };
 
-// #36 Gunpowder Revolution — STANDING: bombards/handgunners −1 cost +1 siege; stone walls −1 tier.
+// #36 Gunpowder Revolution — STANDING: bombards/handgunners −1 cost +1 siege; marble walls −1 tier.
 const e36: EventEffect = (state, ctx) =>
-  eventLog(state, ctx, "Gunpowder Revolution: for the rest of the game bombards and handgunners cost −1 and gain +1 siege, but stone walls defend at −1 tier against them.", {
+  eventLog(state, ctx, "Gunpowder Revolution: for the rest of the game bombards and handgunners cost −1 and gain +1 siege, but marble walls defend at −1 tier against them.", {
     standing: true,
     siegeDelta: 1,
     wallTierDelta: -1,
@@ -1199,7 +1199,7 @@ export const AMBIGUITIES: CardAmbiguity[] = [
     id: "omen-32",
     card: "Hexamilion Rebuilt",
     interpretation:
-      "Auto-fortifies only if the Morea holder can pay 2 stone (stone cost inferred; balance has no explicit number). Applies −2 stone and +1 wall tier; the standing '+1 def vs attacks from Athens' is logged.",
+      "Auto-fortifies only if the Morea holder can pay 2 marble (marble cost inferred; balance has no explicit number). Applies −2 marble and +1 wall tier; the standing '+1 def vs attacks from Athens' is logged.",
   },
   {
     id: "omen-33",
@@ -1211,7 +1211,7 @@ export const AMBIGUITIES: CardAmbiguity[] = [
     id: "omen-34",
     card: "The Great Bombard Forged",
     interpretation:
-      "If an Ottoman is in play, logs the GREAT_BOMBARD unlock granted to them (no unlock store yet). With no Ottoman, logs an auction (gold+stone) for the highest bidder — auction resolution belongs to the mercenary/market subsystem.",
+      "If an Ottoman is in play, logs the GREAT_BOMBARD unlock granted to them (no unlock store yet). With no Ottoman, logs an auction (gold+marble) for the highest bidder — auction resolution belongs to the mercenary/market subsystem.",
   },
   {
     id: "omen-35",
