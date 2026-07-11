@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>drought</title>
+
+  <!-- parchment sky, empty of rain -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+
+  <!-- the sky withholds: merciless crimson sun, gold at its core -->
+  <polygon points="130,4 125,16 135,16" fill="#7A1F2B"/>
+  <polygon points="130,76 125,64 135,64" fill="#7A1F2B"/>
+  <polygon points="166,40 154,35 154,45" fill="#7A1F2B"/>
+  <polygon points="94,40 106,35 106,45" fill="#7A1F2B"/>
+  <polygon points="156,14 152,27 143,18" fill="#7A1F2B"/>
+  <polygon points="104,14 117,18 108,27" fill="#7A1F2B"/>
+  <polygon points="156,66 143,62 152,53" fill="#7A1F2B"/>
+  <polygon points="104,66 108,53 117,62" fill="#7A1F2B"/>
+  <circle cx="130" cy="40" r="22" fill="#7A1F2B"/>
+  <circle cx="130" cy="40" r="9" fill="#C9A227"/>
+
+  <!-- lone carrion bird circling -->
+  <path d="M182,28 q6,-6 12,0 q6,-6 12,0" fill="none" stroke="#2B2118" stroke-width="3"/>
+
+  <!-- heat shimmer above the horizon -->
+  <path d="M18,88 q8,-6 16,0 q8,-6 16,0" fill="none" stroke="#E2D3B3" stroke-width="3"/>
+  <path d="M198,84 q8,-6 16,0 q8,-6 16,0" fill="none" stroke="#E2D3B3" stroke-width="3"/>
+
+  <!-- dust-grey earth -->
+  <path d="M0,106 Q65,98 130,104 Q195,110 260,102 L260,160 L0,160 Z" fill="#E2D3B3"/>
+
+  <!-- the river run thin and shameful: dry bed baring its stones -->
+  <path d="M0,124 Q40,116 80,126 Q130,138 180,124 Q220,114 260,124 L260,138 Q220,128 180,138 Q130,152 80,140 Q40,130 0,138 Z" fill="#F0E6D2"/>
+  <ellipse cx="58" cy="131" rx="5" ry="3" fill="#2B2118"/>
+  <ellipse cx="104" cy="133" rx="4" ry="2.5" fill="#2B2118"/>
+  <ellipse cx="162" cy="132" rx="5" ry="3" fill="#2B2118"/>
+  <ellipse cx="222" cy="127" rx="4" ry="2.5" fill="#2B2118"/>
+
+  <!-- cracked earth -->
+  <polygon points="126,105 131,105 126,113 129,121 124,121 122,113" fill="#2B2118"/>
+  <polygon points="228,104 233,104 227,110 231,118 226,118 223,110" fill="#2B2118"/>
+  <polygon points="30,142 35,142 29,150 32,158 27,158 25,149" fill="#2B2118"/>
+  <polygon points="150,144 155,144 148,152 152,160 146,160 144,151" fill="#2B2118"/>
+  <polygon points="196,146 201,146 195,152 198,159 193,159 191,152" fill="#2B2118"/>
+
+  <!-- withered stalk bowed to the ground, ear hanging spent -->
+  <path d="M46,112 Q46,82 54,64 Q60,50 74,48" fill="none" stroke="#C9A227" stroke-width="4"/>
+  <polygon points="74,46 83,52 85,68 77,76 70,62 70,50" fill="#C9A227"/>
+  <!-- a smaller stalk broken beside it -->
+  <path d="M212,112 Q212,94 208,82" fill="none" stroke="#C9A227" stroke-width="3"/>
+  <polygon points="208,80 215,86 213,98 205,92 203,84" fill="#C9A227"/>
+
+  <!-- the last grains fallen in the dust -->
+  <circle cx="56" cy="116" r="2.5" fill="#C9A227"/>
+  <circle cx="65" cy="119" r="2.5" fill="#C9A227"/>
+  <circle cx="48" cy="121" r="2.5" fill="#C9A227"/>
+  <circle cx="219" cy="116" r="2.5" fill="#C9A227"/>
+</svg>

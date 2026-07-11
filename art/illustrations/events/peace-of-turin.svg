@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Peace of Turin</title>
+  <rect x="0" y="0" width="260" height="160" fill="#E2D3B3"/>
+
+  <!-- calm sea, the lanes open again -->
+  <path d="M-4 120 Q9 108 22 120 Q35 108 48 120 Q61 108 74 120 Q87 108 100 120 Q113 108 126 120 Q139 108 152 120 Q165 108 178 120 Q191 108 204 120 Q217 108 230 120 Q243 108 256 120 Q269 108 282 120 L282 164 L-4 164 Z" fill="#2C5F7C"/>
+  <path d="M28 140 Q41 132 54 140 Q67 132 80 140" stroke="#E2D3B3" stroke-width="3" fill="none"/>
+  <path d="M180 144 Q193 136 206 144 Q219 136 232 144" stroke="#E2D3B3" stroke-width="3" fill="none"/>
+
+  <!-- the war galleys go home: Genoa westward -->
+  <path d="M60 72 L16 60" stroke="#2B2118" stroke-width="4" fill="none"/>
+  <polygon points="58,72 18,62 38,100" fill="#7A1F2B"/>
+  <rect x="40" y="64" width="4" height="46" fill="#2B2118"/>
+  <polygon points="70,108 18,108 8,100 4,110 14,118 62,118 70,113" fill="#2B2118"/>
+
+  <!-- Venice eastward -->
+  <path d="M200 72 L244 60" stroke="#2B2118" stroke-width="4" fill="none"/>
+  <polygon points="202,72 242,62 222,100" fill="#C9A227"/>
+  <rect x="216" y="64" width="4" height="46" fill="#2B2118"/>
+  <polygon points="190,108 242,108 252,100 256,110 246,118 198,118 190,113" fill="#2B2118"/>
+
+  <!-- the ledger, which never lies and never tires -->
+  <polygon points="70,46 130,36 190,46 190,100 130,110 70,100" fill="#2B2118"/>
+  <polygon points="76,50 126,41 126,104 76,95" fill="#E2D3B3"/>
+  <polygon points="134,41 184,50 184,95 134,104" fill="#E2D3B3"/>
+  <path d="M84 60 L118 54 M84 69 L118 63 M84 87 L118 81" stroke="#2B2118" stroke-width="2.5" fill="none"/>
+  <path d="M84 78 L118 72" stroke="#7A1F2B" stroke-width="3.5" fill="none"/>
+  <path d="M142 54 L176 60 M142 63 L176 69 M142 81 L176 87" stroke="#2B2118" stroke-width="2.5" fill="none"/>
+  <path d="M142 72 L176 78" stroke="#C9A227" stroke-width="3.5" fill="none"/>
+
+  <!-- the bezant restored to the sky -->
+  <circle cx="130" cy="19" r="10" fill="#C9A227"/>
+</svg>

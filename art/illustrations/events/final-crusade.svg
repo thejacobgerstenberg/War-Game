@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>The Final Crusade</title>
+  <!-- vellum ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#E2D3B3"/>
+  <!-- porphyry sky, the darkest hour -->
+  <rect x="0" y="0" width="260" height="100" fill="#4B1F3F"/>
+  <!-- the Ottoman-held city on the eastern horizon -->
+  <rect x="200" y="82" width="56" height="18" fill="#2B2118"/>
+  <rect x="202" y="76" width="6" height="8" fill="#2B2118"/>
+  <rect x="214" y="76" width="6" height="8" fill="#2B2118"/>
+  <rect x="246" y="76" width="6" height="8" fill="#2B2118"/>
+  <rect x="229" y="80" width="18" height="20" fill="#2B2118"/>
+  <circle cx="238" cy="80" r="9" fill="#2B2118"/>
+  <!-- gold crescent above the dome: the prize -->
+  <circle cx="238" cy="64" r="5" fill="#C9A227"/>
+  <circle cx="240" cy="62" r="4.5" fill="#4B1F3F"/>
+  <!-- the road east fills with men: tapering column -->
+  <polygon points="30,140 196,101 212,101 212,108 38,158 30,158" fill="#2B2118"/>
+  <circle cx="44" cy="132" r="6.5" fill="#2B2118"/>
+  <circle cx="70" cy="126" r="6" fill="#2B2118"/>
+  <circle cx="96" cy="120" r="5.5" fill="#2B2118"/>
+  <circle cx="122" cy="114" r="5" fill="#2B2118"/>
+  <circle cx="146" cy="108.5" r="4.5" fill="#2B2118"/>
+  <circle cx="170" cy="103.5" r="4" fill="#2B2118"/>
+  <!-- spears of the host -->
+  <rect x="56" y="98" width="3" height="38" fill="#2B2118"/>
+  <polygon points="57.5,86 62,100 53,100" fill="#2B2118"/>
+  <rect x="140" y="78" width="3" height="34" fill="#2B2118"/>
+  <polygon points="141.5,66 146,80 137,80" fill="#2B2118"/>
+  <rect x="160" y="86" width="3" height="24" fill="#2B2118"/>
+  <polygon points="161.5,74 166,88 157,88" fill="#2B2118"/>
+  <!-- the last summons: one great gold cross raised over the road -->
+  <rect x="86" y="12" width="14" height="116" fill="#C9A227"/>
+  <rect x="54" y="34" width="78" height="14" fill="#C9A227"/>
+  <!-- crimson pennon streaming east from the staff -->
+  <polygon points="100,56 150,63 100,76" fill="#7A1F2B"/>
+  <!-- shields of the joiners along the column -->
+  <circle cx="66" cy="146" r="6" fill="#7A1F2B"/>
+  <circle cx="126" cy="132" r="5.5" fill="#7A1F2B"/>
+  <!-- the other list: one who found reasons, walking away -->
+  <circle cx="11" cy="136" r="5" fill="#2B2118"/>
+  <polygon points="6,141 16,141 14,158 8,158" fill="#2B2118"/>
+</svg>
