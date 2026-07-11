@@ -5,9 +5,9 @@ import { ADJACENCY, PROVINCES, SEA_ZONES } from "../mapData.js";
 describe("adjacency", () => {
   it("reports known neighbours of Constantinople", () => {
     const neighbours = neighborsOf("constantinople");
-    expect(neighbours).toContain("adrianople");
-    expect(neighbours).toContain("sea_marmara");
-    expect(neighbours).toContain("sea_black");
+    expect(neighbours).toContain("edirne");
+    expect(neighbours).toContain("sea-of-marmara");
+    expect(neighbours).toContain("bosphorus");
   });
 
   it("is symmetric for every edge in the graph", () => {

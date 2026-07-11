@@ -55,7 +55,7 @@ export interface ResourceBundle {
   gold: number;
   grain: number;
   timber: number;
-  stone: number;
+  marble: number;
   faith: number;
 }
 
@@ -170,6 +170,6 @@ export const EMPTY_RESOURCES: ResourceBundle = {
   gold: 0,
   grain: 0,
   timber: 0,
-  stone: 0,
+  marble: 0,
   faith: 0,
 };

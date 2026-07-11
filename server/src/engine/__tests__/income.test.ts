@@ -13,14 +13,14 @@ describe("computeIncome", () => {
     const state = createInitialState("ROOM01", seats);
     const income = computeIncome(state, "p1");
 
-    // Byzantium starts owning Constantinople + Thessalonica + Mystras.
+    // Byzantium starts owning Constantinople + Thessalonica + Morea.
     // gold: 6 + 3 + 2 = 11
     // timber: 0 + 1 + 0 = 1
-    // stone: 1 + 0 + 2 = 3
+    // marble: 1 + 0 + 2 = 3
     // faith: 3 + 2 + 2 = 7
     expect(income.gold).toBe(11);
     expect(income.timber).toBe(1);
-    expect(income.stone).toBe(3);
+    expect(income.marble).toBe(3);
     expect(income.faith).toBe(7);
   });
 
@@ -46,7 +46,7 @@ describe("computeIncome", () => {
   it("computes the Ottoman player's income independently", () => {
     const state = createInitialState("ROOM01", seats);
     const income = computeIncome(state, "p2");
-    // Ottoman owns Adrianople + Gallipoli + Bursa.
+    // Ottoman owns Edirne + Gallipoli + Bursa.
     // gold: 3 + 3 + 4 = 10 ; grain: (4 + 1 + 2) - 3 upkeep = 4
     expect(income.gold).toBe(10);
     expect(income.grain).toBe(4);
@@ -59,7 +59,7 @@ describe("computeIncome", () => {
       gold: 0,
       grain: 0,
       timber: 0,
-      stone: 0,
+      marble: 0,
       faith: 0,
     });
   });

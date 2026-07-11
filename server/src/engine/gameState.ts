@@ -28,7 +28,7 @@ const STARTING_TREASURY: ResourceBundle = {
   gold: 10,
   grain: 8,
   timber: 4,
-  stone: 4,
+  marble: 4,
   faith: 2,
 };
 

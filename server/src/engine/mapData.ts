@@ -1,7 +1,8 @@
 /**
  * A small but representative slice of the strategic map: the Aegean / Marmara
  * theatre on the eve of 1453. This is a working sample for the engine; the full
- * canonical map lives in docs/MAP.md.
+ * canonical map lives in docs/MAP.md — every province and sea-zone id below
+ * exists verbatim in the MAP.md registry.
  *
  * PROVINCES and SEA_ZONES describe the board. ADJACENCY is the derived,
  * symmetric neighbour graph spanning both land provinces and sea zones.
@@ -27,7 +28,7 @@ export const PROVINCES: MapProvince[] = [
     id: "constantinople",
     name: "Constantinople",
     terrain: TerrainType.CITY,
-    yields: { gold: 6, grain: 2, timber: 0, stone: 1, faith: 3 },
+    yields: { gold: 6, grain: 2, timber: 0, marble: 1, faith: 3 },
     coastal: true,
     position: { x: 55, y: 35 },
     startingFaction: Faction.BYZANTIUM,
@@ -36,25 +37,25 @@ export const PROVINCES: MapProvince[] = [
     id: "thessalonica",
     name: "Thessalonica",
     terrain: TerrainType.COAST,
-    yields: { gold: 3, grain: 2, timber: 1, stone: 0, faith: 2 },
+    yields: { gold: 3, grain: 2, timber: 1, marble: 0, faith: 2 },
     coastal: true,
     position: { x: 28, y: 42 },
     startingFaction: Faction.BYZANTIUM,
   },
   {
-    id: "mystras",
-    name: "Mystras",
+    id: "morea",
+    name: "Morea (Mistra)",
     terrain: TerrainType.HILLS,
-    yields: { gold: 2, grain: 1, timber: 0, stone: 2, faith: 2 },
+    yields: { gold: 2, grain: 1, timber: 0, marble: 2, faith: 2 },
     coastal: true,
     position: { x: 28, y: 78 },
     startingFaction: Faction.BYZANTIUM,
   },
   {
-    id: "adrianople",
-    name: "Adrianople",
+    id: "edirne",
+    name: "Edirne (Adrianople)",
     terrain: TerrainType.PLAINS,
-    yields: { gold: 3, grain: 4, timber: 1, stone: 0, faith: 0 },
+    yields: { gold: 3, grain: 4, timber: 1, marble: 0, faith: 0 },
     coastal: false,
     position: { x: 42, y: 30 },
     startingFaction: Faction.OTTOMAN,
@@ -63,7 +64,7 @@ export const PROVINCES: MapProvince[] = [
     id: "gallipoli",
     name: "Gallipoli",
     terrain: TerrainType.COAST,
-    yields: { gold: 3, grain: 1, timber: 2, stone: 1, faith: 0 },
+    yields: { gold: 3, grain: 1, timber: 2, marble: 1, faith: 0 },
     coastal: true,
     position: { x: 48, y: 46 },
     startingFaction: Faction.OTTOMAN,
@@ -72,25 +73,25 @@ export const PROVINCES: MapProvince[] = [
     id: "bursa",
     name: "Bursa",
     terrain: TerrainType.HILLS,
-    yields: { gold: 4, grain: 2, timber: 1, stone: 1, faith: 1 },
+    yields: { gold: 4, grain: 2, timber: 1, marble: 1, faith: 1 },
     coastal: true,
     position: { x: 66, y: 47 },
     startingFaction: Faction.OTTOMAN,
   },
   {
     id: "smyrna",
-    name: "Smyrna",
+    name: "Smyrna (İzmir)",
     terrain: TerrainType.COAST,
-    yields: { gold: 4, grain: 2, timber: 1, stone: 0, faith: 0 },
+    yields: { gold: 4, grain: 2, timber: 1, marble: 0, faith: 0 },
     coastal: true,
     position: { x: 62, y: 63 },
     startingFaction: Faction.GENOA,
   },
   {
     id: "negroponte",
-    name: "Negroponte",
+    name: "Negroponte (Euboea)",
     terrain: TerrainType.COAST,
-    yields: { gold: 3, grain: 1, timber: 1, stone: 1, faith: 0 },
+    yields: { gold: 3, grain: 1, timber: 1, marble: 1, faith: 0 },
     coastal: true,
     position: { x: 40, y: 60 },
     startingFaction: Faction.VENICE,
@@ -99,58 +100,72 @@ export const PROVINCES: MapProvince[] = [
     id: "athens",
     name: "Athens",
     terrain: TerrainType.COAST,
-    yields: { gold: 2, grain: 2, timber: 0, stone: 2, faith: 1 },
+    yields: { gold: 2, grain: 2, timber: 0, marble: 2, faith: 1 },
     coastal: true,
     position: { x: 34, y: 68 },
     startingFaction: Faction.VENICE,
   },
   {
     id: "belgrade",
-    name: "Belgrade",
+    name: "Belgrade (Nándorfehérvár)",
     terrain: TerrainType.PLAINS,
-    yields: { gold: 3, grain: 3, timber: 2, stone: 1, faith: 1 },
+    yields: { gold: 3, grain: 3, timber: 2, marble: 1, faith: 1 },
     coastal: false,
     position: { x: 15, y: 15 },
     startingFaction: Faction.HUNGARY,
   },
 ];
 
-/** Navigable sea zones. */
+/** Navigable sea zones (ids per docs/MAP.md §7). */
 export const SEA_ZONES: SeaZone[] = [
-  { id: "sea_marmara", name: "Sea of Marmara", position: { x: 54, y: 44 } },
-  { id: "sea_aegean", name: "Aegean Sea", position: { x: 45, y: 62 } },
-  { id: "sea_black", name: "Black Sea", position: { x: 62, y: 22 } },
+  {
+    id: "sea-of-marmara",
+    name: "Sea of Marmara",
+    position: { x: 54, y: 44 },
+  },
+  { id: "aegean", name: "Aegean Sea", position: { x: 45, y: 62 } },
+  { id: "bosphorus", name: "Bosphorus", position: { x: 58, y: 29 } },
+  {
+    id: "black-sea-west",
+    name: "Black Sea (West)",
+    position: { x: 66, y: 18 },
+  },
 ];
 
 /**
  * Undirected edge list. Every pair is expanded into a symmetric adjacency map
  * below, so callers never have to worry about direction.
+ *
+ * All sea edges mirror docs/MAP.md §7 exactly. Land edges marked "compressed
+ * corridor" collapse a chain of MAP.md provinces that are not part of this
+ * sample (e.g. selymbria, thessaly, sofia/serbia) into a single edge.
  */
 const EDGES: ReadonlyArray<readonly [string, string]> = [
-  // Land borders
-  ["belgrade", "adrianople"],
-  ["belgrade", "thessalonica"],
-  ["adrianople", "thessalonica"],
-  ["adrianople", "constantinople"],
-  ["adrianople", "gallipoli"],
-  ["thessalonica", "athens"],
-  ["athens", "mystras"],
-  ["athens", "negroponte"],
+  // Land borders (canonical in MAP.md §6)
+  ["edirne", "thessalonica"],
+  ["edirne", "gallipoli"],
+  ["athens", "morea"],
   ["bursa", "smyrna"],
-  // Sea zone <-> coastal province
-  ["sea_marmara", "constantinople"],
-  ["sea_marmara", "gallipoli"],
-  ["sea_marmara", "bursa"],
-  ["sea_aegean", "thessalonica"],
-  ["sea_aegean", "gallipoli"],
-  ["sea_aegean", "negroponte"],
-  ["sea_aegean", "athens"],
-  ["sea_aegean", "mystras"],
-  ["sea_aegean", "smyrna"],
-  ["sea_black", "constantinople"],
-  // Sea zone <-> sea zone (straits)
-  ["sea_marmara", "sea_black"],
-  ["sea_marmara", "sea_aegean"],
+  // Land borders (compressed corridors through provinces not in this sample)
+  ["belgrade", "edirne"], // via serbia/sofia/philippopolis
+  ["belgrade", "thessalonica"], // via serbia/sofia
+  ["edirne", "constantinople"], // via selymbria
+  ["thessalonica", "athens"], // via thessaly
+  // Sea zone <-> coastal province (MAP.md §7)
+  ["sea-of-marmara", "constantinople"],
+  ["sea-of-marmara", "gallipoli"],
+  ["sea-of-marmara", "bursa"],
+  ["bosphorus", "constantinople"],
+  ["aegean", "thessalonica"],
+  ["aegean", "gallipoli"],
+  ["aegean", "negroponte"],
+  ["aegean", "athens"],
+  ["aegean", "morea"],
+  ["aegean", "smyrna"],
+  // Sea zone <-> sea zone (straits, MAP.md §7–8)
+  ["sea-of-marmara", "aegean"], // Dardanelles, gated by gallipoli
+  ["bosphorus", "sea-of-marmara"],
+  ["bosphorus", "black-sea-west"],
 ];
 
 function buildAdjacency(): Record<string, string[]> {

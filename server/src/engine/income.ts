@@ -24,7 +24,7 @@ export function totalArmyUnits(state: GameState, playerId: string): number {
 /**
  * Compute net income for {@link playerId}.
  *
- * Gold/timber/stone/faith are the raw sums of owned province yields. Grain is
+ * Gold/timber/marble/faith are the raw sums of owned province yields. Grain is
  * the raw grain yield minus the army's grain upkeep, and may be negative when a
  * player fields more troops than their provinces can feed.
  */
@@ -39,7 +39,7 @@ export function computeIncome(
     income.gold += province.yields.gold;
     income.grain += province.yields.grain;
     income.timber += province.yields.timber;
-    income.stone += province.yields.stone;
+    income.marble += province.yields.marble;
     income.faith += province.yields.faith;
   }
 
