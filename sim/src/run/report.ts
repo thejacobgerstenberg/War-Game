@@ -111,10 +111,18 @@ if (cb) {
 const ec = load('economy');
 if (ec) {
   const factions = ec.baseline?.factions ?? [];
-  const insolvent = factions.filter((f: any) => !f.solvent).map((f: any) => f.faction);
+  const failuresOf = (criteria: string[]) =>
+    criteria
+      .map((c) => ({ c, who: factions.filter((f: any) => !f[c]).map((f: any) => f.faction) }))
+      .filter((e) => e.who.length)
+      .map((e) => `${e.c}: ${e.who.join(', ')}`)
+      .join('; ');
+  const t6Fail = failuresOf(['solvent', 'rushCredibleR5']); // the T6 balance target
+  const infoFail = failuresOf(['turtleStrong', 'turtleBounded', 'balancedMid']); // informational only
   console.log(
-    `ECONOMY: baseline ${ec.baseline?.pass ? 'PASS' : 'FAIL'}` +
-      (insolvent.length ? ` (insolvent: ${insolvent.join(', ')})` : ' (all factions solvent through round 16)'),
+    `ECONOMY: T6 (solvency + rush credibility): ${t6Fail ? `FAIL (${t6Fail})` : 'PASS'} — ` +
+      `composite harness criteria: ${ec.baseline?.pass ? 'PASS' : 'FAIL'}` +
+      (infoFail ? ` (${infoFail}; informational, not a balance target)` : ''),
   );
   console.log();
 } else {
