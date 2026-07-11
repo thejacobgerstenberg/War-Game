@@ -1,0 +1,2511 @@
+{
+  "hunt": "faction_floor",
+  "config": {
+    "baseSeed": 111006,
+    "gamesPerGridConfig": 300,
+    "gamesPerExtremeField": 1000,
+    "gridConfigs": 80,
+    "fields": [
+      "mixed",
+      "allRusher",
+      "allTrader",
+      "allOpportunist"
+    ],
+    "smoke": false,
+    "elapsedMs": 94020,
+    "thresholds": {
+      "floor": 0.05,
+      "ceiling": 0.55,
+      "medianMin": 9,
+      "capCloseMax": 0.4
+    }
+  },
+  "grid": {
+    "byzantium": {
+      "rusher": {
+        "mixed": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "rusher",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 256702427,
+          "focalWins": 31,
+          "focalWinRate": 0.10333333333333333,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 164,
+            "cap": 108,
+            "suddenDeath": 28,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.84,
+          "capCloseMargin": 22,
+          "capCloseMarginRate": 0.07333333333333333,
+          "focalWinTypes": {
+            "threshold": 28,
+            "cap": 3,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "rusher",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 391196674,
+          "focalWins": 43,
+          "focalWinRate": 0.14333333333333334,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 137,
+            "cap": 123,
+            "suddenDeath": 40,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 14.963333333333333,
+          "capCloseMargin": 18,
+          "capCloseMarginRate": 0.06,
+          "focalWinTypes": {
+            "threshold": 40,
+            "cap": 3,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "rusher",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 1740232575,
+          "focalWins": 77,
+          "focalWinRate": 0.25666666666666665,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.05,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 77,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "rusher",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 396049228,
+          "focalWins": 34,
+          "focalWinRate": 0.11333333333333333,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 181,
+            "cap": 80,
+            "suddenDeath": 39,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.356666666666667,
+          "capCloseMargin": 14,
+          "capCloseMarginRate": 0.04666666666666667,
+          "focalWinTypes": {
+            "threshold": 31,
+            "cap": 3,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "trader": {
+        "mixed": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "trader",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 810716578,
+          "focalWins": 6,
+          "focalWinRate": 0.02,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 168,
+            "cap": 127,
+            "suddenDeath": 5,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.19,
+          "capCloseMargin": 34,
+          "capCloseMarginRate": 0.11333333333333333,
+          "focalWinTypes": {
+            "threshold": 2,
+            "cap": 4,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "trader",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 1772428625,
+          "focalWins": 12,
+          "focalWinRate": 0.04,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 120,
+            "cap": 157,
+            "suddenDeath": 23,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.476666666666667,
+          "capCloseMargin": 31,
+          "capCloseMarginRate": 0.10333333333333333,
+          "focalWinTypes": {
+            "threshold": 6,
+            "cap": 6,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "trader",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 330222387,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.493333333333334,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "trader",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1073561361,
+          "focalWins": 6,
+          "focalWinRate": 0.02,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 183,
+            "cap": 104,
+            "suddenDeath": 13,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.733333333333333,
+          "capCloseMargin": 18,
+          "capCloseMarginRate": 0.06,
+          "focalWinTypes": {
+            "threshold": 3,
+            "cap": 3,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "turtler": {
+        "mixed": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "turtler",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 1707220357,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 156,
+            "cap": 138,
+            "suddenDeath": 6,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.273333333333333,
+          "capCloseMargin": 22,
+          "capCloseMarginRate": 0.07333333333333333,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "turtler",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 2029831106,
+          "focalWins": 4,
+          "focalWinRate": 0.013333333333333334,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 106,
+            "cap": 175,
+            "suddenDeath": 19,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.463333333333333,
+          "capCloseMargin": 27,
+          "capCloseMarginRate": 0.09,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 4,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "turtler",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 2142586444,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.473333333333333,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "turtler",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1214018418,
+          "focalWins": 5,
+          "focalWinRate": 0.016666666666666666,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 170,
+            "cap": 112,
+            "suddenDeath": 18,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 14.95,
+          "capCloseMargin": 28,
+          "capCloseMarginRate": 0.09333333333333334,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 5,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "opportunist": {
+        "mixed": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "opportunist",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 1602774727,
+          "focalWins": 114,
+          "focalWinRate": 0.38,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 216,
+            "cap": 51,
+            "suddenDeath": 33,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.496666666666666,
+          "capCloseMargin": 13,
+          "capCloseMarginRate": 0.043333333333333335,
+          "focalWinTypes": {
+            "threshold": 99,
+            "cap": 15,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "opportunist",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 270542993,
+          "focalWins": 52,
+          "focalWinRate": 0.17333333333333334,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 136,
+            "cap": 93,
+            "suddenDeath": 71,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.876666666666667,
+          "capCloseMargin": 10,
+          "capCloseMarginRate": 0.03333333333333333,
+          "focalWinTypes": {
+            "threshold": 45,
+            "cap": 7,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "opportunist",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 1083234571,
+          "focalWins": 122,
+          "focalWinRate": 0.4066666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 299,
+            "cap": 0,
+            "suddenDeath": 1,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 13.72,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 122,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "byzantium",
+          "focalPolicy": "opportunist",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1326860979,
+          "focalWins": 57,
+          "focalWinRate": 0.19,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 184,
+            "cap": 69,
+            "suddenDeath": 47,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.196666666666667,
+          "capCloseMargin": 18,
+          "capCloseMarginRate": 0.06,
+          "focalWinTypes": {
+            "threshold": 50,
+            "cap": 7,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      }
+    },
+    "ottomans": {
+      "rusher": {
+        "mixed": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "rusher",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 130802393,
+          "focalWins": 143,
+          "focalWinRate": 0.4766666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 193,
+            "cap": 77,
+            "suddenDeath": 30,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.89,
+          "capCloseMargin": 21,
+          "capCloseMarginRate": 0.07,
+          "focalWinTypes": {
+            "threshold": 81,
+            "cap": 32,
+            "suddenDeath": 30,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "rusher",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 1103959080,
+          "focalWins": 194,
+          "focalWinRate": 0.6466666666666666,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 127,
+            "cap": 115,
+            "suddenDeath": 58,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.033333333333333,
+          "capCloseMargin": 12,
+          "capCloseMarginRate": 0.04,
+          "focalWinTypes": {
+            "threshold": 93,
+            "cap": 43,
+            "suddenDeath": 58,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "rusher",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 527193960,
+          "focalWins": 49,
+          "focalWinRate": 0.16333333333333333,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 282,
+            "cap": 0,
+            "suddenDeath": 18,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.336666666666666,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 31,
+            "cap": 0,
+            "suddenDeath": 18,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "rusher",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1707184472,
+          "focalWins": 127,
+          "focalWinRate": 0.42333333333333334,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 206,
+            "cap": 51,
+            "suddenDeath": 43,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.316666666666666,
+          "capCloseMargin": 5,
+          "capCloseMarginRate": 0.016666666666666666,
+          "focalWinTypes": {
+            "threshold": 65,
+            "cap": 19,
+            "suddenDeath": 43,
+            "elimination": 0
+          }
+        }
+      },
+      "trader": {
+        "mixed": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "trader",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 930740028,
+          "focalWins": 3,
+          "focalWinRate": 0.01,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 152,
+            "cap": 146,
+            "suddenDeath": 2,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 14.896666666666667,
+          "capCloseMargin": 31,
+          "capCloseMarginRate": 0.10333333333333333,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 1,
+            "suddenDeath": 2,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "trader",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 178338621,
+          "focalWins": 9,
+          "focalWinRate": 0.03,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 120,
+            "cap": 174,
+            "suddenDeath": 6,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.033333333333333,
+          "capCloseMargin": 25,
+          "capCloseMarginRate": 0.08333333333333333,
+          "focalWinTypes": {
+            "threshold": 1,
+            "cap": 2,
+            "suddenDeath": 6,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "trader",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 51079364,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.463333333333333,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "trader",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1526025286,
+          "focalWins": 5,
+          "focalWinRate": 0.016666666666666666,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 265,
+            "cap": 34,
+            "suddenDeath": 1,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.033333333333333,
+          "capCloseMargin": 9,
+          "capCloseMarginRate": 0.03,
+          "focalWinTypes": {
+            "threshold": 1,
+            "cap": 3,
+            "suddenDeath": 1,
+            "elimination": 0
+          }
+        }
+      },
+      "turtler": {
+        "mixed": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "turtler",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 844283886,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 193,
+            "cap": 107,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 15.093333333333334,
+          "capCloseMargin": 28,
+          "capCloseMarginRate": 0.09333333333333334,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "turtler",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 685128295,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 34,
+            "cap": 266,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.896666666666667,
+          "capCloseMargin": 30,
+          "capCloseMarginRate": 0.1,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "turtler",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 661614920,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.483333333333333,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "turtler",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1924730679,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 283,
+            "cap": 17,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.453333333333333,
+          "capCloseMargin": 3,
+          "capCloseMarginRate": 0.01,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "opportunist": {
+        "mixed": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "opportunist",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 1838743686,
+          "focalWins": 69,
+          "focalWinRate": 0.23,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 165,
+            "cap": 110,
+            "suddenDeath": 25,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.846666666666666,
+          "capCloseMargin": 32,
+          "capCloseMarginRate": 0.10666666666666667,
+          "focalWinTypes": {
+            "threshold": 13,
+            "cap": 31,
+            "suddenDeath": 25,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "opportunist",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 1729522056,
+          "focalWins": 129,
+          "focalWinRate": 0.43,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 64,
+            "cap": 184,
+            "suddenDeath": 52,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.4,
+          "capCloseMargin": 32,
+          "capCloseMarginRate": 0.10666666666666667,
+          "focalWinTypes": {
+            "threshold": 35,
+            "cap": 42,
+            "suddenDeath": 52,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "opportunist",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 1381031350,
+          "focalWins": 15,
+          "focalWinRate": 0.05,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 289,
+            "cap": 0,
+            "suddenDeath": 11,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.463333333333333,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 4,
+            "cap": 0,
+            "suddenDeath": 11,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "ottomans",
+          "focalPolicy": "opportunist",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 2142803763,
+          "focalWins": 69,
+          "focalWinRate": 0.23,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 183,
+            "cap": 85,
+            "suddenDeath": 32,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.41,
+          "capCloseMargin": 12,
+          "capCloseMarginRate": 0.04,
+          "focalWinTypes": {
+            "threshold": 18,
+            "cap": 19,
+            "suddenDeath": 32,
+            "elimination": 0
+          }
+        }
+      }
+    },
+    "venice": {
+      "rusher": {
+        "mixed": {
+          "focalFaction": "venice",
+          "focalPolicy": "rusher",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 108718257,
+          "focalWins": 7,
+          "focalWinRate": 0.023333333333333334,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 154,
+            "cap": 139,
+            "suddenDeath": 7,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.1,
+          "capCloseMargin": 18,
+          "capCloseMarginRate": 0.06,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 7,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "venice",
+          "focalPolicy": "rusher",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 210072521,
+          "focalWins": 2,
+          "focalWinRate": 0.006666666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 130,
+            "cap": 111,
+            "suddenDeath": 59,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.04,
+          "capCloseMargin": 25,
+          "capCloseMarginRate": 0.08333333333333333,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 2,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "venice",
+          "focalPolicy": "rusher",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 2037320825,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 299,
+            "cap": 1,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.636666666666667,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "venice",
+          "focalPolicy": "rusher",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1167373555,
+          "focalWins": 2,
+          "focalWinRate": 0.006666666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 190,
+            "cap": 64,
+            "suddenDeath": 46,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.08,
+          "capCloseMargin": 11,
+          "capCloseMarginRate": 0.03666666666666667,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 2,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "trader": {
+        "mixed": {
+          "focalFaction": "venice",
+          "focalPolicy": "trader",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 1254224682,
+          "focalWins": 156,
+          "focalWinRate": 0.52,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 248,
+            "cap": 41,
+            "suddenDeath": 11,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.643333333333333,
+          "capCloseMargin": 16,
+          "capCloseMarginRate": 0.05333333333333334,
+          "focalWinTypes": {
+            "threshold": 129,
+            "cap": 27,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "venice",
+          "focalPolicy": "trader",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 1711777574,
+          "focalWins": 90,
+          "focalWinRate": 0.3,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 148,
+            "cap": 102,
+            "suddenDeath": 50,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.003333333333334,
+          "capCloseMargin": 21,
+          "capCloseMarginRate": 0.07,
+          "focalWinTypes": {
+            "threshold": 25,
+            "cap": 65,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "venice",
+          "focalPolicy": "trader",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 2060881681,
+          "focalWins": 188,
+          "focalWinRate": 0.6266666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.44,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 188,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "venice",
+          "focalPolicy": "trader",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1743223967,
+          "focalWins": 54,
+          "focalWinRate": 0.18,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 209,
+            "cap": 65,
+            "suddenDeath": 26,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.243333333333334,
+          "capCloseMargin": 26,
+          "capCloseMarginRate": 0.08666666666666667,
+          "focalWinTypes": {
+            "threshold": 22,
+            "cap": 32,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "turtler": {
+        "mixed": {
+          "focalFaction": "venice",
+          "focalPolicy": "turtler",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 1148890292,
+          "focalWins": 68,
+          "focalWinRate": 0.22666666666666666,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 177,
+            "cap": 104,
+            "suddenDeath": 19,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.856666666666667,
+          "capCloseMargin": 23,
+          "capCloseMarginRate": 0.07666666666666666,
+          "focalWinTypes": {
+            "threshold": 13,
+            "cap": 55,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "venice",
+          "focalPolicy": "turtler",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 1617720953,
+          "focalWins": 25,
+          "focalWinRate": 0.08333333333333333,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 153,
+            "cap": 97,
+            "suddenDeath": 50,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.016666666666667,
+          "capCloseMargin": 27,
+          "capCloseMarginRate": 0.09,
+          "focalWinTypes": {
+            "threshold": 5,
+            "cap": 20,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "venice",
+          "focalPolicy": "turtler",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 1103326615,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.706666666666667,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "venice",
+          "focalPolicy": "turtler",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1131931732,
+          "focalWins": 15,
+          "focalWinRate": 0.05,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 190,
+            "cap": 71,
+            "suddenDeath": 39,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.176666666666666,
+          "capCloseMargin": 19,
+          "capCloseMarginRate": 0.06333333333333334,
+          "focalWinTypes": {
+            "threshold": 2,
+            "cap": 13,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "opportunist": {
+        "mixed": {
+          "focalFaction": "venice",
+          "focalPolicy": "opportunist",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 1329766905,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 156,
+            "cap": 129,
+            "suddenDeath": 15,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.18,
+          "capCloseMargin": 20,
+          "capCloseMarginRate": 0.06666666666666667,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "venice",
+          "focalPolicy": "opportunist",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 802410313,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 116,
+            "cap": 128,
+            "suddenDeath": 56,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.113333333333333,
+          "capCloseMargin": 20,
+          "capCloseMarginRate": 0.06666666666666667,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "venice",
+          "focalPolicy": "opportunist",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 1091989409,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 296,
+            "cap": 4,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.63,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "venice",
+          "focalPolicy": "opportunist",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1801519173,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 191,
+            "cap": 69,
+            "suddenDeath": 40,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.396666666666667,
+          "capCloseMargin": 13,
+          "capCloseMarginRate": 0.043333333333333335,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      }
+    },
+    "genoa": {
+      "rusher": {
+        "mixed": {
+          "focalFaction": "genoa",
+          "focalPolicy": "rusher",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 2098985762,
+          "focalWins": 10,
+          "focalWinRate": 0.03333333333333333,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 156,
+            "cap": 123,
+            "suddenDeath": 21,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.043333333333333,
+          "capCloseMargin": 24,
+          "capCloseMarginRate": 0.08,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 10,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "genoa",
+          "focalPolicy": "rusher",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 1834240056,
+          "focalWins": 2,
+          "focalWinRate": 0.006666666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 157,
+            "cap": 93,
+            "suddenDeath": 50,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 14.906666666666666,
+          "capCloseMargin": 19,
+          "capCloseMarginRate": 0.06333333333333334,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 2,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "genoa",
+          "focalPolicy": "rusher",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 126552179,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 298,
+            "cap": 2,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.623333333333333,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "genoa",
+          "focalPolicy": "rusher",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 2009415052,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 177,
+            "cap": 84,
+            "suddenDeath": 39,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.443333333333333,
+          "capCloseMargin": 16,
+          "capCloseMarginRate": 0.05333333333333334,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "trader": {
+        "mixed": {
+          "focalFaction": "genoa",
+          "focalPolicy": "trader",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 1188941176,
+          "focalWins": 202,
+          "focalWinRate": 0.6733333333333333,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 288,
+            "cap": 2,
+            "suddenDeath": 10,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.186666666666667,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 201,
+            "cap": 1,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "genoa",
+          "focalPolicy": "trader",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 698772031,
+          "focalWins": 193,
+          "focalWinRate": 0.6433333333333333,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 244,
+            "cap": 1,
+            "suddenDeath": 55,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.18,
+          "capCloseMargin": 1,
+          "capCloseMarginRate": 0.0033333333333333335,
+          "focalWinTypes": {
+            "threshold": 192,
+            "cap": 1,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "genoa",
+          "focalPolicy": "trader",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 1627853200,
+          "focalWins": 100,
+          "focalWinRate": 0.3333333333333333,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.476666666666667,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 100,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "genoa",
+          "focalPolicy": "trader",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 672128171,
+          "focalWins": 150,
+          "focalWinRate": 0.5,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 261,
+            "cap": 0,
+            "suddenDeath": 39,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 13.78,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 150,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "turtler": {
+        "mixed": {
+          "focalFaction": "genoa",
+          "focalPolicy": "turtler",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 1395126124,
+          "focalWins": 93,
+          "focalWinRate": 0.31,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 161,
+            "cap": 131,
+            "suddenDeath": 8,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.206666666666667,
+          "capCloseMargin": 37,
+          "capCloseMarginRate": 0.12333333333333334,
+          "focalWinTypes": {
+            "threshold": 9,
+            "cap": 84,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "genoa",
+          "focalPolicy": "turtler",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 1958834309,
+          "focalWins": 76,
+          "focalWinRate": 0.25333333333333335,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 138,
+            "cap": 97,
+            "suddenDeath": 65,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 14.943333333333333,
+          "capCloseMargin": 27,
+          "capCloseMarginRate": 0.09,
+          "focalWinTypes": {
+            "threshold": 16,
+            "cap": 60,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "genoa",
+          "focalPolicy": "turtler",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 1389232326,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.643333333333333,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "genoa",
+          "focalPolicy": "turtler",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1635661077,
+          "focalWins": 44,
+          "focalWinRate": 0.14666666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 188,
+            "cap": 64,
+            "suddenDeath": 48,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.34,
+          "capCloseMargin": 16,
+          "capCloseMarginRate": 0.05333333333333334,
+          "focalWinTypes": {
+            "threshold": 8,
+            "cap": 36,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "opportunist": {
+        "mixed": {
+          "focalFaction": "genoa",
+          "focalPolicy": "opportunist",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 586446574,
+          "focalWins": 1,
+          "focalWinRate": 0.0033333333333333335,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 130,
+            "cap": 153,
+            "suddenDeath": 17,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.336666666666666,
+          "capCloseMargin": 24,
+          "capCloseMarginRate": 0.08,
+          "focalWinTypes": {
+            "threshold": 1,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "genoa",
+          "focalPolicy": "opportunist",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 1224844442,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 119,
+            "cap": 111,
+            "suddenDeath": 70,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.023333333333333,
+          "capCloseMargin": 13,
+          "capCloseMarginRate": 0.043333333333333335,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "genoa",
+          "focalPolicy": "opportunist",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 983348281,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.726666666666667,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "genoa",
+          "focalPolicy": "opportunist",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 920956577,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 179,
+            "cap": 80,
+            "suddenDeath": 41,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.253333333333334,
+          "capCloseMargin": 14,
+          "capCloseMarginRate": 0.04666666666666667,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      }
+    },
+    "hungary": {
+      "rusher": {
+        "mixed": {
+          "focalFaction": "hungary",
+          "focalPolicy": "rusher",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 1270244242,
+          "focalWins": 72,
+          "focalWinRate": 0.24,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 157,
+            "cap": 129,
+            "suddenDeath": 14,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.133333333333333,
+          "capCloseMargin": 27,
+          "capCloseMarginRate": 0.09,
+          "focalWinTypes": {
+            "threshold": 9,
+            "cap": 63,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "hungary",
+          "focalPolicy": "rusher",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 622897636,
+          "focalWins": 68,
+          "focalWinRate": 0.22666666666666666,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 125,
+            "cap": 115,
+            "suddenDeath": 60,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 14.96,
+          "capCloseMargin": 21,
+          "capCloseMarginRate": 0.07,
+          "focalWinTypes": {
+            "threshold": 7,
+            "cap": 61,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "hungary",
+          "focalPolicy": "rusher",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 1659999502,
+          "focalWins": 1,
+          "focalWinRate": 0.0033333333333333335,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.633333333333333,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 1,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "hungary",
+          "focalPolicy": "rusher",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 987033917,
+          "focalWins": 92,
+          "focalWinRate": 0.30666666666666664,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 101,
+            "cap": 141,
+            "suddenDeath": 58,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 14.92,
+          "capCloseMargin": 26,
+          "capCloseMarginRate": 0.08666666666666667,
+          "focalWinTypes": {
+            "threshold": 11,
+            "cap": 81,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "trader": {
+        "mixed": {
+          "focalFaction": "hungary",
+          "focalPolicy": "trader",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 894637858,
+          "focalWins": 44,
+          "focalWinRate": 0.14666666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 184,
+            "cap": 95,
+            "suddenDeath": 21,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.933333333333334,
+          "capCloseMargin": 17,
+          "capCloseMarginRate": 0.056666666666666664,
+          "focalWinTypes": {
+            "threshold": 1,
+            "cap": 43,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "hungary",
+          "focalPolicy": "trader",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 662842036,
+          "focalWins": 61,
+          "focalWinRate": 0.20333333333333334,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 127,
+            "cap": 121,
+            "suddenDeath": 52,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.066666666666666,
+          "capCloseMargin": 23,
+          "capCloseMarginRate": 0.07666666666666666,
+          "focalWinTypes": {
+            "threshold": 5,
+            "cap": 56,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "hungary",
+          "focalPolicy": "trader",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 1063211091,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.496666666666666,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "hungary",
+          "focalPolicy": "trader",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 693487946,
+          "focalWins": 65,
+          "focalWinRate": 0.21666666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 81,
+            "cap": 161,
+            "suddenDeath": 58,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.146666666666667,
+          "capCloseMargin": 39,
+          "capCloseMarginRate": 0.13,
+          "focalWinTypes": {
+            "threshold": 1,
+            "cap": 64,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "turtler": {
+        "mixed": {
+          "focalFaction": "hungary",
+          "focalPolicy": "turtler",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 2097167906,
+          "focalWins": 44,
+          "focalWinRate": 0.14666666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 175,
+            "cap": 111,
+            "suddenDeath": 14,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.99,
+          "capCloseMargin": 26,
+          "capCloseMarginRate": 0.08666666666666667,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 44,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "hungary",
+          "focalPolicy": "turtler",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 1823156574,
+          "focalWins": 34,
+          "focalWinRate": 0.11333333333333333,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 120,
+            "cap": 121,
+            "suddenDeath": 59,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.156666666666666,
+          "capCloseMargin": 29,
+          "capCloseMarginRate": 0.09666666666666666,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 34,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "hungary",
+          "focalPolicy": "turtler",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 1148364439,
+          "focalWins": 0,
+          "focalWinRate": 0,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.43,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "hungary",
+          "focalPolicy": "turtler",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 1468494976,
+          "focalWins": 65,
+          "focalWinRate": 0.21666666666666667,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 87,
+            "cap": 170,
+            "suddenDeath": 43,
+            "elimination": 0
+          },
+          "medianRounds": 16,
+          "meanRounds": 15.096666666666666,
+          "capCloseMargin": 43,
+          "capCloseMarginRate": 0.14333333333333334,
+          "focalWinTypes": {
+            "threshold": 0,
+            "cap": 65,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      },
+      "opportunist": {
+        "mixed": {
+          "focalFaction": "hungary",
+          "focalPolicy": "opportunist",
+          "field": "mixed",
+          "games": 300,
+          "firstSeed": 523583732,
+          "focalWins": 151,
+          "focalWinRate": 0.5033333333333333,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 225,
+            "cap": 59,
+            "suddenDeath": 16,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.506666666666666,
+          "capCloseMargin": 9,
+          "capCloseMarginRate": 0.03,
+          "focalWinTypes": {
+            "threshold": 126,
+            "cap": 25,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allRusher": {
+          "focalFaction": "hungary",
+          "focalPolicy": "opportunist",
+          "field": "allRusher",
+          "games": 300,
+          "firstSeed": 1984625640,
+          "focalWins": 144,
+          "focalWinRate": 0.48,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 188,
+            "cap": 69,
+            "suddenDeath": 43,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.51,
+          "capCloseMargin": 14,
+          "capCloseMarginRate": 0.04666666666666667,
+          "focalWinTypes": {
+            "threshold": 105,
+            "cap": 39,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allTrader": {
+          "focalFaction": "hungary",
+          "focalPolicy": "opportunist",
+          "field": "allTrader",
+          "games": 300,
+          "firstSeed": 1517560890,
+          "focalWins": 120,
+          "focalWinRate": 0.4,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 300,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          },
+          "medianRounds": 14,
+          "meanRounds": 14.06,
+          "capCloseMargin": 0,
+          "capCloseMarginRate": 0,
+          "focalWinTypes": {
+            "threshold": 120,
+            "cap": 0,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        },
+        "allOpportunist": {
+          "focalFaction": "hungary",
+          "focalPolicy": "opportunist",
+          "field": "allOpportunist",
+          "games": 300,
+          "firstSeed": 2053046844,
+          "focalWins": 159,
+          "focalWinRate": 0.53,
+          "focalEliminated": 0,
+          "focalElimRate": 0,
+          "victoryTypes": {
+            "threshold": 189,
+            "cap": 62,
+            "suddenDeath": 49,
+            "elimination": 0
+          },
+          "medianRounds": 15,
+          "meanRounds": 14.23,
+          "capCloseMargin": 11,
+          "capCloseMarginRate": 0.03666666666666667,
+          "focalWinTypes": {
+            "threshold": 124,
+            "cap": 35,
+            "suddenDeath": 0,
+            "elimination": 0
+          }
+        }
+      }
+    }
+  },
+  "extremes": [
+    {
+      "policy": "rusher",
+      "games": 1000,
+      "firstSeed": 97284472,
+      "medianRounds": 16,
+      "meanRounds": 15.067,
+      "earlyEndRate": 0.011,
+      "victoryTypes": {
+        "threshold": 423,
+        "cap": 408,
+        "suddenDeath": 169,
+        "elimination": 0
+      },
+      "victoryRates": {
+        "threshold": 0.423,
+        "cap": 0.408,
+        "suddenDeath": 0.169,
+        "elimination": 0
+      },
+      "capCloseMargin": 65,
+      "capCloseMarginRate": 0.065,
+      "winsByFaction": {
+        "byzantium": 90,
+        "ottomans": 677,
+        "venice": 8,
+        "genoa": 5,
+        "hungary": 220
+      }
+    },
+    {
+      "policy": "trader",
+      "games": 1000,
+      "firstSeed": 1544501420,
+      "medianRounds": 15,
+      "meanRounds": 14.504,
+      "earlyEndRate": 0,
+      "victoryTypes": {
+        "threshold": 1000,
+        "cap": 0,
+        "suddenDeath": 0,
+        "elimination": 0
+      },
+      "victoryRates": {
+        "threshold": 1,
+        "cap": 0,
+        "suddenDeath": 0,
+        "elimination": 0
+      },
+      "capCloseMargin": 0,
+      "capCloseMarginRate": 0,
+      "winsByFaction": {
+        "byzantium": 0,
+        "ottomans": 0,
+        "venice": 649,
+        "genoa": 351,
+        "hungary": 0
+      }
+    },
+    {
+      "policy": "turtler",
+      "games": 1000,
+      "firstSeed": 594372764,
+      "medianRounds": 16,
+      "meanRounds": 15.994,
+      "earlyEndRate": 0,
+      "victoryTypes": {
+        "threshold": 159,
+        "cap": 841,
+        "suddenDeath": 0,
+        "elimination": 0
+      },
+      "victoryRates": {
+        "threshold": 0.159,
+        "cap": 0.841,
+        "suddenDeath": 0,
+        "elimination": 0
+      },
+      "capCloseMargin": 579,
+      "capCloseMarginRate": 0.579,
+      "winsByFaction": {
+        "byzantium": 0,
+        "ottomans": 0,
+        "venice": 687,
+        "genoa": 305,
+        "hungary": 8
+      }
+    },
+    {
+      "policy": "opportunist",
+      "games": 1000,
+      "firstSeed": 1778696278,
+      "medianRounds": 15,
+      "meanRounds": 14.275,
+      "earlyEndRate": 0.036,
+      "victoryTypes": {
+        "threshold": 611,
+        "cap": 238,
+        "suddenDeath": 151,
+        "elimination": 0
+      },
+      "victoryRates": {
+        "threshold": 0.611,
+        "cap": 0.238,
+        "suddenDeath": 0.151,
+        "elimination": 0
+      },
+      "capCloseMargin": 45,
+      "capCloseMarginRate": 0.045,
+      "winsByFaction": {
+        "byzantium": 169,
+        "ottomans": 292,
+        "venice": 0,
+        "genoa": 0,
+        "hungary": 539
+      }
+    }
+  ],
+  "flags": [
+    {
+      "kind": "floor",
+      "detail": "byzantium+trader vs mixed: 2.0% (6/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "byzantium+trader vs allRusher: 4.0% (12/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "byzantium+trader vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "byzantium+trader vs allOpportunist: 2.0% (6/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "byzantium+turtler vs mixed: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "byzantium+turtler vs allRusher: 1.3% (4/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "byzantium+turtler vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "byzantium+turtler vs allOpportunist: 1.7% (5/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "ottomans+trader vs mixed: 1.0% (3/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "ottomans+trader vs allRusher: 3.0% (9/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "ottomans+trader vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "ottomans+trader vs allOpportunist: 1.7% (5/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "ottomans+turtler vs mixed: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "ottomans+turtler vs allRusher: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "ottomans+turtler vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "ottomans+turtler vs allOpportunist: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+rusher vs mixed: 2.3% (7/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+rusher vs allRusher: 0.7% (2/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+rusher vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+rusher vs allOpportunist: 0.7% (2/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+turtler vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+opportunist vs mixed: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+opportunist vs allRusher: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+opportunist vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "venice+opportunist vs allOpportunist: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "genoa+rusher vs mixed: 3.3% (10/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "genoa+rusher vs allRusher: 0.7% (2/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "genoa+rusher vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "genoa+rusher vs allOpportunist: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "ceiling",
+      "detail": "genoa+trader vs mixed field: 67.3% (202/300)"
+    },
+    {
+      "kind": "floor",
+      "detail": "genoa+turtler vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "genoa+opportunist vs mixed: 0.3% (1/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "genoa+opportunist vs allRusher: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "genoa+opportunist vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "genoa+opportunist vs allOpportunist: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "hungary+rusher vs allTrader: 0.3% (1/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "hungary+trader vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "floor",
+      "detail": "hungary+turtler vs allTrader: 0.0% (0/300, elim 0.0%)"
+    },
+    {
+      "kind": "ending",
+      "detail": "all-5-turtler: 57.9% of games are cap tiebreaks with margin<2"
+    }
+  ]
+}

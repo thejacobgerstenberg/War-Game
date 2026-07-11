@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Marriage Alliance</title>
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <rect x="0" y="146" width="260" height="14" fill="#2B2118"/>
+
+  <!-- the two courts: crimson banner west, lapis banner east -->
+  <rect x="34" y="18" width="5" height="128" fill="#2B2118"/>
+  <polygon points="39,22 100,26 88,42 100,58 39,62" fill="#7A1F2B"/>
+  <circle cx="64" cy="42" r="8" fill="#C9A227"/>
+  <rect x="221" y="18" width="5" height="128" fill="#2B2118"/>
+  <polygon points="221,22 160,26 172,42 160,58 221,62" fill="#1F4E79"/>
+  <circle cx="196" cy="42" r="8" fill="#C9A227"/>
+
+  <!-- focal subject: two wedding rings interlocked, one for each court -->
+  <circle cx="105" cy="96" r="32" fill="none" stroke="#C9A227" stroke-width="11"/>
+  <circle cx="155" cy="96" r="32" fill="none" stroke="#C9A227" stroke-width="11"/>
+  <path d="M 135.1 106.9 A 32 32 0 0 1 121 123.7" fill="none" stroke="#C9A227" stroke-width="11"/>
+  <circle cx="82" cy="73" r="8" fill="#7A1F2B"/>
+  <circle cx="178" cy="73" r="8" fill="#1F4E79"/>
+
+  <!-- the dowry in her train -->
+  <path d="M 198 122 Q 220 108 242 122 Z" fill="#2B2118"/>
+  <rect x="198" y="122" width="44" height="24" fill="#2B2118"/>
+  <rect x="216" y="112" width="8" height="34" fill="#C9A227"/>
+  <circle cx="220" cy="134" r="3" fill="#2B2118"/>
+  <circle cx="190" cy="142" r="5" fill="#C9A227"/>
+  <circle cx="180" cy="144" r="5" fill="#C9A227"/>
+  <circle cx="250" cy="144" r="5" fill="#C9A227"/>
+</svg>

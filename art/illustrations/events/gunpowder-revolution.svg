@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Gunpowder Revolution</title>
+  <!-- vellum ground, Era III -->
+  <rect x="0" y="0" width="260" height="160" fill="#E2D3B3"/>
+  <!-- earth line -->
+  <rect x="0" y="146" width="260" height="14" fill="#2B2118"/>
+
+  <!-- the tower base, cracked -->
+  <rect x="198" y="88" width="54" height="58" fill="#4B1F3F"/>
+  <polygon points="198,96 210,104 202,116 214,126 206,146 212,146 220,124 208,112 216,102 204,94" fill="#E2D3B3"/>
+
+  <!-- the sundered top, tilting away with its merlons -->
+  <polygon points="192,80 246,66 240,34 186,48" fill="#4B1F3F"/>
+  <polygon points="190,47 199,45 197,35 188,37" fill="#4B1F3F"/>
+  <polygon points="209,42 217,40 215,30 206,32" fill="#4B1F3F"/>
+  <polygon points="227,37 236,35 233,26 225,28" fill="#4B1F3F"/>
+
+  <!-- stone answering in dust: tumbling blocks -->
+  <polygon points="178,92 188,89 190,98 180,101" fill="#4B1F3F"/>
+  <polygon points="186,110 195,106 199,114 190,118" fill="#4B1F3F"/>
+  <polygon points="170,120 178,118 180,126 172,128" fill="#4B1F3F"/>
+
+  <!-- bombard on its carriage -->
+  <polygon points="34,116 78,102 84,146 40,146" fill="#2B2118"/>
+  <polygon points="8,110 116,62 126,76 20,124" fill="#2B2118"/>
+  <polygon points="40,96 46,93 58,107 52,110" fill="#C9A227"/>
+  <polygon points="73,81 78,79 90,93 85,95" fill="#C9A227"/>
+  <circle cx="52" cy="126" r="20" fill="#2B2118"/>
+  <circle cx="52" cy="126" r="6" fill="#C9A227"/>
+
+  <!-- shot in flight -->
+  <circle cx="184" cy="72" r="5" fill="#2B2118"/>
+
+  <!-- the bombard speaks: muzzle blast -->
+  <polygon points="182,52 162,57 173,75 155,64 150,84 145,64 127,75 138,57 118,52 138,47 127,29 145,40 150,20 155,40 173,29 162,47" fill="#7A1F2B"/>
+  <polygon points="165,52 156,54 161,63 152,58 150,67 148,58 139,63 144,54 135,52 144,50 139,41 148,46 150,37 152,46 161,41 156,50" fill="#C9A227"/>
+</svg>

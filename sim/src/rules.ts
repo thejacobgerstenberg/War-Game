@@ -1,0 +1,596 @@
+/**
+ * EVERY tunable number in the simulation lives in this single CONFIG object.
+ * Balance sweeps mutate a copy of this; nothing else in sim/ hardcodes rules
+ * numbers. Map data (yields, walls, starts) lives in map.ts but must respect
+ * the authoring bounds declared here.
+ *
+ * Combat/siege/prestige numbers follow the FINAL canon docs at commit
+ * 2b42386 (feature/design-and-scaffold): docs/GAME_DESIGN.md §6-§8, §13 and
+ * docs/FACTIONS.md (unit mapping). Divergences are documented in
+ * RULES_MODEL.md.
+ */
+
+import type { FactionId, Terrain, UnitType } from './types';
+
+export interface UnitStats {
+  goldCost: number; // gold to recruit one unit
+  timberCost: number; // timber to recruit one unit (canon §6.1: SIEGE 2, GALLEY 2)
+  marbleCost: number; // marble to recruit one unit (canon §6.1: SIEGE 2)
+  grainUpkeep: number; // grain per round per unit (canon §4.4)
+  goldUpkeep: number; // gold per round per unit (Janissary/Black Army donative pay)
+  cvAttack: number; // combat value when attacking (canon §6.1 "CV atk")
+  cvDefense: number; // combat value when defending (canon §6.1 "CV def")
+}
+
+export interface FactionMods {
+  unitGoldCostMult: number; // multiplier on professional/mercenary/siegeEngine gold cost (tuning lever; canon costs live in factionUnits)
+  levyGoldCostMult: number; // multiplier on levy gold cost (tuning lever)
+  levyRecruitBonus: number; // extra levies allowed per recruit action (Ottoman devshirme: levies raised anywhere, in bulk)
+  tradeIncomeMult: number; // multiplier on trade route income (canon §5.2: Venice/Genoa x1.5 merchant bonus)
+  capitalExtraGold: number; // extra gold per round while holding the home capital
+  cityCapturePrestige: number; // extra one-off prestige when taking a walled city (Ottoman Ghaza, FACTIONS)
+}
+
+// --------------------------------------------------------------- unit tables
+
+/**
+ * 5-slot roster mapped onto the FINAL canon tables (GD §6.1 + FACTIONS
+ * "Unique units and the engine roster"):
+ *   levy         -> LEVY      (2g, 1 grain, CV 1/1)
+ *   professional -> the faction's unique LINE unit (INFANTRY variant; see
+ *                   FACTION_UNIT_OVERRIDES below)
+ *   mercenary    -> a hired free company at CAVALRY stats (6g, CV 3/2) with
+ *                   the canon §6.2 mercenary terms: x1.5 gold to raise
+ *                   (9g), x2 grain upkeep (4), instant muster, desert-first
+ *   siegeEngine  -> SIEGE     (8g + 2 timber + 2 marble, 1 grain, no field
+ *                   dice, +3 vs walls on an escalade, bombards in sieges)
+ *   galley       -> GALLEY    (5g + 2 timber, 1 grain, CV 2/2), blended with
+ *                   the faction's WARSHIP variant where FACTIONS gives one
+ */
+const BASE_UNITS = {
+  levy: { goldCost: 2, timberCost: 0, marbleCost: 0, grainUpkeep: 1, goldUpkeep: 0, cvAttack: 1, cvDefense: 1 },
+  professional: { goldCost: 4, timberCost: 0, marbleCost: 0, grainUpkeep: 1, goldUpkeep: 0, cvAttack: 2, cvDefense: 3 },
+  mercenary: { goldCost: 9, timberCost: 0, marbleCost: 0, grainUpkeep: 4, goldUpkeep: 0, cvAttack: 3, cvDefense: 2 },
+  siegeEngine: { goldCost: 8, timberCost: 2, marbleCost: 2, grainUpkeep: 1, goldUpkeep: 0, cvAttack: 0, cvDefense: 0 },
+  galley: { goldCost: 5, timberCost: 2, marbleCost: 0, grainUpkeep: 1, goldUpkeep: 0, cvAttack: 2, cvDefense: 2 },
+} satisfies Record<UnitType, UnitStats>;
+
+/**
+ * Per-faction unique-unit overrides (FACTIONS mapping table; a unique unit
+ * uses its base type's stats "unless its entry says otherwise"):
+ *  - byzantium professional = Varangian Guard (elite guard infantry: "very
+ *    strong on the defense of a walled city ... expensive") -> CV 2/4, 6g.
+ *  - ottomans levy = devshirme levies ("cost -1 grain to sustain") -> 0 grain;
+ *    professional = Janissary ("strong on the assault ... and in open battle,
+ *    paid only in gold") -> CV 3/3, 5g, 1 gold (no grain) upkeep.
+ *  - venice galley = Galeazza / Arsenal ("dominates a sea zone, +combat vs
+ *    ordinary galleys; galleys cost -1 timber") -> CV 3/3, 1 timber.
+ *  - genoa professional = Genoese Crossbowmen (ARCHER base: 3g, elite ranged
+ *    whose §7.2 first-strike volley + "wall defense" is folded into CV 2/2 in
+ *    this melee-only kernel); mercenary at x1.0 gold (surcharge WAIVED, not a
+ *    discount — Mercenary Brokers); galley = Carrack -> CV def 3.
+ *  - hungary levy = "Strongest Levies" (+1 combat, -1 gold) -> CV 2/2, 1g;
+ *    professional = Black Army (gunpowder elite "very strong in open battle
+ *    and assault", gold-paid) -> CV 3/3, 5g, 1 gold (no grain) upkeep.
+ */
+const FACTION_UNIT_OVERRIDES: Record<FactionId, Partial<Record<UnitType, Partial<UnitStats>>>> = {
+  byzantium: {
+    professional: { goldCost: 6, cvDefense: 4 },
+  },
+  ottomans: {
+    levy: { grainUpkeep: 0 },
+    professional: { goldCost: 5, cvAttack: 3, grainUpkeep: 0, goldUpkeep: 1 },
+  },
+  venice: {
+    galley: { timberCost: 1, cvAttack: 3, cvDefense: 3 },
+  },
+  genoa: {
+    professional: { goldCost: 3, cvDefense: 2 },
+    mercenary: { goldCost: 6 },
+    galley: { cvDefense: 3 },
+  },
+  hungary: {
+    levy: { goldCost: 1, cvAttack: 2, cvDefense: 2 },
+    professional: { goldCost: 5, cvAttack: 3, grainUpkeep: 0, goldUpkeep: 1 },
+  },
+};
+
+const UNIT_TYPE_LIST: readonly UnitType[] = ['levy', 'professional', 'mercenary', 'siegeEngine', 'galley'];
+const FACTION_ID_LIST: readonly FactionId[] = ['byzantium', 'ottomans', 'venice', 'genoa', 'hungary'];
+
+/** Fully materialized per-faction stat tables (base + overrides). */
+function materializeFactionUnits(): Record<FactionId, Record<UnitType, UnitStats>> {
+  const out = {} as Record<FactionId, Record<UnitType, UnitStats>>;
+  for (const f of FACTION_ID_LIST) {
+    const table = {} as Record<UnitType, UnitStats>;
+    for (const t of UNIT_TYPE_LIST) {
+      table[t] = { ...BASE_UNITS[t], ...(FACTION_UNIT_OVERRIDES[f][t] ?? {}) };
+    }
+    out[f] = table;
+  }
+  return out;
+}
+
+// --------------------------------------------------------------- tactic cards
+
+export type TacticTier = 'common' | 'uncommon' | 'rare';
+
+/**
+ * How a card is applied by the sim ('unmodeled' cards are dead draws — they
+ * occupy hand slots and are discarded on overflow; see RULES_MODEL.md):
+ *  - landBattle      : any land field battle, either role
+ *  - landDefense     : land battle in which the holder DEFENDS
+ *  - assault         : an assault the holder LAUNCHES against walls
+ *  - unwalledDefense : defense of an unwalled province
+ *  - siegeDefense    : played by the OWNER of a besieged city (siege round)
+ *  - siegeAttack     : played by the BESIEGER (siege round)
+ *  - instant         : resolves immediately when drawn (resource swing)
+ *  - reaction        : The Intercepted Letter (cancels the rival's card)
+ *  - unmodeled       : movement/info/naval-only/diplomatic — outside the sim
+ */
+export type TacticScope =
+  | 'landBattle'
+  | 'landDefense'
+  | 'assault'
+  | 'unwalledDefense'
+  | 'siegeDefense'
+  | 'siegeAttack'
+  | 'instant'
+  | 'reaction'
+  | 'unmodeled';
+
+export interface TacticCardDef {
+  slug: string;
+  tier: TacticTier;
+  copies: number;
+  scope: TacticScope;
+  /** Play preference & hand-overflow keep priority (higher = better). */
+  priority: number;
+  costGold?: number;
+  costFaith?: number;
+  removeFromGame?: boolean;
+  // -- combat effects (threshold-space handled by kernel fields) --
+  extraDice?: number; // "+N dice" rolled in the melee step (canon §7.7)
+  rerollsPerRound?: number; // missed dice rerolled per round (approximates canon rerolls)
+  firstRoundOnly?: boolean; // effect applies only in the first battle round ("one round of ...")
+  zeroWallBonus?: boolean; // Bribed Gatekeeper: wall bonus 0 (escalade -1 still applies)
+  flatDefenderBonus?: number; // Hexamilion Manned: defender +2 in an unwalled province
+  // -- instant effects --
+  gainGold?: number;
+  gainGrain?: number;
+  gainFaith?: number;
+  stealGold?: number; // Pay Chest: take up to N gold from the prestige leader
+  // -- siege effects --
+  siegeNoDepletion?: boolean; // this round: no store depletion / hunger loss
+  besiegerLosesUnits?: number; // Night Sortie: besieger loses N (weakest first)
+  restoreStores?: number; // Sails from the West: restore up to N depleted stores
+  captureCity?: boolean; // Treason at the Gate
+  minSiegeRounds?: number; // ...requires this many consecutive siege rounds
+  /** Errata E1 (ratified 2026-07-11): playable only vs a garrison of <= this many units. */
+  maxGarrison?: number;
+  /** Errata E1: the consecutive-siege-round requirement counts only siege rounds in game round >= this. */
+  siegeRoundsCountFromGameRound?: number;
+}
+
+/**
+ * The 24 RATIFIED tactic-card designs at their FINAL magnitudes
+ * (GD §7.7 table; 23 designs @ 2b42386 + the PR #8 24th rare
+ * `master-founders-hired`, read from GD §7.7 on origin/main).
+ * Deck = 48 cards: Common x3, Uncommon x2, Rare x1.
+ */
+const TACTIC_CARDS: TacticCardDef[] = [
+  // ---- Common (8 designs x 3) ----
+  { slug: 'forced-march', tier: 'common', copies: 3, scope: 'unmodeled', priority: 0 }, // move +1 province (movement layer unmodeled)
+  { slug: 'veterans-of-the-border', tier: 'common', copies: 3, scope: 'landBattle', priority: 4, extraDice: 1 },
+  { slug: 'pilot-of-the-narrows', tier: 'common', copies: 3, scope: 'unmodeled', priority: 0 }, // fleet battle +1 die (no pure fleet battles in sim)
+  { slug: 'ladders-and-fascines', tier: 'common', copies: 3, scope: 'assault', priority: 3, rerollsPerRound: 1, firstRoundOnly: true },
+  { slug: 'the-counting-house', tier: 'common', copies: 3, scope: 'instant', priority: 1, gainGold: 2 },
+  { slug: 'grain-barges-of-the-danube', tier: 'common', copies: 3, scope: 'instant', priority: 1, gainGrain: 2 },
+  { slug: 'ears-in-the-bazaar', tier: 'common', copies: 3, scope: 'unmodeled', priority: 0 }, // information (hidden hands unmodeled)
+  { slug: 'locked-shields', tier: 'common', copies: 3, scope: 'landDefense', priority: 4, rerollsPerRound: 1 },
+  // ---- Uncommon (8 designs x 2) ----
+  { slug: 'feigned-retreat', tier: 'uncommon', copies: 2, scope: 'unmodeled', priority: 0 }, // pre-dice withdrawal (no retreat pathing in kernel)
+  { slug: 'night-sortie', tier: 'uncommon', copies: 2, scope: 'siegeDefense', priority: 6, siegeNoDepletion: true, besiegerLosesUnits: 1 },
+  { slug: 'bribed-gatekeeper', tier: 'uncommon', copies: 2, scope: 'assault', priority: 8, zeroWallBonus: true },
+  { slug: 'chain-across-the-horn', tier: 'uncommon', copies: 2, scope: 'unmodeled', priority: 0 }, // blocks one amphibious assault
+  { slug: 'condottieri-contract', tier: 'uncommon', copies: 2, scope: 'landBattle', priority: 7, costGold: 2, extraDice: 2 },
+  { slug: 'papal-indulgence', tier: 'uncommon', copies: 2, scope: 'instant', priority: 1, costGold: 2, gainFaith: 3 },
+  { slug: 'the-intercepted-letter', tier: 'uncommon', copies: 2, scope: 'reaction', priority: 9 },
+  { slug: 'the-hexamilion-manned', tier: 'uncommon', copies: 2, scope: 'unwalledDefense', priority: 6, flatDefenderBonus: 2 },
+  // ---- Rare (8 designs x 1) ----
+  { slug: 'greek-fire', tier: 'rare', copies: 1, scope: 'unmodeled', priority: 0, removeFromGame: true }, // fleet-battle auto-win (no pure fleet battles in sim)
+  // Master Founders Hired (PR #8 24th design, GD §7.7 on origin/main): one
+  // siege you are pressing, for one FULL round — defender wall bonus 0 (Wall
+  // HP unchanged; escalade -1 still applies) AND +1 die in each melee step of
+  // the assault. Sim mapping: an assault battle IS the one siege round's
+  // engagement (same mapping as Bribed Gatekeeper), so both effects cover the
+  // whole resolveBattle call. Creates no siege engine; never interacts with
+  // the Great Bombard (§8.4 uniqueness untouched — the sim models no overlap).
+  { slug: 'master-founders-hired', tier: 'rare', copies: 1, scope: 'assault', priority: 9, zeroWallBonus: true, extraDice: 1 },
+  // Treason at the Gate, RATIFIED ERRATA E1 (coordinator, 2026-07-11): playable
+  // only vs a garrison of <= 4 units, and its 2-consecutive-siege-round clock
+  // counts only siege rounds occurring in game round 6 or later.
+  { slug: 'treason-at-the-gate', tier: 'rare', copies: 1, scope: 'siegeAttack', priority: 10, costGold: 4, captureCity: true, minSiegeRounds: 2, maxGarrison: 4, siegeRoundsCountFromGameRound: 6, removeFromGame: true },
+  { slug: 'the-pay-chest-taken', tier: 'rare', copies: 1, scope: 'instant', priority: 1, stealGold: 3 },
+  { slug: 'holy-war-proclaimed', tier: 'rare', copies: 1, scope: 'landBattle', priority: 6, costFaith: 2, extraDice: 1 }, // canon: every battle until next turn; sim: one battle (approximation)
+  { slug: 'sails-from-the-west', tier: 'rare', copies: 1, scope: 'siegeDefense', priority: 8, siegeNoDepletion: true, restoreStores: 2 },
+  { slug: 'a-death-in-the-palace', tier: 'rare', copies: 1, scope: 'unmodeled', priority: 0 }, // one-round truce (diplomacy unmodeled)
+  { slug: 'the-white-knights-stroke', tier: 'rare', copies: 1, scope: 'landBattle', priority: 5, rerollsPerRound: 3, firstRoundOnly: true },
+];
+
+// ---------------------------------------------------------------- great works
+
+/** Generic build price bundle (gold/timber/marble). */
+export interface BuildCost {
+  goldCost: number;
+  timberCost: number;
+  marbleCost: number;
+}
+
+/** One canon §9.2 Great Work (per-work cost + per-work prestige, GD table). */
+export interface GreatWorkDef {
+  id: string;
+  goldCost: number;
+  timberCost: number;
+  marbleCost: number;
+  faithCost: number;
+  /** One-off prestige on completion (canon §9.2/§13.1: 10/6/6/5 by work). */
+  prestige: number;
+}
+
+// --------------------------------------------------------------------- CONFIG
+
+export const CONFIG = {
+  game: {
+    maxRounds: 16, // hard game end (1400-1453, canon §10); highest prestige wins at the cap
+    actionsPerTurn: 4, // canon §10.0: exactly 4 actions, any mix/order (cards can raise to 5 — unmodeled, sensitivity note)
+    playersMin: 2, // supported player counts
+    playersMax: 5,
+    suddenDeathHoldRounds: 2, // hold Constantinople through this many cleanups => instant win (canon §13.3)
+  },
+
+  units: BASE_UNITS,
+
+  /**
+   * Per-faction unit stat tables (canon FACTIONS unique-unit mapping),
+   * materialized base+override. Combat, upkeep, and recruiting read THESE
+   * for player factions; neutral garrisons use the base `units` table.
+   * NOTE for sweeps: mutating `units` does NOT propagate here — sweep axes
+   * must touch both (see economy.ts sweepAxes).
+   */
+  factionUnits: materializeFactionUnits(),
+
+  recruit: {
+    perAction: { levy: 4, professional: 2, mercenary: 3, siegeEngine: 1, galley: 2 } satisfies Record<UnitType, number>, // max units of that type per recruit action
+    mercsArriveInstantly: true, // canon §6.2: mercenaries available immediately; others muster at end of round
+  },
+
+  /**
+   * Canon §6.4 stacking limits RAW (modeled since the stacking round,
+   * 2026-07-11) — ENGINE-MATCHED reading (feature/engine-core @ c79a453):
+   * caps bind PER (owner, province); a besieger camp CO-LOCATES on the
+   * invested province and counts against that province's cap for ITS
+   * owner, but besieger and garrison never sum against each other.
+   * "CITY" (a canon terrain the sim map does not author) is proxied as
+   * authored wallTier >= 1 OR any faction capital — the engine's
+   * isCityProvince (CITY terrain or capital); player-built wall upgrades
+   * do not re-terrain a province. "Excess cannot enter": recruit, move,
+   * attack-stack assembly and siege-camp reinforcement all clamp at
+   * action time (game.ts stackHeadroom). §7.5 rout/withdrawal retreats
+   * admit only up to the destination's remaining headroom and the
+   * OVERFLOW SURRENDERS (the engine's 2026-07-11 rout-retreat fix).
+   */
+  stacking: {
+    landPerProvince: 8, // STACKING_LAND_PER_PROVINCE (canon §6.4: 8 land units per player per province)
+    cityCap: 12, // STACKING_CITY (canon §6.4: 12 in a CITY/capital province)
+    navalPerZone: 6, // STACKING_NAVAL_PER_ZONE (canon §6.4) — declared for the engine; unexercised in-sim (no at-sea stacks: galleys ride in port garrisons and count against no land cap)
+    routOverflowSurrenders: true, // §7.5 + engine rout fix: retreat overflow beyond headroom surrenders (false = legacy uncapped merge)
+  },
+
+  factions: {
+    byzantium: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.0, capitalExtraGold: 2, cityCapturePrestige: 0 }, // rich capital (Hagia Sophia income proxy)
+    ottomans: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 2, tradeIncomeMult: 1.0, capitalExtraGold: 0, cityCapturePrestige: 2 }, // devshirme levy bulk + Ghaza city-capture prestige (1 -> 2 in the adversarial fix round: the canon §8.2.3 harbor-reinforcement fixes slowed the Ottoman siege game; recalibrated within the §14 asymmetry budget)
+    venice: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.5, capitalExtraGold: 0, cityCapturePrestige: 0 }, // canon §5.2 merchant x1.5
+    genoa: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.5, capitalExtraGold: 0, cityCapturePrestige: 0 }, // canon §5.2 merchant x1.5
+    hungary: { unitGoldCostMult: 1.0, levyGoldCostMult: 1.0, levyRecruitBonus: 0, tradeIncomeMult: 1.0, capitalExtraGold: 0, cityCapturePrestige: 0 }, // quality levies (see factionUnits); R9 floor fix adopted = Option A overland routes (map.ts buda_belgrade; Option B crusade-prestige A/B recorded in TUNING_LOG)
+  } satisfies Record<FactionId, FactionMods>,
+
+  /**
+   * Canon kernel (§7.1): every unit rolls 1d6 per combat round and hits on
+   *   roll >= clamp(hitBase - CV - mods, thresholdMin, thresholdMax).
+   * Modifiers act in THRESHOLD space (each +1 makes that side hit 1 pip
+   * easier); casualties are simultaneous, lowest-value units die first
+   * (canon §4.4 value order: levy -> professional -> mercenary -> galley).
+   */
+  combat: {
+    hitBase: 7, // threshold = clamp(hitBase - CV - mods, min, max)
+    thresholdMin: 2, // canon clamp floor: nothing hits better than 2+
+    thresholdMax: 6, // canon clamp ceiling: nothing hits worse than 6
+    outnumberRatio: 2, // outnumbering the enemy by this ratio in a round...
+    outnumberBonus: 1, // ...grants the larger side +1 (canon §7.3)
+    outnumberVsWalls: false, // gap-fill: numbers grant no bonus while assaulting UNBREACHED walls (no frontage on an escalade)
+    routLossFraction: 0.5, // a side that lost >= this fraction of its starting stack checks morale (§7.5)
+    routOn: 3, // ...and routs on 1d6 <= this
+    defenderRoutsBehindWalls: false, // gap-fill: a garrison behind unbreached walls has nowhere to flee and does not rout
+    wallCoverSaveOn: 3, // gap-fill: while walls are UNBREACHED, each hit on the garrison is deflected on 1d6 <= this (battlement cover); 0 disables
+    retreatFraction: 0.35, // attacker voluntarily withdraws at/below this fraction of starting combatants
+    maxRounds: 25, // battle round cap => stalemate (siege continues instead)
+    siegeEngineEscaladeBonus: 3, // canon §6.1: SIEGE "+3 vs walls" — engines roll at CV 0+3 in siege assaults (idle at field odds)
+    /**
+     * Canon §7.2 RAW re-reading (stacking round, 2026-07-11): "only ARCHER
+     * (and, in sieges, SIEGE) roll" is unscoped by wall HP, so SIEGE
+     * engines keep rolling their §6.1 "+3 vs walls" dice in a BREACH
+     * assault too (storming the circuit is still a siege); the previous
+     * engines-idle-at-breach reading was a sim gap-fill. Load-bearing for
+     * T5d once §6.4 caps the besieger at 12 total units: a legal camp
+     * (e.g. 9 fighters + 3 engines) needs its train's dice to carry a
+     * breach assault against a 10-strong garrison. false = legacy reading.
+     */
+    siegeEnginesFightAtBreach: true,
+    terrain: { plains: 0, hills: 1, mountains: 1, forest: 1, marsh: 1 } satisfies Record<Terrain, number>, // defender threshold bonus (canon §7.3: +1 in rough terrain)
+    riverCrossingPenalty: 1, // attacker -1 when attacking across a strait / amphibiously (canon §7.3 "amphibious")
+  },
+
+  /**
+   * Canon wall table (§8.1), five tiers T1-T5:
+   *   T1 3 HP/+1 · T2 6 HP/+2 · T3 10 HP/+3 · T4 13 HP/+4 · T5 16 HP/+4.
+   * T5 = the Theodosian Walls (Constantinople). The defender bonus is
+   * BINARY: full while wall HP > 0, gone at breach. theodosianExtra* are
+   * legacy tuning levers on the Constantinople flag (0 = pure canon).
+   */
+  walls: {
+    tierBonus: [0, 1, 2, 3, 4, 4], // defender threshold bonus by wall tier 0..5 while unbreached
+    tierHitpoints: [0, 3, 6, 10, 13, 16], // wall HP by tier (canon §8.1)
+    theodosianBonus: 0, // extra threshold bonus for the Theodosian flag (canon: none — T5 IS +4)
+    theodosianExtraHitpoints: 0, // extra wall HP for the Theodosian flag (canon: none — T5 IS 16)
+    maxBuildableTier: 3, // Build action upgrades stop at T3 (canon §9.1 Walls Lv2); T4/T5 are authored/great-work walls
+  },
+
+  siege: {
+    engineDamageDie: [1, 1, 2, 2, 3, 3], // wall HP per siege-engine wall-damage die, indexed by d6-1 (canon §8.2.2: 1-2 -> 1, 3-4 -> 2, 5-6 -> 3)
+    maxEffectiveEngines: 3, // engines beyond this add no damage (crowding; sim divergence — canon is uncapped)
+    t5MasonryCapPerRound: 1, // canon §8.3: vs an INTACT tier-5 wall an ordinary siege train inflicts at most this many wall HP per round IN TOTAL
+    grainStoresRounds: 3, // a besieged city holds this many siege rounds before starving (canon §8.2.3; Granary +2 unmodeled)
+    starvationUnitsPerRound: 1, // garrison units lost per round once stores are gone (canon §8.2.3)
+    besiegerAttritionPerRound: 0.03, // fraction of besieging army lost per round (disease; sim divergence — canon has none)
+    escaladePenalty: 1, // attacker -1 when assaulting unbreached walls (canon §8.2.4)
+    assaultAllowedAnytime: true, // may assault intact walls (at full wall bonus + escalade)
+    /**
+     * Sea resupply (canon §8.2.3): a besieged COASTAL walled city depletes
+     * stores ONLY while under naval blockade. Blockade requires hostile
+     * fleet control of EVERY adjacent sea zone; otherwise supply ships slip
+     * in — no depletion, hunger never begins. Landlocked cities are always
+     * fully invested.
+     */
+    seaResupplyEnabled: true,
+    /**
+     * The Great Bombard (canon GD §8.4 / EVENT_CARDS #34): unique siege
+     * engine entering via the Era III omen `great-bombard-forged`.
+     * RATIFIED ERRATA E3 (coordinator, 2026-07-11): the canon DRAW model
+     * replaces the fixed reveal round — the card sits at a uniformly random
+     * position in the Era III omen deck, i.e. it is drawn in a per-game
+     * seeded round uniform over [drawRoundMin, drawRoundMax] = rounds 11-16
+     * (canon §12 Era III). On reveal the OTTOMAN player receives it free if
+     * alive (canon); otherwise it is auctioned — sim rule: the richest
+     * faction that can pay goldCost takes it (retried each round while
+     * unclaimed). It rolls `damageDice` wall-damage dice per siege round and
+     * LIFTS the T5 masonry cap for the whole besieging train.
+     * E3 also adds a 1-round EMPLACEMENT: after acquisition (or after moving
+     * to a new siege) the Bombard is placed for `emplacementRounds` full
+     * siege round(s) before it first fires — no wall damage from it (and no
+     * masonry-cap lift) during emplacement.
+     */
+    greatBombard: {
+      drawRoundMin: 11, // earliest omen-draw round (canon §12: Era III opens r11)
+      drawRoundMax: 16, // latest omen-draw round (uniform per-game seeded draw; ERRATA E3 — replaces the tuned fixed r15 reveal)
+      goldCost: 40, // auction price when no Ottoman is in play (canon: Ottoman gets it free)
+      damageDice: 2, // wall-damage dice per siege round (canon §8.4: up to 6 HP/round, ~4 avg)
+      assaultDice: 1, // canon §8.4 RAW Assault row: the Bombard "adds the standard SIEGE +3 vs walls" — one engine-threshold die in assaults once emplaced (modeled since the stacking round; it is a flag, not an Army unit, so it consumes no §6.4 headroom)
+      emplacementRounds: 1, // ERRATA E3: siege rounds of emplacement before the Bombard first fires
+    },
+  },
+
+  /**
+   * Tactic cards (canon §7.7): 24 ratified designs, 48-card deck
+   * (Common x3 / Uncommon x2 / Rare x1). Battle-scoped cards are free to
+   * play (printed resource costs still paid); at most ONE card per side per
+   * battle in the sim (canon allows one per battle ROUND — bounded-policy
+   * simplification, documented in RULES_MODEL.md).
+   */
+  tacticCards: TACTIC_CARDS,
+  cards: {
+    drawsPerRound: 1, // canon §7.7: 1 draw per Income phase (University draws unmodeled)
+    handLimit: 3, // RATIFIED (coordinator, engine reconciliation 2026-07-11): hand limit 3 — GD §7.7's "4" is a docs error (the pre-reconciliation sim tuned against it); re-measured at 3
+  },
+
+  yields: {
+    // authoring bounds for map.ts per-province yields (min, max inclusive)
+    gold: [0, 5] as const,
+    grain: [0, 4] as const,
+    timber: [0, 2] as const,
+    marble: [0, 2] as const,
+    faith: [0, 2] as const,
+    keyCityGoldMin: 2, // key cities must yield at least this much gold
+  },
+
+  /**
+   * Engine reconciliation (2026-07-11): building & great-work costs now follow
+   * canon §9.1/§9.2 verbatim (engine balance.ts BUILDING_COSTS /
+   * WALL_BUILD_COST / GREAT_WORK_COSTS). The pre-reconciliation sim values
+   * (market 8g+2t/+2g, wall +1 tier 10g+2t+1m, generic great work 25g+4m+2f/+5)
+   * were sim-local drift — logged in TUNING_LOG (reconciliation round).
+   */
+  buildings: {
+    market: { goldCost: 4, timberCost: 0, marbleCost: 2, extraGoldPerRound: 1 }, // canon §9.1 Market: gold 4 + marble 2, +1 gold/round, one per province
+    /** Wall build/upgrade cost keyed by TARGET tier (canon §9.1 Walls Lv1/Lv2 = T2/T3; T1 per engine WALL_BUILD_COST). Max walls.maxBuildableTier. */
+    wallUpgrade: {
+      byTargetTier: {
+        1: { goldCost: 4, timberCost: 0, marbleCost: 3 },
+        2: { goldCost: 5, timberCost: 0, marbleCost: 4 }, // canon §9.1 Walls Lv1
+        3: { goldCost: 8, timberCost: 0, marbleCost: 6 }, // canon §9.1 Walls Lv2
+      } as Record<number, BuildCost>,
+    },
+    /**
+     * Canon §9.2 Great Works, per-work costs + per-work prestige (10/6/6/5).
+     * Sim shape: one Build action completes a work (canon's 2-3-round invest
+     * schedule unmodeled — §6 divergence appendix), each faction may complete
+     * each work once. List order = the greedy build preference (cheapest /
+     * least faith-gated first); actBuild takes the first affordable unbuilt.
+     */
+    greatWorks: [
+      { id: 'grandBazaar', goldCost: 16, timberCost: 6, marbleCost: 6, faithCost: 0, prestige: 5 },
+      { id: 'theodosianWalls', goldCost: 15, timberCost: 0, marbleCost: 12, faithCost: 0, prestige: 6 },
+      { id: 'greatUniversity', goldCost: 18, timberCost: 0, marbleCost: 8, faithCost: 4, prestige: 6 },
+      { id: 'hagiaSophia', goldCost: 20, timberCost: 0, marbleCost: 10, faithCost: 8, prestige: 10 },
+    ] as GreatWorkDef[],
+  },
+
+  trade: {
+    routeIncomeBase: 3, // default gold/round for a route (map routes may override)
+    maxRoutesPerFaction: 3, // open routes a faction can profit from simultaneously
+    /**
+     * Canon §5.2: a BLOCKADED route (any at-war enemy war fleet on a route
+     * sea zone) yields x this multiplier (0.5); only a SEVERED route (an
+     * endpoint lost) yields 0. 1.0 disables blockades; the pre-fix sim
+     * cancelled blockaded routes outright (0), which made a single 5g
+     * picket galley delete a trader faction — see TUNING_LOG fix round.
+     */
+    blockadeIncomeMult: 0.5,
+  },
+
+  economy: {
+    grainMarket: { buyGoldPerGrain: 2, sellGoldPerGrain: 1 }, // convert at these rates during income phase
+    /**
+     * Canon §4.3 market conversion (a Trade action): buy secondary resources
+     * (timber/marble/faith) with gold at give:get — 3:1 base, 2:1 once the
+     * faction owns a Market building. MODELED since the engine reconciliation
+     * (2026-07-11): the canon §9.1/§9.2 prices make marble the binding build
+     * currency, and without the §4.3 valve gold-rich builders had no
+     * gold->prestige path once home marble ran out (the turtler policy fell
+     * to 6-9%, under its 10% floor). Gold->resource direction only;
+     * resource->gold selling remains the grain market above.
+     */
+    conversion: {
+      baseGoldPerResource: 3,
+      marketGoldPerResource: 2,
+      /** Canon §10.3 RAW: "one action per conversion" — one give:get lot (1 resource bought) per Trade action. */
+      maxPerAction: 1,
+    },
+    grainShortfallDesertionFraction: 0.25, // fraction of unfed units that desert each round
+    unpaidMercDesertionFraction: 1.0, // unpaid mercenaries all desert immediately (canon §4.4: desert first)
+    goldFloor: 0, // treasury can't go negative; unpayable upkeep triggers desertion instead
+    /**
+     * ERRATA E5b (coordinator, 2026-07-11; canon EVENT_CARDS #22 "Mercenary
+     * Revolt" pillage semantics): whenever unpaid/unfed MERCENARIES desert,
+     * they revolt and PILLAGE their host province — the owner loses
+     * pillageGold stored gold (canon: -2) and the province yields nothing
+     * next round (canon: "yield 0 next round"). Deserting siege-camp mercs
+     * have no host province of the owner to pillage: only the gold is lost
+     * (documented gap, RULES_MODEL.md).
+     */
+    mercRevolt: {
+      pillageGold: 2, // stored gold the owner loses per pillaged province (canon EVENT_CARDS #22: -2)
+      pillageYieldRounds: 1, // rounds the pillaged province yields nothing (canon: next round)
+    },
+  },
+
+  events: {
+    // one global omen card per table per round (canon §12); uniform magnitude within these bounds
+    goldMagnitude: [-6, 6] as const, // windfall / extortion
+    grainMagnitude: [-4, 4] as const, // harvest / famine
+    unitMagnitude: [-3, 3] as const, // volunteers / plague-desertion
+    prestigeMagnitude: [-2, 2] as const, // crusade fervor / scandal
+  },
+
+  /**
+   * Prestige sources = canon §13.1 (2b42386). Royal marriage (+2/round),
+   * betrayal penalties, and per-battle morale effects stay unmodeled —
+   * see RULES_MODEL.md sensitivity notes. THRESHOLD is owned by the
+   * TUNING_REPORT (canon §13.2 lists pre-tuning placeholders).
+   */
+  prestige: {
+    ownCapitalPerRound: 1, // canon §13.1: hold your own capital
+    enemyCapitalPerRound: 3, // canon §13.1: hold an enemy capital
+    keyCityPerRound: 1, // canon §13.1: per named key city held at round end
+    constantinopleExtraPerRound: 0, // Constantinople extra on top (0: its reward is sudden death + yields)
+    tradeRoutePerRound: 0, // canon §13.1 has NO per-route prestige (kept as a tuning lever, default 0)
+    tradeMonopolyPerRound: 2, // canon §13.1 + ERRATA E2 (2026-07-11): the FIRST open route with BOTH endpoints owned scores this...
+    tradeMonopolyAdditionalPerRound: 1, // ...and each ADDITIONAL simultaneous monopoly scores this (diminishing returns; no escort requirement)
+    // great-work prestige is PER WORK since the engine reconciliation (canon
+    // §9.2/§13.1: Hagia Sophia 10, Theodosian Walls 6, Great University 6,
+    // Grand Bazaar 5) — see CONFIG.buildings.greatWorks[].prestige.
+    decisiveBattle: 1, // canon §13.1: win a decisive battle (enemy wiped or routed)
+    outnumberedWin: 1, // canon §13.1: win a field battle outnumbered (stacks with decisive)
+    walledCityCapture: 2, // canon §13.1: take a walled city (T1-T3) by storm or siege
+    walledCityCaptureHighTier: 3, // canon §13.1: ... +3 if T4-T5
+    provinceCapture: 0, // one-off per ANY captured province (canon: none — kept as a tuning lever, default 0)
+    warWon: 3, // canon §13.1: win a war (force peace / eliminate)
+    loseCapital: -3, // canon §13.1: lose your own capital
+    secretObjective: 4, // canon §13.1 + ERRATA E4 (2026-07-11): +4 PER OBJECTIVE INDEPENDENTLY (3 objectives per faction), hidden, scored at GAME END only
+    /**
+     * ERRATA E5a (coordinator, 2026-07-11; canon §11 aggression-cost family):
+     * declaring war WITHOUT justification costs this much prestige (applied
+     * once, when the war starts). Sim-level justification (documented
+     * mapping, RULES_MODEL.md): the target holds one of your secret-objective
+     * provinces, OR the target is the current prestige leader, OR the target
+     * attacked you first this game.
+     */
+    unjustifiedWar: -1,
+    victoryThreshold: 78, // reach this prestige at Cleanup => immediate win (owned by the TUNING_REPORT; 80 -> 78 in the engine-reconciliation round: canon §9.2 per-work prestige caps the great-work channel at 27/faction, lowering winner accrual — re-derived per the §2.13 accrual-multiple method and confirmed by the 5p subset sweep (14.9x winner accrual/round), see TUNING_LOG)
+  },
+
+  neutrals: {
+    baseLevies: 2, // neutral province garrison: base levies...
+    leviesPerWallTier: 1, // ...plus this many per wall tier (T1-T5)
+    professionalsIfKeyCity: 2, // key-city neutrals also get professionals
+  },
+};
+
+export type Config = typeof CONFIG;
+
+/** Stats for a unit of `faction` (null/undefined = neutral -> base table). */
+export function statsFor(faction: FactionId | null | undefined, t: UnitType): UnitStats {
+  return faction ? CONFIG.factionUnits[faction][t] : CONFIG.units[t];
+}
+
+/** Same lookup against an explicit (possibly swept/cloned) config. */
+export function unitStatsOf(cfg: Config, faction: FactionId | null | undefined, t: UnitType): UnitStats {
+  return faction ? cfg.factionUnits[faction][t] : cfg.units[t];
+}
+
+/** Deep-copy CONFIG so sweep runners can mutate numbers without aliasing. */
+export function cloneConfig(): Config {
+  return JSON.parse(JSON.stringify(CONFIG)) as Config;
+}
+
+/** First canon §9.2 work (list order) this actor has not built yet, ignoring cost. */
+export function nextUnbuiltGreatWork(cfg: Config, built: readonly string[]): GreatWorkDef | null {
+  for (const w of cfg.buildings.greatWorks) if (!built.includes(w.id)) return w;
+  return null;
+}
+
+/**
+ * First unbuilt canon §9.2 work (list order: cheapest / least faith-gated
+ * first) the treasury can afford right now, or null. `goldReserve` is the
+ * agents' keep-back-for-troops margin.
+ */
+export function nextAffordableGreatWork(
+  cfg: Config,
+  built: readonly string[],
+  res: { gold: number; timber: number; marble: number; faith: number },
+  goldReserve = 0,
+): GreatWorkDef | null {
+  for (const w of cfg.buildings.greatWorks) {
+    if (built.includes(w.id)) continue;
+    if (res.gold >= w.goldCost + goldReserve && res.timber >= w.timberCost && res.marble >= w.marbleCost && res.faith >= w.faithCost) {
+      return w;
+    }
+  }
+  return null;
+}
+
+/** Cost to raise a province's walls to `targetTier` (canon §9.1), or null if not buildable. */
+export function wallUpgradeCost(cfg: Config, targetTier: number): BuildCost | null {
+  if (targetTier > cfg.walls.maxBuildableTier) return null;
+  return cfg.buildings.wallUpgrade.byTargetTier[targetTier] ?? null;
+}

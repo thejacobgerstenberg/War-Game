@@ -1,0 +1,44 @@
+{
+  "config": {
+    "games": 1000,
+    "baseSeed": 24681357,
+    "smoke": false,
+    "landCap": 8,
+    "cityCap": 12,
+    "cityProxy": "authored wallTier >= 1 or faction capital (engine isCityProvince)",
+    "mode": "verification (caps ENFORCED since the stacking round, 2026-07-11)",
+    "elapsedMs": 3679
+  },
+  "battlePhasesSampled": 14947,
+  "capViolations": 0,
+  "attackStacks": {
+    "total": 11559,
+    "meanSize": 5.7423652565100785,
+    "maxSize": 11,
+    "over8": 1128,
+    "over8Share": 0.09758629639242149,
+    "overDestCap": 0
+  },
+  "garrisonOccupancy": {
+    "samples": 395034,
+    "overCap": 0
+  },
+  "siegeCamps": {
+    "samples": 2034,
+    "overCap": 0,
+    "atCap": 443,
+    "atCapShare": 0.21779744346116028
+  },
+  "retreats": {
+    "total": 1626,
+    "retreatingUnits": 2481,
+    "admittedUnits": 2421,
+    "surrenderedUnits": 60,
+    "surrenderedUnitShare": 0.02418379685610641,
+    "retreatsWithSurrender": 44,
+    "retreatsWithSurrenderShare": 0.02706027060270603,
+    "fullSurrenders": 33
+  },
+  "gamesWithSurrender": 41,
+  "gamesWithSurrenderShare": 0.041
+}
