@@ -6,12 +6,9 @@
   <title>IMPERIUM: Twilight of Empires — Rulebook (Illuminated Edition)</title>
   <meta name="description" content="Rulebook for IMPERIUM: Twilight of Empires, a grand-strategy board game for 2–5 players, 1400–1453.">
 
-  <!-- Google Fonts: Cinzel (display) + EB Garamond (body). If unreachable,
-       the stylesheet falls back to Georgia/serif — do not remove. -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&amp;family=EB+Garamond:ital,wght@0,400;0,600;1,400&amp;display=swap">
-
+  <!-- Fonts: Cinzel (display) + EB Garamond (body), self-hosted from
+       ../client/public/fonts/ via @font-face in rulebook.css. If the files
+       are unreachable, the stylesheet falls back to Georgia/serif. -->
   <link rel="stylesheet" href="rulebook.css">
 </head>
 <body>
@@ -179,11 +176,13 @@
       <tr><th scope="col">Players</th><th class="num" scope="col">Threshold</th></tr>
     </thead>
     <tbody>
-      <tr><td>2</td><td class="num">25</td></tr>
-      <tr><td>3</td><td class="num">30</td></tr>
-      <tr><td>4&ndash;5</td><td class="num">35</td></tr>
+      <tr><td>2</td><td class="num">72</td></tr>
+      <tr><td>3</td><td class="num">75</td></tr>
+      <tr><td>4</td><td class="num">80</td></tr>
+      <tr><td>5</td><td class="num">78</td></tr>
     </tbody>
   </table>
+  <p>These thresholds are balance-owned constants, tuned from simulation (subject to final balance tuning).</p>
 
   <h4 id="how-to-win-1453">2. The 1453 Endgame</h4>
   <p>If no one has hit the threshold, the game ends after round 16&rsquo;s Cleanup and the highest prestige wins. Tiebreak: most key cities, then most 🪙 gold.</p>
@@ -233,7 +232,7 @@
   <p>Also settled now: tribute treaties (one power pays the other an agreed bundle of resources each Income phase), vassal tribute (a vassal&rsquo;s province yields &times;0.5 each Income phase), and any province struck by a spy&rsquo;s <em>Incite unrest</em> yields nothing this phase. See <a href="#economy-trade">Economy &amp; Trade</a> and <a href="#diplomacy-vassals">Diplomacy &amp; Vassals</a>.</p>
 
   <h3 id="your-turn-actions">Phase 3 &mdash; Action Phases</h3>
-  <p>The heart of your turn. In <span class="term" tabindex="0" data-tip="The seating for the round. Re-sorted each Cleanup so the lowest-prestige power acts first.">turn order</span>, each player receives <strong>4 actions</strong> per round (certain cards can raise this to 5). Spend them in <strong>any mix and any order</strong> from the list below &mdash; no action type is gated to a particular slice of the window; a Move that starts a battle <em>queues</em> it for the Battle phase.</p>
+  <p>The heart of your turn. In <span class="term" tabindex="0" data-tip="The seating for the round. Round 1 uses seating order; re-sorted each Cleanup thereafter so the lowest-prestige power acts first.">turn order</span> &mdash; in round 1 this is simply <strong>seating order</strong>, the order in which players took their seats when the game was created; from round 2 on it is the order set by the previous Cleanup &mdash; each player receives <strong>4 actions</strong> per round (certain cards can raise this to 5). Spend them in <strong>any mix and any order</strong> from the list below &mdash; no action type is gated to a particular slice of the window; a Move that starts a battle <em>queues</em> it for the Battle phase.</p>
   <ol>
     <li><strong>Recruit</strong> &mdash; raise units, or hire mercenaries, in a valid province (your capital, a city, or a Barracks; navies need a Shipyard). One action recruits one province&rsquo;s worth of purchases.</li>
     <li><strong>Move / Attack</strong> &mdash; move one army or one fleet along adjacency within its Move budget. Entering a defended province declares a battle; choosing <em>Besiege</em> or <em>Assault</em> against a walled city drives the siege lifecycle.</li>
@@ -559,12 +558,12 @@
   <p>Tactic cards are held in hand for battles; political cards resolve immediately when drawn. The full tactic deck, and when a card costs an action to play, are set out in <a href="#combat-sieges-tactics">Tactic Cards</a> below.</p>
 
   <aside class="scribe-note" role="note" aria-label="Scribe's Note — A Battle in the Hills" data-title="Scribe's Note — A Battle in the Hills">
-    <p>An Ottoman attacker enters a Byzantine <em>hills</em> province. Attacker: 4 infantry (CV atk 2), 2 archers (CV atk 2, ranged), 2 cavalry (CV atk 3 — no charge, the hills negate it), 1 siege engine (no field dice). Defender: 3 infantry (CV def 3), 2 archers (CV def 1, ranged), 3 levies (CV def 1). The terrain gives the defender +1.</p>
+    <p>An Ottoman attacker enters a Byzantine <em>hills</em> province. Attacker: 4 infantry (CV atk 2), 2 archers (CV atk 2, ranged), 2 cavalry (CV atk 3 — no charge, the hills negate it) — a full 8-unit stack, the province stacking limit. Defender: 3 infantry (CV def 3), 2 archers (CV def 1, ranged), 3 levies (CV def 1) — also 8. The terrain gives the defender +1.</p>
     <ul>
       <li><strong>Ranged step.</strong> Attacker's archers hit on 7−2−0 = 5+: 2 dice roll {5,2} — 1 hit. Defender's archers hit on 7−1−1 (terrain) = 5+: 2 dice roll {6,4} — 1 hit. Casualties: the defender loses 1 levy; the attacker loses 1 archer.</li>
-      <li><strong>Melee step.</strong> Attacker rolls 4 infantry (5+), 2 cavalry (4+), 1 archer (5+) — the siege engine sits idle. Infantry {6,5,3,4} = 2 hits, cavalry {4,2} = 1 hit, archer {5} = 1 hit — <strong>4 hits</strong>. Defender rolls 3 infantry (7−3−1 = 3+), 2 levies (7−1−1 = 5+), 2 archers (5+). Infantry {5,2,4} = 2 hits, levies {6,1} = 1 hit, archers {3,2} = 0 — <strong>3 hits</strong>.</li>
+      <li><strong>Melee step.</strong> Attacker rolls 4 infantry (5+), 2 cavalry (4+), 1 archer (5+). Infantry {6,5,3,4} = 2 hits, cavalry {4,2} = 1 hit, archer {5} = 1 hit — <strong>4 hits</strong>. Defender rolls 3 infantry (7−3−1 = 3+), 2 levies (7−1−1 = 5+), 2 archers (5+). Infantry {5,2,4} = 2 hits, levies {6,1} = 1 hit, archers {3,2} = 0 — <strong>3 hits</strong>.</li>
       <li><strong>Casualties.</strong> The defender removes 4 lowest-value units (2 levies, then 2 archer-then-infantry per the removal order), down to 3 infantry; the attacker removes 3 lowest (1 archer, 2 infantry).</li>
-      <li><strong>Morale.</strong> The defender has lost 5 of 8 — more than 50% — and must make a rout check.</li>
+      <li><strong>Morale.</strong> The defender has lost 5 of 8 — more than 50% — and must make a rout check. The attacker has lost 4 of 8 — exactly 50%, which also meets the ≥&nbsp;50% mark — so both sides check.</li>
     </ul>
   </aside>
 
@@ -649,7 +648,7 @@
   <p>The prize is the game itself: capture Constantinople and hold it through <strong>two full cleanup phases</strong> (2 rounds) and you win <strong>immediately</strong>, regardless of prestige (see <a href="#how-to-win">How to Win</a>). Several factions also field unique warriors and combat powers — see <a href="#factions">The Factions</a> — and Omen cards can tilt battles and sieges alike (see <a href="#event-cards-eras">Event Cards &amp; Eras</a>).</p>
 
   <h3 id="combat-sieges-tactics">Tactic Cards</h3>
-  <p>Tactic cards are the card layer of combat — held surprises that bend a battle without replacing the dice. The shared <span class="term" tabindex="0" data-tip="The shared deck of battle stratagems: 47 cards over 23 designs (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded RNG.">tactic deck</span> holds <strong>47 cards over 23 designs</strong> (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded RNG.</p>
+  <p>Tactic cards are the card layer of combat — held surprises that bend a battle without replacing the dice. The shared <span class="term" tabindex="0" data-tip="The shared deck of battle stratagems: 48 cards over 24 designs (8 Common ×3, 8 Uncommon ×2, 8 Rare ×1), shuffled with the seeded RNG.">tactic deck</span> holds <strong>48 cards over 24 designs</strong> (8 Common ×3, 8 Uncommon ×2, 8 Rare ×1), shuffled with the seeded RNG.</p>
   <p><strong>Drawing &amp; holding.</strong> Each player draws <strong>1 tactic card</strong> during the Income &amp; Upkeep phase, after the Omen resolves. A <strong>University</strong> adds +1 draw per round; the <strong>Great University</strong> adds +2. Omen <em>Grant</em> cards add specific cards on top of these draws. The <strong>hand limit is 4 tactic cards</strong> — discard down to 4 at Cleanup; hands are hidden. When the draw pile empties, reshuffle the discard pile; cards that read <em>remove from game</em> never return.</p>
   <p><strong>Playing.</strong> A card scoped to a <strong>battle, assault, or siege</strong> is played <em>during that engagement</em> in the Battle phase at <strong>no action cost</strong>; any printed resource cost is still paid. Each side may play <strong>at most one tactic card per battle round</strong>; <em>The Intercepted Letter</em> is a <strong>reaction</strong> and exempt from this limit. A card with <strong>no battle scope</strong> is played with the <a href="#actions-play-card">Play Card</a> action — except <em>Forced March</em>, which is played as a free rider on one of your Move actions.</p>
   <ul>
@@ -659,7 +658,7 @@
 
   <div class="table-scroll">
   <table class="rules-table">
-    <caption>The 23 Ratified Tactic Cards</caption>
+    <caption>The 24 Ratified Tactic Cards</caption>
     <thead>
       <tr><th scope="col">Card</th><th scope="col">Tier (copies)</th><th scope="col">Effect</th></tr>
     </thead>
@@ -677,10 +676,11 @@
       <tr><td>The Bribed Gatekeeper</td><td>Uncommon ×2</td><td>One assault you launch this round: the defender's <strong>wall bonus is 0</strong> (Wall HP unchanged; escalade −1 still applies).</td></tr>
       <tr><td>The Chain Across the Horn</td><td>Uncommon ×2</td><td>One coastal province you hold cannot be the target of an <strong>amphibious assault</strong> until the start of your next turn.</td></tr>
       <tr><td>Condottieri Contract</td><td>Uncommon ×2</td><td>Pay <strong>2 🪙</strong>: one land battle — your side rolls <strong>+2 dice</strong> in each melee step.</td></tr>
-      <tr><td>Papal Indulgence</td><td>Uncommon ×2</td><td>Pay <strong>2 🪙</strong>: gain <strong>3 ✝️ faith</strong> (the sole sanctioned gold→faith conversion — markets never trade faith).</td></tr>
+      <tr><td>Papal Indulgence (Tactic)</td><td>Uncommon ×2</td><td>Pay <strong>2 🪙</strong>: gain <strong>3 ✝️ faith</strong> (the sole sanctioned gold→faith conversion — markets never trade faith). Not to be confused with the Omen card of the same name, which converts faith <em>to</em> gold (see <a href="#event-cards-eras">Event Cards &amp; Eras</a>).</td></tr>
       <tr><td>The Intercepted Letter</td><td>Uncommon ×2</td><td><strong>Reaction</strong> — play as a rival plays a tactic card: <strong>cancel it</strong>. Both cards are discarded.</td></tr>
       <tr><td>The Hexamilion Manned</td><td>Uncommon ×2</td><td>One land battle you defend in an <strong>unwalled</strong> province: gain <strong>defender +2</strong> (a temporary T2-grade wall bonus; creates no Wall HP; does not stack with real walls).</td></tr>
       <tr><td>Greek Fire</td><td>Rare ×1</td><td>Before dice in a fleet battle you are fighting: <strong>win it outright</strong> — all enemy naval units in the zone are destroyed (transports and cargo with them). Then <strong>discard one other tactic card</strong> from your hand and <strong>remove this card from the game</strong>.</td></tr>
+      <tr><td>Master Founders Hired</td><td>Rare ×1</td><td>One siege you are pressing, for <strong>one full round</strong>: the defender's <strong>wall bonus is 0</strong> (Wall HP unchanged; escalade −1 still applies) and your side rolls <strong>+1 die</strong> in each melee step of the assault. Hires the founders, not the gun: creates <strong>no siege engine</strong> and never interacts with the <a href="#combat-sieges-great-bombard">Great Bombard</a>, which stays unique.</td></tr>
       <tr><td>Treason at the Gate</td><td>Rare ×1</td><td>Pay <strong>4 🪙</strong>. Play on a walled city you have besieged for <strong>2+ consecutive rounds</strong>: the city <strong>falls without an assault</strong> — its garrison surrenders (removed) and you occupy it, walls at their current HP. <strong>Remove this card from the game.</strong></td></tr>
       <tr><td>The Pay Chest Taken</td><td>Rare ×1</td><td>Take <strong>up to 3 🪙</strong> from one rival's treasury (never more than they hold).</td></tr>
       <tr><td>Holy War Proclaimed</td><td>Rare ×1</td><td>Pay <strong>2 ✝️</strong>: until the start of your next turn, your side rolls <strong>+1 die</strong> in each melee step of <strong>every</strong> battle you fight.</td></tr>
@@ -700,14 +700,14 @@
     <tbody>
       <tr><td>Common</td><td class="num">8</td><td class="num">3</td><td class="num">24</td></tr>
       <tr><td>Uncommon</td><td class="num">8</td><td class="num">2</td><td class="num">16</td></tr>
-      <tr><td>Rare</td><td class="num">7</td><td class="num">1</td><td class="num">7</td></tr>
-      <tr><td><strong>Tactic deck</strong></td><td class="num"><strong>23</strong></td><td class="num">—</td><td class="num"><strong>47</strong></td></tr>
+      <tr><td>Rare</td><td class="num">8</td><td class="num">1</td><td class="num">8</td></tr>
+      <tr><td><strong>Tactic deck</strong></td><td class="num"><strong>24</strong></td><td class="num">—</td><td class="num"><strong>48</strong></td></tr>
     </tbody>
   </table>
   </div>
 
-  <aside class="scribe-note" role="note" aria-label="Scribe's Note — The Missing Rare" data-title="Scribe's Note — The Missing Rare">
-    <p>An eighth rare, <em>The Guns of Orban</em>, was rejected: it would put the same historical gun in the game twice — once as the unique, capturable <a href="#combat-sieges-great-bombard">Great Bombard</a> and once as a replayable one-shot card. A re-flavored rare may refill the slot in a future pass, returning the deck to 48. Rares appear once each, and <em>Greek Fire</em> and <em>Treason at the Gate</em> additionally remove themselves from the game — their moments happen at most once per campaign.</p>
+  <aside class="scribe-note" role="note" aria-label="Scribe's Note — The Eighth Rare" data-title="Scribe's Note — The Eighth Rare">
+    <p>One proposed rare, <em>The Guns of Orban</em>, was rejected: it would put the same historical gun in the game twice — once as the unique, capturable <a href="#combat-sieges-great-bombard">Great Bombard</a> and once as a replayable one-shot card. Its slot is filled by the re-flavor <em>Master Founders Hired</em>, which hires the gun-founders rather than fielding the gun and so leaves the Bombard's uniqueness intact. Rares appear once each, and <em>Greek Fire</em> and <em>Treason at the Gate</em> additionally remove themselves from the game — their moments happen at most once per campaign.</p>
   </aside>
 </section>
 
@@ -849,7 +849,7 @@
     </tbody>
   </table>
 
-  <p>✝️ Faith cannot be converted at markets — it is non-tradeable. Only specific card and faction effects turn faith into gold: Papal Indulgence lets you convert up to 3 ✝️ → 3 🪙 in a round, and Hungary may convert indulgences → gold. Events can also sweeten conversions — under a Bumper Harvest, each 🌾 converted to 🪙 yields +1 (see <a href="#event-cards-eras">Event Cards &amp; Eras</a>).</p>
+  <p>✝️ Faith cannot be converted at markets — it is non-tradeable. Only specific card and faction effects turn faith into gold: Papal Indulgence (Omen) lets you convert up to 3 ✝️ → 3 🪙 in a round, and Hungary may convert indulgences → gold. Events can also sweeten conversions — under a Bumper Harvest, each 🌾 converted to 🪙 yields +1 (see <a href="#event-cards-eras">Event Cards &amp; Eras</a>).</p>
 
   <h3 id="economy-trade-routes">Trade Routes &amp; Sea Trade</h3>
 
@@ -1053,7 +1053,7 @@
   <aside class="scribe-note" role="note" aria-label="Scribe's Note — Omens of Church and Coin" data-title="Scribe's Note — Omens of Church and Coin">
     <p>Several <a href="#event-cards-eras">Omen cards</a> pull faith and gold into the diplomatic game:</p>
     <ul>
-      <li><em>Papal Indulgence</em> (Era I): convert up to 3 faith into 3 gold this round; Hungary or Byzantium may instead spend that faith to raise 1 free levy.</li>
+      <li><em>Papal Indulgence</em> (Omen, Era I): convert up to 3 faith into 3 gold this round; Hungary or Byzantium may instead spend that faith to raise 1 free levy.</li>
       <li><em>Council of Florence</em> (Era II): Byzantium chooses. Accept Union: hire Crusader levies from a consenting Catholic player and gain +1 prestige with Hungary, Venice, and Genoa — but suffer −2 faith/round for 2 rounds and −1 prestige. Refuse: keep faith income and fulfil the objective <em>Faith of the Fathers</em>.</li>
       <li><em>Papal Interdict</em> (Era II): the target loses all faith income for 2 rounds, cannot call a Crusade, and Christian neutrals resist it (−25% to its diplomacy and sieges against Christian neutrals).</li>
       <li><em>Varna Crusade</em> and <em>The Final Crusade</em>: pooled Christian armies; a successful Final Crusade grants +4 prestige to joiners, and abstaining Christian powers take −1 prestige.</li>
@@ -1281,7 +1281,7 @@
         <tr><td class="num">1</td><td>Bumper Harvest</td><td>Good</td><td>This round every plains and grain-primary province produces +1 🌾; grain sells favorably (each 🌾 converted to 🪙 yields +1).</td></tr>
         <tr><td class="num">2</td><td>Hard Winter</td><td>Ill</td><td>This round: all armies pay +1 🌾 upkeep (attrition &mdash; any shortfall removes units per the starvation rule); land movement &minus;1; sieges make no progress; Black Sea West, Black Sea East and the Sea of Azov freeze (no fleet movement).</td></tr>
         <tr><td class="num">3</td><td>Silk Road Caravan</td><td>Good</td><td>Each controller of Trebizond, Bursa, Aleppo, or Kaffa gains +3 🪙 this round.</td></tr>
-        <tr><td class="num">4</td><td>Papal Indulgence</td><td>Good (faith)</td><td>Any faction holding a faith-yielding province may convert up to 3 ✝️ &rarr; 3 🪙 this round. Hungary/Byzantium may instead spend that faith to raise 1 free levy.</td></tr>
+        <tr><td class="num">4</td><td>Papal Indulgence (Omen)</td><td>Good (faith)</td><td>Any faction holding a faith-yielding province may convert up to 3 ✝️ &rarr; 3 🪙 this round. Hungary/Byzantium may instead spend that faith to raise 1 free levy. Distinct from the tactic card of the same name (see <a href="#combat-sieges-tactics">Tactic Cards</a>).</td></tr>
         <tr><td class="num">5</td><td>Imperial Coronation</td><td>Good (prestige)</td><td>Drawing faction: +2 prestige, a one-time +2 🪙, and its levies fight at +1 morale for 1 round.</td></tr>
         <tr><td class="num">6</td><td>Comet Omen</td><td>Omen</td><td>Superstition grips all armies: this round every levy fights at &minus;1 morale, except the drawing faction's levies (+1 &mdash; they read the sign as favorable).</td></tr>
         <tr><td class="num">7</td><td>Ottoman Interregnum (Fetret Devri)</td><td>Ill (Ottoman)</td><td><em>Trigger: Ottoman in play.</em> Ottoman may not recruit next round; loses one Anatolian (Bithynia/Nicaea/Bursa) and one European (Sofia/Philippopolis) province to Independent; &minus;2 prestige. Adjacent players may seize the freed provinces.</td></tr>
@@ -1364,7 +1364,7 @@
   <h3 id="event-cards-eras-the-fall">The Fall of Constantinople</h3>
   <p>Everything in the Omen deck is counting down to one question: does the City stand? If no one has hit the prestige threshold, the game ends after round 16's (&ldquo;1453&rdquo;) cleanup and the highest <a href="#how-to-win">prestige</a> wins (tiebreak: most key cities, then most gold).</p>
   <p>But there is a <span class="term" tabindex="0" data-tip="If any power captures Constantinople and holds it through two full cleanup phases (2 rounds), it wins immediately, regardless of prestige.">sudden death</span>: if any power captures Constantinople and holds it through two full cleanup phases (2 rounds), it wins <strong>immediately</strong>, regardless of prestige. Every faction's clock is really counting down to whether the City stands.</p>
-  <p>The City does not go quietly. Constantinople starts at wall Tier 5 and auto-repels the first two siege rounds each time it is besieged (defenders sally). Against its intact T5 masonry an ordinary siege train inflicts at most <strong>1 Wall HP per round</strong>; only the <strong>Great Bombard</strong> lifts that cap &mdash; and it enters play only when card #34, <em>The Great Bombard Forged</em>, is drawn in Era III (see <a href="#combat-sieges-great-bombard">Combat &amp; Sieges</a>).</p>
+  <p>The City does not go quietly. Constantinople starts at wall Tier 5 and, while Byzantine-held, auto-repels the first two siege rounds each time it is besieged (defenders sally). Against its intact T5 masonry an ordinary siege train inflicts at most <strong>1 Wall HP per round</strong>; only the <strong>Great Bombard</strong> lifts that cap &mdash; and it enters play only when card #34, <em>The Great Bombard Forged</em>, is drawn in Era III (see <a href="#combat-sieges-great-bombard">Combat &amp; Sieges</a>).</p>
   <p>Card #46 also scores the two great <a href="#factions">secret objectives</a>: Byzantium's <em>Queen of Cities</em> (control Constantinople at game end, round 16) and the Ottoman's <em>Fetih</em> (capture Constantinople and hold it &mdash; the supreme prize, and the sudden-death condition if held two rounds). Each completed secret objective is worth +4 prestige.</p>
 </section>
 
@@ -1465,7 +1465,7 @@
 
       <h4>Unique Powers</h4>
       <ol>
-        <li><strong>Theodosian Walls.</strong> Constantinople starts at wall Tier&nbsp;5 (16 Wall HP, defender +4) and auto-repels the first two siege rounds each time it is besieged (the defenders sally; no bombardment damage those rounds). Against intact T5 masonry an ordinary siege train inflicts at most 1 Wall HP per round; only the <a href="#combat-sieges-great-bombard">Great Bombard</a> lifts that cap and rolls enough wall damage to batter the circuit down quickly.</li>
+        <li><strong>Theodosian Walls.</strong> Constantinople starts at wall Tier&nbsp;5 (16 Wall HP, defender +4) and, while Byzantine-held, auto-repels the first two siege rounds each time it is besieged (the defenders sally; no bombardment damage those rounds). Against intact T5 masonry an ordinary siege train inflicts at most 1 Wall HP per round; only the <a href="#combat-sieges-great-bombard">Great Bombard</a> lifts that cap and rolls enough wall damage to batter the circuit down quickly.</li>
         <li><strong>Hagia Sophia.</strong> Constantinople yields +2 ✝️ faith/round on top of its listed yield. Byzantium may spend faith to sway Orthodox neutrals (Serbia, Trebizond, Wallachia, Epirus, Thessaly, Athens) toward neutrality or alliance instead of paying gold.</li>
         <li><strong>Reconquista of the Romans.</strong> Byzantium holds a standing claim on former imperial cities &mdash; Nicaea, Bursa, Athens, Trebizond, Thessaly &mdash; and pays &minus;25% cost to besiege or capture them. It may also bribe an attacker to stand down for gold, buying one round of peace on a single front.</li>
       </ol>
@@ -1480,7 +1480,7 @@
       <aside class="scribe-note" role="note" aria-label="Scribe's Note — Byzantium in the Wider Rules" data-title="Scribe's Note — Byzantium in the Wider Rules">
         <ul>
           <li>As the <em>target</em> of a spy mission, Byzantium resists with a +1 (the mission needs &ge;&nbsp;4, or &ge;&nbsp;5 versus a University rival) thanks to its intelligence tradition.</li>
-          <li><em>Papal Indulgence</em>: Byzantium (like Hungary) may spend that faith to raise 1 free levy instead of converting it to gold.</li>
+          <li><em>Papal Indulgence</em> (Omen): Byzantium (like Hungary) may spend that faith to raise 1 free levy instead of converting it to gold.</li>
           <li>Omen cards that target Byzantium: <em>Council of Florence</em>, <em>Fall of Thessalonica</em> (holder), <em>Byzantine Civil War</em> (see <a href="#event-cards-eras">Event Cards &amp; Eras</a>).</li>
           <li>Endgame: if Constantinople is still Byzantine at round 16, Byzantium gains +5 prestige and fulfils <em>Queen of Cities</em>.</li>
         </ul>
@@ -1742,7 +1742,7 @@
       <ol>
         <li><strong>Call the Crusade.</strong> With papal support (spend ✝️ faith, +bonus if a friendly power holds Rome) Hungary may declare a Crusade against the Ottomans: it gains temporary Crusader levies, a faith and prestige surge, and may rally Christian neutrals (Serbia, Bosnia, Wallachia, Albania) to march with it for the campaign (see the events <em>Varna Crusade</em> and <em>Hunyadi&rsquo;s Long Campaign</em>).</li>
         <li><strong>Strongest Levies.</strong> Hungarian levies get +1 combat and cost &minus;1 🪙 &mdash; the best militia on the board, ideal for the Balkan land war. (Baseline levy: raise for 2 🪙 + 1 🌾, upkeep 1 🌾, CV 1/1.)</li>
-        <li><strong>Danube Fortresses &amp; Papal Support.</strong> Belgrade (T4) and Buda (T3) gain +1 defense versus Ottoman sieges; Hungary earns steady ✝️ faith and may convert indulgences into gold to fund armies (event <em>Papal Indulgence</em>).</li>
+        <li><strong>Danube Fortresses &amp; Papal Support.</strong> Belgrade (T4) and Buda (T3) gain +1 defense versus Ottoman sieges; Hungary earns steady ✝️ faith and may convert indulgences into gold to fund armies (Omen card <em>Papal Indulgence</em>).</li>
       </ol>
 
       <h4>Secret Objectives (dealt 3)</h4>
@@ -1754,7 +1754,7 @@
 
       <aside class="scribe-note" role="note" aria-label="Scribe's Note — Hungary in the Wider Rules" data-title="Scribe's Note — Hungary in the Wider Rules">
         <ul>
-          <li><em>Papal Indulgence</em>: any faction holding a faith-yielding province may convert up to 3 ✝️ &rarr; 3 🪙 that round; Hungary (like Byzantium) may instead spend that faith to raise 1 free levy.</li>
+          <li><em>Papal Indulgence</em> (Omen): any faction holding a faith-yielding province may convert up to 3 ✝️ &rarr; 3 🪙 that round; Hungary (like Byzantium) may instead spend that faith to raise 1 free levy.</li>
           <li><em>Hunyadi&rsquo;s Long Campaign</em>: that round Hungarian land units fight at +1 and may make one extra move/attack into a Balkan province; Hungary may rally Serbia and Wallachia as temporary allies for the campaign.</li>
           <li><em>Varna Crusade</em>: if the Ottoman wins (Battle of Varna), the Ottoman gains +3 prestige and the crusading commander falls &mdash; Hungary loses its Black Army unit if present.</li>
           <li>Omen cards that target Hungary: <em>Hunyadi&rsquo;s Long Campaign</em>, <em>Varna Crusade</em>, <em>The Final Crusade</em> (Christian bloc).</li>
@@ -1851,7 +1851,7 @@
     <li><strong>Bombardment</strong> (each siege engine, each round): 1d6 &rarr; 1&ndash;2: 1 HP &middot; 3&ndash;4: 2 HP &middot; 5&ndash;6: 3 HP. The Great Bombard rolls two such dice and lifts the T5 cap.</li>
     <li><strong>Hold-out:</strong> grain stores default 3 rounds (+2 with a Granary); at 0 stores the garrison loses 1 unit per round. <strong>Sea resupply:</strong> a coastal city depletes stores only while <em>every</em> adjacent sea zone is enemy-controlled.</li>
     <li><strong>Assault</strong> (any time, as a Move/Attack action): while Wall HP &gt; 0 &mdash; defender keeps the full wall bonus and the attacker takes escalade &minus;1; at a breach (0 HP) &mdash; normal field-battle odds. Winning captures the city.</li>
-    <li><strong>Constantinople:</strong> Tier 5; auto-repels the first two siege rounds each siege; intact T5 masonry takes max 1 Wall HP/round from an ordinary train &mdash; only the Great Bombard (Era III omen; 2 wall-damage dice, lifts the cap for the whole train) opens it.</li>
+    <li><strong>Constantinople:</strong> Tier 5; while Byzantine-held, auto-repels the first two siege rounds each siege; intact T5 masonry takes max 1 Wall HP/round from an ordinary train &mdash; only the Great Bombard (Era III omen; 2 wall-damage dice, lifts the cap for the whole train) opens it.</li>
   </ul>
 
   <h3 id="quick-reference-eras">Eras &amp; Events</h3>
@@ -1870,12 +1870,12 @@
     <li>Cards resolve immediately unless marked <strong>Persistent</strong> (lasting modifier) or <strong>Grant</strong> (adds a card to the drawer&rsquo;s hand; none in the base deck).</li>
     <li>Era balance: Era I skews Good (8 / 5 / 3); Era II skews Ill (3 / 12 / 2); Era III evens out (4 / 5 / 4). A faction-specific card with no valid target is treated as neutral.</li>
     <li>An empty era deck reshuffles its discards; on entering the next era, retire the previous deck. Draw 1 per round regardless of player count; with 4&ndash;5 players, the next card is also revealed as a gathering omen.</li>
-    <li><strong>Tactic deck:</strong> 47 cards over 23 designs (8 Common &times;3, 8 Uncommon &times;2, 7 Rare &times;1); draw 1/round in Income (University +1, Great University +2); hand limit 4, discard at Cleanup.</li>
+    <li><strong>Tactic deck:</strong> 48 cards over 24 designs (8 Common &times;3, 8 Uncommon &times;2, 8 Rare &times;1); draw 1/round in Income (University +1, Great University +2); hand limit 4, discard at Cleanup.</li>
   </ul>
 
   <h3 id="quick-reference-victory">Victory</h3>
   <ul>
-    <li><strong>Prestige threshold</strong> (checked at Cleanup &mdash; the only point victory is checked): 2 players &mdash; 25 &middot; 3 &mdash; 30 &middot; 4&ndash;5 &mdash; 35.</li>
+    <li><strong>Prestige threshold</strong> (checked at Cleanup &mdash; the only point victory is checked): 2 players &mdash; 72 &middot; 3 &mdash; 75 &middot; 4 &mdash; 80 &middot; 5 &mdash; 78 (subject to final balance tuning).</li>
     <li><strong>Round 16 (&ldquo;1453&rdquo;):</strong> highest prestige wins; tiebreak most key cities, then most 🪙 gold.</li>
     <li><strong>Sudden death:</strong> capture Constantinople and hold it through two full Cleanup phases (2 rounds) &rarr; immediate win, regardless of prestige.</li>
     <li><strong>Conquest prestige:</strong> take a walled city (T1+) +2 (+3 if T4&ndash;T5); win a field battle outnumbered +1 (stacks with the decisive-battle +1).</li>

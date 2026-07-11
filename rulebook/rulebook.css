@@ -1,9 +1,38 @@
 /* ==========================================================================
    IMPERIUM: Twilight of Empires — Rulebook stylesheet ("Illuminated Edition")
-   Palette + typography + layout + print. No external assets except the two
-   Google Fonts loaded from index.html (<link>); everything else is inline
-   CSS / data-URI SVG. Authors: see scratchpad/rulebook-conventions.md.
+   Palette + typography + layout + print. No external assets: the two faces
+   (Cinzel, EB Garamond) are self-hosted from ../client/public/fonts/ via the
+   @font-face rules below; everything else is inline CSS / data-URI SVG.
    ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. Self-hosted fonts (latin subsets, variable-weight woff2 — the same
+      files the client serves from /fonts). font-display: swap keeps the
+      serif fallbacks visible until the files arrive.
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400 900; /* variable file; covers the 400/600/700 uses below */
+  font-display: swap;
+  src: url("../client/public/fonts/cinzel-latin-600-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 400 800; /* variable file; covers 400/600/700 */
+  font-display: swap;
+  src: url("../client/public/fonts/eb-garamond-latin-400-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: italic;
+  font-weight: 400 800; /* variable file */
+  font-display: swap;
+  src: url("../client/public/fonts/eb-garamond-latin-italic-400.woff2") format("woff2");
+}
 
 /* --------------------------------------------------------------------------
    1. Design tokens
@@ -530,34 +559,6 @@ kbd {
 }
 
 /* --------------------------------------------------------------------------
-   7b. Unresolved Rule flags (AMBIGUITY notes for the design team) — gold/porphyry
-   -------------------------------------------------------------------------- */
-.ambiguity {
-  margin: 1.6em 0;
-  padding: 1em 1.2em 0.8em;
-  background: linear-gradient(rgba(201, 162, 39, 0.16), rgba(201, 162, 39, 0.05));
-  border: 1px solid var(--gold);
-  border-left: 4px solid var(--porphyry);
-  font-size: 0.95em;
-}
-
-.ambiguity::before {
-  content: "\2691\00a0\00a0" attr(data-title); /* ⚑ */
-  display: block;
-  font-family: var(--font-display);
-  font-size: 0.85em;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--porphyry);
-  margin-bottom: 0.5em;
-}
-
-.ambiguity > :last-child {
-  margin-bottom: 0;
-}
-
-/* --------------------------------------------------------------------------
    8. Keyword terms with tooltips — hover AND keyboard focus
    Markup: <span class="term" tabindex="0" data-tip="...">keyword</span>
    -------------------------------------------------------------------------- */
@@ -891,7 +892,6 @@ kbd {
   /* Keep small rules units intact; large blocks may break across columns */
   .rules-table tr,
   .scribe-note,
-  .ambiguity,
   blockquote,
   figure {
     break-inside: avoid;
@@ -936,8 +936,7 @@ kbd {
     print-color-adjust: exact;
   }
 
-  .scribe-note,
-  .ambiguity {
+  .scribe-note {
     background: #fff;
     border-color: #000;
     border-left-color: var(--porphyry);
@@ -946,13 +945,7 @@ kbd {
     margin: 5pt 0;
   }
 
-  .ambiguity {
-    border: 1.5pt solid var(--porphyry);
-    border-left-width: 4pt;
-  }
-
-  .scribe-note::before,
-  .ambiguity::before {
+  .scribe-note::before {
     color: var(--porphyry);
     margin-bottom: 2pt;
   }
