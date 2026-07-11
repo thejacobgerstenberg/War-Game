@@ -1,10 +1,26 @@
 # syntax=docker/dockerfile:1
 # =============================================================================
 # IMPERIUM: Twilight of Empires — game server (Node 20 + Express + socket.io)
+# SINGLE-APP IMAGE: also builds the React/Vite client and ships client/dist so
+# one Fly machine serves the game UI, the API, and the socket on one origin.
 #
 # Build context is the REPO ROOT (not deploy/). From the repo root run either:
 #   docker build -f deploy/Dockerfile.server -t imperium-server .
 #   docker compose -f deploy/docker-compose.yml up --build
+#
+# Static-client contract (CONFIRMED with the game-client workstream — frozen):
+#   SERVE_CLIENT=<absolute path to the built client dist dir>
+#   unset/empty => static serving fully disabled.
+#   When set, the server mounts express.static(SERVE_CLIENT) first, then a
+#   GET-only SPA fallback to index.html that excludes /healthz, /socket.io/*,
+#   and any pre-registered routes. If the path is set but the dir or its
+#   index.html is missing, the server logs a structured error and continues
+#   with static serving disabled — no crash loop.
+# This image bakes SERVE_CLIENT=/app/client/dist via ENV below. The reader
+# side lands from the game-client workstream (feature/game-client); until
+# that merges the variable is inert (the server ignores it) and the
+# two-container variant (docker-compose + nginx, deploy/Dockerfile.client)
+# remains the local prod-like path.
 #
 # Canonical production contract implemented by this image:
 #   - listens on PORT (default 8080)
@@ -18,7 +34,7 @@
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# Stage 1: build — install all workspace deps, compile shared then server
+# Stage 1: build — install all workspace deps, compile shared, server, client
 # ---------------------------------------------------------------------------
 # Follow-up: pin base images by digest (node@sha256:...) and adopt Renovate to keep them fresh — deliberately not done in this pass to avoid tag churn.
 FROM node:20-slim AS build
@@ -26,22 +42,34 @@ WORKDIR /app
 
 # Manifests first so the dependency layer caches across source-only changes.
 # The `package-lock.json*` / `tsconfig*.json` globs tolerate absent files.
-# TODO(scaffold): no package.json exists on main yet — these paths assume the intended npm-workspaces layout (root + shared/ + server/) from CONTRIBUTING.md.
 COPY package.json package-lock.json* tsconfig*.json ./
 COPY shared/package.json shared/
 COPY server/package.json server/
+COPY client/package.json client/
 
-# TODO(scaffold): switch to `npm ci` once a package-lock.json is committed (no lockfile exists yet, so `npm install` is the only option — same fallback CI uses).
-RUN npm install --include-workspace-root --workspace=shared --workspace=server
+# TODO(scaffold): switch to `npm ci` — a package-lock.json is now committed on main; kept as `npm install` here to match CI's current fallback, flip both together.
+RUN npm install --include-workspace-root --workspace=shared --workspace=server --workspace=client
 
-# Sources (each workspace carries its own tsconfig).
+# Socket URL baked into the client bundle at Vite build time. EMPTY (the
+# default) = same-origin: the SPA dials the origin that served it, which is
+# exactly right for this single-app image (UI + API + WS on one port). Only
+# override for unusual split setups where this image's UI must dial a game
+# server on a different origin:
+#   docker build -f deploy/Dockerfile.server --build-arg VITE_SERVER_URL=https://api.example.com .
+# (and add this image's origin to that server's CORS_ORIGIN).
+# Placed after `npm install` so changing it never busts the dependency layer.
+ARG VITE_SERVER_URL=""
+ENV VITE_SERVER_URL=$VITE_SERVER_URL
+
+# Sources (each workspace carries its own tsconfig / vite config).
 COPY shared/ shared/
 COPY server/ server/
+COPY client/ client/
 
-# Build shared first — the server consumes shared's build output.
-# TODO(scaffold): no build scripts exist yet — assumes each workspace exposes `npm run build` per the CI contract (`npm run build --if-present`).
+# Build shared first — server and client both consume shared's build output.
 RUN npm run build --workspace=shared \
- && npm run build --workspace=server
+ && npm run build --workspace=server \
+ && npm run build --workspace=client
 
 # ---------------------------------------------------------------------------
 # Stage 2: runtime — production deps only, non-root, Node 20 slim
@@ -56,15 +84,22 @@ COPY package.json package-lock.json* ./
 COPY shared/package.json shared/
 COPY server/package.json server/
 
-# Production dependencies only (dev deps pruned).
-# TODO(scaffold): switch to `npm ci --omit=dev` once a package-lock.json is committed.
+# Production dependencies only (dev deps pruned). The client is NOT installed
+# here: its build output (below) is static files with no runtime deps.
+# TODO(scaffold): switch to `npm ci --omit=dev` — lockfile now committed; flip together with the build stage and CI.
 RUN npm install --omit=dev --include-workspace-root --workspace=shared --workspace=server \
  && npm cache clean --force
 
 # Compiled output from the build stage.
-# TODO(scaffold): assumes tsc-style outDir `dist/` in each workspace — adjust when the real tsconfig/build output lands.
 COPY --from=build /app/shared/dist shared/dist
 COPY --from=build /app/server/dist server/dist
+
+# Built client SPA (Vite outDir default: client/dist). SERVE_CLIENT points the
+# server at it — see the static-client contract in the header: the server
+# serves this dir (express.static + SPA fallback) once the game-client
+# workstream's change lands; unset/empty means "don't serve static files".
+COPY --from=build /app/client/dist client/dist
+ENV SERVE_CLIENT=/app/client/dist
 
 # Run as the non-root "node" user shipped with the official image.
 USER node
@@ -73,10 +108,8 @@ EXPOSE 8080
 
 # Health probe against the canonical GET /healthz endpoint (no auth, cheap).
 # Node 20 has global fetch, so no extra tooling (curl/wget) is needed.
-# TODO(scaffold): the server scaffold has not implemented /healthz yet — this check reports unhealthy until that route lands; the endpoint shape itself is the canonical contract, not a guess.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD node -e 'fetch("http://localhost:"+(process.env.PORT||8080)+"/healthz").then(function(r){process.exit(r.ok?0:1)}).catch(function(){process.exit(1)})'
 
 # Exec form: node = PID 1 => SIGTERM reaches the graceful-shutdown handler.
-# TODO(scaffold): entrypoint assumed to be server/dist/index.js — align with server/package.json "main"/"start" once it exists.
 CMD ["node", "server/dist/index.js"]

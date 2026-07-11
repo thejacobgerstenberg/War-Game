@@ -4,11 +4,11 @@ Server-authoritative socket.io game server (Node 20 + Express), 2-5 players per
 room, **all room state in-memory on one process**. This document evaluates hosts,
 recommends one, and gives the exact path from merged code to a shareable URL.
 
-> **Scaffold status (2026-07-11):** the game scaffold has **not** merged to
-> `main` yet — there is no `server/`, `client/`, or root `package.json` on the
-> base branch. Everything below is written against the canonical production
-> contract (recapped next). Anything that depends on scaffold decisions that
-> have not landed is flagged inline with a scaffold-TODO marker.
+> **Scaffold status (2026-07-11, updated):** the game scaffold has merged —
+> `server/`, `client/`, `shared/`, and the root `package.json` exist on
+> `main`, and the server implements the contract below (`/healthz`, env vars,
+> SIGTERM drain). One piece is still in flight: the server-side static-client
+> serving gated on `SERVE_CLIENT` (see the cross-PR note in step 8).
 
 ## The canonical production contract (what any host must satisfy)
 
@@ -83,9 +83,10 @@ with the **repo root as build context** (so the build can see `server/`,
 
 ### 0. Prereqs
 
-- The merged scaffold implements the contract above (`/healthz`, `PORT`,
-  SIGTERM drain). `TODO(scaffold):` none of this exists on `main` yet — do not
-  deploy before the scaffold lands; the health check will fail the deploy.
+- The merged server implements the contract above (`/healthz`, `PORT`,
+  SIGTERM drain) — this is on `main`. For the game UI to be served you also
+  need the game-client workstream's `SERVE_CLIENT` static-serving PR merged
+  (cross-PR note, step 8); without it a deploy is healthy but UI-less.
 - Docker running locally only if you want local builds; Fly's remote builder
   works without it.
 
@@ -185,38 +186,43 @@ exists. `auto_stop_machines = false` in the config keeps the machine from
 sleeping mid-match — that is deliberate and costs a few $/mo more than
 scale-to-zero.
 
-### 8. Serving the static client
+### 8. Serving the static client — single-app is the default
 
-Two options; **pick the single-container path for v1**:
+**The Fly deploy above ships the game UI.** `deploy/Dockerfile.server` builds
+the client workspace (Vite, `VITE_SERVER_URL` empty → same-origin sockets),
+copies `client/dist` into the runtime image, and bakes
+`ENV SERVE_CLIENT=/app/client/dist`. The server statically serves that dir
+with an `index.html` SPA fallback whenever `SERVE_CLIENT` is set (confirmed
+contract: absolute dist path; unset/empty = static serving fully disabled;
+fallback is GET-only and excludes `/healthz`, `/socket.io/*`, and
+pre-registered routes; a set-but-missing dist dir logs a structured error
+and disables serving — no crash loop). So one machine,
+one URL, one TLS cert serves UI + API + WebSocket same-origin — no CORS pain
+(`CORS_ORIGIN` is just the app's own origin, step 3).
 
-- **Primary (v1): one container serves everything.** Express statically serves
-  the built client (`client/dist`) with an `index.html` SPA fallback, so the
-  game is same-origin with the socket — no CORS pain (`CORS_ORIGIN` is just the
-  app's own origin), one URL, one deploy, one TLS cert.
-  `TODO(scaffold):` the scaffolded server does not yet have the
-  `express.static(client/dist)` + SPA-fallback wiring (no server code exists on
-  `main` at all) — file a follow-up on the scaffold to add it, and extend
-  `deploy/Dockerfile.server` with a client build stage that copies
-  `client/dist` into the runtime image (today that Dockerfile builds `shared/`
-  + `server/` only). Until both land, the Fly app serves only the API/socket
-  and `/healthz`.
-  `TODO(scaffold):` `client/dist` assumes the Vite default `outDir`; verify
-  once `client/vite.config.*` lands.
-- **Alternative: nginx in front (what local compose does today).**
-  `deploy/Dockerfile.client` builds the SPA into an unprivileged nginx image
-  (non-root, listens on container port **8080**) whose config
-  (`deploy/nginx.conf`) serves the static files and reverse-proxies
-  `/socket.io/` and `/healthz` to the Node server — still same-origin for the
-  browser, plus gzip/caching control. The image takes a **`VITE_SERVER_URL`**
-  build arg: leave it empty (the default) for this same-origin setup; set it
-  to the server's URL only for split deployments where the SPA and server are
-  on different origins, e.g.
-  `docker build -f deploy/Dockerfile.client --build-arg VITE_SERVER_URL=https://api.example.com .`
-  (and add the SPA origin to the server's `CORS_ORIGIN`).
-  On Fly this means either two processes
-  in one machine or two apps with internal networking: more moving parts than
-  our scale justifies. Keep it for local prod-like testing; revisit only if
-  static-asset serving measurably loads the Node process.
+> **Cross-PR note:** the server-side half (`express.static` + SPA fallback
+> gated on `SERVE_CLIENT`) lands from the game-client workstream
+> (`feature/game-client`). Until
+> that merges, the baked `SERVE_CLIENT` is inert and a Fly deploy serves only
+> the API/socket/`/healthz` — deploy after both PRs are in.
+
+**Alternative: nginx in front (local prod-like rehearsal + split deploys).**
+`deploy/Dockerfile.client` builds the SPA into an unprivileged nginx image
+(non-root, listens on container port **8080**) whose config
+(`deploy/nginx.conf`) serves the static files and reverse-proxies
+`/socket.io/` and `/healthz` to the Node server — still same-origin for the
+browser, plus gzip/caching control. This is what
+`deploy/docker-compose.yml` runs locally, and it doubles as the split-deploy
+path: both `Dockerfile.client` and `Dockerfile.server` take a
+**`VITE_SERVER_URL`** build arg — leave it empty (the default) for
+same-origin; set it to the server's URL only when the SPA and the game
+server live on different origins, e.g.
+`docker build -f deploy/Dockerfile.client --build-arg VITE_SERVER_URL=https://api.example.com .`
+(and add the SPA origin to the server's `CORS_ORIGIN`).
+On Fly the two-container variant would mean two processes in one machine or
+two apps with internal networking: more moving parts than our scale
+justifies. Keep it for local prod-like testing; revisit only if static-asset
+serving measurably loads the Node process.
 
 ### 9. Custom domain + TLS
 
@@ -264,9 +270,9 @@ logs.
 
 ## Time-to-live: "code merged" → shareable URL (< 1 hour)
 
-Assumes the scaffold has merged AND the single-container static-serving
-follow-up from step 8 has landed (otherwise the Fly URL serves only the
-API/socket, not the game UI).
+Assumes the game-client workstream's server-side static-serving PR has merged
+alongside this deploy config (see the cross-PR note in step 8); with both in,
+the single `fly deploy` URL serves the full game UI.
 
 | # | Step | Est. |
 | --- | --- | --- |
@@ -287,8 +293,8 @@ API/socket, not the game UI).
 | --- | --- |
 | `deploy/README.md` | This document. |
 | `deploy/fly.toml` | Committed Fly.io config (region, env defaults, health check, 1-machine scaling, no-sleep policy). |
-| `deploy/Dockerfile.server` | Production server image (builds `shared/` + `server/`); build context = repo root. |
-| `deploy/Dockerfile.client` | SPA build served by unprivileged nginx (container port 8080); `VITE_SERVER_URL` build arg (empty = same-origin, URL = split deploy) — used by local compose and by the "nginx in front" alternative (step 8). |
+| `deploy/Dockerfile.server` | Production single-app image (builds `shared/` + `server/` + `client/`, ships `client/dist`, bakes `SERVE_CLIENT=/app/client/dist`); serves UI + API + WS from one container; build context = repo root. |
+| `deploy/Dockerfile.client` | SPA build served by unprivileged nginx (container port 8080); `VITE_SERVER_URL` build arg (empty = same-origin, URL = split deploy) — used by the local compose rehearsal and by the "nginx in front" alternative (step 8). |
 | `deploy/nginx.conf` | nginx site config for the client image (listens on 8080): serves the SPA with security headers, proxies `/socket.io/` + `/healthz` to the server. |
 | `deploy/docker-compose.yml` | Local prod-like two-service stack (server + nginx client on `localhost:3000`). |
 | `deploy/dockerignore` | Staged `.dockerignore` — copy to repo root when adopting (root is owned by the scaffold team). |
