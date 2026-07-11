@@ -1,0 +1,968 @@
+{
+  "config": {
+    "games": 1000,
+    "baseSeed": 311002,
+    "smoke": false,
+    "elapsedMs": 26767
+  },
+  "thresholds": {
+    "exploitIfSuddenDeathOneBeelinerOver": 0.2,
+    "exploitIfSdCompleteBeforeRound9Over": 0.1,
+    "exploitIfByzDeadBeforeRound8Over": 0.15
+  },
+  "verdict": {
+    "exploit": false,
+    "breaches": [],
+    "decomposition": "STACKING-ROUND decomposition (canon §6.4 caps + §7.5 rout-surrender enforced, 2026-07-11; see TUNING_LOG). The beeline camp is now §6.4-LEGAL (<= 12 land units co-located on Constantinople for the besieger); TREASON-AT-THE-GATE keeps both E1 gates (garrison <= 4, clock counts only game rounds >= 6) and the GREAT BOMBARD keeps the E3 draw model (uniform r11-16, 1-round emplacement). All brief bars PASS at the stacking config: solo_ottoman 18.9%/10.0%, solo_genoa 13.8%/7.4%, solo_venice 6.2% (3.4% by beeliner)/0.4%, duo 18.5%/9.4% vs the <=20%/<=10% bars — solo_ottoman sits AT the <=r8 bar (10.0%, up from 8.4% at the reconciliation config: the caps thin the passive Byzantine reinforcement lanes more than the 12-unit camp, so the r7 treason window closes less often). The designed counterplay is unchanged and decisive: a defended city turns the card off entirely (guard_ottoman 0.2%/0.0%, guard_genoa 0.0% — the guard garrisons to the 12-unit CITY cap, above the treason gate). The noTreason counterfactual arms (2.4%/0.3%, earliest r15) are the E3 Bombard draw opening the walls legitimately with a legal 12-unit camp — the same late-game Bombard SD the fullgame T4 band (4.8-4.9% at the stacking config, all completions r12+) prices in. The four pre-errata engine fixes (RAW blockade contest, harbor reinforcement, besieged-garrison insolvency exemption, omen unit-loss floor 3) remain in force."
+  },
+  "scenarios": [
+    {
+      "name": "solo_ottoman",
+      "games": 1000,
+      "baseSeed": 311002,
+      "beelinerFactions": [
+        "ottomans"
+      ],
+      "byzGuard": false,
+      "noTreason": false,
+      "options": {
+        "ottomans": {
+          "launchMin": 5,
+          "launchBy": 1
+        }
+      },
+      "suddenDeath": {
+        "count": 189,
+        "rate": 0.189,
+        "byBeeliner": 189,
+        "byBeelinerRate": 0.189
+      },
+      "beelinerWins": {
+        "count": 189,
+        "rate": 0.189,
+        "byType": {
+          "threshold": 0,
+          "cap": 0,
+          "suddenDeath": 189,
+          "elimination": 0
+        }
+      },
+      "sdCompletionRounds": {
+        "8": 100,
+        "9": 22,
+        "10": 17,
+        "11": 20,
+        "12": 1,
+        "13": 1,
+        "15": 1,
+        "16": 27
+      },
+      "sdEarliestRound": 8,
+      "sdBeforeRound9": {
+        "count": 100,
+        "rate": 0.1
+      },
+      "captureRounds": {
+        "7": 100,
+        "8": 22,
+        "9": 17,
+        "10": 20,
+        "11": 1,
+        "12": 1,
+        "14": 1,
+        "15": 27
+      },
+      "captureBeforeRound8": {
+        "count": 100,
+        "rate": 0.1
+      },
+      "captureEver": {
+        "count": 189,
+        "rate": 0.189
+      },
+      "siegeStartRounds": {
+        "1": 972,
+        "2": 28
+      },
+      "garrisonAtSiegeStart": {
+        "3": 118,
+        "4": 762,
+        "5": 35,
+        "6": 40,
+        "7": 43,
+        "8": 2
+      },
+      "sdGarrisonAtSiegeStart": {
+        "3": 15,
+        "4": 162,
+        "5": 4,
+        "6": 5,
+        "7": 3
+      },
+      "blockadeCoverage": {
+        "meanShare": 0,
+        "sdWinsWithBlockade": 0
+      },
+      "sdWithTreasonHeld": 163,
+      "sdWallsIntactAtLastObs": 189,
+      "byzEliminated": {
+        "count": 0,
+        "rate": 0,
+        "beforeRound8": 0,
+        "beforeRound8Rate": 0
+      },
+      "victoryTypes": {
+        "threshold": 632,
+        "cap": 179,
+        "suddenDeath": 189,
+        "elimination": 0
+      },
+      "gameLength": {
+        "median": 12,
+        "mean": 12.519,
+        "histogram": {
+          "8": 100,
+          "9": 23,
+          "10": 64,
+          "11": 175,
+          "12": 243,
+          "13": 38,
+          "14": 55,
+          "15": 65,
+          "16": 237
+        }
+      },
+      "winRateByFaction": {
+        "byzantium": 0.455,
+        "ottomans": 0.189,
+        "venice": 0.093,
+        "genoa": 0.115,
+        "hungary": 0.148
+      }
+    },
+    {
+      "name": "solo_genoa",
+      "games": 1000,
+      "baseSeed": 311002,
+      "beelinerFactions": [
+        "genoa"
+      ],
+      "byzGuard": false,
+      "noTreason": false,
+      "options": {
+        "genoa": {
+          "launchMin": 4,
+          "launchBy": 2
+        }
+      },
+      "suddenDeath": {
+        "count": 138,
+        "rate": 0.138,
+        "byBeeliner": 137,
+        "byBeelinerRate": 0.137
+      },
+      "beelinerWins": {
+        "count": 148,
+        "rate": 0.148,
+        "byType": {
+          "threshold": 0,
+          "cap": 11,
+          "suddenDeath": 137,
+          "elimination": 0
+        }
+      },
+      "sdCompletionRounds": {
+        "4": 1,
+        "5": 1,
+        "8": 72,
+        "9": 10,
+        "10": 9,
+        "11": 9,
+        "12": 10,
+        "13": 10,
+        "14": 8,
+        "15": 5,
+        "16": 3
+      },
+      "sdEarliestRound": 4,
+      "sdBeforeRound9": {
+        "count": 74,
+        "rate": 0.074
+      },
+      "captureRounds": {
+        "3": 1,
+        "7": 72,
+        "8": 10,
+        "9": 9,
+        "10": 9,
+        "11": 10,
+        "12": 10,
+        "13": 8,
+        "14": 5,
+        "15": 3
+      },
+      "captureBeforeRound8": {
+        "count": 73,
+        "rate": 0.073
+      },
+      "captureEver": {
+        "count": 137,
+        "rate": 0.137
+      },
+      "siegeStartRounds": {
+        "2": 88,
+        "3": 855,
+        "4": 35,
+        "5": 11,
+        "6": 2,
+        "8": 1,
+        "9": 1,
+        "15": 1
+      },
+      "garrisonAtSiegeStart": {
+        "3": 237,
+        "4": 623,
+        "5": 49,
+        "6": 43,
+        "7": 32,
+        "8": 6,
+        "9": 3,
+        "10": 1
+      },
+      "sdGarrisonAtSiegeStart": {
+        "3": 37,
+        "4": 92,
+        "5": 4,
+        "6": 2,
+        "7": 1
+      },
+      "blockadeCoverage": {
+        "meanShare": 0.0011660874336930677,
+        "sdWinsWithBlockade": 0
+      },
+      "sdWithTreasonHeld": 134,
+      "sdWallsIntactAtLastObs": 137,
+      "byzEliminated": {
+        "count": 0,
+        "rate": 0,
+        "beforeRound8": 0,
+        "beforeRound8Rate": 0
+      },
+      "victoryTypes": {
+        "threshold": 326,
+        "cap": 536,
+        "suddenDeath": 138,
+        "elimination": 0
+      },
+      "gameLength": {
+        "median": 16,
+        "mean": 14.65,
+        "histogram": {
+          "4": 1,
+          "5": 1,
+          "8": 72,
+          "9": 11,
+          "10": 9,
+          "11": 11,
+          "12": 40,
+          "13": 43,
+          "14": 91,
+          "15": 94,
+          "16": 627
+        }
+      },
+      "winRateByFaction": {
+        "byzantium": 0.073,
+        "ottomans": 0.176,
+        "venice": 0.178,
+        "genoa": 0.148,
+        "hungary": 0.425
+      }
+    },
+    {
+      "name": "solo_venice",
+      "games": 1000,
+      "baseSeed": 311002,
+      "beelinerFactions": [
+        "venice"
+      ],
+      "byzGuard": false,
+      "noTreason": false,
+      "options": {
+        "venice": {
+          "staging": "lemnos",
+          "launchMin": 5,
+          "launchBy": 3
+        }
+      },
+      "suddenDeath": {
+        "count": 100,
+        "rate": 0.1,
+        "byBeeliner": 34,
+        "byBeelinerRate": 0.034
+      },
+      "beelinerWins": {
+        "count": 92,
+        "rate": 0.092,
+        "byType": {
+          "threshold": 0,
+          "cap": 58,
+          "suddenDeath": 34,
+          "elimination": 0
+        }
+      },
+      "sdCompletionRounds": {
+        "8": 4,
+        "9": 2,
+        "10": 4,
+        "11": 2,
+        "12": 18,
+        "13": 19,
+        "14": 20,
+        "15": 22,
+        "16": 9
+      },
+      "sdEarliestRound": 8,
+      "sdBeforeRound9": {
+        "count": 4,
+        "rate": 0.004
+      },
+      "captureRounds": {
+        "7": 4,
+        "8": 2,
+        "9": 4,
+        "10": 2,
+        "11": 6,
+        "12": 2,
+        "13": 4,
+        "14": 7,
+        "15": 3
+      },
+      "captureBeforeRound8": {
+        "count": 4,
+        "rate": 0.004
+      },
+      "captureEver": {
+        "count": 34,
+        "rate": 0.034
+      },
+      "siegeStartRounds": {
+        "5": 96,
+        "6": 31,
+        "7": 21,
+        "8": 7,
+        "9": 35,
+        "10": 36,
+        "11": 36,
+        "12": 54,
+        "13": 48,
+        "14": 39,
+        "15": 36
+      },
+      "garrisonAtSiegeStart": {
+        "1": 2,
+        "2": 1,
+        "3": 154,
+        "4": 148,
+        "5": 56,
+        "6": 45,
+        "7": 15,
+        "8": 8,
+        "9": 5,
+        "10": 2,
+        "12": 3
+      },
+      "sdGarrisonAtSiegeStart": {
+        "3": 11,
+        "4": 14,
+        "6": 1
+      },
+      "blockadeCoverage": {
+        "meanShare": 0.00683371298405467,
+        "sdWinsWithBlockade": 0
+      },
+      "sdWithTreasonHeld": 26,
+      "sdWallsIntactAtLastObs": 34,
+      "byzEliminated": {
+        "count": 0,
+        "rate": 0,
+        "beforeRound8": 0,
+        "beforeRound8Rate": 0
+      },
+      "victoryTypes": {
+        "threshold": 453,
+        "cap": 447,
+        "suddenDeath": 100,
+        "elimination": 0
+      },
+      "gameLength": {
+        "median": 16,
+        "mean": 15.013,
+        "histogram": {
+          "8": 4,
+          "9": 3,
+          "10": 4,
+          "11": 11,
+          "12": 40,
+          "13": 64,
+          "14": 174,
+          "15": 155,
+          "16": 545
+        }
+      },
+      "winRateByFaction": {
+        "byzantium": 0.095,
+        "ottomans": 0.215,
+        "venice": 0.092,
+        "genoa": 0.255,
+        "hungary": 0.343
+      }
+    },
+    {
+      "name": "duo_gangup",
+      "games": 1000,
+      "baseSeed": 311002,
+      "beelinerFactions": [
+        "ottomans",
+        "genoa"
+      ],
+      "byzGuard": false,
+      "noTreason": false,
+      "options": {
+        "ottomans": {
+          "launchMin": 5,
+          "launchBy": 1
+        },
+        "genoa": {
+          "launchMin": 4,
+          "launchBy": 2
+        }
+      },
+      "suddenDeath": {
+        "count": 185,
+        "rate": 0.185,
+        "byBeeliner": 185,
+        "byBeelinerRate": 0.185
+      },
+      "beelinerWins": {
+        "count": 188,
+        "rate": 0.188,
+        "byType": {
+          "threshold": 0,
+          "cap": 3,
+          "suddenDeath": 185,
+          "elimination": 0
+        }
+      },
+      "sdCompletionRounds": {
+        "8": 94,
+        "9": 21,
+        "10": 16,
+        "11": 20,
+        "12": 1,
+        "13": 2,
+        "14": 1,
+        "16": 30
+      },
+      "sdEarliestRound": 8,
+      "sdBeforeRound9": {
+        "count": 94,
+        "rate": 0.094
+      },
+      "captureRounds": {
+        "7": 94,
+        "8": 21,
+        "9": 16,
+        "10": 20,
+        "11": 1,
+        "12": 2,
+        "13": 1,
+        "15": 30
+      },
+      "captureBeforeRound8": {
+        "count": 94,
+        "rate": 0.094
+      },
+      "captureEver": {
+        "count": 185,
+        "rate": 0.185
+      },
+      "siegeStartRounds": {
+        "1": 972,
+        "2": 28
+      },
+      "garrisonAtSiegeStart": {
+        "3": 118,
+        "4": 762,
+        "5": 35,
+        "6": 40,
+        "7": 43,
+        "8": 2
+      },
+      "sdGarrisonAtSiegeStart": {
+        "3": 15,
+        "4": 153,
+        "5": 6,
+        "6": 6,
+        "7": 5
+      },
+      "blockadeCoverage": {
+        "meanShare": 0,
+        "sdWinsWithBlockade": 0
+      },
+      "sdWithTreasonHeld": 157,
+      "sdWallsIntactAtLastObs": 185,
+      "byzEliminated": {
+        "count": 0,
+        "rate": 0,
+        "beforeRound8": 0,
+        "beforeRound8Rate": 0
+      },
+      "victoryTypes": {
+        "threshold": 570,
+        "cap": 245,
+        "suddenDeath": 185,
+        "elimination": 0
+      },
+      "gameLength": {
+        "median": 12,
+        "mean": 12.645,
+        "histogram": {
+          "8": 94,
+          "9": 21,
+          "10": 71,
+          "11": 165,
+          "12": 252,
+          "13": 36,
+          "14": 29,
+          "15": 31,
+          "16": 301
+        }
+      },
+      "winRateByFaction": {
+        "byzantium": 0.461,
+        "ottomans": 0.185,
+        "venice": 0.095,
+        "genoa": 0.003,
+        "hungary": 0.256
+      }
+    },
+    {
+      "name": "guard_ottoman",
+      "games": 1000,
+      "baseSeed": 311002,
+      "beelinerFactions": [
+        "ottomans"
+      ],
+      "byzGuard": true,
+      "noTreason": false,
+      "options": {
+        "ottomans": {
+          "launchMin": 5,
+          "launchBy": 1
+        }
+      },
+      "suddenDeath": {
+        "count": 2,
+        "rate": 0.002,
+        "byBeeliner": 2,
+        "byBeelinerRate": 0.002
+      },
+      "beelinerWins": {
+        "count": 2,
+        "rate": 0.002,
+        "byType": {
+          "threshold": 0,
+          "cap": 0,
+          "suddenDeath": 2,
+          "elimination": 0
+        }
+      },
+      "sdCompletionRounds": {
+        "16": 2
+      },
+      "sdEarliestRound": 16,
+      "sdBeforeRound9": {
+        "count": 0,
+        "rate": 0
+      },
+      "captureRounds": {
+        "15": 2
+      },
+      "captureBeforeRound8": {
+        "count": 0,
+        "rate": 0
+      },
+      "captureEver": {
+        "count": 2,
+        "rate": 0.002
+      },
+      "siegeStartRounds": {
+        "1": 972,
+        "2": 28
+      },
+      "garrisonAtSiegeStart": {
+        "10": 11,
+        "11": 9,
+        "12": 48,
+        "13": 932
+      },
+      "sdGarrisonAtSiegeStart": {
+        "13": 2
+      },
+      "blockadeCoverage": {
+        "meanShare": 0,
+        "sdWinsWithBlockade": 0
+      },
+      "sdWithTreasonHeld": 0,
+      "sdWallsIntactAtLastObs": 2,
+      "byzEliminated": {
+        "count": 0,
+        "rate": 0,
+        "beforeRound8": 0,
+        "beforeRound8Rate": 0
+      },
+      "victoryTypes": {
+        "threshold": 528,
+        "cap": 470,
+        "suddenDeath": 2,
+        "elimination": 0
+      },
+      "gameLength": {
+        "median": 16,
+        "mean": 15.242,
+        "histogram": {
+          "11": 1,
+          "12": 28,
+          "13": 38,
+          "14": 162,
+          "15": 203,
+          "16": 568
+        }
+      },
+      "winRateByFaction": {
+        "byzantium": 0,
+        "ottomans": 0.002,
+        "venice": 0.267,
+        "genoa": 0.365,
+        "hungary": 0.366
+      }
+    },
+    {
+      "name": "guard_genoa",
+      "games": 1000,
+      "baseSeed": 311002,
+      "beelinerFactions": [
+        "genoa"
+      ],
+      "byzGuard": true,
+      "noTreason": false,
+      "options": {
+        "genoa": {
+          "launchMin": 4,
+          "launchBy": 2
+        }
+      },
+      "suddenDeath": {
+        "count": 0,
+        "rate": 0,
+        "byBeeliner": 0,
+        "byBeelinerRate": 0
+      },
+      "beelinerWins": {
+        "count": 6,
+        "rate": 0.006,
+        "byType": {
+          "threshold": 0,
+          "cap": 6,
+          "suddenDeath": 0,
+          "elimination": 0
+        }
+      },
+      "sdCompletionRounds": {},
+      "sdEarliestRound": null,
+      "sdBeforeRound9": {
+        "count": 0,
+        "rate": 0
+      },
+      "captureRounds": {},
+      "captureBeforeRound8": {
+        "count": 0,
+        "rate": 0
+      },
+      "captureEver": {
+        "count": 0,
+        "rate": 0
+      },
+      "siegeStartRounds": {
+        "2": 88,
+        "3": 859,
+        "4": 33,
+        "5": 11,
+        "6": 5,
+        "7": 1,
+        "12": 1,
+        "14": 1
+      },
+      "garrisonAtSiegeStart": {
+        "7": 2,
+        "8": 1,
+        "9": 6,
+        "10": 32,
+        "11": 33,
+        "12": 63,
+        "13": 862
+      },
+      "sdGarrisonAtSiegeStart": {},
+      "blockadeCoverage": {
+        "meanShare": 0,
+        "sdWinsWithBlockade": 0
+      },
+      "sdWithTreasonHeld": 0,
+      "sdWallsIntactAtLastObs": 0,
+      "byzEliminated": {
+        "count": 0,
+        "rate": 0,
+        "beforeRound8": 0,
+        "beforeRound8Rate": 0
+      },
+      "victoryTypes": {
+        "threshold": 387,
+        "cap": 613,
+        "suddenDeath": 0,
+        "elimination": 0
+      },
+      "gameLength": {
+        "median": 16,
+        "mean": 15.483,
+        "histogram": {
+          "12": 31,
+          "13": 39,
+          "14": 81,
+          "15": 114,
+          "16": 735
+        }
+      },
+      "winRateByFaction": {
+        "byzantium": 0,
+        "ottomans": 0.233,
+        "venice": 0.242,
+        "genoa": 0.006,
+        "hungary": 0.519
+      }
+    },
+    {
+      "name": "solo_ottoman_noTreason",
+      "games": 1000,
+      "baseSeed": 311002,
+      "beelinerFactions": [
+        "ottomans"
+      ],
+      "byzGuard": false,
+      "noTreason": true,
+      "options": {
+        "ottomans": {
+          "launchMin": 5,
+          "launchBy": 1
+        }
+      },
+      "suddenDeath": {
+        "count": 24,
+        "rate": 0.024,
+        "byBeeliner": 24,
+        "byBeelinerRate": 0.024
+      },
+      "beelinerWins": {
+        "count": 24,
+        "rate": 0.024,
+        "byType": {
+          "threshold": 0,
+          "cap": 0,
+          "suddenDeath": 24,
+          "elimination": 0
+        }
+      },
+      "sdCompletionRounds": {
+        "15": 1,
+        "16": 23
+      },
+      "sdEarliestRound": 15,
+      "sdBeforeRound9": {
+        "count": 0,
+        "rate": 0
+      },
+      "captureRounds": {
+        "14": 1,
+        "15": 23
+      },
+      "captureBeforeRound8": {
+        "count": 0,
+        "rate": 0
+      },
+      "captureEver": {
+        "count": 24,
+        "rate": 0.024
+      },
+      "siegeStartRounds": {
+        "1": 972,
+        "2": 28
+      },
+      "garrisonAtSiegeStart": {
+        "3": 118,
+        "4": 762,
+        "5": 35,
+        "6": 40,
+        "7": 43,
+        "8": 2
+      },
+      "sdGarrisonAtSiegeStart": {
+        "3": 2,
+        "4": 18,
+        "5": 2,
+        "6": 1,
+        "7": 1
+      },
+      "blockadeCoverage": {
+        "meanShare": 0,
+        "sdWinsWithBlockade": 0
+      },
+      "sdWithTreasonHeld": 0,
+      "sdWallsIntactAtLastObs": 24,
+      "byzEliminated": {
+        "count": 0,
+        "rate": 0,
+        "beforeRound8": 0,
+        "beforeRound8Rate": 0
+      },
+      "victoryTypes": {
+        "threshold": 766,
+        "cap": 210,
+        "suddenDeath": 24,
+        "elimination": 0
+      },
+      "gameLength": {
+        "median": 12,
+        "mean": 13.22,
+        "histogram": {
+          "9": 1,
+          "10": 55,
+          "11": 186,
+          "12": 292,
+          "13": 43,
+          "14": 69,
+          "15": 78,
+          "16": 276
+        }
+      },
+      "winRateByFaction": {
+        "byzantium": 0.548,
+        "ottomans": 0.024,
+        "venice": 0.105,
+        "genoa": 0.136,
+        "hungary": 0.187
+      }
+    },
+    {
+      "name": "guard_ottoman_noTreason",
+      "games": 1000,
+      "baseSeed": 311002,
+      "beelinerFactions": [
+        "ottomans"
+      ],
+      "byzGuard": true,
+      "noTreason": true,
+      "options": {
+        "ottomans": {
+          "launchMin": 5,
+          "launchBy": 1
+        }
+      },
+      "suddenDeath": {
+        "count": 3,
+        "rate": 0.003,
+        "byBeeliner": 3,
+        "byBeelinerRate": 0.003
+      },
+      "beelinerWins": {
+        "count": 3,
+        "rate": 0.003,
+        "byType": {
+          "threshold": 0,
+          "cap": 0,
+          "suddenDeath": 3,
+          "elimination": 0
+        }
+      },
+      "sdCompletionRounds": {
+        "16": 3
+      },
+      "sdEarliestRound": 16,
+      "sdBeforeRound9": {
+        "count": 0,
+        "rate": 0
+      },
+      "captureRounds": {
+        "15": 3
+      },
+      "captureBeforeRound8": {
+        "count": 0,
+        "rate": 0
+      },
+      "captureEver": {
+        "count": 3,
+        "rate": 0.003
+      },
+      "siegeStartRounds": {
+        "1": 972,
+        "2": 28
+      },
+      "garrisonAtSiegeStart": {
+        "10": 10,
+        "11": 11,
+        "12": 48,
+        "13": 931
+      },
+      "sdGarrisonAtSiegeStart": {
+        "10": 1,
+        "13": 2
+      },
+      "blockadeCoverage": {
+        "meanShare": 0,
+        "sdWinsWithBlockade": 0
+      },
+      "sdWithTreasonHeld": 0,
+      "sdWallsIntactAtLastObs": 3,
+      "byzEliminated": {
+        "count": 0,
+        "rate": 0,
+        "beforeRound8": 0,
+        "beforeRound8Rate": 0
+      },
+      "victoryTypes": {
+        "threshold": 522,
+        "cap": 475,
+        "suddenDeath": 3,
+        "elimination": 0
+      },
+      "gameLength": {
+        "median": 16,
+        "mean": 15.239,
+        "histogram": {
+          "11": 1,
+          "12": 29,
+          "13": 42,
+          "14": 157,
+          "15": 200,
+          "16": 571
+        }
+      },
+      "winRateByFaction": {
+        "byzantium": 0,
+        "ottomans": 0.003,
+        "venice": 0.262,
+        "genoa": 0.362,
+        "hungary": 0.373
+      }
+    }
+  ]
+}

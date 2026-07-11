@@ -412,8 +412,8 @@ their cargo if the fleet is wiped out.
 ### 7.7 Tactic cards
 
 Tactic cards are the card layer of combat — held surprises that bend a battle
-without replacing the dice. The shared **tactic deck** holds **47 cards over 23
-designs** (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded RNG
+without replacing the dice. The shared **tactic deck** holds **48 cards over 24
+designs** (8 Common ×3, 8 Uncommon ×2, 8 Rare ×1), shuffled with the seeded RNG
 (§14).
 
 **Drawing & holding.**
@@ -422,7 +422,7 @@ designs** (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded R
   after the Omen resolves. A **University** adds **+1** draw/round; the **Great
   University** adds **+2** (§9.1–§9.2). Omen **Grant** cards (§12) add specific
   cards on top of these draws.
-* **Hand limit: 4 tactic cards.** Discard down to 4 at Cleanup. Hands are hidden.
+* **Hand limit: 3 tactic cards.** Discard down to 3 at Cleanup. Hands are hidden.
 * When the draw pile empties, **reshuffle the discard pile**. Cards that read
   *remove from game* never return.
 
@@ -443,7 +443,7 @@ designs** (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded R
   *tactic reroll aura* (§9.2): once per battle, its owner may reroll **one** of
   their dice as if by a tactic card (the once-per-die rule still applies).
 
-**The 23 ratified cards.**
+**The 24 ratified cards.**
 
 | Slug | Card | Tier (copies) | Final effect |
 |---|---|---|---|
@@ -464,7 +464,8 @@ designs** (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded R
 | `the-intercepted-letter` | The Intercepted Letter | Uncommon ×2 | **Reaction** — play as a rival plays a tactic card: **cancel it**. Both cards are discarded. |
 | `the-hexamilion-manned` | The Hexamilion Manned | Uncommon ×2 | One land battle you defend in an **unwalled** province: gain **defender +2** (a temporary T2-grade wall bonus; creates no Wall HP; does not stack with real walls). |
 | `greek-fire` | Greek Fire | Rare ×1 | Before dice in a fleet battle you are fighting: **win it outright** — all enemy naval units in the zone are destroyed (transports and cargo with them, §7.6). Then **discard one other tactic card** from your hand and **remove this card from the game**. |
-| `treason-at-the-gate` | Treason at the Gate | Rare ×1 | Pay **4 gold**. Play on a walled city you have besieged for **2+ consecutive rounds**: the city **falls without an assault** — its garrison surrenders (removed) and you occupy it, walls at their current HP. **Remove this card from the game.** |
+| `master-founders-hired` | Master Founders Hired | Rare ×1 | One siege you are pressing, for **one full round**: the defender's **wall bonus is 0** (Wall HP unchanged; escalade −1 still applies) and your side rolls **+1 die** in each melee step of the assault. Hires the founders, not the gun: creates **no siege engine** and never interacts with the **Great Bombard**, which stays unique per §8.4. |
+| `treason-at-the-gate` | Treason at the Gate | Rare ×1 | Pay **4 gold**. Playable on a walled city you have besieged for **2+ consecutive rounds**, counting **only siege rounds from game round 6 onward** toward that requirement (so the earliest legal play is **round 7**), whose garrison holds **4 or fewer units**: the city **falls without an assault** — its garrison surrenders (removed) and you occupy it, walls at their current HP. **Remove this card from the game.** |
 | `the-pay-chest-taken` | The Pay Chest Taken | Rare ×1 | Take **up to 3 gold** from one rival's treasury (never more than they hold). |
 | `holy-war-proclaimed` | Holy War Proclaimed | Rare ×1 | Pay **2 faith**: until the start of your next turn, your side rolls **+1 die** in each melee step of **every** battle you fight. |
 | `sails-from-the-west` | Sails from the West | Rare ×1 | Play while a coastal city you hold is besieged: this round its stores do **not** deplete and it takes no hunger loss — **even under full naval blockade** (§8.2) — and **restore 2 depleted grain stores** (up to its maximum). |
@@ -477,14 +478,15 @@ designs** (8 Common ×3, 8 Uncommon ×2, 7 Rare ×1), shuffled with the seeded R
 |---|---|---|---|
 | Common | 8 | 3 | 24 |
 | Uncommon | 8 | 2 | 16 |
-| Rare | 7 | 1 | 7 |
-| **Tactic deck** | **23** | — | **47** |
+| Rare | 8 | 1 | 8 |
+| **Tactic deck** | **24** | — | **48** |
 
 > One proposed rare, `the-guns-of-orban`, was **rejected**: it would put the
 > same historical gun in the game twice — once as the unique, capturable
 > **Great Bombard** (§8.4, granted by the `great-bombard-forged` omen) and once
-> as a replayable one-shot card. A re-flavored rare may refill the slot in a
-> future pass, returning the deck to 48.
+> as a replayable one-shot card. Its slot is filled by the re-flavor
+> `master-founders-hired`, which hires the gun-founders rather than fielding
+> the gun and so leaves the Bombard's uniqueness intact.
 
 Rares appear once each, and *Greek Fire* and *Treason at the Gate* additionally
 remove themselves from the game — their moments happen at most once per
@@ -577,6 +579,13 @@ the Bombard enters play **at no cost** in the recipient's capital (or any owned
 auctions it (gold + marble bids) to the highest bidder, per the card text. It
 cannot be recruited, rebuilt, or duplicated.
 
+The Great Bombard counts against the §6.4 stacking limit like any other unit
+(PR #11 TUNING_REPORT §2.8). If the recipient's capital is already at the
+stacking cap (§6.4) when the Bombard is forged, it instead enters play in the recipient's **adjacent owned
+province with the most remaining stacking room** — falling back to **any owned
+province with room**, and if none exists, placement is **deferred** until one
+does (engine parity ruling).
+
 | Attribute | Rule |
 |---|---|
 | **Entry** | Free, via `great-bombard-forged` only (Era III); **one per game** |
@@ -585,14 +594,16 @@ cannot be recruited, rebuilt, or duplicated.
 | **Naval transport** | Never by ordinary transport. A fleet containing at least one `GALLEY` may spend its **entire Move action** carrying the Bombard **alone** (no army cargo) exactly **one sea zone**; if that fleet is destroyed at sea the Bombard **sinks** (removed from game) |
 | **Field battle** | Rolls **no dice** (as `SIEGE`) |
 | **Assault** | Adds the standard `SIEGE` **+3 vs walls** |
-| **Bombardment** | Rolls **two wall-damage dice** per siege round (§8.2 step 2) — up to **6 Wall HP/round**. It **ignores the T5 masonry cap** (§8.3), and while it is emplaced against a wall the cap is **lifted for the entire besieging train** |
+| **Emplacement** | On arriving at a siege the Bombard needs **one full round of emplacement** before it fires: it rolls **no** wall-damage dice the round it arrives, and counts as **emplaced** from the following round |
+| **Bombardment** | Once emplaced, rolls **two wall-damage dice** per siege round (§8.2 step 2) — up to **6 Wall HP/round**. It **ignores the T5 masonry cap** (§8.3), and while it is emplaced against a wall the cap is **lifted for the entire besieging train** |
 | **Capture** | If the stack escorting it is destroyed, routs, or surrenders — or the city it garrisons falls — the Bombard is **never destroyed by battle**: it transfers **intact to the victor as loot**. The captor may instead **spike it** (remove it from the game) at the moment of capture |
 
 **Balance intent.** Before the Bombard exists, an intact T5 wall loses at most
 1 HP/round — unbreachable in practice. With it, the Bombard averages ~4 HP/round
 (two wall-damage dice) and un-caps the rest of the train, so the Bombard plus
 one ordinary `SIEGE` unit averages ~6 HP/round: a fresh **16-HP Theodosian
-circuit opens in ~3 rounds** of sustained bombardment. Whoever owns the gun
+circuit opens in ~3 rounds** of sustained bombardment once the gun is emplaced
+(~4 rounds from its arrival). Whoever owns the gun
 holds the key to the City; whoever destroys its escort **takes the key**.
 
 ---
@@ -621,10 +632,21 @@ action per round for the listed duration; abandoning forfeits the investment).
 
 | Great Work | Cost | Rounds | Effect | Prestige |
 |---|---|---|---|---|
-| **Hagia Sophia Repair** | gold 20, marble 10, faith 8 | 3 | +2 faith/round; unlocks unique Byzantine cards | **+10** |
+| **Hagia Sophia Repair** | gold 20, marble 10, faith 8 | 3 | Endowment/restoration of the **standing** Great Church (see note below); unlocks unique Byzantine cards | **+10** |
 | **Theodosian Walls** (Grand Walls) | gold 15, marble 12 | 2 | Wall tier T5: Wall HP 16, defender +4 | **+6** |
 | **Great University** | gold 18, marble 8, faith 4 | 3 | +2 tactic-card draws/round; tactic reroll aura (§7.7) | **+6** |
-| **Grand Bazaar** | gold 16, timber 6, marble 6 | 2 | Best trade ratio; **+3 gold/route** from this port | **+5** |
+| **Grand Bazaar** | gold 16, timber 6, marble 6 | 2 | Trade-ratio port (§4.3): **2 : 1** conversions, **1 : 1** for gold↔this port's specialty; **+3 gold/route** from this port | **+5** |
+
+> **Hagia Sophia — clarification (ratified ruling).** The Great Church **starts
+> the game intact** and yields its **+2 faith/round from round 1** — that income
+> is the standing building's own (Byzantium's *Hagia Sophia* unique power,
+> `FACTIONS.md`), not a product of the great work. The great work above does
+> **not** construct the building: it is an **endowment/restoration** of the
+> standing church, granting its **+10 prestige** (and the Byzantine card
+> unlocks) only. For the *Faith of the Fathers* objective (`FACTIONS.md`),
+> "intact" means **never captured by assault**: a successful assault on
+> `constantinople` sets a permanent **sack flag** that voids the objective; a
+> starvation **surrender** (§8.2) does **not** set the sack flag.
 
 Great Works are the primary **engine of prestige** for a builder-focused player
 and the flavour spine of the setting (Byzantium repairing the Great Church,
@@ -722,8 +744,11 @@ is powerful but never free.
 * **Reputation** — a power that has betrayed twice suffers a standing **−1** to all
   diplomacy proposals (others trust it less; some AI/objective cards react).
 * **Casus belli** — a claim from a broken marriage or seized key city lets the
-  claimant attack without the usual prestige cost and scores **+1** extra prestige
-  for wins in that war.
+  claimant attack without the unjustified-war penalty (below) and scores **+1**
+  extra prestige for wins in that war.
+* **Unjustified war** — opening a war **without a casus belli** costs
+  **−1 prestige**, scored at that Cleanup (§13.1). Treaty-break penalties (table
+  above) still apply on top if the attack also broke a standing treaty.
 
 ### 11.5 NPC Minor States
 
@@ -748,9 +773,10 @@ Ragusa**.
   4 × (garrison unit count)`; then roll **1d6 + your prestige-tier − the minor's
   garrison tier**, where **prestige-tier** = `⌊your prestige ÷ 10⌋` (capped at 2)
   and **garrison tier** = `⌊garrison unit count ÷ 2⌋`. On **≥ 4** the minor
-  becomes your **vassal**. A standing **NAP or
-  royal-marriage-adjacent bribe** (paying an extra +4 gold) grants **+1** to the
-  roll. On failure the bribe is **half-refunded** and you may retry next round.
+  becomes your **vassal**. A **royal-marriage-adjacent bribe** (paying an extra
+  +4 gold) grants **+1** to the roll — minors hold no treaties, so no pact can
+  sweeten the odds, only coin. On failure the bribe is **half-refunded** and you
+  may retry next round.
 
 **Vassal mechanics** (while a minor is your vassal):
 
@@ -808,7 +834,7 @@ and a **seeded RNG** to draw deterministically (see
 | Hold **your own capital** | **+1** / round (passive) |
 | Hold an **enemy capital** | **+3** / round |
 | Hold a named **key city** (any `HV(n)` city — §3.2) | **+1** each / round |
-| **Trade monopoly** (control both ends of a major route, or most ports of a sea) | **+2** / round |
+| **Trade monopoly** (control both ends of a major route, or most ports of a sea) | **+2** / round for your **first** monopoly; **+1** / round for each additional one (diminishing) |
 | Complete a **Great Work** | **+5 … +10** once (per §9.2) |
 | Win a **decisive battle** (attacker or defender wipes/routs the enemy) | **+1** |
 | Win a **war** (force peace, tribute, or vassalage) | **+3** |
@@ -817,23 +843,25 @@ and a **seeded RNG** to draw deterministically (see
 | Complete a **secret objective** | **+4** each — hidden; revealed & scored only at **game end** (§13.3; 3 per faction, see `FACTIONS.md`) |
 | Royal-marriage bond, per round it holds | **+2** |
 | **Betray** a treaty | **−2 … −4** (§11) |
+| Open an **unjustified war** (no casus belli — §11) | **−1** |
 | **Lose your capital** | **−3** |
 
 ### 13.2 Victory threshold
 
 The game ends at the **Cleanup** (§10, phase 5) in which a player reaches the
 **prestige threshold**, scaled to player count — all prestige is scored at
-Cleanup (§13), so Cleanup is the only point where victory is checked. The
-values below are **pre-tuning
-placeholders** *(tuning: threshold supplied by balance TUNING_REPORT)* — the
-conquest rows added to §13.1 raise total prestige inflow, and the ratified
-thresholds will come from the balance pass:
+Cleanup (§13), so Cleanup is the only point where victory is checked. Victory
+thresholds are **balance-owned constants**, ratified in `sim/TUNING_REPORT.md`
+§2 (balance retune, PR #11 TUNING_REPORT); `server/src/engine/balance.ts` will
+hold these constants once the engine lands. Current values: **72 / 75 / 80 / 78**
+for 2 / 3 / 4 / 5 players:
 
 | Players | Threshold |
 |---|---|
-| 2 | **25** |
-| 3 | **30** |
-| 4–5 | **35** |
+| 2 | **72** |
+| 3 | **75** |
+| 4 | **80** |
+| 5 | **78** |
 
 ### 13.3 The 1453 endgame & sudden death
 
@@ -842,7 +870,10 @@ thresholds will come from the balance pass:
   then most gold).
 * **Sudden death — the Fall of Constantinople** — if any power **captures
   Constantinople and holds it through two full cleanup phases** (2 rounds), it
-  wins **immediately**, regardless of prestige. This is the game's dramatic spine:
+  wins **immediately**, regardless of prestige. If the sudden-death condition
+  and the prestige threshold (§13.2) both trigger in the **same Cleanup**, the
+  **capture of Constantinople outranks the threshold** — the City's captor wins.
+  This is the game's dramatic spine:
   every faction's clock is really counting down to whether the City stands.
 
 ### 13.4 Turn-order reshuffle

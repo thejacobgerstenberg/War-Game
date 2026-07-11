@@ -5,5 +5,6 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts"],
     globals: false,
+    environmentMatchGlobs: [["src/board/__tests__/**", "jsdom"]],
   },
 });
