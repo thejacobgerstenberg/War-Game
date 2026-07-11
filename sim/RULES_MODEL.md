@@ -182,7 +182,12 @@ Modeled since the stacking round (2026-07-11); `CONFIG.stacking`
 - **Land units** = levy + professional + mercenary + **siege engines**;
   galleys are naval (§6.4 counts them per SEA ZONE, cap 6/player). The
   unique Great Bombard is a flag, not an Army unit — it consumes no
-  headroom (canon §8.4: never recruited).
+  headroom (canon §8.4: never recruited). **KNOWN DIVERGENCE — the engine
+  (feature/engine-core @462b7da) stacks the gun as a `GREAT_BOMBARD`
+  variant piece that DOES occupy a §6.4 slot (capital-if-room placement,
+  defer-retry). Not adopted: the engine-unit reading breaks the T5d bar
+  (worst case 39.1% < 50% at garrison 10) while fullgame bands hold —
+  coordinator ruling pending; see TUNING_REPORT §2.8 NEEDS-DECISION.**
 - **"Excess cannot enter" — enforcement points**: recruit (`actRecruit`,
   non-galley), friendly moves incl. harbor ferries (`actMove`), attack-stack
   assembly and siege reinforcement (`actAttack` via `planForce`), §7.5
@@ -406,7 +411,8 @@ seeded-shuffled, discards reshuffled, `remove from game` respected
   emplaced Bombard "adds the standard SIEGE +3 vs walls"** — one extra
   engine-threshold die in assaults (`greatBombard.assaultDice` 1, via
   `CombatModifiers.attackerEngineExtraDice`; it is a flag, not an Army
-  unit, so it consumes no §6.4 headroom). In
+  unit, so it consumes no §6.4 headroom — engine diverges, see the
+  KNOWN DIVERGENCE under "Stacking" above). In
   the full game its owner deploys it at their most valuable siege
   (Constantinople first). Unmodeled: 3-grain upkeep/silence, 1-province
   movement, no-mountains, sink-on-transport-loss, capture-as-loot (it

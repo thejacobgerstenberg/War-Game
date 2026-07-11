@@ -289,7 +289,9 @@ Enforced RAW since the stacking round; reading is **engine-matched**
 besieger and garrison never sum; a besieger camp **co-locates on the
 invested province** and counts against its cap (max legal besieger at
 Constantinople = 12 land units total, engines included; the unique Great
-Bombard is a flag, not a unit — no headroom). Full mechanics:
+Bombard is a flag, not a unit — no headroom. **The engine DIVERGES here:
+@462b7da stacks the gun as a `GREAT_BOMBARD` variant piece occupying a
+§6.4 slot — see the §2.8 NEEDS-DECISION note**). Full mechanics:
 RULES_MODEL.md "Stacking".
 
 | Key | Value | Home | Evidence |
@@ -359,12 +361,76 @@ Not modeled (engine should ship canon): wall repair +1 HP/round out of siege
 | `GREAT_BOMBARD_EMPLACEMENT_ROUNDS` | **1** — E3: after acquisition (or moving to a new siege) the Bombard is emplaced for 1 full siege round before it first fires (no wall damage / no masonry-cap lift from it that round) | balance.ts (`GREAT_BOMBARD.emplacementRounds`) | siege.json E3 curve at legal stacks: k=3 = 4.5–9.9%, k=4 = 35.8–84.1%; median capture siege round 4 |
 | `GREAT_BOMBARD_FREE_TO_OTTOMAN` | true; else auction — sim fallback: richest payer at `GREAT_BOMBARD_AUCTION_GOLD = 40` | free-to-Ottoman: balance.ts (delta-3 spawn semantics); `GREAT_BOMBARD_AUCTION_GOLD = 40`: **sim-only-guardrail** (the engine auctions gold+marble bids per canon §8.4, not a fixed price) | canon §8.4 (card auctions gold+marble bids; sim simplifies) |
 | `GREAT_BOMBARD_DAMAGE_DICE` | 2 wall-damage dice/round (~4 avg, max 6); **lifts the T5 masonry cap for the whole train** once emplaced | balance.ts (`GREAT_BOMBARD.bombardDice` / `ignoresMasonryCap`) | canon §8.4; siege.json T5d (stacking re-derivation, LEGAL 12-unit camp): capture ≤4 rounds after first shot 55.9–98.4% |
-| **`GREAT_BOMBARD_ASSAULT_DICE`** | **1 — NEW (stacking round)**: the emplaced Bombard adds one engine-threshold die (CV 0 + `SIEGE_ENGINE_ESCALADE_BONUS`) to its owner's assaults; it is a flag, not an Army unit, so it consumes no §6.4 headroom | needs-new-engine-field (canon §8.4 RAW **Assault row**: "Adds the standard SIEGE +3 vs walls" — previously unmodeled) | with `SIEGE_ENGINES_FIGHT_AT_BREACH` and the strongest legal mix (11m+1e), restores T5d under the 12-unit cap: worst case 16.0% → 31.6% → **55.9%** (TUNING_LOG stacking round) |
+| **`GREAT_BOMBARD_ASSAULT_DICE`** | **1 — NEW (stacking round)**: the emplaced Bombard adds one engine-threshold die (CV 0 + `SIEGE_ENGINE_ESCALADE_BONUS`) to its owner's assaults; it is a flag, not an Army unit, so it consumes no §6.4 headroom (engine diverges — NEEDS-DECISION note below) | needs-new-engine-field (canon §8.4 RAW **Assault row**: "Adds the standard SIEGE +3 vs walls" — previously unmodeled) | with `SIEGE_ENGINES_FIGHT_AT_BREACH` and the strongest legal mix (11m+1e), restores T5d under the 12-unit cap: worst case 16.0% → 31.6% → **55.9%** (TUNING_LOG stacking round) |
 
 Unmodeled Bombard riders (ship per canon §8.4): 3-grain upkeep/silence,
 1-province move, no mountains, sink-on-transport-loss, capture-as-loot.
 Byzantine "auto-repel first two siege rounds" (FACTIONS) unmodeled —
 sensitivity: shifts T5d capture from ~2–4 to ~4–6 siege rounds (§6).
+
+> **NEEDS-DECISION (2026-07-11, Bombard stacking parity — coordinator
+> ruling required): does the Great Bombard occupy a §6.4 stacking slot?**
+>
+> **Engine reading (unit)** — feature/engine-core @462b7da, omen #34 fix
+> (`events/cards.ts`): the gun enters play as a **`GREAT_BOMBARD` variant
+> piece (base SIEGE) fielded as its own singleton army**; `ownUnitsAt`
+> counts variant stacks toward the §6.4 cap, and `bombardEmplacement`
+> places it only where `stackingRoom > 0` — the recipient's **capital if
+> it has room, else the owned province adjacent to the capital with the
+> most remaining room (tie → lowest province id), else any owned province
+> (same rule), else DEFER** (`retryPendingGreatBombard` retries each Omen
+> phase). The gun therefore **occupies one of the 12 city-cap slots**: a
+> with-Bombard camp fields at most **11 line units + the gun**.
+>
+> **Sim reading (flag)** — this package (`rules.ts greatBombard`,
+> `game.ts hasGreatBombard`, `siege.ts SiegeSetup.hasGreatBombard`): the
+> gun is a **faction flag consuming no headroom**; the with-Bombard camp
+> fields **12 line units + the gun**.
+>
+> **Canon §8.4 is genuinely ambiguous.** The gun is statted like a unit
+> in most rows — Movement (1 province/round consuming a full Move action,
+> no `MOUNTAINS`), a naval-transport rule, Field battle "rolls **no
+> dice** (as `SIEGE`)", 3-grain upkeep, capture-as-loot — but it is
+> styled a "unique siege engine", is absent from the §6.1 unit table, and
+> neither §8.4 nor §6.4 ("a province may hold up to **8 land units** per
+> player, 12 in a `CITY`/capital") says whether it counts against
+> stacking.
+>
+> **Evidence both ways (parity probe, 2026-07-11):**
+>
+> * **T5d BREAKS under Bombard-as-unit.** Siege module, 20k iters/cell,
+>   T5 Theodosian, open sea; bar = capture within 4 siege rounds of first
+>   fire (k ≤ 5) > 50% at garrisons 6/8/10. The best legal 11-line-unit
+>   mix is **10 mercenaries + 1 engine**: **94.4 / 73.2 / 39.1%** —
+>   worst case **39.1% MISSES** the bar. Every other 11-unit mix is worse
+>   at garrison 10 (11m+0e 16.7%, 9m+2e 31.3%, 8m+3e 21.6%, 7m+4e 11.9%).
+>   The committed flag model (11m+1e = 12 line units + gun) scores
+>   **98.0 / 85.2 / 55.9%** — MET. The 12th line unit is decisive exactly
+>   at the garrison-10 worst case the bar is calibrated to; median
+>   capture stays at siege round 4 either way.
+> * **Fullgame bands HOLD under Bombard-as-unit** (spot-check, 1,000
+>   games, seed 24530000; probe wired through `game.ts`: one slot
+>   reserved for the gun at its siege/resting province in
+>   `landCommitted`, siege deployment gated on camp room, engine
+>   placement + defer-retry mirrored): factions
+>   **15.1 / 14.8 / 17.0 / 23.7 / 29.4%** (byz/ott/ven/gen/hun) vs flag
+>   baseline 15.0 / 14.9 / 17.0 / 23.8 / 29.3% (band 12–30); policies
+>   15.4/27.6/13.2/23.8 vs 15.4/27.6/13.3/23.7 (band 10–40); SD **5.9% vs
+>   6.0%** (band 1–15); threshold-decided 57.2 vs 57.1% (40–70); median
+>   end round 15, early-end 0.4%, 0 eliminations — all deltas ≤ 0.1pp.
+>   The full game is insensitive to the reading; only the T5d module bar
+>   breaks.
+>
+> **Not adopted** (decision rule: a broken bar blocks adoption). Options
+> for the ruling: **(A)** adopt engine-unit semantics and re-base the T5d
+> bar (garrison-10 worst case drops to ~39%; garrisons ≤ 8 still clear at
+> 73%+); **(B)** adopt unit semantics and retune a Bombard lever to
+> restore >50% at garrison 10 (e.g. `GREAT_BOMBARD_ASSAULT_DICE` 1→2 —
+> un-derived, needs a fresh sweep); **(C)** keep the sim-flag reading and
+> change the ENGINE so the gun stops counting toward §6.4 (the omen #34
+> placement/defer machinery then becomes unnecessary). Until ruled, the
+> sim keeps the flag model and the engine keeps the unit model — a
+> **known cross-implementation divergence**.
 
 ### 2.9 Tactic cards (canon §7.7) — ratified magnitudes as fixed inputs
 
