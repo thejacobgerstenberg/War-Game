@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" id="harbor-building" role="img" aria-labelledby="harbor-title">
+  <title id="harbor-title">Harbor — anchor within a breakwater arc with mooring bollard</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — building icon: HARBOR
+       Safe anchorage: a classic ringed anchor sheltered inside a
+       thick curved quay/breakwater arc, with a mushroom mooring
+       bollard planted on the quay's raised end.
+       currentColor silhouette only.
+       ============================================================ -->
+
+  <!-- == anchor ring (cut-out core) == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M17.3 7.5 A3.7 3.7 0 1 0 24.7 7.5 A3.7 3.7 0 1 0 17.3 7.5 Z
+    M19.4 7.5 A1.6 1.6 0 1 0 22.6 7.5 A1.6 1.6 0 1 0 19.4 7.5 Z"/>
+
+  <!-- == anchor shank and stock == -->
+  <g fill="currentColor">
+    <rect x="19.75" y="10.7" width="2.5" height="19.5"/>
+    <rect x="13" y="13.2" width="16" height="2.8" rx="1.4"/>
+  </g>
+
+  <!-- == anchor arms (crescent) with barbed flukes == -->
+  <g fill="currentColor">
+    <path d="M9 21.5 Q10 31.5 21 32.7 Q32 31.5 33 21.5 L29.6 22.7 Q28 28.8 21 29.6 Q14 28.8 12.4 22.7 Z"/>
+    <path d="M5.8 20.8 L12.8 19.6 L10.4 25.6 Z"/>
+    <path d="M36.2 20.8 L29.2 19.6 L31.6 25.6 Z"/>
+  </g>
+
+  <!-- == breakwater quay arc cupping the anchorage == -->
+  <path fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"
+        d="M6 28.5 Q7.5 41 21.5 42.5 Q36.5 41.5 41.5 29.5"/>
+
+  <!-- == mooring bollard on the quay head == -->
+  <g fill="currentColor">
+    <path d="M38.2 22.3 Q38.2 18.8 41.5 18.8 Q44.8 18.8 44.8 22.3 V23.8 H38.2 Z"/>
+    <rect x="39.8" y="23" width="3.4" height="8"/>
+  </g>
+</svg>

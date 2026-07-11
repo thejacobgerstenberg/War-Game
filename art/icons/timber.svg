@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="timber-icon" role="img" aria-labelledby="timber-title">
+  <title id="timber-title">Timber — two stacked logs</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — resource icon: TIMBER
+       Two stacked, offset logs seen from the side; the sawn
+       right-hand faces show a cut-out growth ring around a solid
+       heartwood core. Bark texture as thin cut-out slits.
+       Single-color silhouette: currentColor + evenodd holes only.
+       ============================================================ -->
+
+  <!-- == upper log: capsule body x 16..50, centerline y=20, r=9.5
+       growth ring cut out of the right end cap at (50,20) == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M16 10.5 H50
+    A9.5 9.5 0 1 1 50 29.5
+    H16
+    A9.5 9.5 0 1 1 16 10.5
+    Z
+    M50 13 A7 7 0 1 0 50 27 A7 7 0 1 0 50 13 Z
+    M50 16 A4 4 0 1 1 50 24 A4 4 0 1 1 50 16 Z
+    M20 15.5 H34 V17.5 H20 Z
+    M23 23 H35 V25 H23 Z"/>
+
+  <!-- == lower log: capsule body x 14..46, centerline y=42, r=9.5
+       shifted left of the upper log, ring face at (46,42) == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M14 32.5 H46
+    A9.5 9.5 0 1 1 46 51.5
+    H14
+    A9.5 9.5 0 1 1 14 32.5
+    Z
+    M46 35 A7 7 0 1 0 46 49 A7 7 0 1 0 46 35 Z
+    M46 38 A4 4 0 1 1 46 46 A4 4 0 1 1 46 38 Z
+    M17 37.5 H31 V39.5 H17 Z
+    M15 45 H27 V47 H15 Z"/>
+</svg>

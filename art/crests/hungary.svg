@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-labelledby="hungary-title hungary-desc">
+  <title id="hungary-title">Hungary (Hunyadi)</title>
+  <desc id="hungary-desc">Faction crest: a silver raven with folded wings perched on a gold branch, head turned left, holding a gold ring in its beak, on a laurel-green shield with a gold rim and Greek-key band.</desc>
+
+  <!-- ==================== DEFS ==================== -->
+  <defs>
+    <!-- Canonical shield outline, reused for coat, clip and rim -->
+    <path id="hungary-shield-outline" d="M100 12 L180 36 V118 C180 178 148 212 100 228 C52 212 20 178 20 118 V36 Z"/>
+
+    <clipPath id="hungary-shield-clip">
+      <use href="#hungary-shield-outline"/>
+    </clipPath>
+
+    <!-- Branch and legs, drawn twice: wide ink underlay, then color overlay -->
+    <path id="hungary-branch-line" d="M28 190 C64 180 120 171 170 175"/>
+    <path id="hungary-leg-near"    d="M88 150 L84 175"/>
+    <path id="hungary-leg-far"     d="M104 152 L101 173"/>
+    <path id="hungary-toes-near"   d="M84 175 L76 181 M84 175 L82 184 M84 175 L90 182"/>
+    <path id="hungary-toes-far"    d="M101 173 L93 179 M101 173 L99 182 M101 173 L107 180"/>
+  </defs>
+
+  <!-- ==================== SHIELD BASE COAT ==================== -->
+  <use href="#hungary-shield-outline" fill="#4A5D3A"/>
+
+  <!-- ==================== CHARGE (clipped to shield) ==================== -->
+  <g clip-path="url(#hungary-shield-clip)">
+
+    <!-- ......... Greek-key band along the top edge ......... -->
+    <g id="hungary-key-band">
+      <path d="M20 36 L100 12 L180 36 L180 48 L100 24 L20 48 Z"
+            fill="#C9A227"/>
+      <!-- simplified meander, left slope -->
+      <g transform="translate(22,47) rotate(-16.7)">
+        <path d="M0 -1 H5 V-5 H10 V-1 H15 V-5 H20 V-1 H25 V-5 H30 V-1 H35 V-5 H40 V-1 H45 V-5 H50 V-1 H55 V-5 H60 V-1 H65 V-5 H70 V-1 H75 V-5 H80"
+              fill="none" stroke="#4A5D3A" stroke-width="2.5"/>
+      </g>
+      <!-- simplified meander, right slope (mirror) -->
+      <g transform="translate(178,47) rotate(16.7) scale(-1,1)">
+        <path d="M0 -1 H5 V-5 H10 V-1 H15 V-5 H20 V-1 H25 V-5 H30 V-1 H35 V-5 H40 V-1 H45 V-5 H50 V-1 H55 V-5 H60 V-1 H65 V-5 H70 V-1 H75 V-5 H80"
+              fill="none" stroke="#4A5D3A" stroke-width="2.5"/>
+      </g>
+      <path d="M20 48 L100 24 L180 48" fill="none" stroke="#2B2118" stroke-width="2"/>
+    </g>
+
+    <!-- ......... The perch: a gold branch, couped by the shield edges ......... -->
+    <g id="hungary-branch" fill="none" stroke-linecap="round">
+      <use href="#hungary-branch-line" stroke="#2B2118" stroke-width="13"/>
+      <use href="#hungary-branch-line" stroke="#C9A227" stroke-width="8"/>
+    </g>
+    <!-- small laurel leaf pair sprouting from the branch, viewer's left -->
+    <g id="hungary-branch-leaves">
+      <path d="M56 182 C48 178 43 170 44 161 C53 164 58 172 56 182 Z"
+            fill="#C9A227" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M62 182 C60 174 64 166 72 162 C74 170 70 178 62 182 Z"
+            fill="#C9A227" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+    </g>
+
+    <!-- ......... The Hunyadi raven, wings folded, head to sinister-viewer-left ......... -->
+    <g id="hungary-raven">
+
+      <!-- tail: three pointed feathers sweeping down past the branch -->
+      <path id="hungary-tail"
+            d="M106 104
+               C122 112 134 128 142 148
+               L152 180
+               L139 170 L141 186
+               L127 164 L127 180
+               C118 158 112 142 104 132
+               C100 124 100 112 106 104 Z"
+            fill="#C9CDD4" stroke="#2B2118" stroke-width="3" stroke-linejoin="round"/>
+
+      <!-- legs gripping the branch: ink underlay, silver overlay -->
+      <g id="hungary-legs" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <g stroke="#2B2118">
+          <use href="#hungary-leg-near"  stroke-width="9"/>
+          <use href="#hungary-leg-far"   stroke-width="9"/>
+          <use href="#hungary-toes-near" stroke-width="6"/>
+          <use href="#hungary-toes-far"  stroke-width="6"/>
+        </g>
+        <g stroke="#C9CDD4">
+          <use href="#hungary-leg-near"  stroke-width="5"/>
+          <use href="#hungary-leg-far"   stroke-width="5"/>
+          <use href="#hungary-toes-near" stroke-width="3"/>
+          <use href="#hungary-toes-far"  stroke-width="3"/>
+        </g>
+      </g>
+
+      <!-- body: plump chest and belly -->
+      <path id="hungary-body"
+            d="M74 94
+               C62 106 56 124 62 140
+               C68 156 80 166 96 168
+               C112 170 126 162 132 148
+               C138 134 134 116 124 106
+               C114 96 98 90 86 90
+               C81 90 77 91 74 94 Z"
+            fill="#C9CDD4" stroke="#2B2118" stroke-width="3" stroke-linejoin="round"/>
+      <!-- breast-feather hatching -->
+      <path d="M70 118 C74 122 78 123 84 122 M68 132 C73 137 79 138 85 137"
+            fill="none" stroke="#2B2118" stroke-width="2.5" stroke-opacity="0.35" stroke-linecap="round"/>
+
+      <!-- folded wing lying along the back, scalloped tips over the tail -->
+      <path id="hungary-wing"
+            d="M90 96
+               C104 94 118 102 126 114
+               C133 125 138 140 142 154
+               L146 166
+               L134 158 L136 172
+               L120 154 L119 168
+               C106 158 96 146 90 132
+               C86 120 86 106 90 96 Z"
+            fill="#C9CDD4" stroke="#2B2118" stroke-width="3" stroke-linejoin="round"/>
+      <!-- feather-layer detail lines -->
+      <path d="M100 104 C112 108 122 118 128 132 M94 116 C104 122 112 134 116 148"
+            fill="none" stroke="#2B2118" stroke-width="2.5" stroke-opacity="0.45" stroke-linecap="round"/>
+
+      <!-- head and neck, turned to the viewer's left -->
+      <path id="hungary-head"
+            d="M64 78
+               C62 64 70 54 82 54
+               C94 54 102 63 102 74
+               C102 82 108 92 116 100
+               C106 110 94 110 84 103
+               C72 95 65 87 64 78 Z"
+            fill="#C9CDD4" stroke="#2B2118" stroke-width="3" stroke-linejoin="round"/>
+      <!-- eye -->
+      <circle cx="79" cy="70" r="2.8" fill="#2B2118"/>
+
+      <!-- gold ring, drawn first so the beak grips its upper arc -->
+      <g id="hungary-ring">
+        <circle cx="42" cy="100" r="10" fill="none" stroke="#2B2118" stroke-width="11.5"/>
+        <circle cx="42" cy="100" r="10" fill="none" stroke="#C9A227" stroke-width="7"/>
+      </g>
+
+      <!-- beak: stout and pointed, closed on the ring -->
+      <path id="hungary-beak"
+            d="M66 70
+               L46 84
+               L48 90
+               L67 89
+               C64 83 64 76 66 70 Z"
+            fill="#C9CDD4" stroke="#2B2118" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M48 87 L64 80" fill="none" stroke="#2B2118" stroke-width="2.5"
+            stroke-opacity="0.5" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- ==================== RIM: gold band flanked by thin ink lines ==================== -->
+  <use href="#hungary-shield-outline" fill="none" stroke="#2B2118" stroke-width="10.5"/>
+  <use href="#hungary-shield-outline" fill="none" stroke="#C9A227" stroke-width="6"/>
+</svg>

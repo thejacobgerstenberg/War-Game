@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="levy-token" role="img" aria-labelledby="levy-token-title">
+  <title id="levy-token-title">Levy — peasant militiaman with pitchfork and simple cap</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — unit token: LEVY
+       Peasant militia figure at right, gripping a tall pitchfork
+       at left. The fork's three tines and the flat dome cap are
+       the 28px identifiers. currentColor only; faction tinting via
+       CSS color on the client.
+       ============================================================ -->
+
+  <g fill="currentColor">
+    <!-- == pitchfork: shaft doubles as the centre tine == -->
+    <rect x="17.2" y="5" width="3.6" height="52" rx="1.8"/>
+    <rect x="11" y="13.8" width="16" height="3.6" rx="1.2"/>
+    <rect x="11" y="5" width="3.4" height="11" rx="1.7"/>
+    <rect x="23.6" y="5" width="3.4" height="11" rx="1.7"/>
+
+    <!-- == cap: flat brim protruding past the head, low dome == -->
+    <rect x="33.5" y="11.5" width="15" height="3.2" rx="1.6"/>
+    <path d="M36.5 12 Q41 4.8 45.5 12 Z"/>
+
+    <!-- == head and neck == -->
+    <circle cx="41" cy="18.5" r="4.8"/>
+    <rect x="39.2" y="21" width="3.6" height="5.5"/>
+
+    <!-- == tunic: plain smock widening to the hem == -->
+    <path d="M35.5 25 L46.5 25 L49 42 L33 42 Z"/>
+
+    <!-- == arm gripping the shaft (merges into both) == -->
+    <rect x="18" y="26.5" width="19" height="3.6" rx="1.8"/>
+
+    <!-- == legs == -->
+    <rect x="35" y="41" width="4" height="16" rx="1.5"/>
+    <rect x="43" y="41" width="4" height="16" rx="1.5"/>
+  </g>
+</svg>

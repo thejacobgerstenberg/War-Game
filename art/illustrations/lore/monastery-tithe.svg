@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Monastery Tithe</title>
+  <!-- parchment field -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- vellum chapel niche -->
+  <path d="M52 160 L52 84 Q52 26 134 26 Q216 26 216 84 L216 160 Z" fill="#E2D3B3"/>
+  <!-- cross atop the arch -->
+  <rect x="131" y="6" width="6" height="24" fill="#4B1F3F"/>
+  <rect x="124" y="12" width="20" height="6" fill="#4B1F3F"/>
+  <!-- hoarded coins at the abbot's feet -->
+  <rect x="24" y="148" width="26" height="6" fill="#C9A227"/>
+  <rect x="27" y="140" width="20" height="6" fill="#C9A227"/>
+  <!-- abbot: robe -->
+  <path d="M58 160 L70 70 Q77 58 85 58 Q93 58 98 68 L104 100 L110 160 Z" fill="#2B2118"/>
+  <!-- scapular stripe -->
+  <path d="M80 74 L73 160 L91 160 L87 74 Z" fill="#4B1F3F"/>
+  <!-- head and tonsure -->
+  <circle cx="85" cy="45" r="13" fill="#2B2118"/>
+  <circle cx="85" cy="35" r="4" fill="#E2D3B3"/>
+  <!-- outstretched arm -->
+  <path d="M94 66 L164 36 L170 46 L100 78 Z" fill="#2B2118"/>
+  <!-- scale strings -->
+  <path d="M132 45 L120 76 M132 45 L144 76" stroke="#2B2118" stroke-width="2.5" fill="none"/>
+  <path d="M204 61 L192 98 M204 61 L216 98" stroke="#2B2118" stroke-width="2.5" fill="none"/>
+  <!-- handle and tilted beam -->
+  <rect x="166" y="38" width="4" height="17" fill="#C9A227"/>
+  <path d="M132 45 L204 61" stroke="#C9A227" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <!-- high pan: the cross, found wanting -->
+  <path d="M118 75 L146 75 Q132 90 118 75 Z" fill="#C9A227"/>
+  <rect x="129" y="55" width="5" height="20" fill="#4B1F3F"/>
+  <rect x="122" y="60" width="19" height="5" fill="#4B1F3F"/>
+  <!-- low pan: the tithe gold, heavier -->
+  <path d="M190 97 L218 97 Q204 112 190 97 Z" fill="#C9A227"/>
+  <rect x="190" y="91" width="28" height="5" fill="#C9A227"/>
+  <rect x="193" y="84" width="22" height="5" fill="#C9A227"/>
+  <rect x="191" y="77" width="26" height="5" fill="#C9A227"/>
+  <!-- gripping hand -->
+  <circle cx="168" cy="40" r="5" fill="#2B2118"/>
+</svg>

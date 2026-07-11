@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" id="wall-1-building" role="img" aria-labelledby="wall-1-title">
+  <title id="wall-1-title">Wall I — timber palisade of staked logs</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — building icon: WALL I
+       Timber palisade: six sharpened pales set on a ground sill,
+       lashed by two horizontal rails that bridge the gaps between
+       the stakes. Deliberately the shortest, sparsest wall tier.
+       currentColor silhouette only.
+       ============================================================ -->
+
+  <!-- == sharpened pales (tips alternate height, hand-set look) == -->
+  <g fill="currentColor">
+    <path d="M5 20.5 L7.5 16 L10 20.5 V41 H5 Z"/>
+    <path d="M11.6 23 L14.1 18.5 L16.6 23 V41 H11.6 Z"/>
+    <path d="M18.2 20.5 L20.7 16 L23.2 20.5 V41 H18.2 Z"/>
+    <path d="M24.8 23 L27.3 18.5 L29.8 23 V41 H24.8 Z"/>
+    <path d="M31.4 20.5 L33.9 16 L36.4 20.5 V41 H31.4 Z"/>
+    <path d="M38 23 L40.5 18.5 L43 23 V41 H38 Z"/>
+  </g>
+
+  <!-- == lashing rails bridging the pales == -->
+  <g fill="currentColor">
+    <rect x="4.5" y="25.5" width="39" height="3.5" rx="1.2"/>
+    <rect x="4.5" y="33" width="39" height="3.5" rx="1.2"/>
+  </g>
+
+  <!-- == ground sill == -->
+  <rect fill="currentColor" x="4" y="41" width="40" height="3.5" rx="1.7"/>
+</svg>

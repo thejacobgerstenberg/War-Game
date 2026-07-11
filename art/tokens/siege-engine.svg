@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="siege-engine-token" role="img" aria-labelledby="siege-engine-token-title">
+  <title id="siege-engine-token-title">Siege engine — wheeled trebuchet with heavy counterweight</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — unit token: SIEGE ENGINE
+       Wheeled trebuchet in profile — deliberately distinct from
+       art/icons/siege.svg: arm mirrored (long end up-RIGHT), two
+       spoked-hub wheels under the frame, and an oversized
+       counterweight box at the left. currentColor only.
+       ============================================================ -->
+
+  <!-- == carriage beam over the axles == -->
+  <rect fill="currentColor" x="9" y="45.5" width="44" height="4" rx="2"/>
+
+  <!-- == wheels: solid discs with cut-out axle holes == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M9.8 50.5 A7.2 7.2 0 1 0 24.2 50.5 A7.2 7.2 0 1 0 9.8 50.5 Z
+    M14.4 50.5 A2.6 2.6 0 1 1 19.6 50.5 A2.6 2.6 0 1 1 14.4 50.5 Z"/>
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M37.8 50.5 A7.2 7.2 0 1 0 52.2 50.5 A7.2 7.2 0 1 0 37.8 50.5 Z
+    M42.4 50.5 A2.6 2.6 0 1 1 47.6 50.5 A2.6 2.6 0 1 1 42.4 50.5 Z"/>
+
+  <!-- == A-frame from the pivot down to the carriage == -->
+  <g stroke="currentColor" stroke-linecap="round" fill="none">
+    <path stroke-width="4.4" d="M31 21 L21 46.5"/>
+    <path stroke-width="4.4" d="M31 21 L41 46.5"/>
+  </g>
+
+  <!-- == throwing arm: long end up-right (mirror of the icon) == -->
+  <rect fill="currentColor" x="-19" y="-2.1" width="44" height="4.2" rx="2.1"
+        transform="translate(31 21) rotate(-38)"/>
+
+  <!-- == counterweight: oversized box swallowing the short end == -->
+  <path fill="currentColor" d="M8 27 L23 27 L24.5 39.5 Q15.5 42 6.5 39.5 Z"/>
+
+  <!-- == sling rope and pouch off the long tip == -->
+  <path stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"
+        d="M50.5 6.5 Q56.5 9.5 56 16"/>
+  <circle fill="currentColor" cx="55.2" cy="18.5" r="3.4"/>
+
+  <!-- == pivot hub with cut-out axle hole == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M26.1 21 A4.9 4.9 0 1 0 35.9 21 A4.9 4.9 0 1 0 26.1 21 Z
+    M29.2 21 A1.8 1.8 0 1 1 32.8 21 A1.8 1.8 0 1 1 29.2 21 Z"/>
+</svg>

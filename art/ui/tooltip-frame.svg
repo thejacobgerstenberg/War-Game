@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 120" role="img" aria-labelledby="tooltip-frame-svg-title tooltip-frame-svg-desc">
+  <title id="tooltip-frame-svg-title">Tooltip frame — Imperium: Twilight of Empires</title>
+  <desc id="tooltip-frame-svg-desc">Small parchment scroll panel with an ink border, inner gold trim, a fourteen-pixel pointer notch at bottom center, and gentle curled-corner hints.</desc>
+
+  <!-- ==================== PARCHMENT PANEL + POINTER NOTCH (single outline) ==================== -->
+  <path d="M14 6 H246 Q254 6 254 14 V92 Q254 100 246 100 H143 L130 114 L117 100 H14 Q6 100 6 92 V14 Q6 6 14 6 Z"
+        fill="#F0E6D2" stroke="#2B2118" stroke-width="1.6" stroke-linejoin="round"/>
+
+  <!-- ==================== AGING MOTTLE ==================== -->
+  <g fill="#E2D3B3">
+    <path d="M52 62 q18 -12 40 -4 q20 7 10 19 q-13 15 -36 8 q-24 -8 -14 -23 Z" opacity="0.3"/>
+    <path d="M164 30 q24 -9 42 3 q14 10 1 20 q-18 13 -39 4 q-20 -9 -4 -27 Z" opacity="0.24"/>
+    <path d="M96 78 q14 -9 30 -3 q15 6 7 15 q-10 12 -27 6 q-18 -6 -10 -18 Z" opacity="0.2"/>
+  </g>
+  <g fill="#2B2118" opacity="0.07">
+    <circle cx="44" cy="30" r="0.8"/>
+    <circle cx="206" cy="70" r="0.7"/>
+    <circle cx="150" cy="86" r="0.6"/>
+    <circle cx="76" cy="46" r="0.6"/>
+    <circle cx="226" cy="34" r="0.7"/>
+  </g>
+
+  <!-- ==================== INNER GOLD TRIM (follows the notch) ==================== -->
+  <path d="M15 10 H245 Q250 10 250 15 V91 Q250 96 245 96 H141 L130 108 L119 96 H15 Q10 96 10 91 V15 Q10 10 15 10 Z"
+        fill="none" stroke="#C9A227" stroke-width="1" stroke-opacity="0.85"/>
+  <!-- ink hairline echo -->
+  <rect x="13" y="13" width="234" height="80" fill="none" stroke="#2B2118" stroke-width="0.6" stroke-opacity="0.4"/>
+
+  <!-- ==================== CURL HINTS AT THE CORNERS ==================== -->
+  <!-- top-left curl -->
+  <path d="M6 24 Q12 12 24 6 L14 6 Q6 6 6 14 Z" fill="#E2D3B3" opacity="0.85"/>
+  <path d="M6 24 Q12 12 24 6" fill="none" stroke="#2B2118" stroke-width="0.9" stroke-opacity="0.6"/>
+  <path d="M9 17 Q13 10 19 7.5" fill="none" stroke="#2B2118" stroke-width="0.6" stroke-opacity="0.35"/>
+  <!-- bottom-right curl -->
+  <path d="M254 82 Q248 94 236 100 L246 100 Q254 100 254 92 Z" fill="#E2D3B3" opacity="0.85"/>
+  <path d="M254 82 Q248 94 236 100" fill="none" stroke="#2B2118" stroke-width="0.9" stroke-opacity="0.6"/>
+  <path d="M251 89 Q247 96 241 98.5" fill="none" stroke="#2B2118" stroke-width="0.6" stroke-opacity="0.35"/>
+  <!-- faint counterpart curls -->
+  <path d="M254 24 Q248 12 236 6" fill="none" stroke="#2B2118" stroke-width="0.7" stroke-opacity="0.35"/>
+  <path d="M6 82 Q12 94 24 100" fill="none" stroke="#2B2118" stroke-width="0.7" stroke-opacity="0.35"/>
+
+  <!-- ==================== NOTCH SHADING ==================== -->
+  <path d="M119 96 L130 108 L141 96" fill="none" stroke="#2B2118" stroke-width="0.6" stroke-opacity="0.3"/>
+</svg>

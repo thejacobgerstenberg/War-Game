@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="phase-omen-icon" role="img" aria-labelledby="phase-omen-title">
+  <title id="phase-omen-title">Omen phase — eye within a radiant mandorla</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — phase icon: OMEN
+       An all-seeing eye inside a pointed almond (mandorla), six
+       rays fanning above and below; the mandorla's own left/right
+       points complete an eight-point radiance. Single-color
+       silhouette: every mark is currentColor; the whites of the
+       eye and the pupil are cut-out negative space (evenodd).
+       ============================================================ -->
+
+  <!-- == radiance: six tapered rays whose bases tuck under the
+       almond (ellipse a20 b9.5) and whose tips reach ellipse
+       a28 b27.5 == -->
+  <path fill="currentColor" d="
+    M50.27 28.14 L54.94 16.23 L45.89 25.17 Z
+    M35.82 22.67 L32 4.5 L28.18 22.67 Z
+    M18.11 25.17 L9.06 16.23 L13.73 28.14 Z
+    M13.73 35.86 L9.06 47.77 L18.11 38.83 Z
+    M28.18 41.33 L32 59.5 L35.82 41.33 Z
+    M45.89 38.83 L54.94 47.77 L50.27 35.86 Z"/>
+
+  <!-- == the eye ==
+       subpath 1: outer almond, points at x=6 and x=58, lids 13 deep
+       subpaths 2-3: left/right whites of the eye, cut out between
+         the inner lid line (lens M12.5 32 Q32 14 / Q32 50) and the
+         iris circle r=10.4 — so the iris stays welded to both lids
+       subpath 4: pupil, r=4 cut from the iris -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M6 32 Q32 6 58 32 Q32 58 6 32 Z
+
+    M12.5 32 Q18.88 26.11 25.27 24.07
+    A10.4 10.4 0 0 0 25.27 39.93
+    Q18.88 37.89 12.5 32 Z
+
+    M51.5 32 Q45.12 26.11 38.73 24.07
+    A10.4 10.4 0 0 1 38.73 39.93
+    Q45.12 37.89 51.5 32 Z
+
+    M36 32 A4 4 0 1 1 28 32 A4 4 0 1 1 36 32 Z"/>
+</svg>

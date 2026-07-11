@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="war-galley-token" role="img" aria-labelledby="war-galley-token-title">
+  <title id="war-galley-token-title">War galley — two-banked galley with ram prow, sail set, pennant</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — unit token: WAR GALLEY
+       Heavy galley in profile, bow to the right: waterline ram
+       beak, bellied lateen sail SET, swallow-tailed pennant at
+       the masthead, and TWO interleaved banks of oars (upper bank
+       steep and short, lower bank long and raked). currentColor
+       only.
+       ============================================================ -->
+
+  <g fill="currentColor">
+    <!-- == masthead pennant, swallow-tailed, flying aft-left == -->
+    <path d="M31.8 4 L18 6.4 L23.5 8 L18 9.6 L31.8 12 Z"/>
+
+    <!-- == lateen yard: long raked spar, low end forward-left == -->
+    <rect x="6" y="12.5" width="51" height="3.4" rx="1.7"
+          transform="rotate(-20 31.5 14)"/>
+
+    <!-- == sail set: hangs below the yard, leech bellied aft == -->
+    <path d="M11.5 26.5 L52.5 10.5 Q52.5 25 45.5 36 Q26.5 34 11.5 26.5 Z"/>
+
+    <!-- == mast from the pennant down into the hull == -->
+    <rect x="30.3" y="4" width="3.4" height="39"/>
+
+    <!-- == hull: upswept stern, sheer line, ram beak at the bow == -->
+    <path d="M6 31.5
+             Q8.5 40 16 41
+             L44 41
+             Q50.5 40.5 54 35.5
+             L59.5 39
+             Q57.5 45 51 48
+             Q42 51.5 26 51.5
+             Q10.5 51 5.5 39.5 Z"/>
+
+    <!-- == upper oar bank: short and steep == -->
+    <rect x="-1.6" y="0" width="3.2" height="8.5" transform="translate(14 46) rotate(10)"/>
+    <rect x="-1.6" y="0" width="3.2" height="8.5" transform="translate(23 47.5) rotate(10)"/>
+    <rect x="-1.6" y="0" width="3.2" height="8.5" transform="translate(32 48) rotate(10)"/>
+    <rect x="-1.6" y="0" width="3.2" height="8.5" transform="translate(41 47.5) rotate(10)"/>
+
+    <!-- == lower oar bank: long and raked, interleaved == -->
+    <rect x="-1.6" y="0" width="3.2" height="12.5" transform="translate(18.5 46.5) rotate(32)"/>
+    <rect x="-1.6" y="0" width="3.2" height="12.5" transform="translate(27.5 48) rotate(32)"/>
+    <rect x="-1.6" y="0" width="3.2" height="12.5" transform="translate(36.5 48.5) rotate(32)"/>
+    <rect x="-1.6" y="0" width="3.2" height="12.5" transform="translate(45.5 47) rotate(32)"/>
+  </g>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" role="img" aria-labelledby="button-pressed-svg-title button-pressed-svg-desc">
+  <title id="button-pressed-svg-title">Button, pressed state — Imperium: Twilight of Empires</title>
+  <desc id="button-pressed-svg-desc">Rounded button on a vellum field with an inset bevel (shadow above, highlight below), Greek-key end caps, and a centered Cinzel label nudged two pixels down. Pressed state.</desc>
+
+  <!-- ==================== DEFS ==================== -->
+  <defs>
+    <!-- Greek-key end cap: open meander spiral in an 18x14 box, centered on origin -->
+    <path id="button-pressed-key-cap" d="M-9 7 V-7 H9 V7 H-3 V-3 H3"
+          fill="none" stroke-width="1.4" stroke-linejoin="miter"/>
+  </defs>
+
+  <!-- ==================== FIELD + KEYLINES (shared geometry across all states) ==================== -->
+  <rect x="3" y="3" width="234" height="58" rx="13" fill="#E2D3B3" stroke="#2B2118" stroke-width="1.6"/>
+  <!-- pressed dimming wash -->
+  <rect x="3" y="3" width="234" height="58" rx="13" fill="#2B2118" opacity="0.06"/>
+  <rect x="7" y="7" width="226" height="50" rx="9" fill="none" stroke="#C9A227" stroke-width="1.6" stroke-opacity="0.9"/>
+
+  <!-- ==================== BEVEL (inset: shadow top, highlight bottom) ==================== -->
+  <rect x="10" y="9" width="220" height="8" rx="6" fill="#2B2118" opacity="0.18"/>
+  <rect x="10" y="47" width="220" height="8" rx="6" fill="#FFFFFF" opacity="0.4"/>
+
+  <!-- ==================== GREEK-KEY END CAPS ==================== -->
+  <use href="#button-pressed-key-cap" transform="translate(27 32)" stroke="#2B2118" stroke-opacity="0.8"/>
+  <use href="#button-pressed-key-cap" transform="translate(213 32) rotate(180)" stroke="#2B2118" stroke-opacity="0.8"/>
+
+  <!-- ==================== LABEL (nudged +2y for the pressed look) ==================== -->
+  <text id="button-pressed-label-slot" x="120" y="41" font-family="Cinzel, serif" font-weight="700"
+        font-size="19" letter-spacing="3" fill="#2B2118" text-anchor="middle">ACTION</text>
+</svg>

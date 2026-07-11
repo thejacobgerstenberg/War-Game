@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Corn Blockade</title>
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- ominous crimson sun -->
+  <circle cx="28" cy="26" r="11" fill="#7A1F2B"/>
+  <!-- back water band -->
+  <path fill="#2C5F7C" d="M0,114 Q20,106 40,114 T80,114 T120,114 T160,114 T200,114 T240,114 T280,114 V160 H0 Z"/>
+  <!-- strait tower, bleeding off the right edge -->
+  <path fill="#2B2118" d="M218,146 V44 h6 v-10 h8 v10 h8 v-10 h8 v10 h8 v-10 h6 V146 Z"/>
+  <path fill="#C9A227" d="M234,84 v-10 q0,-5 5,-5 q5,0 5,5 v10 z"/>
+  <!-- grain cog: mast, sail, pennant, hull, sacks -->
+  <rect x="85" y="14" width="6" height="90" fill="#2B2118"/>
+  <rect x="54" y="32" width="68" height="5" fill="#2B2118"/>
+  <path fill="#C9A227" d="M58,38 h60 q8,22 0,42 h-60 q-8,-20 0,-42 z"/>
+  <polygon points="88,6 114,13 88,20" fill="#7A1F2B"/>
+  <path fill="#2B2118" d="M30,88 L44,102 L130,102 L146,84 L153,90 L138,110 Q92,132 48,112 Z"/>
+  <path fill="#C9A227" d="M48,102 v-8 q0,-6 6.5,-6 q6.5,0 6.5,6 v8 z"/>
+  <path fill="#C9A227" d="M63,102 v-8 q0,-6 6.5,-6 q6.5,0 6.5,6 v8 z"/>
+  <path fill="#C9A227" d="M94,102 v-8 q0,-6 6.5,-6 q6.5,0 6.5,6 v8 z"/>
+  <path fill="#C9A227" d="M109,102 v-8 q0,-6 6.5,-6 q6.5,0 6.5,6 v8 z"/>
+  <!-- the great chain, barring the strait -->
+  <g transform="rotate(-43 214 62)">
+    <ellipse cx="214" cy="62" rx="8.5" ry="5.5" fill="#2B2118"/>
+    <ellipse cx="214" cy="62" rx="4.5" ry="2.2" fill="#F0E6D2"/>
+  </g>
+  <rect x="199.5" y="67.5" width="11" height="5" fill="#2B2118" transform="rotate(-43 205 70)"/>
+  <g transform="rotate(-43 196 79)">
+    <ellipse cx="196" cy="79" rx="8.5" ry="5.5" fill="#2B2118"/>
+    <ellipse cx="196" cy="79" rx="4.5" ry="2.2" fill="#F0E6D2"/>
+  </g>
+  <rect x="181.5" y="84.5" width="11" height="5" fill="#2B2118" transform="rotate(-43 187 87)"/>
+  <g transform="rotate(-43 178 96)">
+    <ellipse cx="178" cy="96" rx="8.5" ry="5.5" fill="#2B2118"/>
+    <ellipse cx="178" cy="96" rx="4.5" ry="2.2" fill="#F0E6D2"/>
+  </g>
+  <rect x="163.5" y="101.5" width="11" height="5" fill="#2B2118" transform="rotate(-43 169 104)"/>
+  <g transform="rotate(-43 160 112)">
+    <ellipse cx="160" cy="112" rx="8.5" ry="5.5" fill="#2B2118"/>
+    <ellipse cx="160" cy="112" rx="4.5" ry="2.2" fill="#2C5F7C"/>
+  </g>
+  <!-- foreground wave band -->
+  <path fill="#2C5F7C" d="M0,126 Q24,118 48,126 T96,126 T144,126 T192,126 T240,126 T288,126 V160 H0 Z"/>
+</svg>
