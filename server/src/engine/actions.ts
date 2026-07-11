@@ -42,6 +42,7 @@ import {
   TERRAIN_MOVE_COST,
   UNIQUE_UNIT_OVERRIDES,
   UNIT_STATS,
+  UNJUSTIFIED_WAR_PRESTIGE,
   VASSAL,
 } from "./balance.js";
 import { areAdjacent } from "./adjacency.js";
@@ -51,7 +52,6 @@ import { applyDiplomacy, applyVassalize } from "./diplomacy.js";
 import { applySpy } from "./spy.js";
 import { applyMercBid } from "./mercenaries.js";
 import { resolveCard } from "./events/index.js";
-import { getModifiers } from "./modifiers.js";
 import { queueTactic, type BattleSide } from "./tactics.js";
 import { advancePhase } from "./roundLoop.js";
 
@@ -185,56 +185,13 @@ function ownUnitsAt(
     .reduce((acc, s) => acc + realCount(s), 0);
 }
 
-/**
- * §8.4 / CONTRACT2 §12.6 Great Bombard unlock check. The canonical boolean is
- * `Player.greatBombardUnlocked`; equivalently the Omen #34 side-channel posts a
- * `kind:"unlock"` modifier carrying `data.unlock === "GREAT_BOMBARD"` targeting
- * the faction. This reads EITHER (mirrors combat.ts's reader), so recruit-gating
- * works whether or not the flag has been synced from the modifier yet.
- */
-function isGreatBombardUnlocked(state: GameState, player: Player): boolean {
-  if (player.greatBombardUnlocked) return true;
-  const unlocks = getModifiers(
-    state,
-    "unlock",
-    player.faction ? { faction: player.faction } : undefined,
-  );
-  return unlocks.some((m) => m.data?.unlock === GREAT_BOMBARD.variant);
-}
-
-/** §8.4 one-per-game: true when a Great Bombard variant already exists on the board. */
-function greatBombardExists(state: GameState): boolean {
-  return state.armies.some((a) =>
-    (a.variants ?? []).some((v) => v.variant === GREAT_BOMBARD.variant && v.count > 0),
-  );
-}
-
-/**
- * §8.4 / CONTRACT2 §12.6: mirror any active `kind:"unlock"` /
- * `data.unlock === "GREAT_BOMBARD"` modifier onto the readable
- * `Player.greatBombardUnlocked` boolean for the targeted faction. Idempotent and
- * pure; combat and recruit-gating also read the modifier directly, so this is a
- * convenience sync the actions layer performs opportunistically (e.g. after a
- * PLAY_CARD that resolves Omen #34 from hand).
- */
-function syncGreatBombardUnlock(state: GameState): GameState {
-  const unlocks = state.activeModifiers.filter(
-    (m) => m.kind === "unlock" && m.data?.unlock === GREAT_BOMBARD.variant,
-  );
-  if (unlocks.length === 0) return state;
-  const factions = new Set(
-    unlocks.map((m) => m.target?.faction).filter((f): f is Faction => f !== undefined),
-  );
-  let changed = false;
-  const players = state.players.map((p) => {
-    if (p.faction && factions.has(p.faction) && !p.greatBombardUnlocked) {
-      changed = true;
-      return { ...p, greatBombardUnlocked: true };
-    }
-    return p;
-  });
-  return changed ? { ...state, players } : state;
-}
+// §8.4 (delta 3): the Great Bombard unlock/recruit helpers
+// (`isGreatBombardUnlocked`, `greatBombardExists`, `syncGreatBombardUnlock`) were
+// REMOVED with the recruit path. The corrected canon spawns the piece via Omen
+// #34 onto the `GameState.greatBombard` singleton (events subsystem); it is never
+// recruited, so the actions layer no longer reads or mirrors the deprecated
+// `Player.greatBombardUnlocked` flag. Combat still reads the flag OR the Omen #34
+// `kind:"unlock"` modifier via its own helper (out of this file's scope).
 
 // ---------------------------------------------------------------------------
 // RECRUIT (§6.2)
@@ -271,22 +228,19 @@ function applyRecruit(state: GameState, action: GameAction): GameState {
   }
   for (const v of variants) {
     if (v.count <= 0) continue;
-    // §8.4 The Great Bombard is a standalone, unlock-gated siege engine (base
-    // SIEGE), NOT a faction unique — it lives in balance.GREAT_BOMBARD, not
-    // UNIQUE_UNIT_OVERRIDES. Recruiting one is legal ONLY when the player has
-    // unlocked it (Omen #34); otherwise reject with NOT_UNLOCKED. One per game.
+    // §8.4 (delta 3, CANON "Great Bombard model — CORRECTED"): the Great Bombard
+    // is NEVER recruitable. It is the one-per-game unique siege engine that
+    // "cannot be recruited, rebuilt, or duplicated" (GD §8.4) and enters play
+    // ONLY when Omen #34 'great-bombard-forged' resolves — spawned FREE onto the
+    // `GameState.greatBombard` singleton in the Ottoman capital (or auctioned).
+    // The former unlock→RECRUIT path (and its NOT_UNLOCKED / greatBombardUnlocked
+    // gating) is removed; a RECRUIT order for it is rejected outright. Mirrors
+    // balance.GREAT_BOMBARD.recruitable === false.
     if (v.variant === GREAT_BOMBARD.variant) {
-      if (!isGreatBombardUnlocked(state, player)) {
-        throw new EngineError(
-          "NOT_UNLOCKED",
-          "The Great Bombard is not unlocked (Omen #34 'The Great Bombard Forged').",
-        );
-      }
-      if (greatBombardExists(state)) {
-        throw new EngineError("BAD_RECRUIT", "Only one Great Bombard may exist per game.");
-      }
-      landCount += v.count; // base SIEGE — a land engine
-      continue;
+      throw new EngineError(
+        "NOT_RECRUITABLE",
+        "The Great Bombard cannot be recruited; it enters play only via Omen #34 'The Great Bombard Forged'.",
+      );
     }
     const def = UNIQUE_UNIT_OVERRIDES[v.variant];
     if (!def) throw new EngineError("BAD_RECRUIT", `Unknown variant ${v.variant}.`);
@@ -340,7 +294,8 @@ function applyRecruit(state: GameState, action: GameAction): GameState {
   }
   for (const v of variants) {
     if (v.count <= 0) continue;
-    if (v.variant === GREAT_BOMBARD.variant) continue; // §8.4 free entry, no cost
+    // §8.4 (delta 3): a Great Bombard variant never reaches here — a RECRUIT for
+    // it is rejected above (NOT_RECRUITABLE), so no free-entry cost skip is needed.
     addUnitCost(v.base, v.count);
   }
 
@@ -654,13 +609,65 @@ function queueBattle(
 // ---------------------------------------------------------------------------
 
 /**
+ * §11 "Casus belli" (delta 5): a DECLARE_WAR carries an optional `justification`
+ * — `claim` | `crusade` | `vassal-defense` | `ally-call`. A war with a VALID
+ * justification is a legitimate casus belli (GD §11: "attack without the usual
+ * prestige cost" and "+1 extra prestige for wins in that war"); a war with an
+ * ABSENT or IMPLAUSIBLE justification is UNJUSTIFIED and costs the declarer
+ * `balance.UNJUSTIFIED_WAR_PRESTIGE` prestige.
+ *
+ * This is a BEST-EFFORT plausibility gate (documented, not a full CB engine):
+ * - `vassal-defense` requires the declarer to actually hold a vassal minor.
+ * - `ally-call` requires the declarer to have an ALLIANCE partner who is itself
+ *   currently at war (someone to be "called" to defend).
+ * - `claim` / `crusade` are accepted as plausible: a `claim` (broken royal
+ *   marriage / seized key city) and a `crusade` (faith stance) cannot be cheaply
+ *   verified from `GameState` here, so they are trusted at declaration time; the
+ *   richer marriage-claim bookkeeping is posted by diplomacy.ts's RENOUNCE path.
+ * Returns `true` when the declaration is a valid casus belli.
+ */
+function isJustifiedWar(state: GameState, actor: Player, action: GameAction): boolean {
+  if (action.type !== "DECLARE_WAR") return false;
+  switch (action.justification) {
+    case "claim":
+    case "crusade":
+      return true; // best-effort: trusted at declaration (see doc above)
+    case "vassal-defense":
+      return state.minors.some((m) => m.vassalOf === actor.id);
+    case "ally-call": {
+      const allyIds = new Set<string>();
+      for (const t of actor.treaties) {
+        if (t.type !== TreatyType.ALLIANCE) continue;
+        for (const party of t.parties) {
+          if (party !== actor.id) allyIds.add(party);
+        }
+      }
+      return state.wars.some(
+        (w) => allyIds.has(w.a) || allyIds.has(w.b),
+      );
+    }
+    default:
+      return false; // absent / unrecognised → unjustified
+  }
+}
+
+/**
  * Open a state of war against a rival faction (§11). Records a {@link WarState}
  * on `state.wars` (de-duplicated on the unordered player pair) so combat/prestige
- * can read it for the "win a war +3" award and casus-belli-adjacent checks. This
- * is the minimal bookkeeping the reducer owns; the richer casus-belli claim (a
- * broken royal marriage → free attacks + war-win bonus) is posted by
- * diplomacy.ts's RENOUNCE path, which also calls addWar. Assumes the reducer has
- * spent the action.
+ * can read it for the "win a war +3" award and casus-belli-adjacent checks.
+ *
+ * DELTA 5 (§11 "Casus belli"): the reducer VALIDATES the action's `justification`
+ * and, when the war is UNJUSTIFIED, applies the `UNJUSTIFIED_WAR_PRESTIGE` (1)
+ * penalty. Per CONTRACT2 §12.8 the penalty is posted as a round-scoped negative
+ * `prestige_pending` modifier (value `−UNJUSTIFIED_WAR_PRESTIGE`, `conquest:false`
+ * so it never touches the conquest track) which prestige.scorePrestige consumes
+ * ONCE at Cleanup and roundLoop.expireRoundModifiers clears — the same convention
+ * diplomacy.ts uses for its own signed prestige deltas, so there is no
+ * double-count and the reducer never mutates `Player.prestige` directly.
+ *
+ * The richer casus-belli claim (a broken royal marriage → free attacks + war-win
+ * bonus) is still posted by diplomacy.ts's RENOUNCE path, which also calls addWar.
+ * Assumes the reducer has spent the action.
  */
 function applyDeclareWar(state: GameState, action: GameAction): GameState {
   if (action.type !== "DECLARE_WAR") {
@@ -679,11 +686,36 @@ function applyDeclareWar(state: GameState, action: GameAction): GameState {
       (w.a === actor.id && w.b === defender.id) ||
       (w.a === defender.id && w.b === actor.id),
   );
+  const justified = isJustifiedWar(state, actor, action);
+
   const next: GameState = {
     ...state,
     wars: already
       ? state.wars
       : [...state.wars, { a: actor.id, b: defender.id, startedRound: state.round }],
+    // DELTA 5 (§11): post the unjustified-war prestige penalty via the
+    // prestige_pending convention (CONTRACT2 §12.8). Signed negative; `conquest:false`
+    // keeps it off the conquest track. Only posted for a NEW, unjustified war (a
+    // re-declaration of an existing war levies no fresh penalty).
+    activeModifiers:
+      justified || already
+        ? state.activeModifiers
+        : [
+            ...state.activeModifiers,
+            {
+              id: `prestige_pending-${state.logCounter}-${actor.id}-unjustified_war`,
+              scope: "round",
+              kind: "prestige_pending",
+              ...(actor.faction ? { target: { faction: actor.faction } } : {}),
+              value: -UNJUSTIFIED_WAR_PRESTIGE,
+              data: {
+                playerId: actor.id,
+                reason: "unjustified_war",
+                conquest: false,
+                source: "actions",
+              },
+            },
+          ],
   };
   return appendLog(next, {
     round: next.round,
@@ -691,8 +723,19 @@ function applyDeclareWar(state: GameState, action: GameAction): GameState {
     type: "diplomacy",
     actors: [actor.id],
     targets: [defender.id],
-    message: `${actor.name} declares war on ${defender.name} (${action.target}).`,
-    data: { target: action.target, alreadyAtWar: already, startedRound: next.round },
+    message: `${actor.name} declares ${
+      justified ? "a justified war" : "an unjustified war"
+    } on ${defender.name} (${action.target})${
+      justified || already ? "" : ` (−${UNJUSTIFIED_WAR_PRESTIGE} prestige)`
+    }.`,
+    data: {
+      target: action.target,
+      alreadyAtWar: already,
+      startedRound: next.round,
+      justification: action.justification ?? null,
+      justified,
+      unjustifiedPenalty: justified || already ? 0 : UNJUSTIFIED_WAR_PRESTIGE,
+    },
   });
 }
 
@@ -919,9 +962,11 @@ export function applyAction(state: GameState, action: GameAction): GameState {
           return { ...p, hand: [...p.hand.slice(0, i), ...p.hand.slice(i + 1)] };
         }),
       };
-      // §8.4/§12.6: if the resolved card posted a Great Bombard unlock, mirror it
-      // onto the readable flag for the targeted faction.
-      return syncGreatBombardUnlock(next);
+      // §8.4 (delta 3): the Great Bombard is no longer acquired via an unlock
+      // flag + RECRUIT. Omen #34 resolution (inside `resolveCard`) spawns the
+      // piece directly onto `GameState.greatBombard`, so PLAY_CARD no longer needs
+      // to mirror any unlock modifier onto `Player.greatBombardUnlocked`.
+      return next;
     }
 
     case "PLAY_TACTIC": {

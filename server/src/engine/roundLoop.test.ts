@@ -7,6 +7,10 @@
  *    action); only a card-posted `action_bonus` modifier may raise it to 5.
  *  - FL-21 (§6.4/§10 phase-5): a province occupied-and-uncontested flips ownership
  *    at END cleanup, NOT mid-MOVE, driven by the `pendingOccupations` queue.
+ *  - §13.4 (clarification): the turn-order CATCH-UP reshuffle — at cleanup,
+ *    `turnOrder` is re-sorted so the lowest-prestige power acts first next round
+ *    (tiebreak: fewer provinces). No first-player token / action bonus; just the
+ *    initiative reshuffle, settled AT cleanup on the freshly-scored prestige.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -163,5 +167,75 @@ describe("FL-21 — deferred occupation flip (§6.4/§10 phase-5)", () => {
     const p = ended.provinces.find((x) => x.id === provId)!;
     expect(p.ownerId).toBe("p2");
     expect(ended.pendingOccupations ?? []).toHaveLength(0);
+  });
+});
+
+describe("§13.4 — turn-order catch-up reshuffle", () => {
+  const prov = (s: GameState, id: string): number =>
+    s.provinces.filter((p) => p.ownerId === id).length;
+
+  it("re-sorts turnOrder lowest-prestige-first AT cleanup (before the next INCOME runs)", () => {
+    // §13.4: "At cleanup, turnOrder is re-sorted so the lowest-prestige power acts
+    // first next round." A single END→INCOME advance runs the CLEANUP block but NOT
+    // the INCOME block (that fires on the following advance), so any reshuffle we
+    // observe here was performed by the cleanup catch-up lever, not by INCOME.
+    let s = fresh();
+    // Strip holdings so END scorePrestige adds ~nothing and no one crosses the 2p
+    // win threshold (25) — isolates the §13.4 reshuffle from scoring/victory.
+    s.provinces.forEach((p) => (p.ownerId = null));
+    s.players.find((p) => p.id === "p2")!.prestige = 12; // p2 leads (below 25)
+    s.players.find((p) => p.id === "p1")!.prestige = 0; // p1 is the underdog
+    s = { ...s, phase: GamePhase.END };
+
+    const after = advancePhase(s); // END cleanup → INCOME of round 2
+    expect(after.phase).toBe(GamePhase.INCOME); // round advanced (no victory)
+    expect(after.round).toBe(2);
+    // §13.4 initiative to the underdog: the lowest-prestige power (p1) acts first,
+    // and the active-player pointer is reset to the head of the fresh order.
+    expect(after.turnOrder[0]).toBe("p1");
+    expect(after.activePlayerIndex).toBe(0);
+  });
+
+  it("§13.4 tiebreak: on equal prestige the power with FEWER provinces acts first", () => {
+    // Neutralise the Omen sub-phase (no card to resolve) so prestige stays exactly
+    // as set through the INCOME reshuffle; INCOME does not run scorePrestige.
+    let s = fresh();
+    s = { ...s, omenDeck: [], omenDiscard: [], eraDecksRemaining: {} };
+    // Equal prestige (0 = 0) forces the §13.4 tiebreak = fewer provinces. Reassign
+    // provinces so p2 (the LATER seat) trails on count — proving the order comes
+    // from the province tiebreak, not the original seat order.
+    let moved = 0;
+    for (const p of s.provinces) {
+      if (p.ownerId === "p2" && moved < 4) {
+        p.ownerId = "p1";
+        moved += 1;
+      }
+    }
+    expect(prov(s, "p2")).toBeLessThan(prov(s, "p1")); // p2 now holds fewer
+
+    const after = advancePhase(s); // INCOME reshuffle applies §13.4
+    expect(after.turnOrder[0]).toBe("p2"); // fewer provinces ⇒ acts first
+    expect(after.turnOrder).toEqual(["p2", "p1"]);
+  });
+
+  it("§13.4 confirms the ratified rule only — no extra action / first-player token", () => {
+    // The catch-up is the initiative reshuffle itself: the trailing player does NOT
+    // gain a bonus action or a persistent token, only the earlier slot in turnOrder.
+    let s = fresh();
+    s.provinces.forEach((p) => (p.ownerId = null));
+    s.players.find((p) => p.id === "p2")!.prestige = 12;
+    s.players.find((p) => p.id === "p1")!.prestige = 0;
+    s = { ...s, phase: GamePhase.END };
+
+    const after = advancePhase(s); // END → INCOME
+    const p1 = after.players.find((p) => p.id === "p1")!;
+    const p2 = after.players.find((p) => p.id === "p2")!;
+    // Budgets are equal (still base 4 after the next INCOME resets them) — the
+    // reshuffle grants NO action bonus. The lead survives in prestige; only the
+    // turn slot changed.
+    expect(p2.prestige).toBe(12); // no scoring perturbation (stripped holdings)
+    expect(p1.prestige).toBe(0);
+    // No first-player token field is introduced; the whole mechanic is the order.
+    expect(after.turnOrder).toEqual(["p1", "p2"]);
   });
 });

@@ -28,6 +28,7 @@ import {
   DESERTION_ORDER,
   GREAT_WORK_COSTS,
   MARKET_RATIOS,
+  MERC_REVOLT_PILLAGE,
   MERC_UPKEEP_MULTIPLIER,
   TAX_MULTIPLIERS,
   TAX_REVOLT,
@@ -652,6 +653,11 @@ export function upkeep(state: GameState): GameState {
       ...next.fleets.filter((f) => f.ownerId === player.id),
     ];
     const deserted: Partial<Record<UnitType, number>> = {};
+    // DELTA 5 (§4.4/§11): host provinces where an UNPAID mercenary deserted this
+    // upkeep. The departing company PILLAGES its host on the way out — collected
+    // here (Phase A only) and settled after desertion resolves. Populated ONLY by
+    // mercenary desertion, never by ordinary (Phase B) desertion.
+    const pillagedHosts = new Set<string>();
 
     const record = (u: UnitType, n: number) => {
       deserted[u] = (deserted[u] ?? 0) + n;
@@ -672,6 +678,7 @@ export function upkeep(state: GameState): GameState {
           stack.units[u] -= 1;
           if (m) m[u] = (m[u] ?? 0) - 1;
           record(u, 1);
+          pillagedHosts.add(stack.locationId); // DELTA 5: merc deserts → pillage host
           deficit -= per;
         }
         // §4.4/§6.3 FL-10: elite-mercenary VARIANT heads of this base type also
@@ -685,6 +692,7 @@ export function upkeep(state: GameState): GameState {
             while (deficit > 0 && v.count > 0) {
               v.count -= 1;
               record(u, 1);
+              pillagedHosts.add(stack.locationId); // DELTA 5: merc deserts → pillage host
               deficit -= per;
             }
             if (deficit <= 0) break;
@@ -730,6 +738,31 @@ export function upkeep(state: GameState): GameState {
         actors: [player.id],
         message: `${player.name} cannot feed the host: ${totalDeserted} unit(s) desert to starvation.`,
         data: { deserted },
+      });
+    }
+
+    // DELTA 5 (§4.4/§11, delta 5): unpaid mercenaries that DESERTED this upkeep
+    // PILLAGE the province that hosted them — MERC_REVOLT_PILLAGE.pillageGold is
+    // stripped from each host province's OWNER (clamped at 0) as the departing
+    // company sacks its way out. Fires ONLY for mercenary (Phase A) desertion —
+    // `pillagedHosts` is never populated by ordinary Phase B desertion. A neutral
+    // (owner-less) host has no controller to rob, so it is skipped.
+    for (const provId of pillagedHosts) {
+      const prov = next.provinces.find((pr) => pr.id === provId);
+      if (!prov) continue;
+      const victim = playerById(next, prov.ownerId);
+      if (!victim) continue; // §4.4 neutral host: no controller to pillage
+      const before = victim.treasury.gold;
+      victim.treasury.gold = Math.max(0, before - MERC_REVOLT_PILLAGE.pillageGold);
+      const stripped = before - victim.treasury.gold;
+      next = appendLog(next, {
+        round: next.round,
+        phase: next.phase,
+        type: "mercenary",
+        actors: [player.id],
+        targets: [prov.id],
+        message: `Deserting mercenaries pillage ${prov.name}, stripping ${stripped} gold from ${victim.name}.`,
+        data: { pillageGold: stripped, province: prov.id, victim: victim.id },
       });
     }
   }

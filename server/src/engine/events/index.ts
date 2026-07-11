@@ -156,20 +156,11 @@ function buildCardModifiers(
           data: { vs: "athens" },
         },
       ];
-    // #34 The Great Bombard Forged — STANDING: Ottoman unlocks the Great Bombard.
-    // Only reached when an Ottoman is in play (guarded by the faction-target check
-    // in resolveCard); with no Ottoman the effect logs an auction instead.
-    case 34:
-      return [
-        {
-          id: mid("unlock"),
-          sourceCardId: card.id,
-          scope: "game",
-          kind: "unlock",
-          target: { faction: Faction.OTTOMAN },
-          data: { unlock: "GREAT_BOMBARD" },
-        },
-      ];
+    // #34 The Great Bombard Forged — delta 3 (CANON correction, BALANCE_DELTAS.md /
+    // GD §8.4 / EVENT_CARDS #34): the retired "unlock then RECRUIT" model is GONE.
+    // No `kind:"unlock"` modifier is posted any more — the effect fn (cards.e34)
+    // SPAWNS the piece directly onto the GameState.greatBombard singleton (Ottoman
+    // capital, else auctioned). Hence #34 posts NO durable modifier here.
     // #35 Black Death Returns — PERSISTENT 2 rounds: cities/HV −1 grain/−1 gold, cull.
     case 35:
       return [

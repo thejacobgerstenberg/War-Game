@@ -620,6 +620,160 @@ describe("Great Bombard (§8.4)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// §8.4 delta 3 — 1-round EMPLACEMENT: a freshly placed/relocated Great Bombard
+// cannot FIRE (bombard walls) until the round AFTER it entered play. The arrival
+// clock is GameState.greatBombard.emplacedRound; it may bombard only once
+// state.round >= emplacedRound + GREAT_BOMBARD.emplacementRounds.
+// ---------------------------------------------------------------------------
+
+describe("Great Bombard 1-round emplacement (§8.4, delta 3)", () => {
+  /** A siege state where the ONLY besieger is the emplacing Great Bombard. */
+  const emplacingState = (round: number, emplacedRound: number): GameState => {
+    const p1 = { ...player("p1", Faction.OTTOMAN), greatBombardUnlocked: true };
+    return makeState({
+      round,
+      turn: round,
+      players: [p1, player("p2", Faction.BYZANTIUM)],
+      provinces: [
+        province("keep", {
+          ownerId: "p2",
+          terrain: TerrainType.CITY,
+          walls: { tier: 3, hp: 10 },
+          garrison: 1,
+        }),
+      ],
+      armies: [bombardArmy("gb", "p1", "keep")],
+      // The singleton tracker carries the arrival clock the gate reads.
+      greatBombard: { inPlay: true, ownerId: "p1", provinceId: "keep", emplacedRound },
+      // grainStores high so nothing changes via starvation; walls only move if it fires.
+      siegeStates: [siegeState({ besiegingArmyIds: ["gb"], grainStores: 99 })],
+    });
+  };
+
+  it("does NOT bombard the round it arrives (round === emplacedRound): walls untouched, no dice rolled", () => {
+    const state = emplacingState(3, 3); // arrived this very round
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    // Emplacing this round → the gun cannot fire → the walls are untouched…
+    expect(res.wallHpRemaining).toBe(10);
+    // …and (no generic guns, no assault troops, no starvation) NO dice were rolled.
+    expect(res.state.rngCursor).toBe(0);
+    expect(res.captured).toBe(false);
+  });
+
+  it("DOES bombard the following round (round > emplacedRound): enhanced two-die fire", () => {
+    const state = emplacingState(4, 3); // arrived last round → emplaced now
+    // Emplaced → the Bombard fires its GREAT_BOMBARD.bombardDice dice (first draws).
+    const predict = makeRng(SEED, 0);
+    let expected = 0;
+    for (const r of predict.rollDice(GREAT_BOMBARD.bombardDice)) expected += SIEGE.bombardDamage[r];
+    expected = Math.min(expected, GREAT_BOMBARD.maxWallDamagePerRound);
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, 0));
+    expect(res.wallHpRemaining).toBe(10 - expected);
+    expect(res.state.rngCursor).toBeGreaterThan(0);
+  });
+
+  it("is deterministic across the emplacement gate", () => {
+    const a = emplacingState(4, 3);
+    const b = emplacingState(4, 3);
+    const r1 = resolveSiege(a, a.siegeStates[0], makeRng(SEED, 0));
+    const r2 = resolveSiege(b, b.siegeStates[0], makeRng(SEED, 0));
+    expect(r1).toEqual(r2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §8.4 delta 3 — CAPTURE-PASSES-INTACT: the Great Bombard is never destroyed by
+// battle. When the escort stack carrying it is DEFEATED/destroyed, the gun passes
+// INTACT to the victor (transferred onto the winner's stack + the singleton
+// GameState.greatBombard re-homed to the new owner/province and re-emplaced).
+// ---------------------------------------------------------------------------
+
+describe("Great Bombard capture-passes-intact (§8.4, delta 3)", () => {
+  it("a defeated GB-carrying field stack passes the gun INTACT to the victor", () => {
+    // p2's ONLY stack is the Great Bombard (base SIEGE → rolls no field dice), so an
+    // overwhelming p1 assault wipes the escort. The gun must NOT be destroyed — it is
+    // captured by p1.
+    const state = makeState({
+      provinces: [province("field", { ownerId: "p2", terrain: TerrainType.PLAINS })],
+      armies: [
+        army("a1", "p1", "field", { [UnitType.INFANTRY]: 20 }),
+        bombardArmy("d1", "p2", "field"),
+      ],
+      greatBombard: { inPlay: true, ownerId: "p2", provinceId: "field", emplacedRound: 1 },
+    });
+    const battle: PendingBattle = {
+      id: "b1",
+      provinceId: "field",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+    };
+    const res = resolveBattle(state, battle, makeRng(SEED, 0));
+    expect(res.winnerId).toBe("p1");
+    // The loser's GB stack is gone…
+    expect(res.state.armies.find((a) => a.id === "d1")).toBeUndefined();
+    // …but the gun survives on the victor's stack (elite loot, not scrap).
+    const winnerArmy = res.state.armies.find((a) => a.id === "a1");
+    const gbVariant = winnerArmy?.variants?.find((v) => v.variant === GREAT_BOMBARD.variant);
+    expect(gbVariant?.count).toBe(1);
+    // The singleton tracker is re-homed to the victor + province, and re-emplaced
+    // this round (a captured gun must sit a fresh emplacement round before firing).
+    expect(res.state.greatBombard?.ownerId).toBe("p1");
+    expect(res.state.greatBombard?.provinceId).toBe("field");
+    expect(res.state.greatBombard?.emplacedRound).toBe(state.round);
+    expect(res.state.greatBombard?.inPlay).toBe(true);
+    // Exactly ONE Great Bombard remains in play (onePerGame) — only on the winner.
+    const totalGb = res.state.armies.reduce(
+      (n, a) => n + (a.variants?.find((v) => v.variant === GREAT_BOMBARD.variant)?.count ?? 0),
+      0,
+    );
+    expect(totalGb).toBe(1);
+    // Purity: the caller's input tracker is untouched.
+    expect(state.greatBombard?.ownerId).toBe("p2");
+  });
+
+  it("a GB stack that RETREATS intact keeps its gun (not a capture)", () => {
+    // Defender routs WITH a retreat available (an owned adjacent province), so its
+    // stack survives and keeps the gun — the victor does NOT capture it.
+    const p1 = { ...player("p1", Faction.OTTOMAN) };
+    const p2 = { ...player("p2", Faction.BYZANTIUM) };
+    const gbArmy = bombardArmy("d1", "p2", "field");
+    gbArmy.units[UnitType.LEVY] = 4; // some line troops so the stack can rout-and-retreat
+    const state = makeState({
+      players: [p1, p2],
+      provinces: [
+        province("field", { ownerId: "p2", terrain: TerrainType.PLAINS }),
+        province("haven", { ownerId: "p2", terrain: TerrainType.PLAINS }), // retreat target
+      ],
+      armies: [army("a1", "p1", "field", { [UnitType.CAVALRY]: 30 }), gbArmy],
+      greatBombard: { inPlay: true, ownerId: "p2", provinceId: "field", emplacedRound: 1 },
+    });
+    const battle: PendingBattle = {
+      id: "b1",
+      provinceId: "field",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+    };
+    const res = resolveBattle(state, battle, makeRng(SEED, 0));
+    const survivor = res.state.armies.find((a) => a.id === "d1");
+    if (survivor) {
+      // If the defender survived (retreated), it still owns the gun; the tracker
+      // must NOT have flipped to p1.
+      const stillHasGb = survivor.variants?.some((v) => v.variant === GREAT_BOMBARD.variant);
+      expect(stillHasGb).toBe(true);
+      expect(res.state.greatBombard?.ownerId).toBe("p2");
+    } else {
+      // If it was destroyed instead, capture-passes-intact must have handed the gun
+      // to p1 (never destroyed it).
+      expect(res.state.greatBombard?.ownerId).toBe("p1");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // CANON sea-resupply (GD §8.2)
 // ---------------------------------------------------------------------------
 
@@ -656,6 +810,76 @@ describe("sea-resupply siege rule (GD §8.2, CANON)", () => {
   it("an ENEMY-controlled adjacent sea allows the coastal city to starve", () => {
     // sea-of-marmara blockaded by the besieger (p1) → lane cut → starvation resumes.
     expect(runSiege("p1", SIEGE.baseHoldoutRounds + 1)).toBeLessThan(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CANON clarification §8.2.3 (coordinator): sea-resupply SUSPENDS starvation ONLY.
+// While a besieged coastal city is sea-resupplied (open lane → not starving) the
+// besieger may still CONTEST the blockade and the defender may still receive HARBOR
+// REINFORCEMENT via an ordinary naval battle in the adjacent sea. The resupply must
+// gate ONLY the starvation branch — it must NOT freeze the naval contest path.
+// ---------------------------------------------------------------------------
+
+describe("sea-resupply does not freeze naval/harbor action (§8.2.3, CANON)", () => {
+  const marmara = (blockadedBy: string | null): SeaZone => ({
+    id: "sea-of-marmara",
+    name: "sea-of-marmara",
+    position: { x: 0, y: 0 },
+    blockadedBy,
+  });
+
+  const besiegedPort = (seaOwner: string | null, grainStores: number): GameState =>
+    makeState({
+      provinces: [
+        province("constantinople", {
+          ownerId: "p2",
+          coastal: true,
+          walls: { tier: 0, hp: 0 },
+          garrison: 5,
+        }),
+      ],
+      // SIEGE-only land besieger (0 assault troops → the garrison can only starve),
+      // plus a war fleet each so the sea lane can actually be contested.
+      armies: [army("s1", "p1", "constantinople", { [UnitType.SIEGE]: 30 })],
+      fleets: [
+        fleet("f1", "p1", "sea-of-marmara", { [UnitType.WARSHIP]: 6 }), // besieger's fleet
+        fleet("f2", "p2", "sea-of-marmara", { [UnitType.GALLEY]: 1 }), // defender's harbor fleet
+      ],
+      seaZones: [marmara(seaOwner)],
+      siegeStates: [siegeState({ provinceId: "constantinople", grainStores })],
+    });
+
+  it("a sea-resupplied siege still permits a naval contest that flips the blockade", () => {
+    // Open lane (blockadedBy null) → the port is resupplied and does NOT starve…
+    let state = besiegedPort(null, SIEGE.baseHoldoutRounds);
+    const siegeRes = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
+    expect(siegeRes.state.provinces[0].garrison).toBe(5); // fed: resupply gated starvation
+    state = siegeRes.state;
+
+    // …yet the besieger may still CONTEST the lane: the naval battle is NOT frozen by
+    // the active resupply and resolves normally, flipping control of the sea zone.
+    const navalBattle: PendingBattle = {
+      id: "n1",
+      seaZoneId: "sea-of-marmara",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["f1"],
+      defenderStackIds: ["f2"],
+      isNaval: true,
+    };
+    const navalRes = resolveNaval(state, navalBattle, makeRng(SEED, state.rngCursor));
+    expect(navalRes.winnerId).toBe("p1"); // contest happened and was decided
+    expect(navalRes.state.seaZones[0].blockadedBy).toBe("p1"); // lane now closed by the besieger
+  });
+
+  it("once the contest closes the only lane, the port starves next round (resupply gated starvation only)", () => {
+    // Lane already lost to the besieger (blockadedBy p1) and stores empty → the port
+    // now hungers exactly like an inland city, proving the resupply gate governs ONLY
+    // starvation and the naval closure took effect.
+    const state = besiegedPort("p1", 0);
+    const res = resolveSiege(state, state.siegeStates[0], makeRng(SEED, state.rngCursor));
+    expect(res.state.provinces[0].garrison).toBeLessThan(5);
   });
 });
 

@@ -178,6 +178,15 @@ export function createInitialState(
     pendingOccupations: [],
     activeModifiers: [],
     constantinopleHold: { faction: null, rounds: 0 },
+    // delta 3 (CANON correction): the one-per-game Great Bombard starts NOT in
+    // play; Omen event #34 (`great-bombard-forged`) spawns/places it and sets
+    // ownerId/provinceId/emplacedRound. Never recruited.
+    greatBombard: {
+      inPlay: false,
+      ownerId: null,
+      provinceId: null,
+      emplacedRound: 0,
+    },
     rngSeed,
     rngCursor: rng.cursor,
     logCounter: 0,

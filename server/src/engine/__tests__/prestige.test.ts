@@ -20,7 +20,11 @@ import {
 } from "@imperium/shared";
 import { createInitialState, type SeatInput } from "../gameState.js";
 import { scorePrestige, checkVictory } from "../prestige.js";
-import { PRESTIGE_THRESHOLDS, PRESTIGE_VALUES } from "../balance.js";
+import {
+  MONOPOLY_PRESTIGE,
+  PRESTIGE_THRESHOLDS,
+  PRESTIGE_VALUES,
+} from "../balance.js";
 
 const seats2: SeatInput[] = [
   { id: "p1", name: "Basil", faction: Faction.BYZANTIUM, isHost: true },
@@ -246,6 +250,65 @@ describe("scorePrestige — §13.1 prestige sources", () => {
 });
 
 // ---------------------------------------------------------------------------
+// DELTA 2 — trade-monopoly prestige is DIMINISHING (§13.1 + ratified ruling)
+// ---------------------------------------------------------------------------
+
+describe("scorePrestige — DELTA 2 diminishing trade monopoly (§13.1 + ruling)", () => {
+  /** Post an explicit trade_monopoly modifier crediting `playerId` (one route). */
+  function pushMonopoly(state: GameState, id: string, playerId: string): void {
+    state.activeModifiers.push({
+      id,
+      scope: "round",
+      kind: "trade_monopoly",
+      data: { playerId },
+    });
+  }
+
+  it("a SINGLE monopoly scores MONOPOLY_PRESTIGE.first (= +2)", () => {
+    const s = fresh();
+    isolate(s, {});
+    pushMonopoly(s, "m1", "p1");
+    const out = scorePrestige(s);
+    expect(prestigeOf(out, "p1")).toBe(MONOPOLY_PRESTIGE.first);
+    expect(MONOPOLY_PRESTIGE.first).toBe(2);
+  });
+
+  it("a SECOND monopoly adds only MONOPOLY_PRESTIGE.additional, not another first", () => {
+    const s = fresh();
+    isolate(s, {});
+    pushMonopoly(s, "m1", "p1");
+    pushMonopoly(s, "m2", "p1");
+    const out = scorePrestige(s);
+    // Diminishing: first + additional, NOT 2 * first (which the old flat +2 gave).
+    expect(prestigeOf(out, "p1")).toBe(
+      MONOPOLY_PRESTIGE.first + MONOPOLY_PRESTIGE.additional,
+    );
+    expect(MONOPOLY_PRESTIGE.additional).toBe(1);
+  });
+
+  it("THREE monopolies score first + 2 * additional (diminishing, not 3 * first)", () => {
+    const s = fresh();
+    isolate(s, {});
+    pushMonopoly(s, "m1", "p1");
+    pushMonopoly(s, "m2", "p1");
+    pushMonopoly(s, "m3", "p1");
+    const out = scorePrestige(s);
+    expect(prestigeOf(out, "p1")).toBe(
+      MONOPOLY_PRESTIGE.first + MONOPOLY_PRESTIGE.additional * 2,
+    );
+    // Guard against a regression to the old flat model (would be 3 * first = 6).
+    expect(prestigeOf(out, "p1")).not.toBe(MONOPOLY_PRESTIGE.first * 3);
+  });
+
+  it("no monopoly scores nothing", () => {
+    const s = fresh();
+    isolate(s, {});
+    const out = scorePrestige(s);
+    expect(prestigeOf(out, "p1")).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // §13.1/§13.3 Secret objectives — scored ONLY at game end (CANON #10)
 // ---------------------------------------------------------------------------
 
@@ -303,6 +366,62 @@ describe("scorePrestige — §13.3 secret objectives scored only at game end", (
     const out = scorePrestige(s);
     // p1's objective is revealed at the terminating cleanup.
     expect(prestigeOf(out, "p1")).toBe(PRESTIGE_VALUES.secretObjective);
+  });
+
+  // ---- DELTA 4: each secret objective scores +4 INDEPENDENTLY (not a bundle) ---
+  // §13.3 (ratified ruling): objectives are NOT an all-3 bundle — every satisfied
+  // objective contributes its own +4 at game end. A player satisfying 2 of 3 scores
+  // +8; 3 of 3 scores +12.
+  it("DELTA 4 (§13.3): satisfying 2 of 3 objectives scores +8 (independent, not bundled)", () => {
+    const s = fresh();
+    s.round = 16;
+    // Use INLAND (non-coastal) plains so owning them cannot incidentally form a
+    // §13.1 sea-majority trade monopoly (DELTA 2) — this test isolates the
+    // objective-scoring contribution alone.
+    const plains = s.provinces
+      .filter((p) => !p.isCapitalOf && !(p.highValue ?? 0) && !p.coastal)
+      .slice(0, 3)
+      .map((p) => p.id);
+    expect(plains.length).toBe(3);
+    // p1 owns the first two provinces but NOT the third.
+    isolate(s, { [plains[0]]: "p1", [plains[1]]: "p1" });
+    s.players.find((p) => p.id === "p1")!.objectives = plains.map((provId, i) => ({
+      id: `obj-${i}`,
+      description: `hold ${provId}`,
+      provinceRefs: [provId],
+      prestige: PRESTIGE_VALUES.secretObjective,
+    }));
+    const out = scorePrestige(s);
+    // Two satisfied objectives × +4 each = +8; the third (unowned) scores nothing.
+    expect(prestigeOf(out, "p1")).toBe(2 * PRESTIGE_VALUES.secretObjective);
+    const objs = out.players.find((p) => p.id === "p1")!.objectives;
+    expect(objs.filter((o) => o.completed).length).toBe(2);
+    expect(objs.find((o) => o.id === "obj-2")!.completed).toBeFalsy();
+  });
+
+  it("DELTA 4 (§13.3): satisfying 3 of 3 objectives scores +12 (independent, not bundled)", () => {
+    const s = fresh();
+    s.round = 16;
+    // Use INLAND (non-coastal) plains so owning all three cannot incidentally
+    // form a §13.1 sea-majority trade monopoly (DELTA 2, +2) — this test measures
+    // ONLY the three independent +4 objective awards (ratified DELTA 4).
+    const plains = s.provinces
+      .filter((p) => !p.isCapitalOf && !(p.highValue ?? 0) && !p.coastal)
+      .slice(0, 3)
+      .map((p) => p.id);
+    expect(plains.length).toBe(3);
+    isolate(s, { [plains[0]]: "p1", [plains[1]]: "p1", [plains[2]]: "p1" });
+    s.players.find((p) => p.id === "p1")!.objectives = plains.map((provId, i) => ({
+      id: `obj-${i}`,
+      description: `hold ${provId}`,
+      provinceRefs: [provId],
+      prestige: PRESTIGE_VALUES.secretObjective,
+    }));
+    const out = scorePrestige(s);
+    expect(prestigeOf(out, "p1")).toBe(3 * PRESTIGE_VALUES.secretObjective);
+    expect(
+      out.players.find((p) => p.id === "p1")!.objectives.every((o) => o.completed),
+    ).toBe(true);
   });
 });
 
@@ -610,6 +729,33 @@ describe("scorePrestige / checkVictory — §13.3 Constantinople sudden death", 
     cple.ownerId = "p1";
     expect(checkVictory(s)).toBeNull();
   });
+
+  // ---- DELTA 6: sudden death OUTRANKS a same-cleanup threshold win -----------
+  // §13.2/§13.3 (ratified ruling): if a foreign power's 2-cleanup Constantinople
+  // hold AND a prestige-threshold crossing both resolve in the SAME cleanup, the
+  // sudden-death Fall of Constantinople wins — regardless of prestige.
+  it("DELTA 6 (§13.2/§13.3): sudden death beats a same-cleanup threshold win", () => {
+    const s = fresh(seats2);
+    // Ottoman (p2) holds Byzantium's capital through its second cleanup.
+    const cple = s.provinces.find((p) => p.id === "constantinople")!;
+    cple.ownerId = "p2";
+    s.constantinopleHold = { faction: Faction.OTTOMAN, rounds: 2 };
+    // Simultaneously, Byzantium (p1) is far over the prestige threshold this cleanup.
+    s.players.find((p) => p.id === "p1")!.prestige = 100; // >> threshold 25
+    // Both triggers fire; sudden death (Ottoman) wins, NOT the prestige leader.
+    expect(checkVictory(s)).toBe(Faction.OTTOMAN);
+  });
+
+  it("DELTA 6 (§13.3): a 1-cleanup hold does NOT pre-empt a threshold win", () => {
+    const s = fresh(seats2);
+    const cple = s.provinces.find((p) => p.id === "constantinople")!;
+    cple.ownerId = "p2";
+    // Only one cleanup held → sudden death not yet armed.
+    s.constantinopleHold = { faction: Faction.OTTOMAN, rounds: 1 };
+    s.players.find((p) => p.id === "p1")!.prestige = 30; // over threshold
+    // Threshold win stands for Byzantium; sudden death has not triggered.
+    expect(checkVictory(s)).toBe(Faction.BYZANTIUM);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -648,6 +794,28 @@ describe("checkVictory — §13.2 prestige threshold", () => {
     const s = fresh(seats2);
     s.players.find((p) => p.id === "p1")!.prestige = 26;
     s.players.find((p) => p.id === "p2")!.prestige = 30;
+    expect(checkVictory(s)).toBe(Faction.OTTOMAN);
+  });
+
+  // CLARIFICATION §13.3 cap tiebreak: at the prestige cap, when several cross with
+  // EQUAL prestige the tiebreak order is most key/high-value cities, THEN most gold.
+  it("§13.3 cap tiebreak: equal prestige at the cap breaks on most key cities", () => {
+    const s = fresh(seats2);
+    const key = keyCityId(s);
+    isolate(s, { [key]: "p2" }); // p2 holds one more key city
+    // Both are at the 2-player threshold (25) with equal prestige.
+    s.players.find((p) => p.id === "p1")!.prestige = 25;
+    s.players.find((p) => p.id === "p2")!.prestige = 25;
+    expect(checkVictory(s)).toBe(Faction.OTTOMAN);
+  });
+
+  it("§13.3 cap tiebreak: equal prestige AND key cities breaks on most gold", () => {
+    const s = fresh(seats2);
+    isolate(s, {}); // neither holds a key city
+    s.players.find((p) => p.id === "p1")!.prestige = 25;
+    s.players.find((p) => p.id === "p2")!.prestige = 25;
+    s.players.find((p) => p.id === "p1")!.treasury.gold = 4;
+    s.players.find((p) => p.id === "p2")!.treasury.gold = 11; // more gold → p2
     expect(checkVictory(s)).toBe(Faction.OTTOMAN);
   });
 

@@ -37,7 +37,12 @@ import {
   type Player,
   type SecretObjective,
 } from "@imperium/shared";
-import { PRESTIGE_THRESHOLDS, PRESTIGE_VALUES, ROUNDS } from "./balance.js";
+import {
+  MONOPOLY_PRESTIGE,
+  PRESTIGE_THRESHOLDS,
+  PRESTIGE_VALUES,
+  ROUNDS,
+} from "./balance.js";
 import { appendLog } from "./logEntry.js";
 import { neighborsOf } from "./adjacency.js";
 
@@ -73,19 +78,30 @@ function keyCityCount(state: GameState, playerId: string): number {
  * owned coastal provinces bordering a sea zone), or a card-posted explicit
  * 'trade_monopoly' modifier. The "both ends of a major route" clause is not
  * computable without route/port-tier data on Province (see NEEDS-FROM-INTEGRATOR).
+ *
+ * DELTA 2 (§13.1 + ratified ruling — diminishing trade-monopoly prestige):
+ * returns the COUNT of distinct monopolised routes/seas this player holds, so the
+ * caller can award `MONOPOLY_PRESTIGE.first` for the first and
+ * `MONOPOLY_PRESTIGE.additional` for each further one (no longer a flat +2 each).
+ * Each matching `trade_monopoly` modifier counts as one route; each sea whose
+ * owned coastal ports the player strictly dominates counts as one.
  */
-function hasTradeMonopoly(state: GameState, playerId: string): boolean {
-  // Explicit hook: a card/economy-posted trade-monopoly modifier for this player.
-  const byModifier = state.activeModifiers.some(
-    (m) =>
-      m.kind === "trade_monopoly" &&
-      (m.data?.playerId === playerId ||
-        (m.target?.faction != null &&
-          playerByFaction(state, m.target.faction)?.id === playerId)),
-  );
-  if (byModifier) return true;
+function countTradeMonopolies(state: GameState, playerId: string): number {
+  let count = 0;
 
-  // Sea majority: strict majority of a sea's owned coastal ports.
+  // Explicit hook: each card/economy-posted trade-monopoly modifier for this
+  // player is one monopolised route.
+  for (const m of state.activeModifiers) {
+    if (m.kind !== "trade_monopoly") continue;
+    const matches =
+      m.data?.playerId === playerId ||
+      (m.target?.faction != null &&
+        playerByFaction(state, m.target.faction)?.id === playerId);
+    if (matches) count++;
+  }
+
+  // Sea majority: each sea with a strict majority of the player's owned coastal
+  // ports is one monopolised sea route.
   for (const zone of state.seaZones) {
     const portOwners: string[] = [];
     for (const neighbourId of neighborsOf(zone.id)) {
@@ -94,9 +110,10 @@ function hasTradeMonopoly(state: GameState, playerId: string): boolean {
     }
     if (portOwners.length < 2) continue; // a single port is not a monopoly
     const mine = portOwners.filter((o) => o === playerId).length;
-    if (mine * 2 > portOwners.length) return true; // strict majority
+    if (mine * 2 > portOwners.length) count++; // strict majority
   }
-  return false;
+
+  return count;
 }
 
 // ---------------------------------------------------------------------------
@@ -309,10 +326,19 @@ export function scorePrestige(state: GameState): GameState {
     }
   }
 
-  // --- 2) Trade monopoly (§13.1 +2/round) ----------------------------------
+  // --- 2) Trade monopoly (§13.1 + DELTA 2 diminishing) ---------------------
+  // DELTA 2 (§13.1 + ratified ruling): trade-monopoly prestige is NOT a flat
+  // +2 per monopolised route. A player scores MONOPOLY_PRESTIGE.first for the
+  // FIRST monopolised route/sea and MONOPOLY_PRESTIGE.additional for EACH
+  // additional monopoly they hold this cleanup (diminishing). The count is
+  // derived from state (sea majorities + posted trade_monopoly modifiers).
   for (const player of next.players) {
-    if (hasTradeMonopoly(next, player.id)) {
-      award(player.id, "tradeMonopoly", PRESTIGE_VALUES.tradeMonopolyPerRound);
+    const monopolies = countTradeMonopolies(next, player.id);
+    if (monopolies > 0) {
+      const amount =
+        MONOPOLY_PRESTIGE.first +
+        MONOPOLY_PRESTIGE.additional * (monopolies - 1);
+      award(player.id, "tradeMonopoly", amount);
     }
   }
 

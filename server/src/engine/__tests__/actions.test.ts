@@ -25,6 +25,7 @@ import { createInitialState, type SeatInput } from "../gameState.js";
 import { applyAction, EngineError } from "../actions.js";
 import { advancePhase } from "../roundLoop.js";
 import { omenCardId } from "../events/index.js";
+import { UNJUSTIFIED_WAR_PRESTIGE } from "../balance.js";
 
 const seats: SeatInput[] = [
   { id: "p1", name: "Basil", faction: Faction.BYZANTIUM, isHost: true },
@@ -353,34 +354,38 @@ describe("movement points (§3.1 / §6.4)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GREAT BOMBARD recruit gating (§8.4)
+// GREAT BOMBARD not recruitable (§8.4, DELTA 3)
 // ---------------------------------------------------------------------------
 
 const GREAT_BOMBARD_VARIANT = { base: UnitType.SIEGE, variant: "GREAT_BOMBARD", count: 1 };
 
-describe("Great Bombard recruit gating (§8.4)", () => {
-  it("§8.4 rejects recruiting the Great Bombard when it is NOT unlocked (NOT_UNLOCKED)", () => {
+describe("Great Bombard is NOT recruitable (§8.4, DELTA 3)", () => {
+  // CANON "Great Bombard model — CORRECTED": the piece is acquired ONLY by Omen
+  // #34 resolving (spawned onto GameState.greatBombard in the Ottoman capital, or
+  // auctioned) — GD §8.4 "It cannot be recruited, rebuilt, or duplicated." The old
+  // unlock→RECRUIT path (and its NOT_UNLOCKED / greatBombardUnlocked gating) is
+  // GONE. A RECRUIT order for it is always rejected.
+
+  it("§8.4 rejects recruiting the Great Bombard outright (NOT_RECRUITABLE)", () => {
     const s = fresh();
     s.phase = GamePhase.RECRUITMENT;
     expect(() =>
       applyAction(s, recruit({ units: {}, variants: [GREAT_BOMBARD_VARIANT] })),
-    ).toThrowError(expect.objectContaining({ code: "NOT_UNLOCKED" }));
+    ).toThrowError(expect.objectContaining({ code: "NOT_RECRUITABLE" }));
   });
 
-  it("§8.4 allows recruiting the Great Bombard once unlocked (free, one per game)", () => {
+  it("§8.4 rejects the Great Bombard RECRUIT even with the deprecated unlock flag set", () => {
     const s = fresh();
     s.phase = GamePhase.RECRUITMENT;
-    const p1 = s.players.find((p) => p.id === "p1")!;
-    p1.greatBombardUnlocked = true; // canonical unlock flag (CONTRACT2 §12.6)
-    const goldBefore = p1.treasury.gold;
-    const next = applyAction(s, recruit({ units: {}, variants: [GREAT_BOMBARD_VARIANT] }));
-    const army = next.armies.find((a) => a.id === BYZ_ARMY)!;
-    expect(army.variants?.some((v) => v.variant === "GREAT_BOMBARD" && v.count === 1)).toBe(true);
-    // §8.4 free entry — treasury untouched.
-    expect(next.players.find((p) => p.id === "p1")!.treasury.gold).toBe(goldBefore);
+    // The deprecated flag no longer opens any recruit path — the RECRUIT is still
+    // rejected (DELTA 3 dropped every read of it in the recruit gate).
+    s.players.find((p) => p.id === "p1")!.greatBombardUnlocked = true;
+    expect(() =>
+      applyAction(s, recruit({ units: {}, variants: [GREAT_BOMBARD_VARIANT] })),
+    ).toThrowError(expect.objectContaining({ code: "NOT_RECRUITABLE" }));
   });
 
-  it("§8.4 also accepts the unlock via the Omen #34 kind:'unlock' modifier", () => {
+  it("§8.4 rejects the Great Bombard RECRUIT even with the Omen #34 kind:'unlock' modifier present", () => {
     const s = fresh();
     s.phase = GamePhase.RECRUITMENT;
     s.activeModifiers.push({
@@ -390,21 +395,24 @@ describe("Great Bombard recruit gating (§8.4)", () => {
       target: { faction: Faction.BYZANTIUM },
       data: { unlock: "GREAT_BOMBARD" },
     });
-    const next = applyAction(s, recruit({ units: {}, variants: [GREAT_BOMBARD_VARIANT] }));
-    expect(
-      next.armies.find((a) => a.id === BYZ_ARMY)!.variants?.some((v) => v.variant === "GREAT_BOMBARD"),
-    ).toBe(true);
-  });
-
-  it("§8.4 enforces one-per-game (a second Great Bombard is rejected)", () => {
-    const s = fresh();
-    s.phase = GamePhase.RECRUITMENT;
-    s.players.find((p) => p.id === "p1")!.greatBombardUnlocked = true;
-    const army = s.armies.find((a) => a.id === BYZ_ARMY)!;
-    army.variants = [{ base: UnitType.SIEGE, variant: "GREAT_BOMBARD", count: 1 }];
     expect(() =>
       applyAction(s, recruit({ units: {}, variants: [GREAT_BOMBARD_VARIANT] })),
-    ).toThrowError(expect.objectContaining({ code: "BAD_RECRUIT" }));
+    ).toThrowError(expect.objectContaining({ code: "NOT_RECRUITABLE" }));
+  });
+
+  it("§8.4 a normal RECRUIT alongside a Great Bombard variant is still rejected (no partial recruit)", () => {
+    const s = fresh();
+    s.phase = GamePhase.RECRUITMENT;
+    const p1 = s.players.find((p) => p.id === "p1")!;
+    const goldBefore = p1.treasury.gold;
+    expect(() =>
+      applyAction(
+        s,
+        recruit({ units: { [UnitType.INFANTRY]: 1 }, variants: [GREAT_BOMBARD_VARIANT] }),
+      ),
+    ).toThrowError(expect.objectContaining({ code: "NOT_RECRUITABLE" }));
+    // A thrown EngineError never mutates state (treasury untouched, no stack change).
+    expect(s.players.find((p) => p.id === "p1")!.treasury.gold).toBe(goldBefore);
   });
 });
 
@@ -577,6 +585,105 @@ describe("DECLARE_WAR (§11)", () => {
     expect(() =>
       applyAction(s, { type: "DECLARE_WAR", player: "p1", target: Faction.VENICE }),
     ).toThrowError(expect.objectContaining({ code: "NO_TARGET" }));
+  });
+
+  // ---- DELTA 5 (§11 Casus belli): justification dispatch --------------------
+
+  /** The unjustified-war penalty modifier for `playerId`, if one was posted. */
+  function unjustifiedMod(s: GameState, playerId: string) {
+    return s.activeModifiers.find(
+      (m) =>
+        m.kind === "prestige_pending" &&
+        m.data?.reason === "unjustified_war" &&
+        m.data?.playerId === playerId,
+    );
+  }
+
+  it("DELTA 5 §11 an UNJUSTIFIED DECLARE_WAR (no justification) posts a −1 prestige_pending", () => {
+    const s = fresh();
+    s.phase = GamePhase.DIPLOMACY;
+    const next = applyAction(s, { type: "DECLARE_WAR", player: "p1", target: Faction.OTTOMAN });
+    // The war still opens...
+    expect(next.wars.some((w) => w.a === "p1" && w.b === "p2")).toBe(true);
+    // ...and a negative prestige_pending is posted (consumed by prestige at Cleanup,
+    // never mutating Player.prestige inline — CONTRACT2 §12.8).
+    const mod = unjustifiedMod(next, "p1");
+    expect(mod).toBeDefined();
+    expect(mod!.value).toBe(-UNJUSTIFIED_WAR_PRESTIGE);
+    expect(mod!.scope).toBe("round");
+    expect(mod!.data?.conquest).toBe(false); // stays off the conquest track
+    expect(mod!.target?.faction).toBe(Faction.BYZANTIUM); // scoped to the declarer
+    // Prestige is NOT mutated inline (the pending modifier is scored later).
+    expect(next.players.find((p) => p.id === "p1")!.prestige).toBe(
+      s.players.find((p) => p.id === "p1")!.prestige,
+    );
+  });
+
+  it("DELTA 5 §11 a JUSTIFIED DECLARE_WAR (claim) posts NO prestige penalty", () => {
+    const s = fresh();
+    s.phase = GamePhase.DIPLOMACY;
+    const next = applyAction(s, {
+      type: "DECLARE_WAR",
+      player: "p1",
+      target: Faction.OTTOMAN,
+      justification: "claim",
+    });
+    expect(next.wars.some((w) => w.a === "p1" && w.b === "p2")).toBe(true);
+    expect(unjustifiedMod(next, "p1")).toBeUndefined();
+  });
+
+  it("DELTA 5 §11 vassal-defense with NO vassal is implausible → unjustified (penalty)", () => {
+    const s = fresh();
+    s.phase = GamePhase.DIPLOMACY;
+    // p1 holds no vassal minor, so the claimed defence is implausible.
+    const next = applyAction(s, {
+      type: "DECLARE_WAR",
+      player: "p1",
+      target: Faction.OTTOMAN,
+      justification: "vassal-defense",
+    });
+    expect(unjustifiedMod(next, "p1")).toBeDefined();
+  });
+
+  it("DELTA 5 §11 vassal-defense WITH a vassal is a valid casus belli (no penalty)", () => {
+    const s = fresh();
+    s.phase = GamePhase.DIPLOMACY;
+    s.minors.push({
+      id: "m-serbia",
+      name: "Serbia",
+      provinceIds: ["selymbria"],
+      garrison: 4,
+      tier: 1,
+      vassalOf: "p1",
+      roundsUntilLevy: 0,
+    });
+    const next = applyAction(s, {
+      type: "DECLARE_WAR",
+      player: "p1",
+      target: Faction.OTTOMAN,
+      justification: "vassal-defense",
+    });
+    expect(unjustifiedMod(next, "p1")).toBeUndefined();
+  });
+
+  it("DELTA 5 §11 re-declaring an existing war levies no fresh unjustified penalty", () => {
+    const s = fresh();
+    s.phase = GamePhase.DIPLOMACY;
+    const first = applyAction(s, { type: "DECLARE_WAR", player: "p1", target: Faction.OTTOMAN });
+    expect(unjustifiedMod(first, "p1")).toBeDefined();
+    // Second (redundant) declaration on the already-open war: no new penalty modifier.
+    const again = applyAction(
+      {
+        ...first,
+        players: first.players.map((p) => ({ ...p, actionsRemaining: 4 })),
+        // clear the first penalty so we detect only a *new* one
+        activeModifiers: first.activeModifiers.filter(
+          (m) => m.data?.reason !== "unjustified_war",
+        ),
+      },
+      { type: "DECLARE_WAR", player: "p1", target: Faction.OTTOMAN },
+    );
+    expect(unjustifiedMod(again, "p1")).toBeUndefined();
   });
 });
 

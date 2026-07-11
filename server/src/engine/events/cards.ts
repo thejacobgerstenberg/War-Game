@@ -24,11 +24,11 @@
  * effect applies the directly-representable numeric deltas and logs the rest;
  * every such reading is listed in {@link AMBIGUITIES}.
  */
-import type { GameState, Player, Province, ResourceBundle } from "@imperium/shared";
+import type { Army, GameState, Player, Province, ResourceBundle } from "@imperium/shared";
 import { Faction, TerrainType, UnitType } from "@imperium/shared";
 import type { Rng } from "../rng.js";
 import { appendLog } from "../logEntry.js";
-import { WALL_TIERS } from "../balance.js";
+import { GREAT_BOMBARD, WALL_TIERS } from "../balance.js";
 
 // ---------------------------------------------------------------------------
 // FROZEN contract types (unchanged shapes)
@@ -736,21 +736,136 @@ const e33: EventEffect = (state, ctx) => {
   });
 };
 
-// #34 The Great Bombard Forged — Ottoman unlocks the Great Bombard (else auction). STANDING.
-const e34: EventEffect = (state, ctx) => {
-  const ott = playerByFaction(state, Faction.OTTOMAN);
-  if (ott) {
-    return eventLog(state, ctx, "The Great Bombard Forged: the Ottoman unlocks and may build the Great Bombard (damages even Tier-5 walls by up to 2 tiers/round).", {
-      standing: true,
-      unlock: "GREAT_BOMBARD",
-      grantedTo: ott.id,
-    });
+// #34 The Great Bombard Forged — delta 3, CORRECTED acquisition model
+// (BALANCE_DELTAS.md "GREAT BOMBARD MODEL — CORRECTED CANON"; GD §8.4;
+// EVENT_CARDS.md #34, head a9605e5). This REPLACES the retired "unlock then
+// RECRUIT" path: on resolution the Great Bombard ENTERS PLAY IMMEDIATELY and
+// FREE. It is recorded on the singleton `GameState.greatBombard` tracker and
+// emplaced as a `GREAT_BOMBARD` variant piece (base SIEGE) in the recipient's
+// capital —
+//   • the OTTOMAN player if in play (§8.4), placed in the Ottoman capital; else
+//   • auctioned (gold + marble) to the highest combined GOLD+MARBLE holder among
+//     active players (deterministic; ties broken by turn order), in their capital.
+// Exactly ONE per game. It is NEVER recruitable/rebuildable — there is no unlock
+// modifier or `greatBombardUnlocked` acquisition flag any more.
+
+/** A zeroed unit record (local — avoids an import cycle with gameState.emptyUnits). */
+function zeroUnits(): Record<UnitType, number> {
+  const u = {} as Record<UnitType, number>;
+  for (const t of Object.values(UnitType)) u[t] = 0;
+  return u;
+}
+
+/**
+ * The province the Great Bombard is emplaced in for `recipient` (GD §8.4:
+ * "the recipient's capital (or any owned CITY)"): its faction capital first,
+ * else any owned CITY, else any owned province.
+ */
+function bombardCapital(state: GameState, recipient: Player): Province | undefined {
+  const cap = recipient.faction
+    ? state.provinces.find((p) => p.isCapitalOf === recipient.faction)
+    : undefined;
+  if (cap) return cap;
+  const city = state.provinces.find(
+    (p) => p.ownerId === recipient.id && p.terrain === TerrainType.CITY,
+  );
+  if (city) return city;
+  return state.provinces.find((p) => p.ownerId === recipient.id);
+}
+
+/**
+ * Highest combined GOLD + MARBLE holder among ACTIVE (seated / factioned) players,
+ * deterministic. Iterating `turnOrder` with a strict `>` makes the player earliest
+ * in turn order win a tie (BALANCE_DELTAS.md GREAT BOMBARD: "on tie use turn order").
+ */
+function highestGoldMarbleHolder(state: GameState): Player | null {
+  let best: Player | null = null;
+  let bestScore = -1;
+  for (const pid of state.turnOrder) {
+    const pl = state.players.find((p) => p.id === pid);
+    if (!pl || !pl.faction) continue;
+    const score = pl.treasury.gold + pl.treasury.marble;
+    if (score > bestScore) {
+      bestScore = score;
+      best = pl;
+    }
   }
-  return eventLog(state, ctx, "The Great Bombard Forged: no Ottoman in play — Orban sells to the highest bidder (gold + marble auction), granting them one bombard.", {
-    standing: true,
-    unlock: "GREAT_BOMBARD",
-    auction: true,
+  return best;
+}
+
+/**
+ * Spawn the one-per-game Great Bombard for `recipient` (delta 3): set the
+ * singleton `GameState.greatBombard` tracker (inPlay, ownerId, provinceId,
+ * `emplacedRound = current round` for the ratified 1-round emplacement, GD §8.4)
+ * and emplace the `GREAT_BOMBARD` variant piece as a dedicated singleton army in
+ * the recipient's capital. Provinces carry no variant stacks (variants live on
+ * Army/Fleet per CONTRACT §1), so the gun is fielded as its own army.
+ */
+function spawnGreatBombard(
+  state: GameState,
+  ctx: EventEffectContext,
+  recipient: Player,
+  auction: boolean,
+): GameState {
+  const capital = bombardCapital(state, recipient);
+  const provinceId = capital?.id ?? null;
+  let s: GameState = {
+    ...state,
+    greatBombard: {
+      inPlay: true,
+      ownerId: recipient.id,
+      provinceId,
+      emplacedRound: state.round,
+    },
+  };
+  if (provinceId) {
+    const piece: Army = {
+      id: "army-great-bombard", // fixed id — exactly one exists per game
+      ownerId: recipient.id,
+      locationId: provinceId,
+      units: zeroUnits(),
+      variants: [{ base: UnitType.SIEGE, variant: GREAT_BOMBARD.variant, count: 1 }],
+    };
+    s = { ...s, armies: [...s.armies.filter((a) => a.id !== piece.id), piece] };
+  }
+  const at = provinceId ?? "the reserve";
+  const message = auction
+    ? `The Great Bombard Forged: no Ottoman in play — Orban sells to the highest bidder (gold + marble). ${recipient.name} wins the auction and receives the Great Bombard free, emplaced at ${at}.`
+    : `The Great Bombard Forged: Orban casts the monster cannon — the Ottoman receives the Great Bombard free, emplaced at ${at}.`;
+  return eventLog(s, ctx, message, {
+    greatBombard: true,
+    auction,
+    grantedTo: recipient.id,
+    provinceId,
+    emplacedRound: state.round,
   });
+}
+
+const e34: EventEffect = (state, ctx) => {
+  // Exactly ONE per game — guard the Era III reshuffle edge so a redrawn #34
+  // does not spawn a second gun (BALANCE_DELTAS.md GREAT BOMBARD "Exactly ONE").
+  if (state.greatBombard?.inPlay) {
+    return eventLog(
+      state,
+      ctx,
+      "The Great Bombard Forged: Orban's monster gun is already cast — no second bombard is founded (one per game).",
+      { greatBombard: true, alreadyInPlay: true },
+    );
+  }
+  // GD §8.4 / EVENT_CARDS #34: the Ottoman receives it (in the Ottoman capital).
+  const ott = playerByFaction(state, Faction.OTTOMAN);
+  if (ott) return spawnGreatBombard(state, ctx, ott, false);
+  // Otherwise auction to the highest combined gold+marble holder (deterministic).
+  const winner = highestGoldMarbleHolder(state);
+  if (!winner) {
+    return eventLog(
+      state,
+      ctx,
+      "The Great Bombard Forged: no faction is in play to receive Orban's gun — the founding is deferred.",
+      { greatBombard: true },
+    );
+  }
+  return spawnGreatBombard(state, ctx, winner, true);
 };
 
 // #35 Black Death Returns — PERSISTENT 2 rounds: cities/HV −1 grain −1 gold; cull 1 per 3 levy/inf.
@@ -974,7 +1089,11 @@ export const EVENT_CARDS: EventCard[] = [
   { id: omenCardId(33), n: 33, slug: "knights-of-rhodes-sortie", name: "Knights of Rhodes Sortie", tag: "Good", era: 2, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "SEA_ZONE", effects: { seaZones: ["sea-of-crete", "eastern-mediterranean"] }, effect: e33 },
 
   // ===== Era III — Omens of the End (rounds 11–16) · 13 cards =====
-  { id: omenCardId(34), n: 34, slug: "great-bombard-forged", name: "The Great Bombard Forged", tag: "Good", era: 3, duration: "Standing", eventDuration: "STANDING", targeting: "FACTION", factionSpecific: Faction.OTTOMAN, effects: { unlock: "GREAT_BOMBARD", wallTierDelta: -2 }, effect: e34 },
+  // delta 3 (CANON correction): the Bombard is SPAWNED on resolution, not "unlocked
+  // then recruited". Immediate one-time spawn; the retired `unlock`/`wallTierDelta`
+  // effect data is dropped (see e34). Kept factionSpecific: OTTOMAN so the Ottoman
+  // remains the default recipient; the auction path (no Ottoman) still fires in e34.
+  { id: omenCardId(34), n: 34, slug: "great-bombard-forged", name: "The Great Bombard Forged", tag: "Good", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "FACTION", factionSpecific: Faction.OTTOMAN, effects: {}, effect: e34 },
   { id: omenCardId(35), n: 35, slug: "black-death-returns", name: "Black Death Returns", tag: "Ill", era: 3, duration: "Immediate", eventDuration: "PERSISTENT", targeting: "GLOBAL", effects: { grainDelta: -1, goldDelta: -1, durationRounds: 2 }, effect: e35 },
   { id: omenCardId(36), n: 36, slug: "gunpowder-revolution", name: "Gunpowder Revolution", tag: "Mixed", era: 3, duration: "Standing", eventDuration: "STANDING", targeting: "GLOBAL", effects: { siegeDelta: 1, wallTierDelta: -1, durationRounds: 0 }, effect: e36 },
   { id: omenCardId(37), n: 37, slug: "final-crusade", name: "The Final Crusade", tag: "Mixed", era: 3, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { prestigeDelta: 4 }, effect: e37 },
@@ -1213,7 +1332,7 @@ export const AMBIGUITIES: CardAmbiguity[] = [
     id: "omen-34",
     card: "The Great Bombard Forged",
     interpretation:
-      "If an Ottoman is in play, logs the GREAT_BOMBARD unlock granted to them (no unlock store yet). With no Ottoman, logs an auction (gold+marble) for the highest bidder — auction resolution belongs to the mercenary/market subsystem.",
+      "delta 3 (CORRECTED CANON, BALANCE_DELTAS.md / GD §8.4 / EVENT_CARDS #34): the retired 'unlock then RECRUIT' model is gone. On resolution the Great Bombard ENTERS PLAY IMMEDIATELY and FREE — recorded on the singleton GameState.greatBombard (inPlay/ownerId/provinceId/emplacedRound) and emplaced as a GREAT_BOMBARD variant piece in the recipient's capital: the Ottoman if in play (Ottoman capital), else auctioned by combined gold+marble (deterministic, turn-order tiebreak) to a winner's capital. Exactly one per game (a second #34 resolution is a no-op). Combat owns the 1-round emplacement fire-gate and capture-passes-intact off the same tracker; actions removes the recruit path.",
   },
   {
     id: "omen-35",
