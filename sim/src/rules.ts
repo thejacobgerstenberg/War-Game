@@ -173,8 +173,10 @@ export interface TacticCardDef {
 }
 
 /**
- * The 23 RATIFIED tactic-card designs at their FINAL magnitudes
- * (GD §7.7 table, 2b42386). Deck = 47 cards: Common x3, Uncommon x2, Rare x1.
+ * The 24 RATIFIED tactic-card designs at their FINAL magnitudes
+ * (GD §7.7 table; 23 designs @ 2b42386 + the PR #8 24th rare
+ * `master-founders-hired`, read from GD §7.7 on origin/main).
+ * Deck = 48 cards: Common x3, Uncommon x2, Rare x1.
  */
 const TACTIC_CARDS: TacticCardDef[] = [
   // ---- Common (8 designs x 3) ----
@@ -195,8 +197,16 @@ const TACTIC_CARDS: TacticCardDef[] = [
   { slug: 'papal-indulgence', tier: 'uncommon', copies: 2, scope: 'instant', priority: 1, costGold: 2, gainFaith: 3 },
   { slug: 'the-intercepted-letter', tier: 'uncommon', copies: 2, scope: 'reaction', priority: 9 },
   { slug: 'the-hexamilion-manned', tier: 'uncommon', copies: 2, scope: 'unwalledDefense', priority: 6, flatDefenderBonus: 2 },
-  // ---- Rare (7 designs x 1) ----
+  // ---- Rare (8 designs x 1) ----
   { slug: 'greek-fire', tier: 'rare', copies: 1, scope: 'unmodeled', priority: 0, removeFromGame: true }, // fleet-battle auto-win (no pure fleet battles in sim)
+  // Master Founders Hired (PR #8 24th design, GD §7.7 on origin/main): one
+  // siege you are pressing, for one FULL round — defender wall bonus 0 (Wall
+  // HP unchanged; escalade -1 still applies) AND +1 die in each melee step of
+  // the assault. Sim mapping: an assault battle IS the one siege round's
+  // engagement (same mapping as Bribed Gatekeeper), so both effects cover the
+  // whole resolveBattle call. Creates no siege engine; never interacts with
+  // the Great Bombard (§8.4 uniqueness untouched — the sim models no overlap).
+  { slug: 'master-founders-hired', tier: 'rare', copies: 1, scope: 'assault', priority: 9, zeroWallBonus: true, extraDice: 1 },
   // Treason at the Gate, RATIFIED ERRATA E1 (coordinator, 2026-07-11): playable
   // only vs a garrison of <= 4 units, and its 2-consecutive-siege-round clock
   // counts only siege rounds occurring in game round 6 or later.
@@ -381,7 +391,7 @@ export const CONFIG = {
   },
 
   /**
-   * Tactic cards (canon §7.7): 23 ratified designs, 47-card deck
+   * Tactic cards (canon §7.7): 24 ratified designs, 48-card deck
    * (Common x3 / Uncommon x2 / Rare x1). Battle-scoped cards are free to
    * play (printed resource costs still paid); at most ONE card per side per
    * battle in the sim (canon allows one per battle ROUND — bounded-policy
