@@ -264,7 +264,8 @@ so client and server can never disagree on the wire.
 | Event (`SOCKET_EVENTS.*`) | Wire name | Payload | Meaning |
 |---|---|---|---|
 | `CREATE_GAME` | `create_game` | `{ playerName: string }` | Create a new room; caller becomes host |
-| `JOIN_GAME` | `join_game` | `{ roomCode: string; playerName: string }` | Join an existing room by 6-char code |
+| `JOIN_GAME` | `join_game` | `{ roomCode: string; playerName: string }` | Join an existing room by 6-char code. Rejected (`error_msg`) if the name is already taken in the room, the room is full (5 seats), or the game has started |
+| `REJOIN_GAME` | `rejoin_game` | `{ roomCode: string; sessionToken: string }` | Reattach a returning socket to its existing seat using the token from the `game_created` ack. Never creates a seat; allowed after game start. Server marks the seat connected, joins the socket to the room, re-broadcasts `lobby_update`, and for started games sends `game_started` + `state_update` with the current state |
 | `PICK_FACTION` | `pick_faction` | `{ faction: Faction }` | Claim an unclaimed faction in the lobby |
 | `START_GAME` | `start_game` | *(none)* | Host starts the game (builds initial state) |
 | `LEAVE_GAME` | `leave_game` | *(none)* | Leave the room / lobby |
@@ -278,13 +279,15 @@ so client and server can never disagree on the wire.
 
 | Event (`SOCKET_EVENTS.*`) | Wire name | Payload | Meaning |
 |---|---|---|---|
-| `GAME_CREATED` | `game_created` | `{ roomCode: string; playerId: string }` | Ack of create; gives caller its room code + player id |
-| `LOBBY_UPDATE` | `lobby_update` | `{ roomCode, players: LobbyPlayer[], startedByHost }` | Roster changed (join/leave/faction pick) |
-| `GAME_STARTED` | `game_started` | `{ state: GameState }` | Game began; full initial state |
-| `STATE_UPDATE` | `state_update` | `{ state: GameState }` | Authoritative state after any change |
-| `ERROR_MSG` | `error_msg` | `{ message: string }` | A request was rejected (bad code, illegal action, room full…) |
+| `GAME_CREATED` | `game_created` | `{ roomCode: string; playerId: string; sessionToken: string }` | Ack of create **and** join; gives the caller its room code, player id, and per-player crypto-random `sessionToken` (store it — it is the credential for `rejoin_game`; never broadcast) |
+| `LOBBY_UPDATE` | `lobby_update` | `{ roomCode, players: LobbyPlayer[], startedByHost }` | Roster changed (join/leave/faction pick/connect/disconnect) |
+| `GAME_STARTED` | `game_started` | `{ state: GameState }` | Game began; full initial state. Also replayed to a socket that rejoins a started game |
+| `STATE_UPDATE` | `state_update` | `{ state: GameState }` | Authoritative state after any change. Currently emitted on `rejoin_game` into a started game (full current state); per-action emissions arrive with the action engine (§4.2) |
+| `ERROR_MSG` | `error_msg` | `{ message: string }` | A request was rejected (bad code, name taken, room full, invalid session token, illegal action…) |
 
-Where `LobbyPlayer = { id, name, faction: Faction | null, isHost }`.
+Where `LobbyPlayer = { id, name, faction: Faction | null, isHost, connected }` —
+`connected` flips false while a seat's socket is dropped (the seat is held for
+rejoin) so clients can grey out dropped powers.
 
 ```ts
 // Both sides parameterise Socket.IO with these, so payloads are checked at compile time:
@@ -374,18 +377,29 @@ custom properties + Google Fonts (**Cinzel** + **EB Garamond**) per
 
 ## 8. Reconnect Handling
 
-Networked play must survive refreshes and drops.
+Networked play must survive refreshes and drops. This is implemented in the
+scaffold as a **session-token** flow:
 
-* **playerId persistence** — on `game_created`/join, the client stores its
-  `playerId` (and `roomCode`) in `localStorage`. A `Player` also carries a
-  `connected` flag so the UI can grey out dropped powers.
-* **Rejoin** — on reconnect the client re-emits a join carrying its stored
-  `playerId` (a `rejoin_game { roomCode, playerId }` event added alongside
-  gameplay; in the scaffold, `join_game` by name into an existing seat). The
-  lobby manager rebinds the new `socketId` to the existing `Player` instead of
-  seating a new one, flips `connected = true`, and **re-sends the current state**
-  (`state_update` mid-game, or `lobby_update` if still in lobby) so the client
-  rebuilds its view exactly.
+* **Session persistence** — the server issues a per-player crypto-random
+  `sessionToken` in the `game_created` ack (for both create and join). The
+  client stores `{ roomCode, playerId, sessionToken }` in `sessionStorage`.
+  The wire `LobbyPlayer` row carries a `connected` flag so every client can
+  grey out dropped powers (the Lobby screen dims the row and appends
+  "(disconnected)").
+* **Rejoin** — on every socket.io `connect` (initial page load with stored
+  creds, or reconnect after a drop) the client automatically emits
+  `rejoin_game { roomCode, sessionToken }`. The lobby manager looks the seat up
+  by token, flips `connected = true`, rebinds the new socket to the room, and
+  **re-sends the current state**: `lobby_update` to the whole room, plus
+  `game_started` + `state_update` (full current state) to the rejoiner when the
+  game has already started. A rejoin never creates a seat, so it also works
+  after game start (where `join_game` by new players is rejected). On a rejoin
+  failure (`error_msg`: room reaped or token invalid) the client clears its
+  stored credentials.
+* **No name-based reclaim** — `join_game` with a name already present in the
+  room is rejected with a clean "name already taken" `error_msg` (never a
+  silent duplicate seat, and never a token-less seat hijack); the token is the
+  only reclaim credential.
 * **Grace window** — a disconnected player's seat is held (marked
   `connected:false`); their turn is governed by the per-turn timer (§10). The host
   may fill or drop the seat after the grace window.
