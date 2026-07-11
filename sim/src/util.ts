@@ -7,8 +7,15 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** sim/results, resolved relative to this file (works from any cwd). */
-const RESULTS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'results');
+/**
+ * sim/results, resolved relative to this file (works from any cwd).
+ * SIM_RESULTS_DIR overrides the destination — used by sim:regression to keep
+ * its reduced/CI runs out of the committed sim/results evidence.
+ */
+const RESULTS_DIR =
+  process.env.SIM_RESULTS_DIR && process.env.SIM_RESULTS_DIR !== ''
+    ? process.env.SIM_RESULTS_DIR
+    : join(dirname(fileURLToPath(import.meta.url)), '..', 'results');
 
 /**
  * True when env SMOKE is set to a truthy value (anything except '', '0',

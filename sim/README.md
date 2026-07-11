@@ -61,6 +61,8 @@ npm install
 | `npm run sim:pacing` | prestige-accrual trajectory model + victory-threshold sweep | ~1 s |
 | `npm run sim:fullgame` | full 5-player games, all factions × shuffled policies | ~10 s / 3,000 games |
 | `npm run sim:thresholds` | per-player-count victory-threshold sweep (`PLAYERS=2..5`): explore + candidate sweep + fresh-seed confirm; merges into `results/thresholds.json` | ~30 s / count |
+| `npm run sim:test` | pure unit assertions (no games): §7.1/§7.4 kernel worked examples, threshold clamp edges, §6.4 stacking headroom math, E2 monopoly prestige, 24/48 tactic-deck composition, determinism | ~1 s |
+| `npm run sim:regression` | CI balance-regression gate: the six adversarial hunts at COMMITTED scale/seeds (deterministic), 21-bar verdict table, exit 1 on any regression; writes to `out/regression/`, never touches committed `results/` | ~2.5 min on 4 cores (~5.7 min on 1) |
 | `npm run sim:report` | read-only headline summary of whatever is in `results/` — never simulates | instant |
 
 Each sim writes `results/<name>.json` and prints a human-readable summary.
