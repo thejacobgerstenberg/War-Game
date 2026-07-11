@@ -1,22 +1,24 @@
 /**
- * Monte-Carlo siege sweep (npm run sim:siege) — canon kernel.
+ * Monte-Carlo siege sweep (npm run sim:siege) — FINAL canon rules (2b42386).
  *
- * 1. Grid: wall tier 1-3 x garrison size 2-12 x siege engines 0-6, a fixed
+ * 1. Grid: wall tier T1-T5 x garrison size 2-12 x siege engines 0-6, a fixed
  *    strong attacker stack of 12 professionals, LANDLOCKED city (starvation
  *    proceeds: 3 grain stores, then 1 unit/round). Per cell: capture
  *    probability, expected rounds-to-capture, capture-reason split, mean
- *    attacker losses.
+ *    attacker losses. (T5 landlocked shows the canon §8.3 masonry cap:
+ *    engines tick 1 HP/round; capture comes by starvation.)
  *
  * 2. Direct-assault sweep (T5a evidence): attacker stacks 1-12 professionals
- *    assault INTACT Theodosian walls (defender +4, attacker escalade -1) —
- *    single battles, no siege. Target: win prob < 2% everywhere.
+ *    assault the INTACT T5 Theodosian Walls (defender +4, attacker escalade
+ *    -1) — single battles, no siege. Target: win prob < 2% everywhere.
  *
- * 3. Constantinople scenarios (T5b-T5d): Theodosian walls (16 HP, +4),
+ * 3. Constantinople scenarios (T5b-T5d): T5 Theodosian Walls (16 HP, +4),
  *    garrison 6-10 professionals, attacker 12 professionals + 4 mercenaries
  *    + 3 siege engines, all four combinations of Great Bombard x naval
  *    blockade. The city is COASTAL: unblockaded => sea-resupplied, no
- *    starvation (ruling R3); ordinary engines cannot damage Theodosian-class
- *    walls (ruling R2) — only the Great Bombard breaches them.
+ *    starvation (canon §8.2.3); vs intact T5 an ordinary train deals at most
+ *    1 wall HP/round (canon §8.3) — only the Great Bombard (2 wall-damage
+ *    dice, cap lifted for the train; canon §8.4) breaches them in time.
  *    P(capture within k siege rounds) for k = 1..12.
  *
  * Targets (T5):
@@ -44,7 +46,7 @@ const SEED = 20260711;
 const ITERS = isSmoke() ? 500 : 20000;
 
 const ATTACKER_PROFESSIONALS = 12;
-const TIERS = [1, 2, 3] as const;
+const TIERS = [1, 2, 3, 4, 5] as const;
 const GARRISONS = [2, 4, 6, 8, 10, 12] as const;
 const ENGINES = [0, 1, 2, 3, 4, 5, 6] as const;
 const CPLE_GARRISONS = [6, 8, 10] as const;
@@ -134,7 +136,7 @@ for (const tier of TIERS) {
       const setup: SiegeSetup = {
         attacker: armyOf({ professional: ATTACKER_PROFESSIONALS, siegeEngine: engines }),
         defender: armyOf({ professional: garrison }),
-        wallTier: tier,
+        wallTier: tier, // T5 row: canon §8.3 masonry cap applies
         theodosian: false,
         terrain: 'plains',
         hasGreatBombard: false,
@@ -155,7 +157,7 @@ interface AssaultRow {
   winProb: number[];
 }
 
-const theodosianWallBonus = effectiveWallBonus(3, true, 0);
+const theodosianWallBonus = effectiveWallBonus(5, true, 0); // T5 = Theodosian Walls (+4)
 const assaultMods = modifiers({
   attackerBonus: -CONFIG.siege.escaladePenalty, // canon §8.2.4 escalade
   terrainBonus: CONFIG.combat.terrain.plains,
@@ -202,12 +204,12 @@ for (const bombard of [false, true]) {
       const setup: SiegeSetup = {
         attacker: armyOf(CPLE_ATTACKER),
         defender: armyOf({ professional: garrison }),
-        wallTier: 3,
+        wallTier: 5, // T5 Theodosian Walls (16 HP, +4; canon §8.1/§8.3)
         theodosian: true,
         terrain: 'plains', // Constantinople is a plains province
         hasGreatBombard: bombard,
         blockaded,
-        coastal: true, // the Golden Horn: unblockaded => sea-resupplied (R3)
+        coastal: true, // the Golden Horn: unblockaded => sea-resupplied (canon §8.2.3)
       };
       const { stats, captureRounds } = simulateCell(setup, ITERS, cellSeed);
       const withinK: number[] = [];
@@ -298,7 +300,7 @@ console.log(
 );
 console.log();
 
-console.log(`CONSTANTINOPLE (Theodosian walls, ${wallHitpoints(3, true)} hp, coastal): P(capture within k siege rounds)`);
+console.log(`CONSTANTINOPLE (T5 Theodosian Walls, ${wallHitpoints(5, true)} hp, coastal): P(capture within k siege rounds)`);
 console.log(`attacker = ${CPLE_ATTACKER.professional} professionals + ${CPLE_ATTACKER.mercenary} mercenaries + ${CPLE_ATTACKER.siegeEngine} siege engines`);
 console.log(
   table(
@@ -332,7 +334,7 @@ const path = writeResults('siege', {
     terrain: 'plains',
     policy: DEFAULT_SIEGE_POLICY,
     config: { walls: CONFIG.walls, siege: CONFIG.siege, combat: CONFIG.combat },
-    note: 'canon kernel: binary wall bonus, escalade -1, stores-then-starve, R3 sea resupply, R2 Bombard-only vs Theodosian. Bombard scenarios assume game round >= siege.greatBombard.availableFromRound.',
+    note: 'FINAL canon (2b42386): walls T1-T5, binary wall bonus, escalade -1, stores-then-starve, sea resupply (blockade = every adjacent zone enemy-held), T5 masonry cap 1 HP/round lifted by the Great Bombard (2 wall-damage dice). Bombard scenarios assume game round >= siege.greatBombard.availableFromRound.',
   },
   grid,
   directAssaultIntactTheodosian: {

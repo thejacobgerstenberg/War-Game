@@ -14,19 +14,29 @@
  * - Movement: 1 province per move action (land adjacency incl. straits), or
  *   port-to-port within the same / an adjacent sea zone with 1 galley escort
  *   per 2 land units. Galleys never move over land.
- * - Diplomacy/tactic cards are not modeled as actions; wars start implicitly
- *   when a player attacks another player and end after 3 quiet rounds
- *   (net-capture leader gets warWon prestige). Eliminating a player also
- *   grants warWon prestige to the conqueror.
+ * - Diplomacy is not modeled as an action; wars start implicitly when a
+ *   player attacks another player and end after 3 quiet rounds (net-capture
+ *   leader gets warWon prestige). Eliminating a player also grants warWon
+ *   prestige to the conqueror.
+ * - Tactic cards (canon §7.7, 23 ratified designs / 47-card deck): each
+ *   faction draws 1/round in the income window (hand cap 4, lowest-priority
+ *   discard). Instant cards resolve on draw. In each battle/assault a side
+ *   plays its best applicable card (max ONE per side per battle — canon
+ *   allows one per battle ROUND; bounded-policy simplification). The
+ *   Intercepted Letter cancels the rival's played card. Siege-scoped cards
+ *   (Night Sortie, Sails from the West, Treason at the Gate) fire in the
+ *   siege phase. 'unmodeled' cards are dead draws. See RULES_MODEL.md.
  * - One global event per round, uniform magnitude within CONFIG.events.
- * - Secret objective: hold 3 nearby provinces (seeded pick) by round 12.
+ * - Secret objective: hold 3 nearby provinces (seeded pick); revealed and
+ *   scored (+4) at GAME END only (canon §13.1) — it never speeds up a
+ *   threshold win.
  * - A province under siege yields nothing, cannot recruit, and its garrison
  *   cannot move; relief armies fight the besieger in the field.
  */
 
-import type { Army, FactionId, PrestigeLedger, UnitType } from './types';
-import { FACTION_IDS } from './types';
-import { CONFIG } from './rules';
+import type { Army, BattleResult, CombatModifiers, FactionId, PrestigeLedger, UnitType } from './types';
+import { FACTION_IDS, UNIT_TYPES } from './types';
+import { CONFIG, statsFor, type TacticCardDef, type TacticScope } from './rules';
 import { create, type RNG } from './rng';
 import {
   combatants,
@@ -95,7 +105,9 @@ export interface FactionState {
   faith: number;
   routes: string[]; // opened trade route ids (<= maxRoutesPerFaction)
   hasGreatBombard: boolean;
+  hand: string[]; // tactic-card slugs held (canon §7.7; cap CONFIG.cards.handLimit)
   ledger: PrestigeLedger;
+  /** Secret objective (revealed & scored at GAME END only, canon §13.1). */
   objective: { provinces: string[]; deadline: number; done: boolean };
   cpleHold: number; // consecutive round-ends holding Constantinople
 }
@@ -154,6 +166,12 @@ export const CAPITALS: Record<FactionId, string> = {
   genoa: 'genoa',
   hungary: 'buda',
 };
+
+/** Card scopes applicable per battle context (see rules.ts TacticScope). */
+const LAND_ATTACK_SCOPES: readonly TacticScope[] = ['landBattle'];
+const LAND_DEFENSE_SCOPES: readonly TacticScope[] = ['landBattle', 'landDefense'];
+const UNWALLED_DEFENSE_SCOPES: readonly TacticScope[] = ['landBattle', 'landDefense', 'unwalledDefense'];
+const ASSAULT_ATTACK_SCOPES: readonly TacticScope[] = ['landBattle', 'assault'];
 
 const STRAIT_KEYS = new Set<string>();
 for (const [a, b] of STRAIT_EDGES) {
@@ -231,25 +249,28 @@ function attritionLosses(n: number, fraction: number, rng: RNG): number {
   return lo + (rng.chance(x - lo) ? 1 : 0);
 }
 
-function grainUpkeepOf(a: Army): number {
-  const u = CONFIG.units;
-  return (
-    a.levy * u.levy.grainUpkeep +
-    a.professional * u.professional.grainUpkeep +
-    a.mercenary * u.mercenary.grainUpkeep +
-    a.siegeEngine * u.siegeEngine.grainUpkeep +
-    a.galley * u.galley.grainUpkeep
-  );
+/** Grain upkeep of one army under `faction`'s unit tables (canon §4.4). */
+function grainUpkeepOf(faction: FactionId, a: Army): number {
+  let n = 0;
+  for (const t of UNIT_TYPES) n += a[t] * statsFor(faction, t).grainUpkeep;
+  return n;
+}
+
+/** Gold wage of one army (Janissary/Black Army donatives etc.). */
+function goldWageOf(faction: FactionId, a: Army): number {
+  let n = 0;
+  for (const t of UNIT_TYPES) n += a[t] * statsFor(faction, t).goldUpkeep;
+  return n;
 }
 
 export function unitGoldCost(faction: FactionId, t: UnitType): number {
   const mods = CONFIG.factions[faction];
-  const base = CONFIG.units[t].goldCost;
+  const base = statsFor(faction, t).goldCost; // per-faction canon costs (FACTIONS mapping)
   if (t === 'levy') return base * mods.levyGoldCostMult;
   if (t === 'professional' || t === 'mercenary' || t === 'siegeEngine') {
     return base * mods.unitGoldCostMult;
   }
-  return base; // galleys: standard price for everyone
+  return base; // galleys: no cost multiplier lever
 }
 
 function emptyLedger(): PrestigeLedger {
@@ -280,11 +301,16 @@ export class Game {
   private readonly agents: Record<FactionId, Agent>;
   private readonly rngEvent: RNG;
   private readonly rngCombat: RNG;
+  private readonly rngCards: RNG;
   private currentFaction: FactionId | null = null;
   private pendingAttacks: PendingAttack[] = [];
   private pendingRecruits: PendingRecruit[] = [];
   private readonly wars = new Map<string, WarState>();
   private readonly prestigeByRound: Record<FactionId, number[]>;
+  /** Tactic deck (canon §7.7): 47 slugs, seeded shuffle, reshuffled discard. */
+  private deck: string[] = [];
+  private discardPile: string[] = [];
+  private readonly cardBySlug = new Map<string, TacticCardDef>();
 
   constructor(seed: number, agents: Record<FactionId, Agent>, seatOrder: FactionId[]) {
     this.seed = seed;
@@ -295,6 +321,13 @@ export class Game {
     this.rngCombat = root.fork(2);
     this.agentRng = root.fork(3);
     const rngSetup = root.fork(4);
+    this.rngCards = root.fork(5);
+
+    for (const c of CONFIG.tacticCards) {
+      this.cardBySlug.set(c.slug, c);
+      for (let i = 0; i < c.copies; i++) this.deck.push(c.slug);
+    }
+    this.rngCards.shuffle(this.deck);
 
     for (const p of PROVINCES) {
       const start = p.initialOwner ? FACTION_STARTS[p.initialOwner].garrisons[p.id] : undefined;
@@ -318,13 +351,15 @@ export class Game {
         eliminatedRound: null,
         gold: t.gold,
         grain: t.grain,
-        timber: 0,
-        marble: 0,
-        faith: 0,
+        timber: t.timber,
+        marble: t.marble,
+        faith: t.faith,
         routes: [],
         hasGreatBombard: false,
+        hand: [],
         ledger: emptyLedger(),
-        objective: { provinces: this.pickObjective(f, rngSetup), deadline: 12, done: false },
+        // canon: objectives are hidden goals verified at GAME END (round 16)
+        objective: { provinces: this.pickObjective(f, rngSetup), deadline: CONFIG.game.maxRounds, done: false },
         cpleHold: 0,
       };
       this.prestigeByRound[f] = [];
@@ -364,6 +399,7 @@ export class Game {
         if (this.factions[f].alive) {
           this.collectIncome(f);
           this.payUpkeep(f);
+          this.drawTacticCards(f); // canon §7.7: 1 draw in the Income window
         }
       }
       for (const f of this.seatOrder) {
@@ -380,6 +416,18 @@ export class Game {
       if (this.checkVictory()) break;
     }
     if (!this.winner) {
+      // canon §13.1: secret objectives are revealed & scored at GAME END
+      // only (they count for the round-16 highest-prestige comparison; a
+      // threshold/sudden-death win earlier ends the game before reveal).
+      for (const f of FACTION_IDS) {
+        const fs = this.factions[f];
+        if (!fs.alive || fs.objective.provinces.length === 0) continue;
+        if (fs.objective.provinces.every((pid) => this.provinces.get(pid)!.owner === f)) {
+          fs.objective.done = true;
+          fs.ledger.objectives += CONFIG.prestige.secretObjective;
+          this.recomputeTotal(fs);
+        }
+      }
       // round cap: highest prestige among survivors wins
       let best: FactionId | null = null;
       for (const f of FACTION_IDS) {
@@ -412,11 +460,33 @@ export class Game {
   // --------------------------------------------------------------- events
 
   private drawEvent(): void {
-    // Era III fixed card: `great-bombard-forged` is revealed at the start of
-    // its round (the Omen deck is era-weighted, so the card reliably appears
-    // when Era III opens). From then on the unique Great Bombard may be
-    // bought — the FIRST faction to pay takes it (see actBuyBombard).
-    if (this.round >= CONFIG.siege.greatBombard.availableFromRound) this.bombardForged = true;
+    // Era III card: `great-bombard-forged` (EVENT_CARDS #34) is revealed
+    // when Era III opens (round availableFromRound). Canon GD §8.4: the
+    // OTTOMAN player receives the unique Bombard FREE if in play; otherwise
+    // it is auctioned — sim rule: the richest faction that can pay
+    // goldCost takes it (retried each round while unclaimed; actBuyBombard
+    // remains as an explicit-action fallback).
+    const gb = CONFIG.siege.greatBombard;
+    if (this.round >= gb.availableFromRound) {
+      this.bombardForged = true;
+      let claimed = false;
+      for (const f of FACTION_IDS) if (this.factions[f].hasGreatBombard) claimed = true;
+      if (!claimed) {
+        if (this.factions.ottomans.alive) {
+          this.factions.ottomans.hasGreatBombard = true;
+        } else {
+          let best: FactionId | null = null;
+          for (const f of FACTION_IDS) {
+            const fs = this.factions[f];
+            if (fs.alive && fs.gold >= gb.goldCost && (best === null || fs.gold > this.factions[best].gold)) best = f;
+          }
+          if (best) {
+            this.factions[best].gold -= gb.goldCost;
+            this.factions[best].hasGreatBombard = true;
+          }
+        }
+      }
+    }
     const rng = this.rngEvent;
     const kind = rng.pick(['gold', 'grain', 'units', 'prestige'] as const);
     const target = rng.pick(['all', 'random', 'leader'] as const);
@@ -470,6 +540,178 @@ export class Game {
       }
     }
     return best;
+  }
+
+  // ------------------------------------------------- tactic cards (canon §7.7)
+
+  private drawFromDeck(): string | null {
+    if (this.deck.length === 0 && this.discardPile.length > 0) {
+      this.deck = this.discardPile; // reshuffle the discards (canon §7.7)
+      this.discardPile = [];
+      this.rngCards.shuffle(this.deck);
+    }
+    return this.deck.pop() ?? null;
+  }
+
+  /** Return a card to the discard pile unless it removes itself from the game. */
+  private discardCard(card: TacticCardDef): void {
+    if (!card.removeFromGame) this.discardPile.push(card.slug);
+  }
+
+  /** Income-phase draw: instants resolve on draw, the rest go to hand (cap 4). */
+  private drawTacticCards(f: FactionId): void {
+    const fs = this.factions[f];
+    for (let i = 0; i < CONFIG.cards.drawsPerRound; i++) {
+      const slug = this.drawFromDeck();
+      if (!slug) break;
+      const card = this.cardBySlug.get(slug)!;
+      if (card.scope === 'instant') {
+        this.resolveInstantCard(f, card);
+        continue;
+      }
+      fs.hand.push(slug);
+    }
+    // hand limit (canon: discard down to 4 at Cleanup; sim discards on draw)
+    while (fs.hand.length > CONFIG.cards.handLimit) {
+      let worst = 0;
+      for (let i = 1; i < fs.hand.length; i++) {
+        if (this.cardBySlug.get(fs.hand[i])!.priority < this.cardBySlug.get(fs.hand[worst])!.priority) worst = i;
+      }
+      this.discardPile.push(fs.hand[worst]);
+      fs.hand.splice(worst, 1);
+    }
+  }
+
+  private resolveInstantCard(f: FactionId, card: TacticCardDef): void {
+    const fs = this.factions[f];
+    if (card.costGold && fs.gold < card.costGold) {
+      this.discardCard(card); // cannot pay: fizzles
+      return;
+    }
+    if (card.costGold) fs.gold -= card.costGold;
+    if (card.costFaith) fs.faith -= card.costFaith;
+    if (card.gainGold) fs.gold += card.gainGold;
+    if (card.gainGrain) fs.grain += card.gainGrain;
+    if (card.gainFaith) fs.faith += card.gainFaith;
+    if (card.stealGold) {
+      // The Pay Chest Taken: rob the prestige leader among living rivals
+      let target: FactionId | null = null;
+      for (const o of FACTION_IDS) {
+        if (o === f || !this.factions[o].alive) continue;
+        if (target === null || this.factions[o].ledger.total > this.factions[target].ledger.total) target = o;
+      }
+      if (target) {
+        const take = Math.min(card.stealGold, this.factions[target].gold);
+        this.factions[target].gold -= take;
+        fs.gold += take;
+      }
+    }
+    this.discardCard(card);
+  }
+
+  /** Index of `slug` in f's hand, or -1. */
+  private handIndexOf(f: FactionId, slug: string): number {
+    return this.factions[f].hand.indexOf(slug);
+  }
+
+  /** If f holds `slug`, play it (no cost check) and return its definition. */
+  private takeCardIf(f: FactionId, slug: string): TacticCardDef | null {
+    const i = this.handIndexOf(f, slug);
+    if (i < 0) return null;
+    this.factions[f].hand.splice(i, 1);
+    const card = this.cardBySlug.get(slug)!;
+    this.discardCard(card);
+    return card;
+  }
+
+  /** Best affordable card in f's hand matching `scopes` (context-filtered). */
+  private pickBattleCard(f: FactionId | null, scopes: readonly TacticScope[], wallBonus: number): TacticCardDef | null {
+    if (!f) return null; // neutral garrisons hold no cards
+    const fs = this.factions[f];
+    let best: TacticCardDef | null = null;
+    let bestIdx = -1;
+    for (let i = 0; i < fs.hand.length; i++) {
+      const c = this.cardBySlug.get(fs.hand[i])!;
+      if (!scopes.includes(c.scope)) continue;
+      if (c.zeroWallBonus && wallBonus <= 0) continue; // Bribed Gatekeeper is dead vs a breach
+      if (c.costGold && fs.gold < c.costGold) continue;
+      if (c.costFaith && fs.faith < c.costFaith) continue;
+      if (best === null || c.priority > best.priority) {
+        best = c;
+        bestIdx = i;
+      }
+    }
+    if (best !== null) {
+      fs.hand.splice(bestIdx, 1);
+      if (best.costGold) fs.gold -= best.costGold;
+      if (best.costFaith) fs.faith -= best.costFaith;
+      this.discardCard(best);
+    }
+    return best;
+  }
+
+  /**
+   * Both sides commit at most ONE tactic card for this battle (bounded
+   * policy; canon allows one per battle round). The Intercepted Letter is
+   * a reaction: a side holding it cancels the rival's played card (both
+   * cards discarded; the letter is exempt from the one-card limit).
+   */
+  private playBattleCards(
+    att: FactionId | null,
+    def: FactionId | null,
+    attScopes: readonly TacticScope[],
+    defScopes: readonly TacticScope[],
+    wallBonus: number,
+  ): { attCard: TacticCardDef | null; defCard: TacticCardDef | null } {
+    let attCard = this.pickBattleCard(att, attScopes, wallBonus);
+    let defCard = this.pickBattleCard(def, defScopes, 0);
+    if (attCard && def && this.takeCardIf(def, 'the-intercepted-letter')) attCard = null;
+    if (defCard && att && this.takeCardIf(att, 'the-intercepted-letter')) defCard = null;
+    return { attCard, defCard };
+  }
+
+  /** Assemble kernel modifiers from base battle context + played cards. */
+  private battleMods(
+    base: Partial<CombatModifiers>,
+    att: FactionId | null,
+    def: FactionId | null,
+    attCard: TacticCardDef | null,
+    defCard: TacticCardDef | null,
+  ): CombatModifiers {
+    let wallBonus = base.wallBonus ?? 0;
+    if (attCard?.zeroWallBonus && wallBonus > 0) wallBonus = 0; // Bribed Gatekeeper (escalade -1 still applies)
+    return modifiers({
+      attackerBonus: base.attackerBonus ?? 0,
+      defenderBonus: (base.defenderBonus ?? 0) + (defCard?.flatDefenderBonus ?? 0),
+      terrainBonus: base.terrainBonus ?? 0,
+      wallBonus,
+      attackerExtraDice: attCard?.extraDice ?? 0,
+      defenderExtraDice: defCard?.extraDice ?? 0,
+      attackerRerolls: attCard?.rerollsPerRound ?? 0,
+      defenderRerolls: defCard?.rerollsPerRound ?? 0,
+      attackerFirstRoundOnly: attCard?.firstRoundOnly,
+      defenderFirstRoundOnly: defCard?.firstRoundOnly,
+      attackerFaction: att,
+      defenderFaction: def,
+    });
+  }
+
+  /** Canon §13.1 battle prestige: decisive +1, outnumbered win +1. */
+  private awardBattlePrestige(
+    winner: FactionId | null,
+    r: BattleResult,
+    winnerStart: number,
+    loserStart: number,
+  ): void {
+    if (!winner) return;
+    let pts = 0;
+    if (r.decisive) pts += CONFIG.prestige.decisiveBattle;
+    if (winnerStart < loserStart) pts += CONFIG.prestige.outnumberedWin;
+    if (pts !== 0) {
+      const fs = this.factions[winner];
+      fs.ledger.warsWon += pts;
+      this.recomputeTotal(fs);
+    }
   }
 
   // ------------------------------------------------------- income & upkeep
@@ -532,33 +774,37 @@ export class Game {
     const fs = this.factions[f];
     const floored = this.armiesWithDesertionFloor(f);
     const armies = floored.map((e) => e.army);
-    let galleys = 0;
-    let mercs = 0;
-    for (const a of armies) {
-      galleys += a.galley;
-      mercs += a.mercenary;
-    }
-    const perGalley = CONFIG.units.galley.goldUpkeep;
-    const perMerc = CONFIG.units.mercenary.goldUpkeep;
-    const wage = galleys * perGalley + mercs * perMerc;
+    // ---- gold wages (per-faction tables: Janissary/Black Army donatives)
+    let wage = 0;
+    for (const a of armies) wage += goldWageOf(f, a);
     if (fs.gold >= wage) {
       fs.gold -= wage;
     } else {
-      // pay galleys first, then as many mercs as possible; unpaid ones desert
+      // short pay: professionals & crews are paid first; mercenaries desert
+      // first (canon §4.4/§6.2), the rest of the unpaid follow
       let g = fs.gold;
-      const paidGalleys = perGalley > 0 ? Math.min(galleys, Math.floor(g / perGalley)) : galleys;
-      g -= paidGalleys * perGalley;
-      this.removeUnitAcross(floored, 'galley', galleys - paidGalleys);
-      const paidMercs = perMerc > 0 ? Math.min(mercs, Math.floor(g / perMerc)) : mercs;
-      g -= paidMercs * perMerc;
-      const unpaid = mercs - paidMercs;
-      const lostMercs = Math.ceil(unpaid * CONFIG.economy.unpaidMercDesertionFraction);
-      this.removeUnitAcross(floored, 'mercenary', lostMercs);
+      for (const t of ['professional', 'galley'] as const) {
+        const per = statsFor(f, t).goldUpkeep;
+        if (per <= 0) continue;
+        let count = 0;
+        for (const a of armies) count += a[t];
+        const paid = Math.min(count, Math.floor(g / per));
+        g -= paid * per;
+        this.removeUnitAcross(floored, t, count - paid);
+      }
+      const perMerc = statsFor(f, 'mercenary').goldUpkeep;
+      if (perMerc > 0) {
+        let mercs = 0;
+        for (const a of armies) mercs += a.mercenary;
+        const paidMercs = Math.min(mercs, Math.floor(g / perMerc));
+        g -= paidMercs * perMerc;
+        this.removeUnitAcross(floored, 'mercenary', Math.ceil((mercs - paidMercs) * CONFIG.economy.unpaidMercDesertionFraction));
+      }
       fs.gold = Math.max(CONFIG.economy.goldFloor, g);
     }
     // grain (recompute after wage desertions)
     let need = 0;
-    for (const a of armies) need += grainUpkeepOf(a);
+    for (const a of armies) need += grainUpkeepOf(f, a);
     if (fs.grain >= need) {
       fs.grain -= need;
     } else {
@@ -571,6 +817,15 @@ export class Game {
       if (shortfall > 0) {
         const unfed = Math.ceil(shortfall);
         let lost = Math.ceil(unfed * CONFIG.economy.grainShortfallDesertionFraction);
+        // canon §4.4: unfed MERCENARIES desert first...
+        for (const e of floored) {
+          if (lost <= 0) break;
+          const spare = Math.max(0, combatants(e.army) - e.floor);
+          const k = Math.min(e.army.mercenary, lost, spare);
+          e.army.mercenary -= k;
+          lost -= k;
+        }
+        // ...then lowest-value first
         for (const e of floored) {
           if (lost <= 0) break;
           const spare = Math.max(0, combatants(e.army) - e.floor);
@@ -675,10 +930,15 @@ export class Game {
     const fs = this.factions[f];
     let cap = CONFIG.recruit.perAction[unit];
     if (unit === 'levy') cap += CONFIG.factions[f].levyRecruitBonus;
+    const st = statsFor(f, unit);
     const cost = unitGoldCost(f, unit);
-    const n = Math.min(count, cap, cost > 0 ? Math.floor(fs.gold / cost) : count);
+    let n = Math.min(count, cap, cost > 0 ? Math.floor(fs.gold / cost) : count);
+    if (st.timberCost > 0) n = Math.min(n, Math.floor(fs.timber / st.timberCost));
+    if (st.marbleCost > 0) n = Math.min(n, Math.floor(fs.marble / st.marbleCost));
     if (n <= 0) return false;
     fs.gold -= n * cost;
+    fs.timber -= n * st.timberCost;
+    fs.marble -= n * st.marbleCost;
     if (unit === 'mercenary' && CONFIG.recruit.mercsArriveInstantly) {
       p.garrison.mercenary += n;
     } else {
@@ -751,7 +1011,7 @@ export class Game {
       fs.timber -= b.market.timberCost;
       p.market = true;
     } else if (build === 'wallUpgrade') {
-      if (p.wallTier >= 3) return false;
+      if (p.wallTier >= CONFIG.walls.maxBuildableTier) return false; // canon §9.1: Build stops at T3
       if (fs.gold < b.wallUpgrade.goldCost || fs.timber < b.wallUpgrade.timberCost || fs.marble < b.wallUpgrade.marbleCost) return false;
       fs.gold -= b.wallUpgrade.goldCost;
       fs.timber -= b.wallUpgrade.timberCost;
@@ -770,10 +1030,10 @@ export class Game {
   }
 
   /**
-   * Buy the UNIQUE Great Bombard (build action). Available once the Era III
-   * event card `great-bombard-forged` is revealed (round
-   * greatBombard.availableFromRound); the first faction to pay owns the one
-   * and only Bombard for the rest of the game (ruling R2).
+   * Claim the UNIQUE Great Bombard at its auction price (build action).
+   * Normally the forge event auto-resolves the grant (Ottomans free, else
+   * richest payer — canon GD §8.4); this action is the fallback when the
+   * event found nobody able to pay.
    */
   actBuyBombard(f: FactionId): boolean {
     if (!this.canAct(f)) return false;
@@ -832,14 +1092,27 @@ export class Game {
         // relief: fight the besieging army in the field
         this.battles++;
         this.touchWar(pa.faction, siege.attacker);
+        const att0 = combatants(pa.army);
+        const def0 = combatants(siege.army);
+        const { attCard, defCard } = this.playBattleCards(
+          pa.faction, siege.attacker, LAND_ATTACK_SCOPES, LAND_DEFENSE_SCOPES, 0);
         const r = resolveBattle(
           pa.army,
           siege.army,
-          modifiers({
-            attackerBonus: pa.crossPenalty ? -CONFIG.combat.riverCrossingPenalty : 0,
-            terrainBonus: CONFIG.combat.terrain[prov.terrain],
-          }),
+          this.battleMods(
+            {
+              attackerBonus: pa.crossPenalty ? -CONFIG.combat.riverCrossingPenalty : 0,
+              terrainBonus: CONFIG.combat.terrain[prov.terrain],
+            },
+            pa.faction, siege.attacker, attCard, defCard,
+          ),
           this.rngCombat,
+        );
+        this.awardBattlePrestige(
+          r.winner === 'attacker' ? pa.faction : r.winner === 'defender' ? siege.attacker : null,
+          r,
+          r.winner === 'attacker' ? att0 : def0,
+          r.winner === 'attacker' ? def0 : att0,
         );
         if (r.winner === 'attacker') {
           this.sieges.delete(pa.to);
@@ -856,7 +1129,7 @@ export class Game {
       }
       if (combatants(p.garrison) === 0) {
         p.garrison.siegeEngine = 0; // abandoned engines are destroyed
-        this.capture(pa.to, pa.faction, pa.army);
+        this.capture(pa.to, pa.faction, pa.army, false); // walk-in occupation: no storm prestige
         continue;
       }
       if (p.wallTier > 0) {
@@ -871,23 +1144,41 @@ export class Game {
         });
         continue;
       }
-      // open field battle
+      // open field battle (unwalled province)
       this.battles++;
+      const att0 = combatants(pa.army);
+      const def0 = combatants(p.garrison);
+      const { attCard, defCard } = this.playBattleCards(
+        pa.faction, p.owner, LAND_ATTACK_SCOPES, UNWALLED_DEFENSE_SCOPES, 0);
       const r = resolveBattle(
         pa.army,
         p.garrison,
-        modifiers({
-          attackerBonus: pa.crossPenalty ? -CONFIG.combat.riverCrossingPenalty : 0,
-          terrainBonus: CONFIG.combat.terrain[prov.terrain],
-        }),
+        this.battleMods(
+          {
+            attackerBonus: pa.crossPenalty ? -CONFIG.combat.riverCrossingPenalty : 0,
+            terrainBonus: CONFIG.combat.terrain[prov.terrain],
+          },
+          pa.faction, p.owner, attCard, defCard,
+        ),
         this.rngCombat,
       );
-      if (r.winner === 'attacker') this.capture(pa.to, pa.faction, pa.army);
+      this.awardBattlePrestige(
+        r.winner === 'attacker' ? pa.faction : r.winner === 'defender' ? p.owner : null,
+        r,
+        r.winner === 'attacker' ? att0 : def0,
+        r.winner === 'attacker' ? def0 : att0,
+      );
+      if (r.winner === 'attacker') this.capture(pa.to, pa.faction, pa.army, true);
       else this.returnHome(pa.faction, pa.from, pa.army);
     }
   }
 
-  private capture(pid: string, f: FactionId, army: Army): void {
+  /**
+   * Flip ownership to f. `byForce` = the province fell to battle, assault,
+   * starvation, or treachery (canon §13.1 "take a walled city by storm or
+   * siege" — walk-in occupations of empty provinces score nothing).
+   */
+  private capture(pid: string, f: FactionId, army: Army, byForce: boolean): void {
     const p = this.provinces.get(pid)!;
     const prev = p.owner;
     p.owner = f;
@@ -895,11 +1186,23 @@ export class Game {
     this.sieges.delete(pid);
     if (prev !== f) {
       const fs = this.factions[f];
-      fs.ledger.conquests += CONFIG.prestige.provinceCapture;
-      if (PROVINCE_BY_ID.get(pid)!.keyCity) fs.ledger.conquests += CONFIG.prestige.keyCityCapture;
-      this.recomputeTotal(fs);
+      let pts = CONFIG.prestige.provinceCapture; // canon: 0 (tuning lever)
+      if (byForce && p.wallTier >= 1) {
+        // canon §13.1: walled city taken by storm or siege: +2 (+3 if T4-T5)
+        pts += p.wallTier >= 4 ? CONFIG.prestige.walledCityCaptureHighTier : CONFIG.prestige.walledCityCapture;
+        pts += CONFIG.factions[f].cityCapturePrestige; // Ottoman Ghaza bump
+      }
+      if (pts !== 0) {
+        fs.ledger.conquests += pts;
+        this.recomputeTotal(fs);
+      }
     }
     if (prev && prev !== f) {
+      if (CAPITALS[prev] === pid) {
+        // canon §13.1: lose your capital: -3
+        this.factions[prev].ledger.events += CONFIG.prestige.loseCapital;
+        this.recomputeTotal(this.factions[prev]);
+      }
       const w = this.touchWar(f, prev);
       w.captures[f] = (w.captures[f] ?? 0) + 1;
       let remaining = 0;
@@ -914,6 +1217,8 @@ export class Game {
     fs.eliminatedRound = this.round;
     fs.routes = [];
     fs.cpleHold = 0;
+    this.discardPile.push(...fs.hand); // a dead court's cards return to the pool
+    fs.hand = [];
     for (const [pid, s] of [...this.sieges]) if (s.attacker === loser) this.sieges.delete(pid);
     for (const key of [...this.wars.keys()]) if (key.split('|').includes(loser)) this.wars.delete(key);
     const winner = this.factions[conqueror];
@@ -924,10 +1229,11 @@ export class Game {
   // --------------------------------------------------------- siege advance
 
   private applyAttrition(a: Army, losses: number): void {
+    // weakest first (canon §4.4 value order)
     let r = losses;
     let k = Math.min(a.levy, r); a.levy -= k; r -= k;
-    k = Math.min(a.mercenary, r); a.mercenary -= k; r -= k;
     k = Math.min(a.professional, r); a.professional -= k; r -= k;
+    k = Math.min(a.mercenary, r); a.mercenary -= k; r -= k;
     k = Math.min(a.galley, r); a.galley -= k; r -= k;
   }
 
@@ -984,27 +1290,58 @@ export class Game {
       const p = this.provinces.get(pid)!;
       const prov = PROVINCE_BY_ID.get(pid)!;
       s.rounds++;
-      // 1. bombardment (canon §8.2.2 dice; Theodosian walls resist ordinary engines)
+      // 0. Treason at the Gate (canon §7.7): after 2+ consecutive siege
+      //    rounds the besieger may buy the city outright.
+      const treasonIdx = this.handIndexOf(s.attacker, 'treason-at-the-gate');
+      if (treasonIdx >= 0) {
+        const treason = this.cardBySlug.get('treason-at-the-gate')!;
+        if (s.rounds >= (treason.minSiegeRounds ?? 2) && fs.gold >= (treason.costGold ?? 0)) {
+          fs.hand.splice(treasonIdx, 1);
+          fs.gold -= treason.costGold ?? 0;
+          this.discardCard(treason); // removeFromGame: never returns
+          p.garrison.siegeEngine = 0;
+          this.capture(pid, s.attacker, s.army, true); // garrison surrenders, walls at current HP
+          continue;
+        }
+      }
+      // 1. bombardment (canon §8.2.2 dice; §8.3 T5 masonry cap — only the
+      //    Great Bombard, canon §8.4, lifts it and adds its two dice)
       const hp = wallHitpoints(p.wallTier, prov.theodosianWalls);
       p.wallDamage = Math.min(
         hp,
-        p.wallDamage + rollBombardment(s.army, bombardAt.get(s.attacker) === pid, prov.theodosianWalls, this.rngCombat),
+        p.wallDamage + rollBombardment(s.army, bombardAt.get(s.attacker) === pid, p.wallTier >= 5, this.rngCombat),
       );
       // 2. starvation (canon §8.2.3 stores model) + besieger disease.
-      //    R3 sea resupply: an unblockaded coastal city refills its stores.
+      //    Sea resupply: an unblockaded coastal city refills its stores.
       const blockaded = this.isSeaBlockaded(pid, s.attacker);
       if (sc.seaResupplyEnabled && prov.coasts.length > 0 && !blockaded) {
         s.stores = sc.grainStoresRounds; // resupplied over the open sea
-      } else if (s.stores > 0) {
-        s.stores--;
       } else {
-        this.applyAttrition(p.garrison, sc.starvationUnitsPerRound);
+        // fully invested: the garrison may play its siege cards at the crunch
+        let skipDepletion = false;
+        if (p.owner && s.stores === 0) {
+          const sails = prov.coasts.length > 0 ? this.takeCardIf(p.owner, 'sails-from-the-west') : null;
+          if (sails) {
+            skipDepletion = true; // blockade run: no depletion even under full blockade
+            s.stores = Math.min(sc.grainStoresRounds, s.stores + (sails.restoreStores ?? 0));
+          } else {
+            const sortie = this.takeCardIf(p.owner, 'night-sortie');
+            if (sortie) {
+              skipDepletion = true;
+              this.applyAttrition(s.army, sortie.besiegerLosesUnits ?? 1);
+            }
+          }
+        }
+        if (!skipDepletion) {
+          if (s.stores > 0) s.stores--;
+          else this.applyAttrition(p.garrison, sc.starvationUnitsPerRound);
+        }
       }
       this.applyAttrition(s.army, attritionLosses(combatants(s.army), sc.besiegerAttritionPerRound, this.rngCombat));
       if (p.owner) this.touchWar(s.attacker, p.owner);
       if (combatants(p.garrison) === 0) {
         p.garrison.siegeEngine = 0;
-        this.capture(pid, s.attacker, s.army); // starved out
+        this.capture(pid, s.attacker, s.army, true); // starved out
         continue;
       }
       if (combatants(s.army) <= 2) {
@@ -1027,15 +1364,28 @@ export class Game {
       this.assaults++;
       this.battles++;
       const escalade = p.wallDamage < hp ? -sc.escaladePenalty : 0; // canon §8.2.4
+      const att0 = combatants(s.army);
+      const def0 = combatants(p.garrison);
+      const { attCard, defCard } = this.playBattleCards(
+        s.attacker, p.owner, ASSAULT_ATTACK_SCOPES, LAND_DEFENSE_SCOPES, wallBonus);
       const r = resolveBattle(
         s.army,
         p.garrison,
-        modifiers({ attackerBonus: escalade, terrainBonus: CONFIG.combat.terrain[prov.terrain], wallBonus }),
+        this.battleMods(
+          { attackerBonus: escalade, terrainBonus: CONFIG.combat.terrain[prov.terrain], wallBonus },
+          s.attacker, p.owner, attCard, defCard,
+        ),
         this.rngCombat,
+      );
+      this.awardBattlePrestige(
+        r.winner === 'attacker' ? s.attacker : r.winner === 'defender' ? p.owner : null,
+        r,
+        r.winner === 'attacker' ? att0 : def0,
+        r.winner === 'attacker' ? def0 : att0,
       );
       if (r.winner === 'attacker') {
         p.garrison.siegeEngine = 0;
-        this.capture(pid, s.attacker, s.army);
+        this.capture(pid, s.attacker, s.army, true);
       } else if (combatants(s.army) <= 2) {
         this.sieges.delete(pid);
         this.returnHome(s.attacker, s.origin, s.army);
@@ -1088,7 +1438,7 @@ export class Game {
       if (!fs.alive) continue;
       // sell grain above a two-round reserve
       let need = 0;
-      for (const a of this.armiesOf(f)) need += grainUpkeepOf(a);
+      for (const a of this.armiesOf(f)) need += grainUpkeepOf(f, a);
       if (fs.grain > 2 * need) {
         const excess = Math.floor(fs.grain - 2 * need);
         fs.grain -= excess;
@@ -1115,13 +1465,8 @@ export class Game {
         if (this.provinces.get(r.a)!.owner === f && this.provinces.get(r.b)!.owner === f) monopolies++;
       }
       fs.ledger.tradeRoutes += open.length * pr.tradeRoutePerRound + monopolies * pr.tradeMonopolyPerRound;
-      // secret objective
-      if (!fs.objective.done && this.round <= fs.objective.deadline && fs.objective.provinces.length > 0) {
-        if (fs.objective.provinces.every((pid) => this.provinces.get(pid)!.owner === f)) {
-          fs.objective.done = true;
-          fs.ledger.objectives += CONFIG.prestige.secretObjective;
-        }
-      }
+      // secret objectives are NOT scored here — canon §13.1: revealed and
+      // scored at GAME END only (see run()).
       this.recomputeTotal(fs);
     }
 
@@ -1263,7 +1608,14 @@ export class Game {
 
   grainNeedOf(f: FactionId): number {
     let need = 0;
-    for (const a of this.armiesOf(f)) need += grainUpkeepOf(a);
+    for (const a of this.armiesOf(f)) need += grainUpkeepOf(f, a);
+    return need;
+  }
+
+  /** Gold wage bill per round (Janissary/Black Army donatives etc.). */
+  goldNeedOf(f: FactionId): number {
+    let need = 0;
+    for (const a of this.armiesOf(f)) need += goldWageOf(f, a);
     return need;
   }
 

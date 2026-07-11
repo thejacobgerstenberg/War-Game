@@ -18,7 +18,7 @@
  */
 
 import type { FactionId, UnitType } from './types';
-import { CONFIG } from './rules';
+import { CONFIG, statsFor } from './rules';
 import { combatants } from './combat';
 import { PROVINCE_BY_ID } from './map';
 import {
@@ -135,11 +135,11 @@ function tryAttack(g: Game, f: FactionId, o: AttackOpts): boolean {
         feasible = n >= 2; // reinforcing an existing siege is cheap
       } else if (walled) {
         feasible = myPower >= o.walledRatio * (armyPower(t.garrison) + 1);
-        // Theodosian-class fortresses (intact wall bonus >= tierBonus[3], i.e.
-        // Constantinople) are a siege tar pit without the Great Bombard:
-        // ordinary engines cannot crack them and the open sea feeds them
-        // (R3). Stay away unless we own the Bombard or can blockade.
-        if (g.wallBonusAt(r.to) >= CONFIG.walls.tierBonus[3] && !g.faction(f).hasGreatBombard) feasible = false;
+        // Tier-5 fortresses (the Theodosian Walls) are a siege tar pit
+        // without the Great Bombard: the canon §8.3 masonry cap limits an
+        // ordinary train to 1 wall HP/round and the open sea feeds the city
+        // (§8.2.3). Stay away unless we own the Bombard.
+        if (t.wallTier >= 5 && g.wallBonusAt(r.to) > 0 && !g.faction(f).hasGreatBombard) feasible = false;
       } else {
         feasible = myPower >= o.minRatio * g.defenseScore(r.to);
       }
@@ -217,9 +217,9 @@ function recruitAt(g: Game, f: FactionId, pid: string, unit: UnitType): boolean 
   if (unit === 'levy') cap += CONFIG.factions[f].levyRecruitBonus;
   // Solvency guards: never recruit a batch the grain economy cannot feed
   // (mercenaries eat x2 grain per canon §6.2 — a full merc batch can sink a
-  // small faction), and always keep enough gold back to pay the fleet's
-  // crews (an unpaid navy deserts and can strip a port garrison bare).
-  const perUnitGrain = CONFIG.units[unit].grainUpkeep;
+  // small faction), and always keep enough gold back for the standing wage
+  // bill (unpaid gold-paid troops desert and can strip a garrison bare).
+  const perUnitGrain = statsFor(f, unit).grainUpkeep;
   if (perUnitGrain > 0) {
     const affordable = Math.floor(g.grainHeadroom(f) / perUnitGrain);
     if (affordable < cap) cap = affordable;
@@ -227,9 +227,7 @@ function recruitAt(g: Game, f: FactionId, pid: string, unit: UnitType): boolean 
   }
   const cost = unitGoldCost(f, unit);
   if (cost > 0) {
-    let crewWages = 0;
-    for (const pid2 of g.ownedProvinces(f)) crewWages += g.province(pid2).garrison.galley * CONFIG.units.galley.goldUpkeep;
-    const affordable = Math.floor((g.faction(f).gold - crewWages) / cost);
+    const affordable = Math.floor((g.faction(f).gold - g.goldNeedOf(f)) / cost);
     if (affordable < cap) cap = affordable;
     if (cap <= 0) return false;
   }
@@ -360,7 +358,7 @@ function tryWallUpgrade(g: Game, f: FactionId, goldReserve: number): boolean {
   if (fs.gold < w.goldCost + goldReserve || fs.timber < w.timberCost || fs.marble < w.marbleCost) return false;
   const spots = g
     .borderOf(f)
-    .filter((pid) => g.province(pid).wallTier < 3 && !g.isBesieged(pid))
+    .filter((pid) => g.province(pid).wallTier < CONFIG.walls.maxBuildableTier && !g.isBesieged(pid))
     .sort((a, b) => targetValue(g, f, b) - targetValue(g, f, a));
   return spots.length > 0 && g.actBuild(f, spots[0], 'wallUpgrade');
 }

@@ -242,13 +242,13 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
   const out: number[] = new Array(rounds);
 
   for (let r = 1; r <= rounds; r++) {
-    // --- conquest attempts (territory + war prestige) ---
+    // --- conquest attempts (canon §13.1 conquest track) ---
     const attemptProb = r <= 3 ? p.conquestAttemptProbEarly : p.conquestAttemptProbLate;
     if (rng.chance(attemptProb) && rng.chance(p.conquestSuccessProb)) {
-      cum += pr.provinceCapture; // conquest-track one-off
+      cum += pr.provinceCapture + pr.decisiveBattle; // won the field decisively
       if (keyCities < p.maxKeyCities && rng.chance(p.keyCityChanceOnConquest)) {
         keyCities++;
-        cum += pr.keyCityCapture; // sack/triumph one-off
+        cum += pr.walledCityCapture; // key cities are walled (canon: +2 for T1-T3)
       }
       if (rng.chance(p.warWonChanceOnConquest)) cum += pr.warWon;
     }
@@ -257,12 +257,12 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
     // defensive war concluded in the player's favor
     if (rng.chance(p.defensiveWarWonProb)) cum += pr.warWon;
 
-    // --- Constantinople (extra prestige on top of a normal key city) ---
+    // --- Constantinople (T5 walled city on top of a normal key city) ---
     if (p.cpleAttemptFromRound !== null && r >= p.cpleAttemptFromRound) {
       if (!hasCple) {
         if (rng.chance(p.cpleCaptureProb)) {
           hasCple = true;
-          cum += pr.provinceCapture + pr.keyCityCapture;
+          cum += pr.provinceCapture + pr.walledCityCaptureHighTier; // canon: +3 for T4-T5
         }
       } else if (rng.chance(p.cpleLossProb)) {
         hasCple = false;
@@ -288,7 +288,10 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
     let monopoliesActive = 0;
     for (let i = 0; i < monopoliesOpen; i++) if (!rng.chance(p.routeRaidProb)) monopoliesActive++;
 
-    // --- one-off prestige: great works, secret objective ---
+    // --- one-off prestige: great works; secret objectives COMPLETE inside
+    //     their window but are revealed & SCORED at game end only (canon
+    //     §13.1) — added in the final round so they can never trigger an
+    //     early threshold win ---
     for (const gwRound of greatWorkRounds) if (gwRound === r) cum += pr.greatWork;
     if (
       !objectiveDone &&
@@ -297,8 +300,8 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
       rng.chance(p.objectiveHazard)
     ) {
       objectiveDone = true;
-      cum += pr.secretObjective;
     }
+    if (r === rounds && objectiveDone) cum += pr.secretObjective;
 
     // --- per-round prestige income ---
     cum += pr.ownCapitalPerRound; // own capital assumed held (canon §13.1)

@@ -52,7 +52,7 @@ export interface Yields {
 
 export type Terrain = 'plains' | 'hills' | 'mountains' | 'forest' | 'marsh';
 
-export type WallTier = 0 | 1 | 2 | 3;
+export type WallTier = 0 | 1 | 2 | 3 | 4 | 5;
 
 export interface Province {
   id: string;
@@ -99,7 +99,8 @@ export interface TradeRoute {
 }
 
 export interface FactionStart {
-  treasury: { gold: number; grain: number };
+  /** Canon FACTIONS starting resources (gold/grain/timber/marble/faith). */
+  treasury: { gold: number; grain: number; timber: number; marble: number; faith: number };
   /** Starting garrisons keyed by province id (must be initially owned). */
   garrisons: Record<string, Army>;
 }
@@ -113,14 +114,26 @@ export interface FactionStart {
  * these modifiers; neither is the 2:1 outnumber bonus (computed per round).
  */
 export interface CombatModifiers {
-  /** Flat attacker threshold shift (tactic card +1, amphibious/strait -1, escalade -1). */
+  /** Flat attacker threshold shift (amphibious/strait -1, escalade -1). */
   attackerBonus: number;
-  /** Flat defender threshold shift (tactic cards, event effects). */
+  /** Flat defender threshold shift (Hexamilion +2, event effects). */
   defenderBonus: number;
   /** Defensive terrain shift for the defender (see CONFIG.combat.terrain). */
   terrainBonus: number;
   /** Wall shift for the defender: full tier bonus while unbreached, else 0. */
   wallBonus: number;
+  /** Extra melee dice per round (tactic cards: "+N dice", canon §7.7), rolled at the side's best unit threshold. */
+  attackerExtraDice: number;
+  defenderExtraDice: number;
+  /** Missed dice rerolled per round (tactic-card rerolls), at the side's best unit threshold. */
+  attackerRerolls: number;
+  defenderRerolls: number;
+  /** Card effects (extra dice / rerolls) apply only in the first battle round ("one round of ..." cards). */
+  attackerFirstRoundOnly?: boolean;
+  defenderFirstRoundOnly?: boolean;
+  /** Faction whose unit-stat table (CONFIG.factionUnits) the side rolls with; null/undefined = neutral base stats. */
+  attackerFaction?: FactionId | null;
+  defenderFaction?: FactionId | null;
 }
 
 /** Per-round casualty report. NOTE: combat.ts reuses one instance (no alloc). */
@@ -139,6 +152,8 @@ export interface BattleOptions {
 export interface BattleResult {
   /** 'defender' includes the attacker-retreated case. */
   winner: 'attacker' | 'defender' | 'stalemate';
+  /** Canon §13.1 "decisive battle": the losing side was WIPED OUT or ROUTED (false for withdrawals/stalemates). */
+  decisive: boolean;
   rounds: number;
   /** Combatant units lost (siege engines not counted; see combat.ts docs). */
   attackerLosses: number;

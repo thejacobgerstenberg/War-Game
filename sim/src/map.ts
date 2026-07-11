@@ -1,8 +1,17 @@
 /**
- * Hand-authored map: 52 land provinces + 12 sea zones covering the
+ * Hand-authored map: 56 land provinces + 12 sea zones covering the
  * Mediterranean/Balkans theater, 1400-1453. Historical plausibility over
  * precision. Adjacency is authored as edge lists and expanded symmetrically,
  * so it cannot be asymmetric by typo; validateMap() checks everything else.
+ *
+ * Wall tiers, starting holdings, treasuries, and garrisons are aligned to
+ * the FINAL canon (2b42386): MAP.md walled-cities T1-T5 table and the
+ * FACTIONS.md faction sheets, mapped onto this sim map's province set
+ * (canon selymbria ~ mesembria, thessalonica ~ salonica, dalmatia ~ zara,
+ * konya ~ karaman, kaffa ~ caffa; canon bithynia is folded into nicaea).
+ * Non-canon filler provinces (friuli, tuscany, apulia, corsica, macedonia,
+ * moldavia, vidin, nicopolis, slavonia, banat, upper_hungary) start
+ * Independent with light walls.
  */
 
 import type {
@@ -38,65 +47,69 @@ const P: Record<string, ProvinceSpec> = {
   // Venice's marble lives in Venetian Dalmatia (Istrian stone via Zara), not
   // on the safe lagoon: the great-work engine works from round 1 but its
   // source is a mainland border province rivals can actually contest.
-  venice: { name: 'Venice', owner: 'venice', terrain: 'plains', wall: 2, key: true, y: [5, 1, 0, 0, 1], coasts: ['adriatic_north'] },
+  venice: { name: 'Venice', owner: 'venice', terrain: 'plains', wall: 3, key: true, y: [5, 1, 0, 0, 1], coasts: ['adriatic_north'] },
   friuli: { name: 'Friuli', owner: null, terrain: 'plains', wall: 0, y: [1, 2, 2, 0, 0], coasts: ['adriatic_north'] },
   milan: { name: 'Milan', owner: null, terrain: 'plains', wall: 2, y: [4, 3, 0, 0, 0] },
-  genoa: { name: 'Genoa', owner: 'genoa', terrain: 'hills', wall: 2, key: true, y: [5, 1, 1, 0, 1], coasts: ['ligurian'] },
+  genoa: { name: 'Genoa', owner: 'genoa', terrain: 'hills', wall: 3, key: true, y: [5, 1, 1, 0, 1], coasts: ['ligurian'] },
   tuscany: { name: 'Tuscany', owner: null, terrain: 'hills', wall: 1, y: [3, 2, 0, 2, 0], coasts: ['ligurian'] },
-  rome: { name: 'Rome', owner: null, terrain: 'plains', wall: 2, key: true, y: [3, 2, 0, 1, 2], coasts: ['tyrrhenian'] },
-  naples: { name: 'Naples', owner: null, terrain: 'plains', wall: 1, y: [3, 3, 0, 0, 0], coasts: ['tyrrhenian'] },
+  rome: { name: 'Rome', owner: null, terrain: 'plains', wall: 4, key: true, y: [3, 2, 0, 1, 2], coasts: ['tyrrhenian'] }, // canon T4 great fortress
+  naples: { name: 'Naples', owner: null, terrain: 'plains', wall: 3, y: [3, 3, 0, 0, 0], coasts: ['tyrrhenian'] },
   apulia: { name: 'Apulia', owner: null, terrain: 'plains', wall: 0, y: [2, 3, 0, 0, 0], coasts: ['adriatic_south', 'ionian'] },
-  sicily: { name: 'Sicily', owner: null, terrain: 'plains', wall: 1, y: [3, 4, 0, 0, 0], coasts: ['tyrrhenian', 'ionian'] },
-  corsica: { name: 'Corsica', owner: 'genoa', terrain: 'mountains', wall: 0, y: [1, 1, 2, 1, 0], coasts: ['ligurian', 'tyrrhenian'] },
+  sicily: { name: 'Sicily', owner: null, terrain: 'plains', wall: 2, y: [3, 4, 0, 0, 0], coasts: ['tyrrhenian', 'ionian'] },
+  corsica: { name: 'Corsica', owner: null, terrain: 'mountains', wall: 0, y: [1, 1, 2, 1, 0], coasts: ['ligurian', 'tyrrhenian'] }, // non-canon filler; canon Genoa holds pera instead
   // ---- Western Balkans ----
   ragusa: { name: 'Ragusa', owner: null, terrain: 'hills', wall: 2, key: true, y: [4, 1, 0, 0, 0], coasts: ['adriatic_south'] },
-  zara: { name: 'Zara', owner: 'venice', terrain: 'hills', wall: 1, y: [2, 1, 1, 1, 0], coasts: ['adriatic_north'] },
+  zara: { name: 'Zara', owner: 'venice', terrain: 'hills', wall: 1, y: [2, 1, 1, 1, 0], coasts: ['adriatic_north'] }, // canon dalmatia
   croatia: { name: 'Croatia', owner: 'hungary', terrain: 'hills', wall: 0, y: [1, 2, 1, 0, 0], coasts: ['adriatic_north'] },
-  slavonia: { name: 'Slavonia', owner: 'hungary', terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0] },
-  bosnia: { name: 'Bosnia', owner: null, terrain: 'mountains', wall: 0, y: [2, 1, 2, 0, 0] },
-  serbia: { name: 'Serbia', owner: null, terrain: 'hills', wall: 1, y: [3, 2, 0, 0, 0] },
-  albania: { name: 'Albania', owner: null, terrain: 'mountains', wall: 0, y: [1, 1, 0, 0, 0], coasts: ['adriatic_south'] },
+  slavonia: { name: 'Slavonia', owner: null, terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0] },
+  bosnia: { name: 'Bosnia', owner: null, terrain: 'mountains', wall: 1, y: [2, 1, 2, 0, 0] },
+  serbia: { name: 'Serbia', owner: null, terrain: 'hills', wall: 2, y: [3, 2, 0, 0, 0] }, // canon T2 (Smederevo)
+  albania: { name: 'Albania', owner: null, terrain: 'mountains', wall: 1, y: [1, 1, 0, 0, 0], coasts: ['adriatic_south'] },
   epirus: { name: 'Epirus', owner: null, terrain: 'mountains', wall: 0, y: [1, 1, 0, 0, 0], coasts: ['ionian'] },
-  athens: { name: 'Athens', owner: null, terrain: 'plains', wall: 1, key: true, y: [2, 1, 0, 2, 1], coasts: ['aegean_south'] },
-  morea: { name: 'Morea', owner: 'byzantium', terrain: 'hills', wall: 1, y: [2, 3, 0, 1, 0], coasts: ['ionian', 'sea_of_crete'] },
+  athens: { name: 'Athens', owner: null, terrain: 'plains', wall: 2, key: true, y: [2, 1, 0, 2, 1], coasts: ['aegean_south'] },
+  morea: { name: 'Morea', owner: 'byzantium', terrain: 'hills', wall: 2, y: [2, 3, 0, 1, 0], coasts: ['ionian', 'sea_of_crete'] },
+  modon: { name: 'Modon & Coron', owner: 'venice', terrain: 'hills', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['ionian', 'sea_of_crete'] }, // canon Venetian modon
   // ---- Hungary & lower Danube ----
-  buda: { name: 'Buda', owner: 'hungary', terrain: 'plains', wall: 2, key: true, y: [4, 3, 0, 0, 1] },
-  upper_hungary: { name: 'Upper Hungary', owner: 'hungary', terrain: 'mountains', wall: 0, y: [3, 1, 1, 1, 0] },
-  transylvania: { name: 'Transylvania', owner: 'hungary', terrain: 'mountains', wall: 0, y: [2, 2, 2, 0, 0] },
-  banat: { name: 'Banat', owner: 'hungary', terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0] },
+  buda: { name: 'Buda', owner: 'hungary', terrain: 'plains', wall: 3, key: true, y: [4, 3, 0, 0, 1] },
+  belgrade: { name: 'Belgrade', owner: 'hungary', terrain: 'plains', wall: 4, y: [1, 2, 0, 1, 0] }, // canon T4 Danube fortress
+  upper_hungary: { name: 'Upper Hungary', owner: null, terrain: 'mountains', wall: 0, y: [3, 1, 1, 1, 0] },
+  transylvania: { name: 'Transylvania', owner: 'hungary', terrain: 'mountains', wall: 1, y: [2, 2, 2, 0, 0] },
+  banat: { name: 'Banat', owner: null, terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0] },
   moldavia: { name: 'Moldavia', owner: null, terrain: 'plains', wall: 0, y: [1, 3, 0, 0, 0], coasts: ['black_sea_west'] },
   wallachia: { name: 'Wallachia', owner: null, terrain: 'plains', wall: 0, y: [1, 4, 0, 0, 0] },
   vidin: { name: 'Vidin', owner: null, terrain: 'hills', wall: 1, y: [1, 2, 0, 0, 0] },
   nicopolis: { name: 'Nicopolis', owner: null, terrain: 'plains', wall: 1, y: [1, 2, 0, 0, 0] },
-  mesembria: { name: 'Mesembria', owner: 'byzantium', terrain: 'plains', wall: 1, y: [2, 3, 0, 0, 0], coasts: ['black_sea_west'] },
+  mesembria: { name: 'Mesembria', owner: 'byzantium', terrain: 'plains', wall: 1, y: [2, 3, 0, 0, 0], coasts: ['black_sea_west'] }, // canon selymbria (Byzantine buffer)
   // ---- Ottoman Balkans & Thrace ----
-  sofia: { name: 'Sofia', owner: 'ottomans', terrain: 'hills', wall: 1, y: [2, 2, 0, 0, 0] },
+  sofia: { name: 'Sofia', owner: 'ottomans', terrain: 'hills', wall: 0, y: [2, 2, 0, 0, 0] },
   philippopolis: { name: 'Philippopolis', owner: 'ottomans', terrain: 'plains', wall: 0, y: [2, 3, 0, 0, 0] },
   macedonia: { name: 'Macedonia', owner: null, terrain: 'hills', wall: 0, y: [1, 2, 0, 0, 0] },
-  // Salonica: contested prize (Venetian 1423-1430, Ottoman after) — neutral key city.
-  salonica: { name: 'Salonica', owner: null, terrain: 'plains', wall: 2, key: true, y: [4, 2, 0, 0, 1], coasts: ['aegean_north'] },
-  edirne: { name: 'Edirne', owner: 'ottomans', terrain: 'plains', wall: 2, key: true, y: [3, 3, 0, 0, 1] },
-  gallipoli: { name: 'Gallipoli', owner: 'ottomans', terrain: 'plains', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['aegean_north', 'sea_of_marmara'] },
-  constantinople: { name: 'Constantinople', owner: 'byzantium', terrain: 'plains', wall: 3, key: true, y: [5, 2, 0, 1, 2], coasts: ['sea_of_marmara', 'black_sea_west'] },
+  // Salonica = canon thessalonica: Byzantine second city behind T3 walls.
+  salonica: { name: 'Salonica', owner: 'byzantium', terrain: 'plains', wall: 3, key: true, y: [4, 2, 0, 0, 1], coasts: ['aegean_north'] },
+  edirne: { name: 'Edirne', owner: 'ottomans', terrain: 'plains', wall: 3, key: true, y: [3, 3, 0, 0, 1] },
+  gallipoli: { name: 'Gallipoli', owner: 'ottomans', terrain: 'plains', wall: 2, y: [2, 1, 0, 0, 0], coasts: ['aegean_north', 'sea_of_marmara'] },
+  constantinople: { name: 'Constantinople', owner: 'byzantium', terrain: 'plains', wall: 5, key: true, y: [5, 2, 0, 1, 2], coasts: ['sea_of_marmara', 'black_sea_west'] }, // T5 Theodosian Walls
+  pera: { name: 'Pera (Galata)', owner: 'genoa', terrain: 'plains', wall: 1, y: [3, 0, 0, 0, 0], coasts: ['sea_of_marmara', 'black_sea_west'] }, // canon Genoese enclave on the Horn
   // ---- Anatolia ----
-  bursa: { name: 'Bursa', owner: 'ottomans', terrain: 'plains', wall: 1, y: [3, 2, 0, 1, 0], coasts: ['sea_of_marmara'] },
-  nicaea: { name: 'Nicaea', owner: 'ottomans', terrain: 'hills', wall: 1, y: [2, 2, 0, 0, 0] },
-  smyrna: { name: 'Smyrna', owner: 'ottomans', terrain: 'plains', wall: 0, y: [3, 2, 0, 0, 0], coasts: ['aegean_south'] },
-  ankara: { name: 'Ankara', owner: 'ottomans', terrain: 'plains', wall: 0, y: [2, 2, 0, 0, 0] },
-  karaman: { name: 'Karaman', owner: null, terrain: 'mountains', wall: 1, y: [2, 2, 0, 0, 0] },
+  bursa: { name: 'Bursa', owner: 'ottomans', terrain: 'plains', wall: 3, y: [3, 2, 0, 1, 0], coasts: ['sea_of_marmara'] },
+  nicaea: { name: 'Nicaea', owner: 'ottomans', terrain: 'hills', wall: 2, y: [2, 2, 0, 0, 0] }, // canon nicaea + bithynia folded
+  smyrna: { name: 'Smyrna', owner: null, terrain: 'plains', wall: 1, y: [3, 2, 0, 0, 0], coasts: ['aegean_south'] }, // canon Independent (Aydin beylik)
+  ankara: { name: 'Ankara', owner: null, terrain: 'plains', wall: 1, y: [2, 2, 0, 0, 0] }, // canon Independent (Karaman league)
+  karaman: { name: 'Karaman', owner: null, terrain: 'mountains', wall: 1, y: [2, 2, 0, 0, 0] }, // canon konya
   attaleia: { name: 'Attaleia', owner: null, terrain: 'hills', wall: 0, y: [2, 1, 1, 0, 0], coasts: ['eastern_med'] },
   sinope: { name: 'Sinope', owner: null, terrain: 'hills', wall: 1, y: [2, 1, 1, 0, 0], coasts: ['black_sea_east'] },
   // Trebizond: the Komnenos empire was separate from Constantinople — neutral key city.
-  trebizond: { name: 'Trebizond', owner: null, terrain: 'mountains', wall: 2, key: true, y: [3, 1, 0, 0, 1], coasts: ['black_sea_east'] },
+  trebizond: { name: 'Trebizond', owner: null, terrain: 'mountains', wall: 3, key: true, y: [3, 1, 0, 0, 1], coasts: ['black_sea_east'] },
   // ---- Islands & overseas colonies ----
-  crete: { name: 'Crete', owner: 'venice', terrain: 'hills', wall: 1, y: [3, 2, 0, 0, 0], coasts: ['sea_of_crete', 'eastern_med'] },
-  negroponte: { name: 'Negroponte', owner: 'venice', terrain: 'plains', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['aegean_south'] },
-  corfu: { name: 'Corfu', owner: 'venice', terrain: 'hills', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['ionian', 'adriatic_south'] },
+  crete: { name: 'Crete', owner: 'venice', terrain: 'hills', wall: 2, y: [3, 2, 0, 0, 0], coasts: ['sea_of_crete', 'eastern_med'] },
+  negroponte: { name: 'Negroponte', owner: 'venice', terrain: 'plains', wall: 2, y: [2, 1, 0, 0, 0], coasts: ['aegean_south'] },
+  corfu: { name: 'Corfu', owner: 'venice', terrain: 'hills', wall: 2, y: [2, 1, 0, 0, 0], coasts: ['ionian', 'adriatic_south'] },
   chios: { name: 'Chios', owner: 'genoa', terrain: 'hills', wall: 1, y: [3, 1, 0, 0, 0], coasts: ['aegean_south'] },
   lesbos: { name: 'Lesbos', owner: 'genoa', terrain: 'hills', wall: 1, y: [2, 1, 0, 0, 0], coasts: ['aegean_north'] },
-  rhodes: { name: 'Rhodes', owner: null, terrain: 'hills', wall: 2, y: [2, 1, 0, 0, 2], coasts: ['aegean_south', 'eastern_med'] },
-  cyprus: { name: 'Cyprus', owner: null, terrain: 'plains', wall: 1, y: [3, 2, 1, 0, 0], coasts: ['eastern_med'] },
-  caffa: { name: 'Caffa', owner: 'genoa', terrain: 'plains', wall: 1, y: [4, 2, 0, 0, 0], coasts: ['black_sea_east'] },
+  lemnos: { name: 'Lemnos', owner: 'byzantium', terrain: 'plains', wall: 1, y: [1, 2, 0, 0, 0], coasts: ['aegean_north'] }, // canon Byzantine granary isle
+  rhodes: { name: 'Rhodes', owner: null, terrain: 'hills', wall: 3, y: [2, 1, 0, 0, 2], coasts: ['aegean_south', 'eastern_med'] }, // canon T3 (Hospitallers)
+  cyprus: { name: 'Cyprus', owner: null, terrain: 'plains', wall: 2, y: [3, 2, 1, 0, 0], coasts: ['eastern_med'] },
+  caffa: { name: 'Caffa', owner: 'genoa', terrain: 'plains', wall: 2, y: [4, 2, 0, 0, 0], coasts: ['black_sea_east'] }, // canon kaffa
 };
 
 /** Land adjacency (symmetric; expanded below). */
@@ -111,8 +124,11 @@ const LAND_EDGES: Array<[string, string]> = [
   ['slavonia', 'bosnia'], ['bosnia', 'serbia'], ['bosnia', 'ragusa'], ['ragusa', 'albania'],
   ['albania', 'serbia'], ['albania', 'epirus'], ['albania', 'macedonia'],
   ['epirus', 'macedonia'], ['epirus', 'athens'], ['athens', 'morea'], ['athens', 'salonica'],
+  ['morea', 'modon'],
   // Hungary & Danube
   ['buda', 'upper_hungary'], ['buda', 'slavonia'], ['buda', 'banat'], ['buda', 'transylvania'],
+  ['buda', 'belgrade'],
+  ['belgrade', 'banat'], ['belgrade', 'serbia'], ['belgrade', 'bosnia'], ['belgrade', 'vidin'],
   ['upper_hungary', 'transylvania'], ['transylvania', 'moldavia'], ['transylvania', 'wallachia'],
   ['transylvania', 'banat'], ['banat', 'slavonia'], ['banat', 'serbia'], ['banat', 'wallachia'],
   ['serbia', 'vidin'], ['serbia', 'macedonia'], ['serbia', 'sofia'],
@@ -125,6 +141,7 @@ const LAND_EDGES: Array<[string, string]> = [
   ['philippopolis', 'edirne'], ['philippopolis', 'macedonia'],
   ['macedonia', 'salonica'],
   ['edirne', 'gallipoli'], ['edirne', 'constantinople'],
+  ['constantinople', 'pera'], // Golden Horn (canon: adjacent city faces)
   // Anatolia
   ['bursa', 'nicaea'], ['bursa', 'smyrna'], ['nicaea', 'ankara'], ['nicaea', 'smyrna'],
   ['smyrna', 'attaleia'], ['attaleia', 'karaman'], ['karaman', 'ankara'],
@@ -264,61 +281,62 @@ export const TRADE_ROUTES: TradeRoute[] = [
 // -------------------------------------------------------------- starts
 
 /**
- * Starting treasuries and garrisons. Grain upkeep of each start roughly
- * matches (or slightly exceeds) starting grain income, so factions begin
- * near equilibrium and must expand or trade to grow armies.
+ * Starting treasuries and garrisons = the FINAL canon FACTIONS.md sheets
+ * (2b42386), mapped onto the sim's 5-slot roster: inf / unique line
+ * infantry / cavalry -> professional; war & merchant galleys -> galley.
+ * Treasuries are the canon starting resource pools (gold/grain/timber/
+ * marble/faith).
  */
 export const FACTION_STARTS: Record<FactionId, FactionStart> = {
   byzantium: {
-    treasury: { gold: 30, grain: 12 },
+    treasury: { gold: 5, grain: 4, timber: 1, marble: 2, faith: 5 },
     garrisons: {
-      constantinople: armyOf({ levy: 2, professional: 4, galley: 1 }),
+      constantinople: armyOf({ professional: 3, galley: 1 }), // 2 inf + Varangian Guard + war galley
+      salonica: armyOf({ levy: 1, professional: 1 }),
       morea: armyOf({ levy: 1 }),
-      mesembria: armyOf({ levy: 1 }),
+      lemnos: armyOf({ levy: 1 }),
+      mesembria: armyOf({ levy: 1 }), // canon selymbria
     },
   },
   ottomans: {
-    treasury: { gold: 24, grain: 16 },
+    treasury: { gold: 6, grain: 7, timber: 3, marble: 3, faith: 2 },
     garrisons: {
-      edirne: armyOf({ levy: 2, professional: 2 }),
-      gallipoli: armyOf({ levy: 1, professional: 1, galley: 1 }),
-      bursa: armyOf({ levy: 2, professional: 1 }),
-      nicaea: armyOf({ levy: 1 }),
-      smyrna: armyOf({ levy: 1, galley: 1 }),
-      ankara: armyOf({ levy: 1 }),
+      edirne: armyOf({ levy: 3, professional: 2 }), // 3 levy + cav + Ghazi Akinci
+      bursa: armyOf({ levy: 2, professional: 1 }), // 2 levy + Janissary
+      gallipoli: armyOf({ levy: 1, galley: 1 }),
+      nicaea: armyOf({ levy: 1 }), // canon nicaea + bithynia folded
       sofia: armyOf({ levy: 1 }),
       philippopolis: armyOf({ levy: 1 }),
     },
   },
   venice: {
-    treasury: { gold: 40, grain: 8 },
+    treasury: { gold: 9, grain: 4, timber: 5, marble: 3, faith: 1 },
     garrisons: {
-      venice: armyOf({ levy: 1, professional: 2, galley: 2 }),
-      crete: armyOf({ levy: 1, professional: 1, galley: 1 }),
-      corfu: armyOf({ levy: 1, galley: 1 }),
-      negroponte: armyOf({ levy: 1 }),
-      zara: armyOf({ levy: 1 }),
+      venice: armyOf({ professional: 1, galley: 5 }), // 3 war + 2 merchant galleys + Stradioti
+      crete: armyOf({ professional: 1, galley: 1 }),
+      negroponte: armyOf({ galley: 1 }),
+      corfu: armyOf({ galley: 1 }),
+      modon: armyOf({ galley: 1 }),
+      zara: armyOf({ levy: 1 }), // canon dalmatia
     },
   },
   genoa: {
-    treasury: { gold: 36, grain: 8 },
+    treasury: { gold: 8, grain: 3, timber: 4, marble: 3, faith: 1 },
     garrisons: {
-      genoa: armyOf({ levy: 1, professional: 2, galley: 2 }),
-      chios: armyOf({ levy: 1, galley: 1 }),
-      caffa: armyOf({ levy: 1, professional: 1, galley: 1 }),
-      corsica: armyOf({ levy: 1 }),
+      genoa: armyOf({ professional: 2, galley: 3 }), // 2 Crossbowmen + 2 war + 1 merchant galley
+      chios: armyOf({ professional: 1, galley: 1 }),
+      caffa: armyOf({ levy: 1, galley: 1 }), // canon kaffa
+      pera: armyOf({ professional: 1 }),
       lesbos: armyOf({ levy: 1 }),
     },
   },
   hungary: {
-    treasury: { gold: 18, grain: 18 },
+    treasury: { gold: 6, grain: 6, timber: 5, marble: 4, faith: 3 },
     garrisons: {
-      buda: armyOf({ levy: 3, professional: 2 }),
+      buda: armyOf({ levy: 2, professional: 2 }), // 2 levy + Black Army + cav
+      belgrade: armyOf({ levy: 2, professional: 1 }), // fortress garrison behind T4 walls
       transylvania: armyOf({ levy: 2 }),
-      croatia: armyOf({ levy: 2 }),
-      slavonia: armyOf({ levy: 2 }),
-      banat: armyOf({ levy: 2 }),
-      upper_hungary: armyOf({ levy: 1 }),
+      croatia: armyOf({ levy: 1 }),
     },
   },
 };

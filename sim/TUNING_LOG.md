@@ -402,3 +402,117 @@ T1-T4 fullgame balance is deliberately NOT retuned here (next phase).
   rerun in the tuning phase; consider canon's Genoa x1.0 merc discount.
 - npm aliases added: sim:smoke (SMOKE=1 sim:all), sim:full (sim:all),
   sim:report (headline summary from results/*.json).
+
+## Round 93 — FINAL CANON RE-DERIVATION (kernel surgeon pass, 2026-07-11)
+
+Re-derived the harness mechanics against the FINAL docs at 2b42386
+(feature/design-and-scaffold): GAME_DESIGN.md + FACTIONS.md + MAP.md +
+EVENT_CARDS.md, per coordinator rulings R1-R11. This entry records the
+mechanic swap and the T5 calibration evidence; T1-T4 fullgame balance is
+explicitly deferred to the next (tuning) phase.
+
+### R1/R2 — kernel + units
+- Kernel unchanged in shape (per-unit 1d6, hit on >= clamp(7-CV-mods,2,6),
+  simultaneous casualties) but now rolls with PER-FACTION unit tables
+  (CONFIG.factionUnits, materialized from FACTIONS unique-unit mapping):
+  Varangian 2/4 @6g; Janissary 3/3 @5g gold-paid; Ottoman levies 0 grain;
+  Hungarian levies 2/2 @1g; Black Army 3/3 @5g gold-paid; Genoese
+  Crossbowmen 2/2 @3g; Venetian galleys 3/3 (Galeazza/Arsenal, -1 timber);
+  Genoese galleys 2/3 (Carrack). Genoa mercs 6g = surcharge WAIVED (base
+  merc = hired CAVALRY: 9g = 6x1.5, 4 grain = 2x2, CV 3/2). Casualty order
+  now canon value order (levy -> professional -> mercenary -> galley);
+  siege engines roll at CV 0+3 during escalades (canon SIEGE "+3 vs
+  walls"). Unit costs now include canon timber/marble (siege 2t+2m,
+  galley 2t); galley upkeep moved from 1 gold to canon 1 grain.
+- combat_mc adds faction-asymmetry grid (Janissary vs Varangian) and
+  ratified-card sets; 100k trials/cell, 0 ordering violations.
+
+### R3 — walls T1-T5
+- CONFIG.walls restructured to canon 8.1: bonus [+1,+2,+3,+4,+4], HP
+  [3,6,10,13,16] for T1..T5; T5 = Theodosian (Constantinople), T4 authored
+  at Belgrade + Rome; Build-action upgrades cap at T3. Map wall tiers
+  realigned to MAP.md's walled-cities table. Escalade -1 + binary bonus +
+  breach-at-0 unchanged. Gap-fills kept (documented in RULES_MODEL.md):
+  no outnumber bonus vs unbreached walls, no garrison rout behind walls,
+  battlement cover save (1d6<=3 deflects hits while walls stand).
+
+### R4/R5 — Great Bombard + sea resupply
+- great-bombard-forged now resolves at round 11 (canon Era III opens
+  round 11; was 9) and grants the Bombard FREE to the Ottomans if alive
+  (canon GD 8.4), else auctions it to the richest payer (40g). Bombard =
+  2 wall-damage dice/round (~4 avg, max 6) and LIFTS the new T5 masonry
+  cap (canon 8.3: ordinary train max 1 HP/round vs intact T5; replaces the
+  old theodosianEngineDamageMult=0 rule).
+- Sea resupply unchanged (blockade = hostile galley superiority in EVERY
+  adjacent zone); naval CV overrides now make Venetian/Genoese blockade
+  fleets materially better.
+
+### R6 — 23 ratified tactic cards
+- CONFIG.tacticCards encodes all 23 designs at final magnitudes (47-card
+  deck, 8Cx3/8Ux2/7Rx1). Fullgame: 1 draw/faction/round, hand cap 4,
+  instants resolve on draw, one best applicable card per side per battle,
+  Intercepted Letter cancels, siege cards (Night Sortie / Sails from the
+  West / Treason at the Gate) fire in the siege phase, Greek Fire/Treason
+  remove from game. 7 designs (15/47 cards) are dead draws in the sim
+  (movement/info/naval/diplomacy scope) — card impact is an underestimate.
+- Measured impact (100k trials/cell, 6v4 prof-vs-prof open field 51.5%):
+  Veterans (+1 die) -> 56.7%; Condottieri (+2 dice) -> 64.0%; Locked
+  Shields (defender reroll 1/round) -> 37.2%; Bribed Gatekeeper turns a
+  0.1% T3-intact assault into 25.6% (= escalade-only odds).
+
+### R7/R8 — round structure + prestige
+- Victory checks confirmed Cleanup-only; exactly 4 actions; one omen per
+  table per round (already so).
+- Prestige = canon 13.1: routes 0 (was 0.6/round), warWon 6 -> 3,
+  provinceCapture 2 -> 0, keyCityCapture 5 -> REMOVED, NEW walled-city
+  capture +2 (T1-T3) / +3 (T4-T5) BY FORCE only (walk-ins score nothing),
+  NEW decisive battle +1, outnumbered win +1, lose capital -3, Ottoman
+  Ghaza +1 per walled city taken. Secret objectives 6 -> 4 and scored at
+  GAME END only (game.ts + pacing.ts). victoryThreshold stays 70 as a
+  placeholder — OWNED BY THE TUNING REPORT; with the leaner canon sources
+  fullgame now ends median r12 (was r9 at HEAD). The pacing abstraction
+  recommends 78 (its 75-81 band meets all its criteria) — fullgame is
+  ground truth.
+
+### R11 — faction sheets
+- FACTION_STARTS = canon FACTIONS.md: treasuries (byz 5/4/1/2/5, ott
+  6/7/3/3/2, ven 9/4/5/3/1, gen 8/3/4/3/1, hun 6/6/5/4/3) and canon
+  starting armies/provinces mapped onto the sim map. Map changes:
+  salonica -> Byzantine T3 (canon thessalonica), NEW lemnos (byz), NEW
+  modon (ven), NEW pera (gen, on the Horn), NEW belgrade (hun, T4);
+  corsica/smyrna/ankara/slavonia/banat/upper_hungary -> Independent.
+  Ottoman cost mult 0.75 -> 1.0 (identity now via devshirme levies +
+  Janissaries); Hungary levy mult 0.5 -> 1.0 (identity via 1g 2/2 levies).
+
+### T5 calibration (full scale, 20k iters/cell, seed 20260711) — ALL MET
+- a) direct assault on intact T5 (stacks 1-12 vs garrisons 6-10):
+  worst 0.31% (12 att vs g=6) < 2%.
+- b) no Bombard + no blockade: capture within 12 siege rounds = 0.0%
+  (sea resupply + 1 HP/round masonry cap; the walls outlast the game).
+- c) no Bombard + FULL blockade: starve-out 99.9-100%, median capture
+  round 7 / 9 / 11 for garrison 6 / 8 / 10 (>= 6).
+- d) with Bombard: breach round 2; capture within 4 siege rounds
+  94.5-100% (within 2: 70.9-96.0%) — omen at r11 => the City falls
+  r13-15, matching the 1453 anchor.
+- NOTE: FACTIONS' Byzantine "auto-repel first two siege rounds" power is
+  NOT modeled (would shift T5d to ~4-6 rounds) — sensitivity note in
+  RULES_MODEL.md; targets calibrated to the coordinator's T5 spec.
+
+### Known state at exit (handoff to the balance-tuning phase)
+- tsc clean; SMOKE=1 sim:all green; full-scale combat (0 violations) +
+  siege (4/4 T5 targets) committed in results/.
+- Economy: all 5 factions x 3 archetypes SOLVENT through r16 under canon
+  treasuries, but snapshot criteria broke wider (rushR5 for byz/ven/gen,
+  balancedMid ott/hun, turtleStrong gen): canon starting treasuries are
+  ~1/4 of the old tuned pools and mercs cost 9g/4grain. Needs the price
+  sweep re-run (axes now move base + faction tables together).
+- Fullgame full-scale (1000g seed 14530000, threshold 70): byz 19.5 /
+  ott 17.1 / ven 0.0 / gen 61.8 / hun 1.6; policies rusher 28.6 / trader
+  22.5 / turtler 20.0 / opportunist 9.0; median end r12; threshold-decided
+  78.5%, sudden death 12.3% (in the 1-15% window), eliminations 0. NOT
+  chased (next phase): genoa runaway via its two owned-both-ends routes
+  (+4 monopoly prestige/round from setup) at the stale threshold; venice
+  0 wins (thin land start + gutted rush economy under canon treasuries);
+  hungary floor regressed by the canon 4-province start (R9 levers —
+  overland routes are authored, crusade/wars-won prestige and levy
+  cost/CV are live knobs).

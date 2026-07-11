@@ -1,23 +1,28 @@
 /**
- * Monte-Carlo combat matchup grids.
+ * Monte-Carlo combat matchup grids (FINAL canon kernel, 2b42386).
  *
  * For every army-size pairing 1..12 attackers vs 1..12 defenders we run
  * resolveBattle() many times and record attacker win probability plus mean
- * losses on both sides, across seven modifier sets:
- *   openField, riverCrossing, wall1, wall2, wall3, attTactic, defTactic
+ * losses on both sides, across modifier sets:
+ *   openField, riverCrossing, hills, wall1..wall5 (intact, escalade -1),
+ *   plus RATIFIED tactic cards at their final magnitudes (canon §7.7):
+ *   attVeterans (+1 die, the median combat card), attCondottieri (+2 dice,
+ *   the strongest straight combat card), defLockedShields (reroll 1/round
+ *   on defense), and bribedGatekeeperT3 (wall bonus zeroed on a T3 assault).
  * Reference composition is pure professional troops on both sides; an extra
  * open-field grid with a pure-LEVY attacker vs professional defender
- * quantifies the unit-quality gap.
+ * quantifies the unit-quality gap, and a janissaryVsVarangian grid shows
+ * the per-faction CV overrides (Ottoman 3/3 attack vs Byzantine 2/4 guard).
  *
  * Output: sim/results/combat.json + a few readable ASCII slices with sanity
  * assertions (bigger armies win more; every defender bonus lowers attacker
- * win prob; tier-3 wall coin-flip attacker:defender ratio).
+ * win prob; tier-5 wall coin-flip attacker:defender ratio).
  *
  * Run from sim/:  npx tsx src/run/combat_mc.ts     (>=100k trials/cell)
  *          SMOKE=1 npx tsx src/run/combat_mc.ts    (2k trials/cell)
  */
 
-import type { Army, CombatModifiers, UnitType } from '../types';
+import type { Army, CombatModifiers, FactionId, UnitType } from '../types';
 import { CONFIG } from '../rules';
 import {
   armyOf,
@@ -45,6 +50,14 @@ interface ModifierSet {
 const cc = CONFIG.combat;
 const escalade = -CONFIG.siege.escaladePenalty; // canon §8.2.4: assaulting unbreached walls
 
+const wallSet = (tier: 1 | 2 | 3 | 4 | 5): ModifierSet => ({
+  id: `wall${tier}`,
+  description:
+    `direct assault on intact T${tier} walls (defender +${CONFIG.walls.tierBonus[tier]}, escalade ${escalade})` +
+    (tier === 5 ? ' — the Theodosian Walls' : ''),
+  mods: modifiers({ attackerBonus: escalade, wallBonus: effectiveWallBonus(tier, tier === 5, 0) }),
+});
+
 const MODIFIER_SETS: ModifierSet[] = [
   {
     id: 'openField',
@@ -61,30 +74,30 @@ const MODIFIER_SETS: ModifierSet[] = [
     description: `defender in hills/mountains/forest: defender +${cc.terrain.hills} (canon §7.3)`,
     mods: modifiers({ terrainBonus: cc.terrain.hills }),
   },
+  wallSet(1),
+  wallSet(2),
+  wallSet(3),
+  wallSet(4),
+  wallSet(5),
   {
-    id: 'wall1',
-    description: `direct assault on intact tier-1 walls (defender +${CONFIG.walls.tierBonus[1]}, escalade ${escalade})`,
-    mods: modifiers({ attackerBonus: escalade, wallBonus: effectiveWallBonus(1, false, 0) }),
+    id: 'attVeterans',
+    description: 'attacker plays Veterans of the Border (ratified median combat card: +1 die per melee round)',
+    mods: modifiers({ attackerExtraDice: 1 }),
   },
   {
-    id: 'wall2',
-    description: `direct assault on intact tier-2 walls (defender +${CONFIG.walls.tierBonus[2]}, escalade ${escalade})`,
-    mods: modifiers({ attackerBonus: escalade, wallBonus: effectiveWallBonus(2, false, 0) }),
+    id: 'attCondottieri',
+    description: 'attacker plays Condottieri Contract (strongest ratified dice card: +2 dice per melee round, 2 gold)',
+    mods: modifiers({ attackerExtraDice: 2 }),
   },
   {
-    id: 'wall3',
-    description: `direct assault on intact tier-3/Theodosian-class walls (defender +${CONFIG.walls.tierBonus[3]}, escalade ${escalade})`,
-    mods: modifiers({ attackerBonus: escalade, wallBonus: effectiveWallBonus(3, true, 0) }),
+    id: 'defLockedShields',
+    description: 'defender plays Locked Shields (ratified: reroll 1 missed die per melee round on defense)',
+    mods: modifiers({ defenderRerolls: 1 }),
   },
   {
-    id: 'attTactic',
-    description: `attacker tactic card: attacker +${cc.tacticCardSwing} (threshold space)`,
-    mods: modifiers({ attackerBonus: cc.tacticCardSwing }),
-  },
-  {
-    id: 'defTactic',
-    description: `defender tactic card: defender +${cc.tacticCardSwing} (threshold space)`,
-    mods: modifiers({ defenderBonus: cc.tacticCardSwing }),
+    id: 'bribedGatekeeperT3',
+    description: 'assault on intact T3 walls with The Bribed Gatekeeper (ratified: wall bonus 0; escalade -1 still applies)',
+    mods: modifiers({ attackerBonus: escalade, wallBonus: 0 }),
   },
 ];
 
@@ -166,7 +179,7 @@ function runGrid(
 // ------------------------------------------------------------ run all grids
 
 console.log(
-  `combat_mc: ${MODIFIER_SETS.length} modifier sets + 1 levy grid, ` +
+  `combat_mc: ${MODIFIER_SETS.length} modifier sets + levy & faction grids, ` +
     `${MAX_SIZE}x${MAX_SIZE} cells, ${TRIALS} trials/cell` +
     (SMOKE ? ' [SMOKE]' : ''),
 );
@@ -176,11 +189,21 @@ const grids: Record<string, Grid> = {};
 MODIFIER_SETS.forEach((set, i) => {
   const gt = Date.now();
   grids[set.id] = runGrid('professional', 'professional', set.mods, i + 1);
-  console.log(`  ${set.id.padEnd(14)} done in ${((Date.now() - gt) / 1000).toFixed(1)}s`);
+  console.log(`  ${set.id.padEnd(18)} done in ${((Date.now() - gt) / 1000).toFixed(1)}s`);
 });
 const gtLevy = Date.now();
 const levyGrid = runGrid('levy', 'professional', modifiers(NO_MODIFIERS), 99);
-console.log(`  ${'levyVsProf'.padEnd(14)} done in ${((Date.now() - gtLevy) / 1000).toFixed(1)}s`);
+console.log(`  ${'levyVsProf'.padEnd(18)} done in ${((Date.now() - gtLevy) / 1000).toFixed(1)}s`);
+// Faction asymmetry grid (FACTIONS unique-unit CVs): Janissary (3/3) attacks
+// Varangian Guard (2/4) in the open field.
+const gtFaction = Date.now();
+const factionGrid = runGrid(
+  'professional',
+  'professional',
+  modifiers({ attackerFaction: 'ottomans' as FactionId, defenderFaction: 'byzantium' as FactionId }),
+  98,
+);
+console.log(`  ${'janVsVarangian'.padEnd(18)} done in ${((Date.now() - gtFaction) / 1000).toFixed(1)}s`);
 const elapsedSec = (Date.now() - t0) / 1000;
 
 // ------------------------------------------------------------ sanity checks
@@ -224,16 +247,20 @@ function checkMonotone(id: string, g: Grid): void {
 
 for (const set of MODIFIER_SETS) checkMonotone(set.id, grids[set.id]);
 checkMonotone('levyVsProf', levyGrid);
+checkMonotone('janVsVarangian', factionGrid);
 
 // Every defender-favoring modifier set must be <= openField cell-by-cell,
-// and walls must order wall3 <= wall2 <= wall1.
+// and walls must order wall5 <= wall4 <= ... <= wall1 (T4/T5 share the +4
+// bonus, so wall5 <= wall4 holds within tolerance — they differ via HP).
 const defenderFavoring: Array<[string, string]> = [
   ['riverCrossing', 'openField'],
   ['hills', 'openField'],
   ['wall1', 'openField'],
   ['wall2', 'wall1'],
   ['wall3', 'wall2'],
-  ['defTactic', 'openField'],
+  ['wall4', 'wall3'],
+  ['wall5', 'wall4'],
+  ['defLockedShields', 'openField'],
 ];
 for (const [worse, better] of defenderFavoring) {
   for (let a = 0; a < MAX_SIZE; a++) {
@@ -249,16 +276,24 @@ for (const [worse, better] of defenderFavoring) {
     }
   }
 }
-// Attacker tactic card must raise win prob vs open field.
-for (let a = 0; a < MAX_SIZE; a++) {
-  for (let d = 0; d < MAX_SIZE; d++) {
-    const delta = grids.attTactic.winProb[a][d] - grids.openField.winProb[a][d];
-    if (delta < -TOL) {
-      violations.push({
-        check: 'attackerTacticRaisesWinProb',
-        detail: `attTactic < openField at ${a + 1}v${d + 1}`,
-        delta,
-      });
+// Attacker-favoring ratified cards must raise win prob vs their baseline:
+// +1 die >= no card, +2 dice >= +1 die, Bribed Gatekeeper >= raw T3 assault.
+const attackerFavoring: Array<[string, string]> = [
+  ['openField', 'attVeterans'],
+  ['attVeterans', 'attCondottieri'],
+  ['wall3', 'bribedGatekeeperT3'],
+];
+for (const [worse, better] of attackerFavoring) {
+  for (let a = 0; a < MAX_SIZE; a++) {
+    for (let d = 0; d < MAX_SIZE; d++) {
+      const delta = grids[better].winProb[a][d] - grids[worse].winProb[a][d];
+      if (delta < -TOL) {
+        violations.push({
+          check: 'attackerCardRaisesWinProb',
+          detail: `${better} < ${worse} at ${a + 1}v${d + 1}`,
+          delta,
+        });
+      }
     }
   }
 }
@@ -276,8 +311,8 @@ for (let a = 0; a < MAX_SIZE; a++) {
   }
 }
 
-// Tier-3 coin-flip ratio: smallest (interpolated) attacker count whose win
-// prob crosses 50% against d defenders behind intact tier-3 walls.
+// Tier-5 coin-flip ratio: smallest (interpolated) attacker count whose win
+// prob crosses 50% against d defenders behind the intact Theodosian Walls.
 function coinFlipAttackers(g: Grid, d: number): number | null {
   const col = g.winProb.map((row) => row[d - 1]);
   if (col[0] >= 0.5) return 1;
@@ -292,13 +327,13 @@ function coinFlipAttackers(g: Grid, d: number): number | null {
   return null; // never reaches 50% within 1..12
 }
 
-const tier3Ratios: Array<{ defenders: number; coinFlipAttackers: number | null; ratio: number | null }> = [];
+const tier5Ratios: Array<{ defenders: number; coinFlipAttackers: number | null; ratio: number | null }> = [];
 for (let d = 1; d <= MAX_SIZE; d++) {
-  const a = coinFlipAttackers(grids.wall3, d);
-  tier3Ratios.push({ defenders: d, coinFlipAttackers: a, ratio: a === null ? null : a / d });
+  const a = coinFlipAttackers(grids.wall5, d);
+  tier5Ratios.push({ defenders: d, coinFlipAttackers: a, ratio: a === null ? null : a / d });
 }
-const measurable = tier3Ratios.filter((r) => r.ratio !== null) as Array<{ defenders: number; coinFlipAttackers: number; ratio: number }>;
-const tier3MeanRatio = measurable.length
+const measurable = tier5Ratios.filter((r) => r.ratio !== null) as Array<{ defenders: number; coinFlipAttackers: number; ratio: number }>;
+const tier5MeanRatio = measurable.length
   ? measurable.reduce((s, r) => s + r.ratio, 0) / measurable.length
   : null;
 
@@ -314,7 +349,11 @@ console.log('\n=== Attacker win prob, equal numbers (NvN), professionals both si
 console.log(
   table(
     ['set', ...Array.from({ length: MAX_SIZE }, (_, i) => `${i + 1}v${i + 1}`)],
-    [...MODIFIER_SETS.map((s) => diagRow(s.id, grids[s.id])), diagRow('levyVsProf', levyGrid)],
+    [
+      ...MODIFIER_SETS.map((s) => diagRow(s.id, grids[s.id])),
+      diagRow('levyVsProf', levyGrid),
+      diagRow('janVsVarangian', factionGrid),
+    ],
   ),
 );
 console.log(
@@ -350,11 +389,11 @@ console.log(
 );
 console.log('sanity: 6v4 should be a clear favorite in the open and hopeless against intact professional-held walls (assault waits for the breach).');
 
-console.log('\n=== Tier-3 wall coin-flip ratio (attackers needed for ~50% direct assault) ===');
+console.log('\n=== Tier-5 (Theodosian) wall coin-flip ratio (attackers needed for ~50% direct assault) ===');
 console.log(
   table(
     ['defenders', 'coinFlipAttackers', 'ratio'],
-    tier3Ratios.map((r) => [
+    tier5Ratios.map((r) => [
       r.defenders,
       r.coinFlipAttackers === null ? '>12' : fmt(r.coinFlipAttackers, 1),
       r.ratio === null ? '-' : fmt(r.ratio, 2),
@@ -362,8 +401,8 @@ console.log(
   ),
 );
 console.log(
-  `mean measurable ratio: ${tier3MeanRatio === null ? 'n/a (never crosses 50% within 12)' : fmt(tier3MeanRatio, 2)}` +
-    ' (canon target: intact Theodosian-class walls should NOT be assaultable — expect >12 across the board; breach first)',
+  `mean measurable ratio: ${tier5MeanRatio === null ? 'n/a (never crosses 50% within 12)' : fmt(tier5MeanRatio, 2)}` +
+    ' (canon target: intact T5 Theodosian Walls should NOT be assaultable — expect >12 across the board; breach first)',
 );
 
 console.log(
@@ -390,6 +429,7 @@ const path = writeResults('combat', {
     sizes: { min: 1, max: MAX_SIZE },
     composition: 'professional vs professional (levyVsProfessional grid: pure levy attacker, open field)',
     gridIndexing: 'winProb[attackerSize-1][defenderSize-1]',
+    tacticCardSets: 'attVeterans/attCondottieri/defLockedShields/bribedGatekeeperT3 encode RATIFIED canon §7.7 cards at final magnitudes',
     elapsedSec,
     generatedAt: new Date().toISOString(),
   },
@@ -399,11 +439,16 @@ const path = writeResults('combat', {
     mods: modifiers(NO_MODIFIERS),
     ...levyGrid,
   },
+  janissaryVsVarangian: {
+    description: 'Ottoman professionals (Janissary 3/3) attack Byzantine professionals (Varangian Guard 2/4), open field — faction CV asymmetry',
+    mods: modifiers({ attackerFaction: 'ottomans', defenderFaction: 'byzantium' }),
+    ...factionGrid,
+  },
   sanity: {
     tolerance: TOL,
     violationCount: violations.length,
     violations: violations.slice(0, 100),
-    tier3CoinFlip: { perDefenderSize: tier3Ratios, meanRatio: tier3MeanRatio },
+    tier5CoinFlip: { perDefenderSize: tier5Ratios, meanRatio: tier5MeanRatio },
   },
 });
 console.log(`\nwrote ${path} in ${elapsedSec.toFixed(1)}s total`);

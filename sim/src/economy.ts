@@ -17,8 +17,8 @@
  */
 
 import type { Army, FactionId, StrategyProfile, UnitType } from './types';
-import { FACTION_IDS } from './types';
-import { CONFIG, type Config } from './rules';
+import { FACTION_IDS, UNIT_TYPES } from './types';
+import { CONFIG, unitStatsOf, type Config } from './rules';
 import { armyOf, combatants, emptyArmy, removeCasualties, totalUnits } from './combat';
 import { FACTION_STARTS, PROVINCES, PROVINCE_BY_ID, TRADE_ROUTES } from './map';
 
@@ -178,9 +178,9 @@ function initState(faction: FactionId): EconState {
   return {
     gold: start.treasury.gold,
     grain: start.treasury.grain,
-    timber: 0,
-    marble: 0,
-    faith: 0,
+    timber: start.treasury.timber,
+    marble: start.treasury.marble,
+    faith: start.treasury.faith,
     army,
     provinces: new Set(PROVINCES.filter((p) => p.initialOwner === faction).map((p) => p.id)),
     markets: 0,
@@ -195,23 +195,23 @@ function initState(faction: FactionId): EconState {
 
 function unitGoldCost(cfg: Config, faction: FactionId, t: UnitType): number {
   const mods = cfg.factions[faction];
-  const base = cfg.units[t].goldCost;
+  const base = unitStatsOf(cfg, faction, t).goldCost; // per-faction canon costs
   if (t === 'levy') return base * mods.levyGoldCostMult;
   if (t === 'professional' || t === 'mercenary' || t === 'siegeEngine') {
     return base * mods.unitGoldCostMult;
   }
-  return base; // galleys: standard price for everyone
+  return base; // galleys: no cost multiplier lever
 }
 
-function grainNeed(cfg: Config, a: Army): number {
+function grainNeed(cfg: Config, faction: FactionId, a: Army): number {
   let n = 0;
-  for (const t of Object.keys(a) as UnitType[]) n += a[t] * cfg.units[t].grainUpkeep;
+  for (const t of UNIT_TYPES) n += a[t] * unitStatsOf(cfg, faction, t).grainUpkeep;
   return n;
 }
 
-function goldNeed(cfg: Config, a: Army): number {
+function goldNeed(cfg: Config, faction: FactionId, a: Army): number {
   let n = 0;
-  for (const t of Object.keys(a) as UnitType[]) n += a[t] * cfg.units[t].goldUpkeep;
+  for (const t of UNIT_TYPES) n += a[t] * unitStatsOf(cfg, faction, t).goldUpkeep;
   return n;
 }
 
@@ -261,38 +261,36 @@ function computeIncome(
  * unpaid fraction deserts), then grain (shortfall bought at market rate,
  * remainder triggers desertion). Returns desertions and gold spent on grain.
  */
-function payUpkeep(cfg: Config, s: EconState, round: number): { deserted: number; grainGold: number } {
+function payUpkeep(cfg: Config, faction: FactionId, s: EconState, round: number): { deserted: number; grainGold: number } {
   let deserted = 0;
   let grainGold = 0;
-  // ---- gold wages
-  const galleyWage = s.army.galley * cfg.units.galley.goldUpkeep;
-  const mercWage = s.army.mercenary * cfg.units.mercenary.goldUpkeep;
-  if (s.gold >= galleyWage + mercWage) {
-    s.gold -= galleyWage + mercWage;
+  // ---- gold wages (per-faction tables: donative-paid elites, any crews)
+  const wage = goldNeed(cfg, faction, s.army);
+  if (s.gold >= wage) {
+    s.gold -= wage;
   } else {
-    // pay galleys first, then as many mercs as possible; the rest desert
+    // short pay: professionals & crews paid first, mercenaries desert first
     let g = s.gold;
-    if (g >= galleyWage) {
-      g -= galleyWage;
-    } else {
-      const perGalley = cfg.units.galley.goldUpkeep;
-      const paidGalleys = perGalley > 0 ? Math.floor(g / perGalley) : s.army.galley;
-      g -= paidGalleys * perGalley;
-      const lost = s.army.galley - paidGalleys;
-      s.army.galley = paidGalleys;
-      deserted += lost;
+    for (const t of ['professional', 'galley'] as const) {
+      const per = unitStatsOf(cfg, faction, t).goldUpkeep;
+      if (per <= 0) continue;
+      const paid = Math.min(s.army[t], Math.floor(g / per));
+      g -= paid * per;
+      deserted += s.army[t] - paid;
+      s.army[t] = paid;
     }
-    const perMerc = cfg.units.mercenary.goldUpkeep;
-    const paidMercs = perMerc > 0 ? Math.min(s.army.mercenary, Math.floor(g / perMerc)) : s.army.mercenary;
-    g -= paidMercs * perMerc;
-    const unpaid = s.army.mercenary - paidMercs;
-    const lostMercs = Math.ceil(unpaid * cfg.economy.unpaidMercDesertionFraction);
-    s.army.mercenary -= lostMercs;
-    deserted += lostMercs;
+    const perMerc = unitStatsOf(cfg, faction, 'mercenary').goldUpkeep;
+    if (perMerc > 0) {
+      const paidMercs = Math.min(s.army.mercenary, Math.floor(g / perMerc));
+      g -= paidMercs * perMerc;
+      const lostMercs = Math.ceil((s.army.mercenary - paidMercs) * cfg.economy.unpaidMercDesertionFraction);
+      s.army.mercenary -= lostMercs;
+      deserted += lostMercs;
+    }
     s.gold = Math.max(cfg.economy.goldFloor, g);
   }
   // ---- grain
-  const need = grainNeed(cfg, s.army);
+  const need = grainNeed(cfg, faction, s.army);
   if (s.grain >= need) {
     s.grain -= need;
   } else {
@@ -319,12 +317,12 @@ function payUpkeep(cfg: Config, s: EconState, round: number): { deserted: number
  * (current income levels) can cover wages and feed the army without draining
  * more than half the grain stock or running structural gold deficit.
  */
-function canSustain(cfg: Config, s: EconState, inc: Income, extra: Partial<Army>, cost: number): boolean {
+function canSustain(cfg: Config, faction: FactionId, s: EconState, inc: Income, extra: Partial<Army>, cost: number): boolean {
   if (s.gold < cost) return false;
   const proj = { ...s.army };
   for (const [t, n] of Object.entries(extra)) proj[t as UnitType] += n ?? 0;
-  const nextGold = goldNeed(cfg, proj);
-  const nextGrain = grainNeed(cfg, proj);
+  const nextGold = goldNeed(cfg, faction, proj);
+  const nextGrain = grainNeed(cfg, faction, proj);
   const goldAfter = s.gold - cost;
   const netGold = inc.gold - nextGold;
   if (netGold < 0 && goldAfter + 2 * netGold < 0) return false; // structural deficit, <2 rounds of buffer
@@ -339,10 +337,18 @@ function canSustain(cfg: Config, s: EconState, inc: Income, extra: Partial<Army>
 function recruitAction(cfg: Config, faction: FactionId, s: EconState, inc: Income, t: UnitType): number {
   let cap = cfg.recruit.perAction[t];
   if (t === 'levy') cap += cfg.factions[faction].levyRecruitBonus;
+  const st = unitStatsOf(cfg, faction, t);
   const cost = unitGoldCost(cfg, faction, t);
   let bought = 0;
-  while (bought < cap && canSustain(cfg, s, inc, { [t]: 1 }, cost)) {
+  while (
+    bought < cap &&
+    s.timber >= st.timberCost &&
+    s.marble >= st.marbleCost &&
+    canSustain(cfg, faction, s, inc, { [t]: 1 }, cost)
+  ) {
     s.gold -= cost;
+    s.timber -= st.timberCost;
+    s.marble -= st.marbleCost;
     s.army[t] += 1;
     bought++;
   }
@@ -419,9 +425,9 @@ export function simulateEconomy(
     s.faith += inc.faith;
 
     // -- upkeep phase
-    const goldUp = goldNeed(cfg, s.army);
-    const grainUp = grainNeed(cfg, s.army);
-    const { deserted, grainGold } = payUpkeep(cfg, s, round);
+    const goldUp = goldNeed(cfg, faction, s.army);
+    const grainUp = grainNeed(cfg, faction, s.army);
+    const { deserted, grainGold } = payUpkeep(cfg, faction, s, round);
 
     // -- action phase (4 actions, archetype policy)
     let actions = cfg.game.actionsPerTurn;
@@ -458,14 +464,14 @@ export function simulateEconomy(
     }
 
     // -- cleanup: sell grain above a two-round reserve
-    const reserve = 2 * grainNeed(cfg, s.army);
+    const reserve = 2 * grainNeed(cfg, faction, s.army);
     if (s.grain > reserve) {
       const excess = Math.floor(s.grain - reserve);
       s.grain -= excess;
       s.gold += excess * cfg.economy.grainMarket.sellGoldPerGrain;
     }
 
-    const netGoldSlack = Math.max(0, inc.gold - goldNeed(cfg, s.army));
+    const netGoldSlack = Math.max(0, inc.gold - goldNeed(cfg, faction, s.army));
     const supportable = Math.floor(inc.grain + netGoldSlack / cfg.economy.grainMarket.buyGoldPerGrain);
     records.push({
       round,
@@ -593,6 +599,20 @@ export interface SweepAxis {
   default: number;
 }
 
+/**
+ * Apply a stat mutation to the base table AND every faction table (per-
+ * faction canon stats are materialized at load; sweeps must move both, or
+ * the lever is dead for player factions). Faction tables move by the same
+ * DELTA so canon overrides (e.g. Hungary's -1 levy gold) are preserved.
+ */
+function sweepUnitStat(c: Config, t: UnitType, field: 'goldCost' | 'grainUpkeep', value: number): void {
+  const delta = value - CONFIG.units[t][field];
+  c.units[t][field] = value;
+  for (const f of FACTION_IDS) {
+    c.factionUnits[f][t][field] = Math.max(0, CONFIG.factionUnits[f][t][field] + delta);
+  }
+}
+
 /** Price-point sweep axes around the CONFIG defaults (>=3 values each). */
 export function sweepAxes(): SweepAxis[] {
   return [
@@ -600,28 +620,31 @@ export function sweepAxes(): SweepAxis[] {
       name: 'levyGoldCost',
       values: [1.5, 2, 3],
       default: CONFIG.units.levy.goldCost,
-      apply: (c, v) => (c.units.levy.goldCost = v),
+      apply: (c, v) => sweepUnitStat(c, 'levy', 'goldCost', v),
     },
     {
       name: 'professionalGoldCost',
-      values: [4, 5, 6],
+      values: [3, 4, 5],
       default: CONFIG.units.professional.goldCost,
-      apply: (c, v) => (c.units.professional.goldCost = v),
+      apply: (c, v) => sweepUnitStat(c, 'professional', 'goldCost', v),
     },
     {
       name: 'mercenaryGoldCost',
-      values: [3, 4, 5],
+      values: [7, 9, 11],
       default: CONFIG.units.mercenary.goldCost,
-      apply: (c, v) => (c.units.mercenary.goldCost = v),
+      apply: (c, v) => sweepUnitStat(c, 'mercenary', 'goldCost', v),
     },
     {
       name: 'grainUpkeepMult',
       values: [0.75, 1, 1.25],
       default: 1,
       apply: (c, v) => {
-        c.units.levy.grainUpkeep = CONFIG.units.levy.grainUpkeep * v;
-        c.units.professional.grainUpkeep = CONFIG.units.professional.grainUpkeep * v;
-        c.units.mercenary.grainUpkeep = CONFIG.units.mercenary.grainUpkeep * v;
+        for (const t of ['levy', 'professional', 'mercenary'] as const) {
+          c.units[t].grainUpkeep = CONFIG.units[t].grainUpkeep * v;
+          for (const f of FACTION_IDS) {
+            c.factionUnits[f][t].grainUpkeep = CONFIG.factionUnits[f][t].grainUpkeep * v;
+          }
+        }
       },
     },
     {
