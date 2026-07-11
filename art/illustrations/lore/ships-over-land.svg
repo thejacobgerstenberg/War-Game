@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160">
+  <title>Ships Over Land</title>
+  <!-- parchment ground -->
+  <rect x="0" y="0" width="260" height="160" fill="#F0E6D2"/>
+  <!-- dawn sun rising over the Horn -->
+  <circle cx="222" cy="124" r="16" fill="#C9A227"/>
+  <polygon points="217,107 222,88 227,107" fill="#C9A227"/>
+  <polygon points="210,112 192,101 204,118" fill="#C9A227"/>
+  <polygon points="234,112 252,101 240,118" fill="#C9A227"/>
+  <!-- the Golden Horn -->
+  <path d="M185 132 L260 124 L260 160 L185 160 Z" fill="#2C5F7C"/>
+  <!-- the great chain, guarding nothing -->
+  <ellipse cx="196" cy="131" rx="7" ry="4" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <ellipse cx="210" cy="129" rx="7" ry="4" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <ellipse cx="224" cy="128" rx="7" ry="4" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <ellipse cx="238" cy="126" rx="7" ry="4" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <ellipse cx="252" cy="125" rx="7" ry="4" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <!-- the hill of Galata -->
+  <path d="M0 160 L0 78 Q30 52 70 50 Q110 48 140 62 Q165 74 178 98 Q188 120 192 160 Z" fill="#2B2118"/>
+  <!-- greased road of timber over the hill -->
+  <path d="M0 96 Q40 60 85 55 Q125 52 152 68 Q170 82 178 104" fill="none" stroke="#C9A227" stroke-width="7"/>
+  <path d="M18 75 L22 85" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <path d="M40 62 L44 72" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <path d="M161 76 L169 83" fill="none" stroke="#2B2118" stroke-width="3"/>
+  <!-- rollers beneath the keel -->
+  <circle cx="58" cy="51" r="5" fill="#C9A227"/>
+  <circle cx="88" cy="51" r="5" fill="#C9A227"/>
+  <circle cx="118" cy="53" r="5" fill="#C9A227"/>
+  <!-- the galley, cresting the hill -->
+  <path d="M36 30 L44 36 Q90 44 136 36 L148 26 Q147 38 138 44 Q90 56 46 44 Q37 38 36 30 Z" fill="#7A1F2B"/>
+  <circle cx="64" cy="43" r="3" fill="#C9A227"/>
+  <circle cx="90" cy="45" r="3" fill="#C9A227"/>
+  <circle cx="116" cy="43" r="3" fill="#C9A227"/>
+  <!-- mast, yard, furled sail, pennant -->
+  <rect x="88" y="6" width="4" height="36" fill="#2B2118"/>
+  <rect x="66" y="12" width="48" height="3" fill="#2B2118"/>
+  <rect x="72" y="15" width="36" height="6" fill="#7A1F2B"/>
+  <polygon points="92,4 114,9 92,14" fill="#7A1F2B"/>
+</svg>
