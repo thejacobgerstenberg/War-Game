@@ -10,7 +10,10 @@
     "sim:economy": "tsx src/run/economy.ts",
     "sim:pacing": "tsx src/run/pacing.ts",
     "sim:fullgame": "tsx src/run/fullgame.ts",
-    "sim:all": "npm run sim:combat && npm run sim:siege && npm run sim:economy && npm run sim:pacing && npm run sim:fullgame"
+    "sim:all": "npm run sim:combat && npm run sim:siege && npm run sim:economy && npm run sim:pacing && npm run sim:fullgame",
+    "sim:smoke": "SMOKE=1 npm run sim:all",
+    "sim:full": "npm run sim:all",
+    "sim:report": "tsx src/run/report.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

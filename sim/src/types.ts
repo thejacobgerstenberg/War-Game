@@ -107,23 +107,20 @@ export interface FactionStart {
 // ------------------------------------------------------------------ combat
 
 /**
- * All die-value shifts applied in a battle. Positive numbers help the side
- * they belong to. Quality bonuses of the armies are computed by combat.ts
- * and are NOT part of these modifiers.
+ * All threshold-space modifiers applied in a battle (canon §7.1: each +1
+ * lowers that side's hit threshold by 1). Positive numbers help the side
+ * they belong to. Per-unit CVs live in CONFIG.units and are NOT part of
+ * these modifiers; neither is the 2:1 outnumber bonus (computed per round).
  */
 export interface CombatModifiers {
-  /** Flat attacker die shift (tactic cards, general, event effects). */
+  /** Flat attacker threshold shift (tactic card +1, amphibious/strait -1, escalade -1). */
   attackerBonus: number;
-  /** Flat defender die shift (tactic cards, general, event effects). */
+  /** Flat defender threshold shift (tactic cards, event effects). */
   defenderBonus: number;
-  /** Defensive terrain shift added to defender dice (see CONFIG.combat.terrain). */
+  /** Defensive terrain shift for the defender (see CONFIG.combat.terrain). */
   terrainBonus: number;
-  /** Effective wall shift added to defender dice (0 in field battles). */
+  /** Wall shift for the defender: full tier bonus while unbreached, else 0. */
   wallBonus: number;
-  /** Optional cap on attacker dice (e.g. assault through a narrow breach). */
-  attackerDiceCap?: number;
-  /** Optional cap on defender dice. */
-  defenderDiceCap?: number;
 }
 
 /** Per-round casualty report. NOTE: combat.ts reuses one instance (no alloc). */
@@ -156,7 +153,7 @@ export interface SiegeState {
   provinceId: string;
   attackerFaction: FactionId;
   defenderFaction: FactionId | null;
-  /** Accumulated wall damage in hitpoints (see CONFIG.walls.hitpointsPerTier). */
+  /** Accumulated wall damage in hitpoints (see CONFIG.walls.tierHitpoints). */
   wallDamage: number;
   /** Full rounds this siege has been maintained (drives attrition). */
   roundsBesieged: number;
@@ -224,7 +221,10 @@ export interface EventCard {
 
 /** Per-faction prestige bookkeeping for pacing/full-game sims. */
 export interface PrestigeLedger {
+  /** Canon capital income: own capital +1/round, each enemy capital +3/round. */
+  capitals: number;
   keyCities: number;
+  /** Route income prestige + canon trade-monopoly (+2/round when both ends owned). */
   tradeRoutes: number;
   greatWorks: number;
   /** Conquest track: one-off prestige per province captured. */

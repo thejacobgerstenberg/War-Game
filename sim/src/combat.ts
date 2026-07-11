@@ -3,24 +3,31 @@
  * Monte-Carlo sweeps) resolves fights through resolveCombatRound /
  * resolveBattle. Hot path: NO allocation inside the round loop.
  *
- * Combat model (documented in RULES_MODEL.md):
- * - Risk-style: attacker rolls up to 3 d6, defender up to 2 d6 per round.
- * - Each die is shifted by a per-side float bonus:
- *     attacker shift = mods.attackerBonus + qualityBonus(attacker)
- *     defender shift = mods.defenderBonus + mods.terrainBonus
- *                    + mods.wallBonus    + qualityBonus(defender)
- *   qualityBonus is the army's average unit quality (CONFIG.units.*.quality),
- *   so a pure-professional army adds +1.0 to each of its dice, a pure-levy
- *   army adds +0.0, mixed armies fall in between.
- * - Highest attacker die vs highest defender die, then 2nd vs 2nd (if both
- *   sides rolled >= 2 dice). Loser of each comparison loses 1 unit; the
- *   defender wins exact ties (CONFIG.combat.defenderWinsTies).
- * - Casualties are removed cheapest-blood-first: levy, then mercenary, then
- *   professional, then galley. Siege engines never fight and are destroyed
- *   if their army is wiped out.
- * - resolveBattle loops rounds until a side is destroyed, the attacker's
- *   combatants fall to/below retreatFraction of the starting force (counts
- *   as a defender win), or maxRounds pass (stalemate — e.g. siege drags on).
+ * Combat model = canon docs/GAME_DESIGN.md §7 (documented in RULES_MODEL.md):
+ * - Every combatant unit rolls 1d6 per combat round and HITS on
+ *     roll >= clamp(hitBase - CV - mods, thresholdMin, thresholdMax)
+ *   with hitBase 7 and clamp [2, 6] (canon §7.1). CV is per unit type and
+ *   side (CONFIG.units.*.cvAttack / cvDefense).
+ * - Modifiers act in THRESHOLD space. Attacker mods = mods.attackerBonus
+ *   (tactic cards, amphibious/strait -1, escalade -1) + outnumber bonus.
+ *   Defender mods = mods.defenderBonus + mods.terrainBonus + mods.wallBonus
+ *   + outnumber bonus. Outnumbering the enemy 2:1 in a round grants +1
+ *   (canon §7.3); gap-fill: the outnumber bonus does not apply while
+ *   assaulting unbreached walls (no frontage on an escalade).
+ * - Both sides roll SIMULTANEOUSLY; every hit removes one enemy unit,
+ *   lowest-value first: levy, then mercenary, then professional, then
+ *   galley. Siege engines never fight in the line and are destroyed if
+ *   their army is wiped out. (Sim has no ARCHER, so canon's ranged
+ *   pre-step (§7.2.1) is not modeled — see RULES_MODEL.md.)
+ * - Rout (§7.5): after casualties, a side that has lost >= routLossFraction
+ *   (50%) of its starting stack rolls 1d6 and routs on <= routOn (3).
+ *   A routing side loses the battle; its survivors disperse (no retreat
+ *   pathing in the kernel). No cavalry in the roster => no pursuit hits.
+ *   Gap-fill: a garrison behind unbreached walls does not rout.
+ * - resolveBattle loops rounds until a side is destroyed or routs, the
+ *   attacker's combatants fall to/below retreatFraction of the starting
+ *   force (voluntary withdrawal — counts as a defender win), or maxRounds
+ *   pass (stalemate — e.g. a siege drags on).
  *
  * MUTATION WARNING: both Army objects are mutated in place.
  * ALIASING WARNING: resolveCombatRound returns a module-level reused
@@ -66,20 +73,6 @@ export function totalUnits(a: Army): number {
   return combatants(a) + a.siegeEngine;
 }
 
-/** Average unit quality of the army's combatants => die-value shift. */
-export function qualityBonus(a: Army): number {
-  const n = combatants(a);
-  if (n === 0) return 0;
-  const u = CONFIG.units;
-  return (
-    (a.levy * u.levy.quality +
-      a.professional * u.professional.quality +
-      a.mercenary * u.mercenary.quality +
-      a.galley * u.galley.quality) /
-    n
-  );
-}
-
 /**
  * Remove n combatant casualties in fixed order: levy, mercenary,
  * professional, galley. Returns how many were actually removed.
@@ -101,6 +94,26 @@ export function removeCasualties(a: Army, n: number): number {
   return n - r;
 }
 
+// -------------------------------------------------------------- thresholds
+
+/**
+ * Canon §7.1 hit threshold for a unit of combat value `cv` with `mods`
+ * threshold-space modifiers helping it: clamp(7 - cv - mods, 2, 6).
+ * The unit hits on a d6 roll >= the returned value.
+ */
+export function hitThreshold(cv: number, mods: number): number {
+  const cc = CONFIG.combat;
+  const t = cc.hitBase - cv - mods;
+  return t < cc.thresholdMin ? cc.thresholdMin : t > cc.thresholdMax ? cc.thresholdMax : t;
+}
+
+/** Roll `count` d6 and count hits at `threshold`+ (no allocation). */
+function rollHits(count: number, threshold: number, rng: RNG): number {
+  let hits = 0;
+  for (let i = 0; i < count; i++) if (rng.d6() >= threshold) hits++;
+  return hits;
+}
+
 // -------------------------------------------------------------- modifiers
 
 export const NO_MODIFIERS: Readonly<CombatModifiers> = {
@@ -116,16 +129,13 @@ export function modifiers(partial: Partial<CombatModifiers>): CombatModifiers {
     defenderBonus: partial.defenderBonus ?? 0,
     terrainBonus: partial.terrainBonus ?? 0,
     wallBonus: partial.wallBonus ?? 0,
-    attackerDiceCap: partial.attackerDiceCap,
-    defenderDiceCap: partial.defenderDiceCap,
   };
 }
 
 /**
- * Defender die bonus contributed by walls, after siege damage.
- * Intact bonus = tierBonus[tier] (+ theodosianBonus for Constantinople);
- * hitpoints = tier * hitpointsPerTier (+ theodosianExtraHitpoints);
- * the bonus scales linearly with remaining hitpoints.
+ * Defender threshold bonus contributed by walls, after siege damage.
+ * Canon §7.3/§8: the bonus is BINARY — the full tier bonus while wall
+ * hitpoints remain, zero once the wall is breached (damage >= hitpoints).
  */
 export function effectiveWallBonus(
   wallTier: number,
@@ -134,11 +144,9 @@ export function effectiveWallBonus(
 ): number {
   if (wallTier <= 0) return 0;
   const w = CONFIG.walls;
-  const base = w.tierBonus[wallTier] + (theodosian ? w.theodosianBonus : 0);
-  const hp = wallTier * w.hitpointsPerTier + (theodosian ? w.theodosianExtraHitpoints : 0);
-  const remaining = hp - wallDamage;
-  if (remaining <= 0) return 0;
-  return (base * remaining) / hp;
+  const hp = w.tierHitpoints[wallTier] + (theodosian ? w.theodosianExtraHitpoints : 0);
+  if (wallDamage >= hp) return 0; // breached
+  return w.tierBonus[wallTier] + (theodosian ? w.theodosianBonus : 0);
 }
 
 // ------------------------------------------------------------ round kernel
@@ -147,8 +155,9 @@ export function effectiveWallBonus(
 const ROUND_LOSSES: RoundLosses = { attackerLosses: 0, defenderLosses: 0 };
 
 /**
- * Resolve one round of dice. Mutates both armies (removes casualties).
- * Returns the module-level reused RoundLosses (see aliasing warning above).
+ * Resolve one round of dice (canon melee step: both sides simultaneous).
+ * Mutates both armies (removes casualties). Returns the module-level reused
+ * RoundLosses (see aliasing warning above).
  */
 export function resolveCombatRound(
   attacker: Army,
@@ -164,46 +173,41 @@ export function resolveCombatRound(
   if (nAtt === 0 || nDef === 0) return ROUND_LOSSES;
 
   const cc = CONFIG.combat;
-  let diceA = nAtt < cc.attackerMaxDice ? nAtt : cc.attackerMaxDice;
-  if (mods.attackerDiceCap !== undefined && mods.attackerDiceCap < diceA) diceA = mods.attackerDiceCap;
-  let diceD = nDef < cc.defenderMaxDice ? nDef : cc.defenderMaxDice;
-  if (mods.defenderDiceCap !== undefined && mods.defenderDiceCap < diceD) diceD = mods.defenderDiceCap;
-  if (diceA <= 0 || diceD <= 0) return ROUND_LOSSES;
+  const u = CONFIG.units;
 
-  // Roll and sort attacker dice descending (a1 >= a2 >= a3), no arrays.
-  let a1 = rng.d6();
-  let a2 = 0;
-  let a3 = 0;
-  if (diceA >= 2) a2 = rng.d6();
-  if (diceA >= 3) a3 = rng.d6();
-  let t: number;
-  if (a2 > a1) { t = a1; a1 = a2; a2 = t; }
-  if (a3 > a2) { t = a2; a2 = a3; a3 = t; }
-  if (a2 > a1) { t = a1; a1 = a2; a2 = t; }
-
-  // Roll and sort defender dice descending (d1 >= d2).
-  let d1 = rng.d6();
-  let d2 = 0;
-  if (diceD >= 2) d2 = rng.d6();
-  if (d2 > d1) { t = d1; d1 = d2; d2 = t; }
-
-  const attShift = mods.attackerBonus + qualityBonus(attacker);
-  const defShift = mods.defenderBonus + mods.terrainBonus + mods.wallBonus + qualityBonus(defender);
-
-  let attLoss = 0;
-  let defLoss = 0;
-  if (cc.defenderWinsTies) {
-    if (a1 + attShift > d1 + defShift) defLoss++; else attLoss++;
-    if (diceA >= 2 && diceD >= 2) {
-      if (a2 + attShift > d2 + defShift) defLoss++; else attLoss++;
-    }
-  } else {
-    if (a1 + attShift >= d1 + defShift) defLoss++; else attLoss++;
-    if (diceA >= 2 && diceD >= 2) {
-      if (a2 + attShift >= d2 + defShift) defLoss++; else attLoss++;
-    }
+  let attMods = mods.attackerBonus;
+  let defMods = mods.defenderBonus + mods.terrainBonus + mods.wallBonus;
+  // 2:1 outnumber bonus (canon §7.3); gap-fill: no numbers bonus while
+  // assaulting unbreached walls (wallBonus > 0) unless configured otherwise.
+  const outnumberApplies = mods.wallBonus <= 0 || cc.outnumberVsWalls;
+  if (outnumberApplies) {
+    if (nAtt >= cc.outnumberRatio * nDef) attMods += cc.outnumberBonus;
+    else if (nDef >= cc.outnumberRatio * nAtt) defMods += cc.outnumberBonus;
   }
 
+  // Attacker rolls (attack CVs), defender rolls (defense CVs) — simultaneous.
+  let attHits = 0;
+  attHits += rollHits(attacker.levy, hitThreshold(u.levy.cvAttack, attMods), rng);
+  attHits += rollHits(attacker.professional, hitThreshold(u.professional.cvAttack, attMods), rng);
+  attHits += rollHits(attacker.mercenary, hitThreshold(u.mercenary.cvAttack, attMods), rng);
+  attHits += rollHits(attacker.galley, hitThreshold(u.galley.cvAttack, attMods), rng);
+
+  let defHits = 0;
+  defHits += rollHits(defender.levy, hitThreshold(u.levy.cvDefense, defMods), rng);
+  defHits += rollHits(defender.professional, hitThreshold(u.professional.cvDefense, defMods), rng);
+  defHits += rollHits(defender.mercenary, hitThreshold(u.mercenary.cvDefense, defMods), rng);
+  defHits += rollHits(defender.galley, hitThreshold(u.galley.cvDefense, defMods), rng);
+
+  // Gap-fill (battlement cover): while the walls stand (wallBonus > 0), each
+  // hit on the garrison is deflected on 1d6 <= wallCoverSaveOn.
+  if (mods.wallBonus > 0 && cc.wallCoverSaveOn > 0 && attHits > 0) {
+    let kept = 0;
+    for (let i = 0; i < attHits; i++) if (rng.d6() > cc.wallCoverSaveOn) kept++;
+    attHits = kept;
+  }
+
+  const attLoss = defHits < nAtt ? defHits : nAtt;
+  const defLoss = attHits < nDef ? attHits : nDef;
   removeCasualties(attacker, attLoss);
   removeCasualties(defender, defLoss);
   ROUND_LOSSES.attackerLosses = attLoss;
@@ -214,7 +218,7 @@ export function resolveCombatRound(
 // ------------------------------------------------------------ full battle
 
 /**
- * Fight until destruction, attacker retreat, or the round cap.
+ * Fight until destruction, rout, attacker withdrawal, or the round cap.
  * MUTATES both armies in place; returns a fresh BattleResult (one small
  * allocation per battle, none per round).
  */
@@ -232,27 +236,40 @@ export function resolveBattle(
   const att0 = combatants(attacker);
   const def0 = combatants(defender);
   const retreatFloor = att0 * retreatFraction;
+  const attRoutAt = att0 * (1 - cc.routLossFraction); // rout check once at/below this
+  const defRoutAt = def0 * (1 - cc.routLossFraction);
 
   let rounds = 0;
+  let attRouted = false;
+  let defRouted = false;
   while (rounds < maxRounds) {
     const nA = combatants(attacker);
     if (nA === 0 || nA <= retreatFloor) break;
     if (combatants(defender) === 0) break;
     resolveCombatRound(attacker, defender, mods, rng);
     rounds++;
+    // Morale (canon §7.5): a side that lost >= 50% of its starting stack
+    // rolls 1d6 each round; routs on <= 3. Checked simultaneously; if both
+    // rout, the defender holds the field (attacker counts as repelled).
+    // Gap-fill: a garrison behind UNBREACHED walls (wallBonus > 0) has
+    // nowhere to flee and does not rout.
+    const nA2 = combatants(attacker);
+    const nD2 = combatants(defender);
+    const defCanRout = mods.wallBonus <= 0 || cc.defenderRoutsBehindWalls;
+    if (nA2 > 0 && nA2 <= attRoutAt && rng.d6() <= cc.routOn) attRouted = true;
+    if (defCanRout && nD2 > 0 && nD2 <= defRoutAt && rng.d6() <= cc.routOn) defRouted = true;
+    if (attRouted || defRouted) break;
   }
 
   const nA = combatants(attacker);
   const nD = combatants(defender);
   let winner: BattleResult['winner'];
-  if (nD === 0 && nA > 0) {
-    winner = 'attacker';
-    defender.siegeEngine = 0; // engines captured/destroyed with the army
-  } else if (nA === 0) {
-    winner = 'defender';
-    attacker.siegeEngine = 0;
-  } else if (nA <= retreatFloor) {
-    winner = 'defender'; // attacker withdrew
+  if (attRouted || nA === 0 || nA <= retreatFloor) {
+    winner = 'defender'; // attacker destroyed, routed, or withdrew
+    if (nA === 0 || attRouted) attacker.siegeEngine = 0; // engines abandoned in the rout
+  } else if (defRouted || nD === 0) {
+    winner = 'attacker'; // defender destroyed or routed (survivors disperse)
+    defender.siegeEngine = 0;
   } else {
     winner = 'stalemate'; // round cap reached, both sides stand
   }

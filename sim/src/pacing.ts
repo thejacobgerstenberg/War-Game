@@ -3,8 +3,9 @@
  *
  * Models per-round prestige accrual for four strategic archetypes (rusher,
  * trader, turtler, opportunist) using only the prestige values in CONFIG:
- * held key cities (+Constantinople extra), open trade routes, great works,
- * wars won, secret objectives, and prestige event cards.
+ * own/enemy capitals held (canon §13.1), held key cities (+Constantinople
+ * extra), open trade routes and trade monopolies, great works, wars won,
+ * secret objectives, and prestige event cards.
  *
  * Accrual is stochastic: conquests are attempted and succeed/fail, captured
  * key cities can be lost again, trade routes get raided/blockaded for a
@@ -62,6 +63,16 @@ export interface ArchetypeParams {
   maxRoutes: number;
   /** P(a given open route is raided/blockaded for the round) per route. */
   routeRaidProb: number;
+  /** Trade monopolies (both route ends owned, canon +2/round) ramp like routes. */
+  monopolyRampPerRound: number;
+  /** Cap on simultaneous monopolies. */
+  maxMonopolies: number;
+  /** Round from which capturing an enemy capital is attempted (null = never). */
+  enemyCapitalFromRound: number | null;
+  /** P(capturing an enemy capital) per round once attempting. */
+  enemyCapitalCaptureProb: number;
+  /** P(losing the held enemy capital) per round. */
+  enemyCapitalLossProb: number;
   /** Great-work completion attempts: at round (+/-1 jitter), with prob. */
   greatWorkSchedule: Array<{ round: number; prob: number }>;
   /** [first, last] round in which the secret objective can complete. */
@@ -95,6 +106,11 @@ export const ARCHETYPES: Record<ArchetypeName, ArchetypeParams> = {
     routeRampPerRound: 0.15,
     maxRoutes: 1,
     routeRaidProb: 0.15,
+    monopolyRampPerRound: 0,
+    maxMonopolies: 0,
+    enemyCapitalFromRound: 8,
+    enemyCapitalCaptureProb: 0.06,
+    enemyCapitalLossProb: 0.06,
     greatWorkSchedule: [{ round: 14, prob: 0.15 }],
     objectiveWindow: [8, 14],
     objectiveHazard: 0.12,
@@ -119,6 +135,11 @@ export const ARCHETYPES: Record<ArchetypeName, ArchetypeParams> = {
     routeRampPerRound: 0.75, // 3 routes open by round 4
     maxRoutes: 3,
     routeRaidProb: 0.18,
+    monopolyRampPerRound: 0.2, // 1 monopoly by round 5, 2 by round 10
+    maxMonopolies: 2,
+    enemyCapitalFromRound: null,
+    enemyCapitalCaptureProb: 0,
+    enemyCapitalLossProb: 0,
     greatWorkSchedule: [{ round: 12, prob: 0.4 }],
     objectiveWindow: [7, 13],
     objectiveHazard: 0.15,
@@ -143,6 +164,11 @@ export const ARCHETYPES: Record<ArchetypeName, ArchetypeParams> = {
     routeRampPerRound: 0.25, // 2 routes by round 8
     maxRoutes: 2,
     routeRaidProb: 0.08,
+    monopolyRampPerRound: 0.08, // 1 monopoly by round 13
+    maxMonopolies: 1,
+    enemyCapitalFromRound: null,
+    enemyCapitalCaptureProb: 0,
+    enemyCapitalLossProb: 0,
     greatWorkSchedule: [
       { round: 7, prob: 0.6 },
       { round: 11, prob: 0.5 },
@@ -171,6 +197,11 @@ export const ARCHETYPES: Record<ArchetypeName, ArchetypeParams> = {
     routeRampPerRound: 0.35, // 2 routes by round 6
     maxRoutes: 2,
     routeRaidProb: 0.1,
+    monopolyRampPerRound: 0.12, // 1 monopoly by round 9
+    maxMonopolies: 1,
+    enemyCapitalFromRound: 10,
+    enemyCapitalCaptureProb: 0.04,
+    enemyCapitalLossProb: 0.06,
     greatWorkSchedule: [
       { round: 10, prob: 0.3 },
       { round: 13, prob: 0.2 },
@@ -205,6 +236,7 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
 
   let keyCities = p.startKeyCities;
   let hasCple = false;
+  let hasEnemyCapital = false;
   let objectiveDone = false;
   let cum = 0;
   const out: number[] = new Array(rounds);
@@ -237,11 +269,24 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
       }
     }
 
+    // --- enemy capital (canon §13.1: +3/round while held) ---
+    if (p.enemyCapitalFromRound !== null && r >= p.enemyCapitalFromRound) {
+      if (!hasEnemyCapital) {
+        if (rng.chance(p.enemyCapitalCaptureProb)) hasEnemyCapital = true;
+      } else if (rng.chance(p.enemyCapitalLossProb)) {
+        hasEnemyCapital = false;
+      }
+    }
+
     // --- trade routes: ramp to cap, each open route can be raided ---
     const capRoutes = Math.min(p.maxRoutes, cfg.trade.maxRoutesPerFaction);
     const routesOpen = Math.min(capRoutes, Math.floor(r * p.routeRampPerRound));
     let routesActive = 0;
     for (let i = 0; i < routesOpen; i++) if (!rng.chance(p.routeRaidProb)) routesActive++;
+    // monopolies (both route ends owned; canon +2/round) ramp separately
+    const monopoliesOpen = Math.min(p.maxMonopolies, Math.floor(r * p.monopolyRampPerRound));
+    let monopoliesActive = 0;
+    for (let i = 0; i < monopoliesOpen; i++) if (!rng.chance(p.routeRaidProb)) monopoliesActive++;
 
     // --- one-off prestige: great works, secret objective ---
     for (const gwRound of greatWorkRounds) if (gwRound === r) cum += pr.greatWork;
@@ -256,9 +301,12 @@ export function simulateTrajectory(p: ArchetypeParams, cfg: Config, rng: RNG): n
     }
 
     // --- per-round prestige income ---
+    cum += pr.ownCapitalPerRound; // own capital assumed held (canon §13.1)
+    if (hasEnemyCapital) cum += pr.enemyCapitalPerRound;
     cum += keyCities * pr.keyCityPerRound;
     if (hasCple) cum += pr.keyCityPerRound + pr.constantinopleExtraPerRound;
     cum += routesActive * pr.tradeRoutePerRound;
+    cum += monopoliesActive * pr.tradeMonopolyPerRound;
 
     // --- prestige event card ---
     if (rng.chance(p.prestigeEventProb)) cum += rng.range(evMin, evMax);

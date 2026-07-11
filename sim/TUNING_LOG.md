@@ -290,3 +290,115 @@ nerfs do ~nothing); marble income is.
   accrual vs the engine. Fullgame remains ground truth for T3.
 - Tactic cards remain a ±29pp swing at 6v4; the one-card-per-battle cap
   must appear in the physical rules (carried from round 1).
+
+---
+
+## Round 92 — CANON KERNEL SWAP (combat, siege, prestige, Bombard event, sea resupply)
+
+Coordinator rulings R1-R4 (2026-07-11). Structural change, not a numeric
+tuning pass: every combat-coupled number from rounds 1-91 becomes a prior.
+T1-T4 fullgame balance is deliberately NOT retuned here (next phase).
+
+### R1 — combat kernel replaced (Risk 3v2 -> canon per-unit d6)
+- Every combatant unit rolls 1d6, hits on `roll >= clamp(7 - CV - mods, 2, 6)`
+  (GAME_DESIGN.md §7.1). Simultaneous casualties, lowest-value first.
+  Per-unit CVs (atk/def): levy 1/1, professional 2/3 (INFANTRY),
+  mercenary 3/2 (free-company shock), galley 2/2; siege engines don't fight.
+- Modifiers moved to threshold space (integers): terrain +1
+  (hills/mountains/forest), strait/amphibious -1, tactic card +-1,
+  outnumber 2:1 +1, escalade -1, walls +2/+3/+4 (binary while unbreached).
+- Canon rout rule (>=50% losses -> rout on 1d6<=3) + kept 35% attacker
+  withdrawal floor. Worked-example threshold math from §7.4 is asserted in
+  src/run/_smoke.ts (17 checks).
+- Gap-fills (documented in RULES_MODEL.md, CONFIG-switchable): no ranged
+  pre-step (no archer in the 5-unit roster); no outnumber bonus vs
+  unbreached walls; garrisons behind unbreached walls don't rout;
+  battlement cover (hits on walled garrison deflected on 1d6<=3) — without
+  it a 12-stack storms a 6-man Theodosian garrison ~6% (T5a fail).
+- Kernel throughput ~700k battles/s (was ~1.1M on the Risk kernel).
+- Merc economics aligned with canon §6.2: goldCost 4 -> 6 (~x1.5 line
+  infantry), upkeep 2 gold -> 2 GRAIN (no gold wage).
+
+### R2 + R3 — siege model on canon §8 + Bombard event + sea resupply
+- Walls: tierBonus [0,1,2,3]+theod 1.5 -> [0,2,3,4]; HP tier*4 (+8 theod)
+  -> [0,6,10,16] (canon table; Cple = tier 3, 16 HP, +4). Bonus now BINARY
+  (full until breach), was linear-with-damage.
+- Bombardment: flat 1 HP/engine -> canon 1d6 die (1/1/2/2/3/3), engine cap 3
+  kept. NEW theodosianEngineDamageMult 0: ordinary engines cannot damage
+  Theodosian-class walls — only the Great Bombard can (R2).
+- Starvation: 6%/round attrition (x2 blockade, x0.5 Golden Horn) -> canon
+  stores model: 3 grain-store rounds then 1 unit/round, weakest first.
+- R3 sea resupply: unblockaded coastal walled city refills stores => cannot
+  be starved. Blockade = hostile galley superiority in EVERY adjacent sea
+  zone (game.ts counts galleys in owned ports coasting the zone + siege-camp
+  fleets vs the defender's incl. the garrison's own harbor fleet).
+- R2 Great Bombard: was buildable-by-anyone from round 12 / 40g / 4 dmg.
+  Now UNIQUE, enters via Era III event card `great-bombard-forged` at round
+  9; first faction to pay 40g owns it; 6 dmg/round flat (breaches 16 HP
+  Theodosian during siege round 3). Escalade -1 added (canon §8.2.4).
+
+### T5 numbers achieved (full-scale, 20k iters/cell, seed 20260711)
+- a) direct assault, intact Theodosian, attacker 1-12 prof vs garrison
+  6/8/10 prof: worst 0.28% (12v6) — target <2% MET.
+- b) no Bombard + no blockade (12 prof + 4 merc + 3 engines): capture within
+  12 siege rounds 0.0% for all garrisons — target <10% MET (the City cannot
+  fall without either the Bombard or a fleet).
+- c) no Bombard + full blockade: starve-out capture 96.7-99.0%, median
+  capture round 7 / 9 / 11 for garrison 6 / 8 / 10 — target median >=6 MET.
+- d) with Bombard (open sea): capture within 4 rounds 85.1-100%, median 3
+  (k=3: 65.5-99.9%) — target >50% MET. With blockade too: 89.4-100%.
+- Combat grids (100k trials/cell): all monotonicity/ordering checks pass;
+  open-field prof-vs-prof 6v4 = 51.5% attacker; tactic card swings 6v4 to
+  68.1%/31.7% (cap at one card per side stands); intact-wall assault vs
+  professional garrisons is hopeless at every tier (clamp saturation —
+  tiers differentiate via wall HP / starvation, not assault odds).
+
+### R4 — prestige sources (union of sim track + canon §13.1)
+- ADDED: own capital +1/round, enemy capital +3/round, trade monopoly
+  (open route with both endpoints owned) +2/round. keyCityPerRound 1.5 -> 1
+  (canon value; capital income replaces the premium).
+- KEPT: conquest track (+2 province, +5 key city), warWon 6, greatWork 5,
+  secretObjective 6, routes 0.6/round. Marriage stays unmodeled —
+  sensitivity note in RULES_MODEL.md (+2/round ~ +24-32/game; re-sweep the
+  threshold when diplomacy lands).
+- Pacing model updated with the same sources (recommends ~85 at current
+  accrual; fullgame remains ground truth).
+
+### Post-swap pathology found & fixed: the round-5 walk-in Fall of the City
+- First fullgame probes showed sudden death completing at rounds 5-7 via a
+  WALK-IN: Byzantium-rusher overspends round 1, its grain/gold collapse
+  deserts the Constantinople garrison to zero (plague events finishing the
+  job), and any neighbor occupies the empty city through open gates
+  (canon-legal: entering an empty province = occupation; no siege, no wall
+  damage). Guardrails added:
+  - events never reduce a garrison below 1 combatant (artifact guard on the
+    sim's one-card event abstraction);
+  - peacetime insolvency desertion (unpaid crews / grain shortfall) never
+    removes the LAST combatant of a walled province's garrison — a skeleton
+    militia mans the walls. SIEGE starvation still empties garrisons (the
+    R3/blockade path is untouched);
+  - agents recruit solvently: batch size capped by grain headroom (merc x2
+    grain) and by gold net of the fleet's wage bill.
+- Result: 500-game probe went from 16 sudden deaths (15 before round 10,
+  earliest round 5) to 1 (round 10, none earlier). Walls now only fall by
+  Bombard-breach assault, blockade starvation, or a genuinely lost field.
+
+### Known state at round 92 exit (handoff to the balance-tuning phase)
+- T1-T3 are BROKEN at threshold 70, as expected: prestige inflation
+  (capitals+monopolies) ends games early (fullgame 1000g seed 14530000:
+  median round 9, threshold-decided 97.4%); genoa — the only faction with
+  TWO owned-both-ends routes at setup (genoa-caffa, genoa-chios = +4
+  monopoly prestige/round from round ~2) — wins 74.6%; venice 3.0 /
+  hungary 3.2 / byz 7.2 / ottomans 12.0; opportunist policy 1.6%. Sudden
+  death 2.2%, none before round 10 (T4's timing guard holds; its 1-15%
+  rate floor will only be meaningful once the threshold is recalibrated
+  and games last past round 9). Threshold recalibration + faction pass is
+  the next phase's job (R4: the TUNING_REPORT owns the number, expressed
+  absolute AND as a multiple of mean leader accrual/round).
+- Economy: all 5 factions x 3 archetypes remain SOLVENT through r16, but
+  the merc currency change broke two snapshot criteria: venice rushR5
+  (strike 6.3 < 8) and balancedMid for ottomans/venice/hungary (rush gold
+  net inflated once wages moved to grain). Needs the price-point sweep
+  rerun in the tuning phase; consider canon's Genoa x1.0 merc discount.
+- npm aliases added: sim:smoke (SMOKE=1 sim:all), sim:full (sim:all),
+  sim:report (headline summary from results/*.json).

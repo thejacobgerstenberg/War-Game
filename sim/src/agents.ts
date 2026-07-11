@@ -135,10 +135,11 @@ function tryAttack(g: Game, f: FactionId, o: AttackOpts): boolean {
         feasible = n >= 2; // reinforcing an existing siege is cheap
       } else if (walled) {
         feasible = myPower >= o.walledRatio * (armyPower(t.garrison) + 1);
-        // Great fortresses (near-intact wall bonus >= 3, e.g. Constantinople)
-        // are a siege tar pit without the Great Bombard: the siege module
-        // curves show pre-Bombard capture is very unlikely. Stay away.
-        if (g.wallBonusAt(r.to) >= 3 && !g.faction(f).hasGreatBombard) feasible = false;
+        // Theodosian-class fortresses (intact wall bonus >= tierBonus[3], i.e.
+        // Constantinople) are a siege tar pit without the Great Bombard:
+        // ordinary engines cannot crack them and the open sea feeds them
+        // (R3). Stay away unless we own the Bombard or can blockade.
+        if (g.wallBonusAt(r.to) >= CONFIG.walls.tierBonus[3] && !g.faction(f).hasGreatBombard) feasible = false;
       } else {
         feasible = myPower >= o.minRatio * g.defenseScore(r.to);
       }
@@ -214,6 +215,24 @@ function pickDefUnit(g: Game, f: FactionId): UnitType {
 function recruitAt(g: Game, f: FactionId, pid: string, unit: UnitType): boolean {
   let cap = CONFIG.recruit.perAction[unit];
   if (unit === 'levy') cap += CONFIG.factions[f].levyRecruitBonus;
+  // Solvency guards: never recruit a batch the grain economy cannot feed
+  // (mercenaries eat x2 grain per canon §6.2 — a full merc batch can sink a
+  // small faction), and always keep enough gold back to pay the fleet's
+  // crews (an unpaid navy deserts and can strip a port garrison bare).
+  const perUnitGrain = CONFIG.units[unit].grainUpkeep;
+  if (perUnitGrain > 0) {
+    const affordable = Math.floor(g.grainHeadroom(f) / perUnitGrain);
+    if (affordable < cap) cap = affordable;
+    if (cap <= 0) return false;
+  }
+  const cost = unitGoldCost(f, unit);
+  if (cost > 0) {
+    let crewWages = 0;
+    for (const pid2 of g.ownedProvinces(f)) crewWages += g.province(pid2).garrison.galley * CONFIG.units.galley.goldUpkeep;
+    const affordable = Math.floor((g.faction(f).gold - crewWages) / cost);
+    if (affordable < cap) cap = affordable;
+    if (cap <= 0) return false;
+  }
   return g.actRecruit(f, pid, unit, cap);
 }
 

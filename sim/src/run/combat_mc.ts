@@ -43,6 +43,7 @@ interface ModifierSet {
 }
 
 const cc = CONFIG.combat;
+const escalade = -CONFIG.siege.escaladePenalty; // canon §8.2.4: assaulting unbreached walls
 
 const MODIFIER_SETS: ModifierSet[] = [
   {
@@ -52,32 +53,37 @@ const MODIFIER_SETS: ModifierSet[] = [
   },
   {
     id: 'riverCrossing',
-    description: `attacking across a river/strait: attacker dice -${cc.riverCrossingPenalty}`,
+    description: `attacking across a strait / amphibiously: attacker ${-cc.riverCrossingPenalty} (threshold space)`,
     mods: modifiers({ attackerBonus: -cc.riverCrossingPenalty }),
   },
   {
+    id: 'hills',
+    description: `defender in hills/mountains/forest: defender +${cc.terrain.hills} (canon §7.3)`,
+    mods: modifiers({ terrainBonus: cc.terrain.hills }),
+  },
+  {
     id: 'wall1',
-    description: 'direct assault on intact tier-1 walls',
-    mods: modifiers({ wallBonus: effectiveWallBonus(1, false, 0) }),
+    description: `direct assault on intact tier-1 walls (defender +${CONFIG.walls.tierBonus[1]}, escalade ${escalade})`,
+    mods: modifiers({ attackerBonus: escalade, wallBonus: effectiveWallBonus(1, false, 0) }),
   },
   {
     id: 'wall2',
-    description: 'direct assault on intact tier-2 walls',
-    mods: modifiers({ wallBonus: effectiveWallBonus(2, false, 0) }),
+    description: `direct assault on intact tier-2 walls (defender +${CONFIG.walls.tierBonus[2]}, escalade ${escalade})`,
+    mods: modifiers({ attackerBonus: escalade, wallBonus: effectiveWallBonus(2, false, 0) }),
   },
   {
     id: 'wall3',
-    description: 'direct assault on intact tier-3 walls',
-    mods: modifiers({ wallBonus: effectiveWallBonus(3, false, 0) }),
+    description: `direct assault on intact tier-3/Theodosian-class walls (defender +${CONFIG.walls.tierBonus[3]}, escalade ${escalade})`,
+    mods: modifiers({ attackerBonus: escalade, wallBonus: effectiveWallBonus(3, true, 0) }),
   },
   {
     id: 'attTactic',
-    description: `attacker tactic card: attacker dice +${cc.tacticCardSwing}`,
+    description: `attacker tactic card: attacker +${cc.tacticCardSwing} (threshold space)`,
     mods: modifiers({ attackerBonus: cc.tacticCardSwing }),
   },
   {
     id: 'defTactic',
-    description: `defender tactic card: defender dice +${cc.tacticCardSwing}`,
+    description: `defender tactic card: defender +${cc.tacticCardSwing} (threshold space)`,
     mods: modifiers({ defenderBonus: cc.tacticCardSwing }),
   },
 ];
@@ -223,6 +229,7 @@ checkMonotone('levyVsProf', levyGrid);
 // and walls must order wall3 <= wall2 <= wall1.
 const defenderFavoring: Array<[string, string]> = [
   ['riverCrossing', 'openField'],
+  ['hills', 'openField'],
   ['wall1', 'openField'],
   ['wall2', 'wall1'],
   ['wall3', 'wall2'],
@@ -311,7 +318,7 @@ console.log(
   ),
 );
 console.log(
-  'sanity: open-field NvN sits below 50% (defender wins ties + 2-die absorb), and every defender bonus pushes it further down.',
+  'sanity: open-field NvN sits below 50% (canon: INFANTRY defends at CV 3 vs attacks at CV 2), and every defender bonus pushes it further down. NOTE: against high-CV defenders the clamp floor (2+) saturates, so wall tiers can look identical here — tiers differentiate through wall HP (siege length) and vs low-CV garrisons.',
 );
 
 console.log('\n=== 6 attackers vs 4 defenders across all modifier sets ===');
@@ -341,7 +348,7 @@ console.log(
     ],
   ),
 );
-console.log('sanity: 6v4 should be a clear favorite in the open, roughly even vs tier-1, and hopeless vs tier-3.');
+console.log('sanity: 6v4 should be a clear favorite in the open and hopeless against intact professional-held walls (assault waits for the breach).');
 
 console.log('\n=== Tier-3 wall coin-flip ratio (attackers needed for ~50% direct assault) ===');
 console.log(
@@ -356,7 +363,7 @@ console.log(
 );
 console.log(
   `mean measurable ratio: ${tier3MeanRatio === null ? 'n/a (never crosses 50% within 12)' : fmt(tier3MeanRatio, 2)}` +
-    ' (design target ~2.5-3x for a coin-flip direct assault)',
+    ' (canon target: intact Theodosian-class walls should NOT be assaultable — expect >12 across the board; breach first)',
 );
 
 console.log(

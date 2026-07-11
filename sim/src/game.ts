@@ -37,7 +37,7 @@ import {
   removeCasualties,
   resolveBattle,
 } from './combat';
-import { bombardmentPerRound, wallHitpoints } from './siege';
+import { rollBombardment, wallHitpoints } from './siege';
 import {
   FACTION_STARTS,
   PROVINCE_BY_ID,
@@ -106,6 +106,8 @@ interface Siege {
   army: Army;
   origin: string; // retreat destination if the siege is lifted
   rounds: number;
+  /** Grain stores left in the besieged city (canon §8.2.3); refilled while sea-resupplied (R3). */
+  stores: number;
 }
 
 interface PendingAttack {
@@ -251,7 +253,7 @@ export function unitGoldCost(faction: FactionId, t: UnitType): number {
 }
 
 function emptyLedger(): PrestigeLedger {
-  return { keyCities: 0, tradeRoutes: 0, greatWorks: 0, conquests: 0, warsWon: 0, objectives: 0, events: 0, total: 0 };
+  return { capitals: 0, keyCities: 0, tradeRoutes: 0, greatWorks: 0, conquests: 0, warsWon: 0, objectives: 0, events: 0, total: 0 };
 }
 
 // -------------------------------------------------------------------- game
@@ -269,6 +271,8 @@ export class Game {
   assaults = 0;
   winner: FactionId | null = null;
   victoryType: VictoryType | null = null;
+  /** The Era III Omen card `great-bombard-forged` has been revealed (R2). */
+  bombardForged = false;
 
   /** Agents may draw exploration randomness from this stream. */
   readonly agentRng: RNG;
@@ -408,6 +412,11 @@ export class Game {
   // --------------------------------------------------------------- events
 
   private drawEvent(): void {
+    // Era III fixed card: `great-bombard-forged` is revealed at the start of
+    // its round (the Omen deck is era-weighted, so the card reliably appears
+    // when Era III opens). From then on the unique Great Bombard may be
+    // bought — the FIRST faction to pay takes it (see actBuyBombard).
+    if (this.round >= CONFIG.siege.greatBombard.availableFromRound) this.bombardForged = true;
     const rng = this.rngEvent;
     const kind = rng.pick(['gold', 'grain', 'units', 'prestige'] as const);
     const target = rng.pick(['all', 'random', 'leader'] as const);
@@ -436,12 +445,15 @@ export class Game {
         fs.ledger.events += mag;
         this.recomputeTotal(fs);
       } else {
-        // units: volunteers muster at (or plague strikes) the biggest garrison
+        // units: volunteers muster at (or plague strikes) the biggest garrison.
+        // Guardrail: an event never fully empties a garrison (leaves >= 1
+        // combatant) — random plague opening a walled city's gates for a
+        // walk-in capture is an artifact of the one-card event abstraction.
         const pid = this.provinces.get(CAPITALS[f])?.owner === f ? CAPITALS[f] : this.largestGarrison(f);
         if (!pid) continue;
         const g = this.provinces.get(pid)!.garrison;
         if (mag > 0) g.levy += mag;
-        else removeCasualties(g, -mag);
+        else removeCasualties(g, Math.min(-mag, Math.max(0, combatants(g) - 1)));
       }
     }
   }
@@ -489,19 +501,37 @@ export class Game {
     return out;
   }
 
-  private removeUnitAcross(armies: Army[], t: UnitType, n: number): void {
+  /**
+   * Armies with a desertion floor: peacetime insolvency (unpaid crews,
+   * grain shortfall) never removes the LAST combatant of a garrison in a
+   * walled province — a skeleton militia mans the walls, so an insolvent
+   * power cannot lose a fortress to a walk-in. Siege starvation
+   * (resolveSieges) is unaffected and can still empty a garrison.
+   */
+  private armiesWithDesertionFloor(f: FactionId): Array<{ army: Army; floor: number }> {
+    const out: Array<{ army: Army; floor: number }> = [];
+    for (const p of this.provinces.values()) {
+      if (p.owner === f) out.push({ army: p.garrison, floor: p.wallTier > 0 ? 1 : 0 });
+    }
+    for (const s of this.sieges.values()) if (s.attacker === f) out.push({ army: s.army, floor: 0 });
+    return out;
+  }
+
+  private removeUnitAcross(armies: Array<{ army: Army; floor: number }>, t: UnitType, n: number): void {
     let r = n;
-    for (const a of armies) {
+    for (const e of armies) {
       if (r <= 0) break;
-      const k = Math.min(a[t], r);
-      a[t] -= k;
+      const spare = Math.max(0, combatants(e.army) - e.floor);
+      const k = Math.min(e.army[t], r, spare);
+      e.army[t] -= k;
       r -= k;
     }
   }
 
   private payUpkeep(f: FactionId): void {
     const fs = this.factions[f];
-    const armies = this.armiesOf(f);
+    const floored = this.armiesWithDesertionFloor(f);
+    const armies = floored.map((e) => e.army);
     let galleys = 0;
     let mercs = 0;
     for (const a of armies) {
@@ -518,12 +548,12 @@ export class Game {
       let g = fs.gold;
       const paidGalleys = perGalley > 0 ? Math.min(galleys, Math.floor(g / perGalley)) : galleys;
       g -= paidGalleys * perGalley;
-      this.removeUnitAcross(armies, 'galley', galleys - paidGalleys);
+      this.removeUnitAcross(floored, 'galley', galleys - paidGalleys);
       const paidMercs = perMerc > 0 ? Math.min(mercs, Math.floor(g / perMerc)) : mercs;
       g -= paidMercs * perMerc;
       const unpaid = mercs - paidMercs;
       const lostMercs = Math.ceil(unpaid * CONFIG.economy.unpaidMercDesertionFraction);
-      this.removeUnitAcross(armies, 'mercenary', lostMercs);
+      this.removeUnitAcross(floored, 'mercenary', lostMercs);
       fs.gold = Math.max(CONFIG.economy.goldFloor, g);
     }
     // grain (recompute after wage desertions)
@@ -541,9 +571,10 @@ export class Game {
       if (shortfall > 0) {
         const unfed = Math.ceil(shortfall);
         let lost = Math.ceil(unfed * CONFIG.economy.grainShortfallDesertionFraction);
-        for (const a of armies) {
+        for (const e of floored) {
           if (lost <= 0) break;
-          lost -= removeCasualties(a, lost);
+          const spare = Math.max(0, combatants(e.army) - e.floor);
+          lost -= removeCasualties(e.army, Math.min(lost, spare));
         }
       }
     }
@@ -738,12 +769,18 @@ export class Game {
     return true;
   }
 
-  /** Buy the one-off Great Bombard (build action, round-gated). */
+  /**
+   * Buy the UNIQUE Great Bombard (build action). Available once the Era III
+   * event card `great-bombard-forged` is revealed (round
+   * greatBombard.availableFromRound); the first faction to pay owns the one
+   * and only Bombard for the rest of the game (ruling R2).
+   */
   actBuyBombard(f: FactionId): boolean {
     if (!this.canAct(f)) return false;
     const fs = this.factions[f];
     const gb = CONFIG.siege.greatBombard;
-    if (this.round < gb.availableFromRound || fs.hasGreatBombard || fs.gold < gb.goldCost) return false;
+    if (!this.bombardForged || fs.gold < gb.goldCost) return false;
+    for (const other of FACTION_IDS) if (this.factions[other].hasGreatBombard) return false; // unique: already claimed
     fs.gold -= gb.goldCost;
     fs.hasGreatBombard = true;
     this.consume();
@@ -830,6 +867,7 @@ export class Game {
           army: pa.army,
           origin: pa.from,
           rounds: 0,
+          stores: CONFIG.siege.grainStoresRounds,
         });
         continue;
       }
@@ -893,8 +931,42 @@ export class Game {
     k = Math.min(a.galley, r); a.galley -= k; r -= k;
   }
 
+  /**
+   * Galleys a faction can bring to bear on a sea zone: fleets in its owned
+   * ports coasting the zone, plus the fleets of its siege camps at coastal
+   * provinces of the zone. (No standing at-sea fleets are modeled.)
+   */
+  private galleysNearZone(f: FactionId, zoneId: string): number {
+    let n = 0;
+    for (const pid of SEA_ZONE_BY_ID.get(zoneId)!.coastalProvinces) {
+      const p = this.provinces.get(pid)!;
+      if (p.owner === f) n += p.garrison.galley;
+      const s = this.sieges.get(pid);
+      if (s && s.attacker === f) n += s.army.galley;
+    }
+    return n;
+  }
+
+  /**
+   * R3 blockade test: the besieged coastal city is blockaded only if the
+   * attacker has strict galley superiority over the defender in EVERY
+   * adjacent sea zone. The defender's own harbor fleet counts (it holds the
+   * boom); landlocked cities are always fully invested.
+   */
+  private isSeaBlockaded(pid: string, attacker: FactionId): boolean {
+    const prov = PROVINCE_BY_ID.get(pid)!;
+    if (prov.coasts.length === 0) return true; // landlocked: sealed by the land camp
+    const owner = this.provinces.get(pid)!.owner;
+    for (const z of prov.coasts) {
+      const hostile = this.galleysNearZone(attacker, z);
+      const friendly = owner ? this.galleysNearZone(owner, z) : 0;
+      if (hostile <= friendly) return false; // zone not enemy-controlled
+    }
+    return true;
+  }
+
   private resolveSieges(): void {
-    // one Great Bombard per faction: assign it to the juiciest siege
+    // the unique Great Bombard: its owner deploys it at their juiciest siege
     const bombardAt = new Map<FactionId, string>();
     for (const [pid, s] of this.sieges) {
       if (!this.factions[s.attacker].hasGreatBombard) continue;
@@ -912,19 +984,22 @@ export class Game {
       const p = this.provinces.get(pid)!;
       const prov = PROVINCE_BY_ID.get(pid)!;
       s.rounds++;
-      // 1. bombardment
+      // 1. bombardment (canon §8.2.2 dice; Theodosian walls resist ordinary engines)
       const hp = wallHitpoints(p.wallTier, prov.theodosianWalls);
-      p.wallDamage = Math.min(hp, p.wallDamage + bombardmentPerRound(s.army, bombardAt.get(s.attacker) === pid));
-      // 2. attrition
-      const blockaded = prov.coasts.length > 0 && s.army.galley >= prov.coasts.length;
-      const gRate =
-        sc.garrisonAttritionPerRound *
-        (blockaded && sc.seaBlockadeDoublesAttrition
-          ? 2
-          : prov.theodosianWalls && !blockaded
-            ? sc.cpleSeaResupplyAttritionMult
-            : 1);
-      this.applyAttrition(p.garrison, attritionLosses(combatants(p.garrison), gRate, this.rngCombat));
+      p.wallDamage = Math.min(
+        hp,
+        p.wallDamage + rollBombardment(s.army, bombardAt.get(s.attacker) === pid, prov.theodosianWalls, this.rngCombat),
+      );
+      // 2. starvation (canon §8.2.3 stores model) + besieger disease.
+      //    R3 sea resupply: an unblockaded coastal city refills its stores.
+      const blockaded = this.isSeaBlockaded(pid, s.attacker);
+      if (sc.seaResupplyEnabled && prov.coasts.length > 0 && !blockaded) {
+        s.stores = sc.grainStoresRounds; // resupplied over the open sea
+      } else if (s.stores > 0) {
+        s.stores--;
+      } else {
+        this.applyAttrition(p.garrison, sc.starvationUnitsPerRound);
+      }
       this.applyAttrition(s.army, attritionLosses(combatants(s.army), sc.besiegerAttritionPerRound, this.rngCombat));
       if (p.owner) this.touchWar(s.attacker, p.owner);
       if (combatants(p.garrison) === 0) {
@@ -951,10 +1026,11 @@ export class Game {
       if (!want) continue;
       this.assaults++;
       this.battles++;
+      const escalade = p.wallDamage < hp ? -sc.escaladePenalty : 0; // canon §8.2.4
       const r = resolveBattle(
         s.army,
         p.garrison,
-        modifiers({ terrainBonus: CONFIG.combat.terrain[prov.terrain], wallBonus }),
+        modifiers({ attackerBonus: escalade, terrainBonus: CONFIG.combat.terrain[prov.terrain], wallBonus }),
         this.rngCombat,
       );
       if (r.winner === 'attacker') {
@@ -972,7 +1048,7 @@ export class Game {
 
   private recomputeTotal(fs: FactionState): void {
     const l = fs.ledger;
-    l.total = l.keyCities + l.tradeRoutes + l.greatWorks + l.conquests + l.warsWon + l.objectives + l.events;
+    l.total = l.capitals + l.keyCities + l.tradeRoutes + l.greatWorks + l.conquests + l.warsWon + l.objectives + l.events;
   }
 
   openRoutesOf(f: FactionId): typeof TRADE_ROUTES {
@@ -1018,13 +1094,27 @@ export class Game {
         fs.grain -= excess;
         fs.gold += excess * CONFIG.economy.grainMarket.sellGoldPerGrain;
       }
-      // prestige scoring
+      // prestige scoring (canon §13.1 income sources + sim route prestige)
+      const pr = CONFIG.prestige;
       let keyCities = 0;
       for (const pid of KEY_IDS) if (this.provinces.get(pid)!.owner === f) keyCities++;
-      let pts = keyCities * CONFIG.prestige.keyCityPerRound;
-      if (this.provinces.get('constantinople')!.owner === f) pts += CONFIG.prestige.constantinopleExtraPerRound;
+      let pts = keyCities * pr.keyCityPerRound;
+      if (this.provinces.get('constantinople')!.owner === f) pts += pr.constantinopleExtraPerRound;
       fs.ledger.keyCities += pts;
-      fs.ledger.tradeRoutes += this.openRoutesOf(f).length * CONFIG.prestige.tradeRoutePerRound;
+      // capital income: own capital +1/round, each held enemy capital +3/round
+      let capPts = 0;
+      if (this.provinces.get(CAPITALS[f])!.owner === f) capPts += pr.ownCapitalPerRound;
+      for (const other of FACTION_IDS) {
+        if (other !== f && this.provinces.get(CAPITALS[other])!.owner === f) capPts += pr.enemyCapitalPerRound;
+      }
+      fs.ledger.capitals += capPts;
+      // trade prestige: per open route, + canon monopoly when BOTH ends are owned
+      const open = this.openRoutesOf(f);
+      let monopolies = 0;
+      for (const r of open) {
+        if (this.provinces.get(r.a)!.owner === f && this.provinces.get(r.b)!.owner === f) monopolies++;
+      }
+      fs.ledger.tradeRoutes += open.length * pr.tradeRoutePerRound + monopolies * pr.tradeMonopolyPerRound;
       // secret objective
       if (!fs.objective.done && this.round <= fs.objective.deadline && fs.objective.provinces.length > 0) {
         if (fs.objective.provinces.every((pid) => this.provinces.get(pid)!.owner === f)) {

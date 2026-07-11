@@ -3,12 +3,18 @@
  * candidate CONFIG mutations (applied at runtime; rules.ts is NOT edited) to
  * see which numeric change kills the exploit.
  *
+ * NOTE (canon kernel swap): the original variants targeted the pre-canon
+ * percentage-attrition siege model. They have been remapped to the nearest
+ * canon-kernel equivalents; results in adversarial_cple_beeline.json that
+ * predate the swap were produced under the old model.
+ *
  * Candidates:
- *   base     : tuned config as-is (control)
- *   hp28     : walls.theodosianExtraHitpoints 8 -> 28  (cple wall HP 20 -> 40)
- *   hp40     : walls.theodosianExtraHitpoints 8 -> 40  (cple wall HP 20 -> 52)
- *   hp28+gar : hp28 + Byzantium starting garrison can't be starved fast:
- *              garrisonAttritionPerRound 0.06 -> 0.04
+ *   base          : tuned config as-is (control)
+ *   hp28          : walls.theodosianExtraHitpoints 0 -> 12 (cple wall HP 16 -> 28)
+ *   hp40          : walls.theodosianExtraHitpoints 0 -> 24 (cple wall HP 16 -> 40)
+ *   hp28+stores5  : hp28 + grain stores 3 -> 5 (slower starve under blockade)
+ *   hp28+hold3    : hp28 + sudden-death hold 2 -> 3 rounds
+ *   hp28+hold3+noResupply : + disable R3 sea resupply entirely
  *
  * Usage: cd sim && GAMES=500 npx tsx src/adversarial/fix_check_cple_beeline.ts
  */
@@ -36,37 +42,37 @@ interface Variant {
 }
 
 const origHp = CONFIG.walls.theodosianExtraHitpoints;
-const origAttr = CONFIG.siege.garrisonAttritionPerRound;
+const origStores = CONFIG.siege.grainStoresRounds;
 const origHold = CONFIG.game.suddenDeathHoldRounds;
-const origResup = CONFIG.siege.cpleSeaResupplyAttritionMult;
+const origResup = CONFIG.siege.seaResupplyEnabled;
 
 const variants: Variant[] = [
   { name: 'base', apply() {}, revert() {} },
   {
     name: 'hp28',
-    apply() { CONFIG.walls.theodosianExtraHitpoints = 28; },
+    apply() { CONFIG.walls.theodosianExtraHitpoints = 12; },
     revert() { CONFIG.walls.theodosianExtraHitpoints = origHp; },
   },
   {
     name: 'hp40',
-    apply() { CONFIG.walls.theodosianExtraHitpoints = 40; },
+    apply() { CONFIG.walls.theodosianExtraHitpoints = 24; },
     revert() { CONFIG.walls.theodosianExtraHitpoints = origHp; },
   },
   {
-    name: 'hp28+attr04',
+    name: 'hp28+stores5',
     apply() {
-      CONFIG.walls.theodosianExtraHitpoints = 28;
-      CONFIG.siege.garrisonAttritionPerRound = 0.04;
+      CONFIG.walls.theodosianExtraHitpoints = 12;
+      CONFIG.siege.grainStoresRounds = 5;
     },
     revert() {
       CONFIG.walls.theodosianExtraHitpoints = origHp;
-      CONFIG.siege.garrisonAttritionPerRound = origAttr;
+      CONFIG.siege.grainStoresRounds = origStores;
     },
   },
   {
     name: 'hp28+hold3',
     apply() {
-      CONFIG.walls.theodosianExtraHitpoints = 28;
+      CONFIG.walls.theodosianExtraHitpoints = 12;
       CONFIG.game.suddenDeathHoldRounds = 3;
     },
     revert() {
@@ -75,16 +81,16 @@ const variants: Variant[] = [
     },
   },
   {
-    name: 'hp28+hold3+resup0',
+    name: 'hp28+hold3+noResupply',
     apply() {
-      CONFIG.walls.theodosianExtraHitpoints = 28;
+      CONFIG.walls.theodosianExtraHitpoints = 12;
       CONFIG.game.suddenDeathHoldRounds = 3;
-      CONFIG.siege.cpleSeaResupplyAttritionMult = 0;
+      CONFIG.siege.seaResupplyEnabled = false;
     },
     revert() {
       CONFIG.walls.theodosianExtraHitpoints = origHp;
       CONFIG.game.suddenDeathHoldRounds = origHold;
-      CONFIG.siege.cpleSeaResupplyAttritionMult = origResup;
+      CONFIG.siege.seaResupplyEnabled = origResup;
     },
   },
 ];

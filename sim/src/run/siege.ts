@@ -1,21 +1,36 @@
 /**
- * Monte-Carlo siege sweep (npm run sim:siege).
+ * Monte-Carlo siege sweep (npm run sim:siege) — canon kernel.
  *
- * Grid: wall tier 1-3 x garrison size 2-12 x siege engines 0-6, a fixed
- * strong attacker stack of 12 professionals. Per cell: capture probability,
- * expected rounds-to-capture, capture-reason split, mean attacker losses.
+ * 1. Grid: wall tier 1-3 x garrison size 2-12 x siege engines 0-6, a fixed
+ *    strong attacker stack of 12 professionals, LANDLOCKED city (starvation
+ *    proceeds: 3 grain stores, then 1 unit/round). Per cell: capture
+ *    probability, expected rounds-to-capture, capture-reason split, mean
+ *    attacker losses.
  *
- * Plus the Constantinople scenario: Theodosian walls (tier 3 + theodosian
- * bonus, 16 wall hitpoints), garrison 6-10 professionals, attacker 12
- * professionals + 2 siege engines, with and without the Great Bombard:
- * P(capture within k siege rounds) for k = 1..8.
+ * 2. Direct-assault sweep (T5a evidence): attacker stacks 1-12 professionals
+ *    assault INTACT Theodosian walls (defender +4, attacker escalade -1) —
+ *    single battles, no siege. Target: win prob < 2% everywhere.
+ *
+ * 3. Constantinople scenarios (T5b-T5d): Theodosian walls (16 HP, +4),
+ *    garrison 6-10 professionals, attacker 12 professionals + 4 mercenaries
+ *    + 3 siege engines, all four combinations of Great Bombard x naval
+ *    blockade. The city is COASTAL: unblockaded => sea-resupplied, no
+ *    starvation (ruling R3); ordinary engines cannot damage Theodosian-class
+ *    walls (ruling R2) — only the Great Bombard breaches them.
+ *    P(capture within k siege rounds) for k = 1..12.
+ *
+ * Targets (T5):
+ *   a) direct assault on intact Theodosian walls: < 2% for any stack 1-12
+ *   b) no Bombard + NO blockade: capture within 12 siege rounds < 10%
+ *   c) no Bombard + FULL blockade: starve-out works, median capture >= 6
+ *   d) with Bombard: capture within 4 siege rounds (2-4 window) > 50%
  *
  * Writes sim/results/siege.json. SMOKE=1 cuts iterations 20000 -> 500.
  */
 
 import { create } from '../rng';
 import { CONFIG } from '../rules';
-import { armyOf } from '../combat';
+import { armyOf, effectiveWallBonus, modifiers, resolveBattle } from '../combat';
 import {
   DEFAULT_SIEGE_POLICY,
   runSiege,
@@ -33,7 +48,10 @@ const TIERS = [1, 2, 3] as const;
 const GARRISONS = [2, 4, 6, 8, 10, 12] as const;
 const ENGINES = [0, 1, 2, 3, 4, 5, 6] as const;
 const CPLE_GARRISONS = [6, 8, 10] as const;
-const CPLE_MAX_K = 8;
+const CPLE_MAX_K = DEFAULT_SIEGE_POLICY.maxSiegeRounds; // 12
+// Grand assault army for the Constantinople scenarios: line infantry,
+// free-company shock troops, and a full siege train.
+const CPLE_ATTACKER = { professional: 12, mercenary: 4, siegeEngine: 3 } as const;
 
 interface CellStats {
   tier: number;
@@ -91,6 +109,18 @@ function simulateCell(setup: SiegeSetup, iters: number, seed: number): {
   };
 }
 
+/** Median siege round of capture (among captures), from the histogram. */
+function medianCaptureRound(captureRounds: number[]): number | null {
+  const total = captureRounds.reduce((s, x) => s + x, 0);
+  if (total === 0) return null;
+  let cum = 0;
+  for (let r = 0; r < captureRounds.length; r++) {
+    cum += captureRounds[r];
+    if (cum >= total / 2) return r + 1;
+  }
+  return captureRounds.length;
+}
+
 // ------------------------------------------------------------- grid sweep
 
 const t0 = Date.now();
@@ -109,6 +139,7 @@ for (const tier of TIERS) {
         terrain: 'plains',
         hasGreatBombard: false,
         blockaded: false,
+        coastal: false, // landlocked: fully invested, starvation proceeds
       };
       const { stats } = simulateCell(setup, ITERS, cellSeed);
       grid.push({ tier, garrison, engines, ...stats });
@@ -116,60 +147,110 @@ for (const tier of TIERS) {
   }
 }
 
+// ---------------------------------------- direct assault on intact walls (T5a)
+
+interface AssaultRow {
+  attackers: number;
+  /** winProb[garrison index] per CPLE_GARRISONS */
+  winProb: number[];
+}
+
+const theodosianWallBonus = effectiveWallBonus(3, true, 0);
+const assaultMods = modifiers({
+  attackerBonus: -CONFIG.siege.escaladePenalty, // canon §8.2.4 escalade
+  terrainBonus: CONFIG.combat.terrain.plains,
+  wallBonus: theodosianWallBonus,
+});
+const directAssault: AssaultRow[] = [];
+for (let a = 1; a <= 12; a++) {
+  const row: AssaultRow = { attackers: a, winProb: [] };
+  for (const garrison of CPLE_GARRISONS) {
+    cellSeed++;
+    const rng = create(cellSeed);
+    let wins = 0;
+    for (let i = 0; i < ITERS; i++) {
+      const att = armyOf({ professional: a });
+      const def = armyOf({ professional: garrison });
+      if (resolveBattle(att, def, assaultMods, rng).winner === 'attacker') wins++;
+    }
+    row.winProb.push(wins / ITERS);
+  }
+  directAssault.push(row);
+}
+const worstDirectAssault = Math.max(...directAssault.flatMap((r) => r.winProb));
+
 // ----------------------------------------------- Constantinople scenarios
 
 interface CpleCurve {
   garrison: number;
   greatBombard: boolean;
+  blockaded: boolean;
   iterations: number;
   captureProb: number;
   expectedRoundsToCapture: number | null;
-  pCaptureWithinK: number[]; // index k-1 => P(capture within k siege rounds), k=1..8
+  medianRoundsToCapture: number | null;
+  capturedByAssault: number;
+  capturedByStarvation: number;
+  pCaptureWithinK: number[]; // index k-1 => P(capture within k siege rounds), k=1..12
 }
 
 const cple: CpleCurve[] = [];
 for (const bombard of [false, true]) {
-  for (const garrison of CPLE_GARRISONS) {
-    cellSeed++;
-    const setup: SiegeSetup = {
-      attacker: armyOf({ professional: ATTACKER_PROFESSIONALS, siegeEngine: 2 }),
-      defender: armyOf({ professional: garrison }),
-      wallTier: 3,
-      theodosian: true,
-      terrain: 'plains', // Constantinople is a plains province
-      hasGreatBombard: bombard,
-      blockaded: false,
-      seaResupplied: true, // the Golden Horn: resupplied unless blockaded
-    };
-    const { stats, captureRounds } = simulateCell(setup, ITERS, cellSeed);
-    const withinK: number[] = [];
-    let cum = 0;
-    for (let k = 1; k <= CPLE_MAX_K; k++) {
-      cum += captureRounds[k - 1];
-      withinK.push(cum / ITERS);
+  for (const blockaded of [false, true]) {
+    for (const garrison of CPLE_GARRISONS) {
+      cellSeed++;
+      const setup: SiegeSetup = {
+        attacker: armyOf(CPLE_ATTACKER),
+        defender: armyOf({ professional: garrison }),
+        wallTier: 3,
+        theodosian: true,
+        terrain: 'plains', // Constantinople is a plains province
+        hasGreatBombard: bombard,
+        blockaded,
+        coastal: true, // the Golden Horn: unblockaded => sea-resupplied (R3)
+      };
+      const { stats, captureRounds } = simulateCell(setup, ITERS, cellSeed);
+      const withinK: number[] = [];
+      let cum = 0;
+      for (let k = 1; k <= CPLE_MAX_K; k++) {
+        cum += captureRounds[k - 1];
+        withinK.push(cum / ITERS);
+      }
+      cple.push({
+        garrison,
+        greatBombard: bombard,
+        blockaded,
+        iterations: ITERS,
+        captureProb: stats.captureProb,
+        expectedRoundsToCapture: stats.expectedRoundsToCapture,
+        medianRoundsToCapture: medianCaptureRound(captureRounds),
+        capturedByAssault: stats.capturedByAssault,
+        capturedByStarvation: stats.capturedByStarvation,
+        pCaptureWithinK: withinK,
+      });
     }
-    cple.push({
-      garrison,
-      greatBombard: bombard,
-      iterations: ITERS,
-      captureProb: stats.captureProb,
-      expectedRoundsToCapture: stats.expectedRoundsToCapture,
-      pCaptureWithinK: withinK,
-    });
   }
 }
 
 // ----------------------------------------------------------- target checks
 
-const noBomb = cple.filter((c) => !c.greatBombard);
-const withBomb = cple.filter((c) => c.greatBombard);
-// Target 1: WITHOUT bombard, strong stack (12 prof + 2 engines) <15% within 6 rounds
-// (a siege begun ~round 3 should rarely take the city before round 10).
-const worstNoBombWithin6 = Math.max(...noBomb.map((c) => c.pCaptureWithinK[5]));
-const target1Met = worstNoBombWithin6 < 0.15;
-// Target 2: WITH bombard, capture within 4 rounds (i.e. inside the 2-4 window) >50%.
-const worstWithBombWithin4 = Math.min(...withBomb.map((c) => c.pCaptureWithinK[3]));
-const target2Met = worstWithBombWithin4 > 0.50;
+const noBombNoBlock = cple.filter((c) => !c.greatBombard && !c.blockaded);
+const noBombBlock = cple.filter((c) => !c.greatBombard && c.blockaded);
+const withBombNoBlock = cple.filter((c) => c.greatBombard && !c.blockaded);
+
+// T5a: direct assault on intact Theodosian walls < 2% for any stack 1-12.
+const t5aMet = worstDirectAssault < 0.02;
+// T5b: no Bombard + NO blockade: capture within 12 siege rounds < 10%.
+const worstNoBombNoBlock12 = Math.max(...noBombNoBlock.map((c) => c.pCaptureWithinK[11]));
+const t5bMet = worstNoBombNoBlock12 < 0.10;
+// T5c: no Bombard + FULL blockade: starve-out works (capture prob within the
+// 12-round policy horizon is substantial) AND median rounds-to-capture >= 6.
+const minBlockCapture = Math.min(...noBombBlock.map((c) => c.captureProb));
+const minBlockMedian = Math.min(...noBombBlock.map((c) => c.medianRoundsToCapture ?? Infinity));
+const t5cMet = minBlockCapture > 0.5 && minBlockMedian >= 6;
+// T5d: with Bombard (unblockaded): capture within 4 siege rounds > 50%.
+const worstWithBomb4 = Math.min(...withBombNoBlock.map((c) => c.pCaptureWithinK[3]));
+const t5dMet = worstWithBomb4 > 0.50;
 
 // ----------------------------------------------------------------- report
 
@@ -180,8 +261,8 @@ const cell = (tier: number, engines: number) =>
   grid.find((c) => c.tier === tier && c.garrison === REP_GARRISON && c.engines === engines)!;
 
 console.log(`SIEGE MONTE CARLO  seed=${SEED}  iters/cell=${ITERS}${isSmoke() ? ' (SMOKE)' : ''}`);
-console.log(`attacker = ${ATTACKER_PROFESSIONALS} professionals (+engines), garrison = professionals, plains, no blockade`);
-console.log(`policy: assault when wall bonus <= ${DEFAULT_SIEGE_POLICY.assaultWallThreshold} or garrison <= ${DEFAULT_SIEGE_POLICY.assaultGarrisonMax}; give up after ${DEFAULT_SIEGE_POLICY.maxSiegeRounds} rounds`);
+console.log(`grid attacker = ${ATTACKER_PROFESSIONALS} professionals (+engines), garrison = professionals, plains, landlocked`);
+console.log(`policy: assault when wall bonus <= ${DEFAULT_SIEGE_POLICY.assaultWallThreshold} (breach) or garrison <= ${DEFAULT_SIEGE_POLICY.assaultGarrisonMax}; give up after ${DEFAULT_SIEGE_POLICY.maxSiegeRounds} rounds`);
 console.log();
 
 console.log(`EXPECTED ROUNDS TO CAPTURE (garrison=${REP_GARRISON}) — '-' = never captured`);
@@ -208,23 +289,35 @@ console.log(
 );
 console.log();
 
-console.log(`CONSTANTINOPLE (Theodosian walls, ${wallHitpoints(3, true)} hp): P(capture within k siege rounds)`);
-console.log(`attacker = ${ATTACKER_PROFESSIONALS} professionals + 2 siege engines`);
+console.log('DIRECT ASSAULT vs INTACT THEODOSIAN WALLS (win prob; escalade -1, wall +4)');
 console.log(
   table(
-    ['scenario', ...Array.from({ length: CPLE_MAX_K }, (_, i) => `k=${i + 1}`), 'E[rounds]'],
+    ['attackers', ...CPLE_GARRISONS.map((g) => `garrison ${g}`)],
+    directAssault.map((r) => [r.attackers, ...r.winProb.map((p) => pct(p, 2))]),
+  ),
+);
+console.log();
+
+console.log(`CONSTANTINOPLE (Theodosian walls, ${wallHitpoints(3, true)} hp, coastal): P(capture within k siege rounds)`);
+console.log(`attacker = ${CPLE_ATTACKER.professional} professionals + ${CPLE_ATTACKER.mercenary} mercenaries + ${CPLE_ATTACKER.siegeEngine} siege engines`);
+console.log(
+  table(
+    ['scenario', ...[1, 2, 3, 4, 6, 8, 10, 12].map((k) => `k=${k}`), 'P(cap)', 'median'],
     cple.map((c) => [
-      `${c.greatBombard ? 'BOMBARD' : 'no bomb'} g=${c.garrison}`,
-      ...c.pCaptureWithinK.map((p) => pct(p)),
-      c.expectedRoundsToCapture === null ? '-' : fmt(c.expectedRoundsToCapture, 1),
+      `${c.greatBombard ? 'BOMBARD' : 'no bomb'} ${c.blockaded ? 'BLOCKADE' : 'open sea'} g=${c.garrison}`,
+      ...[1, 2, 3, 4, 6, 8, 10, 12].map((k) => pct(c.pCaptureWithinK[k - 1])),
+      pct(c.captureProb),
+      c.medianRoundsToCapture === null ? '-' : String(c.medianRoundsToCapture),
     ]),
   ),
 );
 console.log();
 
-console.log('TARGETS');
-console.log(`  without Bombard, P(capture <=6 rounds) < 15%: worst=${pct(worstNoBombWithin6)}  ${target1Met ? 'MET' : 'MISSED'}`);
-console.log(`  with Bombard, P(capture <=4 rounds) > 50%:    worst=${pct(worstWithBombWithin4)}  ${target2Met ? 'MET' : 'MISSED'}`);
+console.log('TARGETS (T5)');
+console.log(`  a) direct assault intact Theodosian < 2%:            worst=${pct(worstDirectAssault, 2)}  ${t5aMet ? 'MET' : 'MISSED'}`);
+console.log(`  b) no Bombard + no blockade, capture <=12r < 10%:    worst=${pct(worstNoBombNoBlock12)}  ${t5bMet ? 'MET' : 'MISSED'}`);
+console.log(`  c) no Bombard + blockade: starve works, median >= 6: minCap=${pct(minBlockCapture)} minMedian=${minBlockMedian}  ${t5cMet ? 'MET' : 'MISSED'}`);
+console.log(`  d) with Bombard, capture <=4 rounds > 50%:           worst=${pct(worstWithBomb4)}  ${t5dMet ? 'MET' : 'MISSED'}`);
 console.log();
 
 const path = writeResults('siege', {
@@ -233,19 +326,27 @@ const path = writeResults('siege', {
     iterationsPerCell: ITERS,
     smoke: isSmoke(),
     elapsedMs,
-    attacker: `${ATTACKER_PROFESSIONALS} professionals + <engines> siege engines`,
+    gridAttacker: `${ATTACKER_PROFESSIONALS} professionals + <engines> siege engines (landlocked city)`,
+    cpleAttacker: CPLE_ATTACKER,
     garrisonComposition: 'professionals',
     terrain: 'plains',
-    blockaded: false,
     policy: DEFAULT_SIEGE_POLICY,
     config: { walls: CONFIG.walls, siege: CONFIG.siege, combat: CONFIG.combat },
-    note: 'Great Bombard scenarios assume game round >= siege.greatBombard.availableFromRound',
+    note: 'canon kernel: binary wall bonus, escalade -1, stores-then-starve, R3 sea resupply, R2 Bombard-only vs Theodosian. Bombard scenarios assume game round >= siege.greatBombard.availableFromRound.',
   },
   grid,
+  directAssaultIntactTheodosian: {
+    description: 'single battles: N professionals assault intact Theodosian walls (escalade -1, defender +4), garrisons per column',
+    garrisons: CPLE_GARRISONS,
+    rows: directAssault,
+    worstWinProb: worstDirectAssault,
+  },
   constantinople: cple,
   targets: {
-    noBombardWithin6Under15pct: { worst: worstNoBombWithin6, met: target1Met },
-    withBombardWithin4Over50pct: { worst: worstWithBombWithin4, met: target2Met },
+    t5a_directAssaultUnder2pct: { worst: worstDirectAssault, met: t5aMet },
+    t5b_noBombardNoBlockadeWithin12Under10pct: { worst: worstNoBombNoBlock12, met: t5bMet },
+    t5c_blockadeStarveWorksMedianAtLeast6: { minCaptureProb: minBlockCapture, minMedianRounds: minBlockMedian, met: t5cMet },
+    t5d_withBombardWithin4Over50pct: { worst: worstWithBomb4, met: t5dMet },
   },
 });
 console.log(`wrote ${path}  (${fmt(elapsedMs / 1000, 1)}s)`);
