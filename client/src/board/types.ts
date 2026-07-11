@@ -17,7 +17,7 @@ export interface Point {
 
 export type LocationKind = "province" | "sea";
 
-/** Static per-region display data, keyed by board.svg path ids (NOT MAP.md canon ids). */
+/** Static per-province display data, keyed by the canonical docs/MAP.md ids. */
 export interface BoardProvince {
   id: string;
   name: string;
@@ -31,7 +31,7 @@ export interface BoardSeaZone {
   name: string;
 }
 
-/** Symmetric neighbour graph over board.svg province + sea-zone ids. */
+/** Symmetric neighbour graph over the canonical province + sea-zone ids. */
 export type Adjacency = Readonly<Record<string, readonly string[]>>;
 
 export interface BoardMapData {
@@ -80,6 +80,13 @@ export interface BoardProps {
   colorblind?: boolean;
   className?: string;
   overlays?: BoardOverlayState;
+  /**
+   * Optional URL of an alternate board SVG (fetched at mount). Default:
+   * the vendored assets/board.svg. Lets tests inject a canon-id fixture.
+   */
+  svgUrl?: string;
+  /** Fired whenever the SVG-vs-mapData id diff is (re)computed. */
+  onIdDiff?: (diff: { provinces: IdDiff; seaZones: IdDiff }) => void;
 }
 
 export interface PanZoomOptions {
@@ -100,6 +107,8 @@ export interface PanZoomApi {
 }
 
 export interface ProvinceLayerProps {
+  /** Alternate board SVG URL; undefined mounts the vendored board.svg. */
+  svgUrl?: string;
   /** province id -> "owner-<slug>" class, or null for unowned. */
   ownerClassById: ReadonlyMap<string, string | null>;
   selection: string | null;

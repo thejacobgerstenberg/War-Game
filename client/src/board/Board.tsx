@@ -22,6 +22,8 @@ export function Board(props: BoardProps): JSX.Element {
     colorblind,
     className,
     overlays,
+    svgUrl,
+    onIdDiff,
   } = props;
 
   const [svgRoot, setSvgRoot] = useState<SVGSVGElement | null>(null);
@@ -58,20 +60,19 @@ export function Board(props: BoardProps): JSX.Element {
     [svgRoot],
   );
 
-  // Dev-only id drift report: data ids without SVG shapes render nothing;
-  // reportIdDiff is a no-op outside import.meta.env.DEV and never throws.
+  // Id drift diff: data ids without SVG shapes render nothing. The console
+  // report (reportIdDiff) is a no-op outside import.meta.env.DEV and never
+  // throws; onIdDiff additionally hands the diff to the parent (the demo
+  // page surfaces the counts so an SVG swap is verifiable at a glance).
   useEffect(() => {
     if (!svgRoot) return;
     const { provinceIds, seaZoneIds } = collectShapeIds(svgRoot);
-    reportIdDiff(
-      "provinces",
-      diffIds(provinceIds, mapData.provinces.map((p) => p.id)),
-    );
-    reportIdDiff(
-      "sea zones",
-      diffIds(seaZoneIds, mapData.seaZones.map((s) => s.id)),
-    );
-  }, [svgRoot, mapData]);
+    const provinces = diffIds(provinceIds, mapData.provinces.map((p) => p.id));
+    const seaZones = diffIds(seaZoneIds, mapData.seaZones.map((s) => s.id));
+    reportIdDiff("provinces", provinces);
+    reportIdDiff("sea zones", seaZones);
+    onIdDiff?.({ provinces, seaZones });
+  }, [svgRoot, mapData, onIdDiff]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -86,6 +87,7 @@ export function Board(props: BoardProps): JSX.Element {
       <div ref={panZoom.viewportRef} className="board-viewport">
         <div ref={panZoom.contentRef} className="board-content">
           <ProvinceLayer
+            svgUrl={svgUrl}
             ownerClassById={ownerClassById}
             selection={selection}
             moveTargets={moveTargets}

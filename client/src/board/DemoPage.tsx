@@ -3,12 +3,14 @@
  * All dev controls live here — the Board itself stays a controlled component.
  * Never imports ../socket or anything from screens/ (no socket connect).
  */
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { Board } from "./Board";
 import { BOARD_MAP, legalMoveTargets } from "./mapData";
 import { createDemoState } from "./fixtures/demoState";
-import type { DemoSetup } from "./types";
+import type { DemoSetup, IdDiff } from "./types";
+
+type BoardIdDiff = { provinces: IdDiff; seaZones: IdDiff };
 
 const rowStyle: CSSProperties = {
   display: "flex",
@@ -21,6 +23,14 @@ export function DemoPage(): JSX.Element {
   const [demo, setDemo] = useState<DemoSetup>(createDemoState);
   const [selection, setSelection] = useState<string | null>(null);
   const [colorblind, setColorblind] = useState(false);
+  const [idDiff, setIdDiff] = useState<BoardIdDiff | null>(null);
+  const onIdDiff = useCallback((diff: BoardIdDiff) => setIdDiff(diff), []);
+
+  // Test hook: /board-demo?svgUrl=<url> mounts an alternate board SVG
+  // (e.g. the canon-id e2e fixture) instead of the vendored board.svg.
+  const [svgUrl] = useState<string | undefined>(
+    () => new URLSearchParams(window.location.search).get("svgUrl") ?? undefined,
+  );
 
   const [ownerProvince, setOwnerProvince] = useState<string>(
     BOARD_MAP.provinces[0]?.id ?? "",
@@ -83,6 +93,8 @@ export function DemoPage(): JSX.Element {
           onSelect={setSelection}
           colorblind={colorblind}
           className="demo-board"
+          svgUrl={svgUrl}
+          onIdDiff={onIdDiff}
         />
       </div>
       <aside
@@ -170,12 +182,33 @@ export function DemoPage(): JSX.Element {
         </div>
 
         <div style={rowStyle}>
-          <button data-testid="select-thrace" onClick={() => setSelection("thrace")}>
-            Select Thrace
+          <button
+            data-testid="select-constantinople"
+            onClick={() => setSelection("constantinople")}
+          >
+            Select Constantinople
           </button>
           <div>
             Selection: <code>{selection ?? "none"}</code>
           </div>
+        </div>
+
+        <div style={rowStyle} data-testid="id-diff-panel">
+          <strong>SVG id diff (data vs mounted SVG)</strong>
+          {idDiff === null ? (
+            <div data-testid="id-diff-pending">no SVG mounted yet</div>
+          ) : (
+            <>
+              <div data-testid="id-diff-provinces">
+                provinces: {idDiff.provinces.missingInSvg.length} data-only /{" "}
+                {idDiff.provinces.extraInSvg.length} svg-only
+              </div>
+              <div data-testid="id-diff-seas">
+                seas: {idDiff.seaZones.missingInSvg.length} data-only /{" "}
+                {idDiff.seaZones.extraInSvg.length} svg-only
+              </div>
+            </>
+          )}
         </div>
 
         <div style={rowStyle}>
