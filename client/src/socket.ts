@@ -8,8 +8,24 @@ import type {
   ServerToClientEvents,
 } from "@imperium/shared";
 
-const SERVER_URL: string =
-  import.meta.env.VITE_SERVER_URL ?? "http://localhost:8080";
+/**
+ * Resolve the Socket.IO server URL from the Vite env:
+ * - `VITE_SERVER_URL` set (non-empty) → use it verbatim.
+ * - Unset in dev → `http://localhost:8080` (split-port `npm run dev` setup).
+ * - Unset in a production build → `undefined`, meaning same-origin: the client
+ *   connects to whatever origin served it (e.g. the nginx proxy in Docker).
+ */
+export function resolveServerUrl(env: {
+  VITE_SERVER_URL?: string;
+  DEV?: boolean;
+}): string | undefined {
+  if (env.VITE_SERVER_URL) {
+    return env.VITE_SERVER_URL;
+  }
+  return env.DEV ? "http://localhost:8080" : undefined;
+}
+
+const SERVER_URL: string | undefined = resolveServerUrl(import.meta.env);
 
 export type ImperiumSocket = Socket<
   ServerToClientEvents,
@@ -21,7 +37,10 @@ let socket: ImperiumSocket | null = null;
 /** Lazily create (and reuse) the shared socket connection. */
 export function getSocket(): ImperiumSocket {
   if (!socket) {
-    socket = io(SERVER_URL, { autoConnect: true });
+    socket =
+      SERVER_URL === undefined
+        ? io({ autoConnect: true }) // same-origin
+        : io(SERVER_URL, { autoConnect: true });
   }
   return socket;
 }
