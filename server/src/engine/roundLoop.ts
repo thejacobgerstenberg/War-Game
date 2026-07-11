@@ -70,9 +70,14 @@ function resetActionBudgets(state: GameState): GameState {
 }
 
 /**
- * §13.4 turn-order reshuffle: re-sort `turnOrder` so the lowest-prestige power
- * acts first (initiative to the underdog; tiebreak fewer provinces, then id for
- * determinism) and reset the active-player pointer to the head of the order.
+ * §13.4 turn-order reshuffle — the CATCH-UP lever. Re-sort `turnOrder` so the
+ * "lowest-prestige power acts first next round" (§13.4, verbatim: "initiative to
+ * the underdog"); §13.4 tiebreak is "fewer provinces". A final id comparison is a
+ * §14 determinism-only tiebreak (reached ONLY when prestige AND province count are
+ * equal), making the ordering total and reproducible — it does not alter the
+ * §13.4 rule. The active-player pointer resets to the head of the fresh order.
+ * §13.4 ratifies exactly this lowest-prestige-first order: NO first-player token,
+ * NO extra-action bonus — the whole catch-up is the initiative reshuffle itself.
  */
 function sortTurnOrder(state: GameState): GameState {
   const provinceCount = (playerId: string): number =>
@@ -179,9 +184,13 @@ export function advancePhase(state: GameState): GameState {
       //    already runs upkeep + starvation internally (§4.4), so upkeep is not
       //    invoked again here (that would double-charge grain).
       next = applyIncomePhase(next);
-      // §13.4 initiative to the underdog: lowest prestige acts first this round.
-      // (Equivalent to the §13.4 cleanup reshuffle — prestige is unchanged between
-      // END and the next INCOME — and this placement also orders the first round.)
+      // §13.4 catch-up: re-apply the underdog-first order at the head of the round.
+      // The CANONICAL §13.4 reshuffle is settled at CLEANUP (see the END case) on
+      // the final scored prestige; this INCOME re-sort (a) seeds ROUND 1, which has
+      // no preceding cleanup, and (b) re-orders after the Omen sub-phase, which may
+      // shift prestige/holdings, so players act in true lowest-prestige-first order
+      // for the round they are about to play (also the round-head behaviour pinned
+      // by actions.test.ts §13.4).
       next = sortTurnOrder(next);
       next = resetActionBudgets(next);
       return { ...next, phase: GamePhase.RECRUITMENT };
@@ -230,6 +239,14 @@ export function advancePhase(state: GameState): GameState {
       const round = next.round + 1;
       // §6.3 refresh the mercenary market for the new round.
       next = refreshMercMarket(next);
+      // §13.4 "At cleanup, `turnOrder` is re-sorted so the lowest-prestige power
+      // acts first next round" — the catch-up lever, settled HERE at cleanup on the
+      // freshly-scored prestige (step 1 scorePrestige) and post-revolt province
+      // counts (step 2 runRevolts). This is the canonical §13.4 placement; it runs
+      // AFTER the four-step cleanup order (scorePrestige → runRevolts → checkVictory
+      // → expireRoundModifiers), leaving that order intact, and ONLY in the
+      // round-advance branch (a game that just ended has no "next round" to reorder).
+      next = sortTurnOrder(next);
       return {
         ...next,
         phase: GamePhase.INCOME,

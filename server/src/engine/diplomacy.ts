@@ -7,9 +7,10 @@
  * resolution. Every number is read from balance.VASSAL / PRESTIGE_VALUES.
  *
  * Prestige convention (CONTRACT2 §12.8): one-time prestige deltas diplomacy owns
- * — the §11 betrayal penalties (−2/−4) and the §13.1 "win a war" award (+3) — are
- * POSTED as round-scoped `ActiveModifier { kind:"prestige_pending" }` and consumed
- * ONCE by prestige.scorePrestige at Cleanup; diplomacy never mutates
+ * — the §11 betrayal penalties (−2/−4), the §11 delta-5 unjustified-war cost (−1)
+ * and the §13.1 "win a war" award (+3) — are POSTED as round-scoped
+ * `ActiveModifier { kind:"prestige_pending" }` and consumed ONCE by
+ * prestige.scorePrestige at Cleanup; diplomacy never mutates
  * Player.prestige directly for these, avoiding a double-count. Per-round recurring
  * accrual diplomacy owns (vassal +1/round, royal marriage +2/round) is applied
  * directly in {@link runRevolts}, which the round loop runs at END.
@@ -33,7 +34,7 @@ import {
   type ResourceBundle,
   type Treaty,
 } from "@imperium/shared";
-import { PRESTIGE_VALUES, STACKING, VASSAL } from "./balance.js";
+import { PRESTIGE_VALUES, STACKING, UNJUSTIFIED_WAR_PRESTIGE, VASSAL } from "./balance.js";
 import { appendLog } from "./logEntry.js";
 import { makeRng, type Rng } from "./rng.js";
 import { EngineError } from "./actions.js";
@@ -240,15 +241,71 @@ export function resolveWar(
 }
 
 /**
+ * §11 "Casus belli" (delta 5) — best-effort plausibility gate for a DECLARE_WAR's
+ * optional `justification` (`claim` | `crusade` | `vassal-defense` | `ally-call`).
+ * A war resting on a VALID casus belli costs no prestige (and, per §11, earns the
+ * casus-belli +1-per-win bonus that combat/prestige apply); an ABSENT or
+ * IMPLAUSIBLE justification is UNJUSTIFIED and costs `UNJUSTIFIED_WAR_PRESTIGE`.
+ *
+ * The gate mirrors actions.ts's `isJustifiedWar` verbatim so the result is
+ * identical whether the reducer routes DECLARE_WAR through this subsystem
+ * (NEEDS-FROM-INTEGRATOR below) or the reducer's inline copy:
+ *  - `vassal-defense` requires the declarer to actually hold a vassal minor;
+ *  - `ally-call` requires an ALLIANCE partner who is itself currently at war;
+ *  - `claim` / `crusade` cannot be cheaply verified from GameState (a `claim`
+ *    rides the broken-royal-marriage casus belli that the RENOUNCE path already
+ *    posts), so they are trusted at declaration time;
+ *  - anything else (absent / unrecognised) is unjustified.
+ */
+function isJustifiedWar(state: GameState, actor: Player, action: GameAction): boolean {
+  if (action.type !== "DECLARE_WAR") return false;
+  switch (action.justification) {
+    case "claim":
+    case "crusade":
+      return true; // best-effort: trusted at declaration (see doc above)
+    case "vassal-defense":
+      return state.minors.some((m) => m.vassalOf === actor.id);
+    case "ally-call": {
+      const allyIds = new Set<string>();
+      for (const t of actor.treaties) {
+        if (t.type !== TreatyType.ALLIANCE) continue;
+        for (const party of t.parties) {
+          if (party !== actor.id) allyIds.add(party);
+        }
+      }
+      return state.wars.some((w) => allyIds.has(w.a) || allyIds.has(w.b));
+    }
+    default:
+      return false; // absent / unrecognised → unjustified
+  }
+}
+
+/**
  * DECLARE_WAR handler (§11) — diplomacy owns war START. Opens a {@link WarState}
  * on the unordered {actor, target-player} pair (de-duplicated via {@link addWar})
  * so combat/prestige can read it for the §13.1 "win a war +3" award and
  * casus-belli checks. Rejects a self-declaration (BAD_TARGET) or a faction no
  * seated player holds (NO_TARGET). Assumes the reducer already spent the action.
  *
+ * DELTA 5 (§11 "Casus belli"): an UNJUSTIFIED war (no valid
+ * claim/crusade/vassal-defense/ally-call — see {@link isJustifiedWar}) costs the
+ * declarer `UNJUSTIFIED_WAR_PRESTIGE` (1). Per the CONTRACT2 §12.8
+ * prestige_pending convention this subsystem already uses for its break/win
+ * deltas, the cost is POSTED as a round-scoped negative `prestige_pending` (via
+ * {@link postPrestigePending}; `value = −UNJUSTIFIED_WAR_PRESTIGE`, target = the
+ * declarer) that prestige.scorePrestige consumes ONCE at Cleanup — diplomacy
+ * never mutates `Player.prestige` directly, so there is no double-count. A
+ * JUSTIFIED war costs nothing here. The penalty is levied ONLY on a NEW war; a
+ * re-declaration of an existing war (`!added`) levies no fresh cost. The break
+ * penalties in {@link applyDiplomacy} (§11 −2/−4) are untouched by this path.
+ *
  * NEEDS-FROM-INTEGRATOR: actions.ts currently inlines an identical
- * `applyDeclareWar`; the integrator should route the reducer's DECLARE_WAR case
- * to this export so war-START bookkeeping lives in this subsystem alone.
+ * `applyDeclareWar` — INCLUDING the same unjustified-war prestige_pending. The
+ * integrator must route the reducer's DECLARE_WAR case to THIS export and delete
+ * the actions.ts inline copy so the war-START bookkeeping AND the delta-5 penalty
+ * have a single owner. No runtime double-apply exists today (the reducer calls
+ * exactly one of the two — currently only actions.ts's copy is wired), but the
+ * duplicate implementation must be collapsed onto this function.
  */
 export function declareWar(state: GameState, action: GameAction): GameState {
   if (action.type !== "DECLARE_WAR") {
@@ -262,16 +319,39 @@ export function declareWar(state: GameState, action: GameAction): GameState {
   if (!defender) {
     throw new EngineError("NO_TARGET", `No seated player is playing ${action.target}.`);
   }
+  const justified = isJustifiedWar(state, actor, action);
   const next = clone(state);
   const added = addWar(next, action.player, defender.id);
+
+  // DELTA 5 (§11): an unjustified NEW war costs the declarer 1 prestige. Posted
+  // as a round-scoped negative prestige_pending (target = declarer) so
+  // prestige.scorePrestige applies it once at Cleanup; a negative value is never
+  // folded into the conquest track (prestige.ts requires value > 0). Skipped for a
+  // justified war or a re-declaration (already at war).
+  const penalised = added && !justified;
+  if (penalised) {
+    postPrestigePending(next, action.player, -UNJUSTIFIED_WAR_PRESTIGE, "unjustified_war");
+  }
+
   return appendLog(next, {
     round: next.round,
     phase: next.phase,
     type: "diplomacy",
     actors: [action.player],
     targets: [defender.id],
-    message: `${actor.name} declares war on ${defender.name} (${action.target}).`,
-    data: { target: action.target, alreadyAtWar: !added, startedRound: next.round },
+    message: `${actor.name} declares ${
+      justified ? "a justified war" : "an unjustified war"
+    } on ${defender.name} (${action.target})${
+      penalised ? ` (−${UNJUSTIFIED_WAR_PRESTIGE} prestige)` : ""
+    }.`,
+    data: {
+      target: action.target,
+      alreadyAtWar: !added,
+      startedRound: next.round,
+      justification: action.justification ?? null,
+      justified,
+      unjustifiedPenalty: penalised ? UNJUSTIFIED_WAR_PRESTIGE : 0,
+    },
   });
 }
 

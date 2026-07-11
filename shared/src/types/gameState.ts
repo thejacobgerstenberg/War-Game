@@ -560,9 +560,14 @@ export interface Player {
    */
   tacticHand?: TacticCardId[];
   /**
-   * True once this player has unlocked the Great Bombard (§8.4). Set by the actions
-   * layer in response to the Omen #34 `kind:'unlock'` modifier whose
-   * `data.unlock === "GREAT_BOMBARD"` targets this player's faction (see CONTRACT2).
+   * @deprecated delta 3 (CANON GREAT BOMBARD correction). The Great Bombard is no
+   * longer acquired via an "unlock then RECRUIT" path — the single piece is SPAWNED
+   * directly by Omen event #34 (`great-bombard-forged`) and tracked on
+   * {@link GameState.greatBombard}. This per-player boolean is retained ONLY so the
+   * existing events/combat/actions code keeps compiling until those agents migrate
+   * to the {@link GameState.greatBombard} singleton; do NOT key new acquisition
+   * logic on it. Was: set by the actions layer from the Omen #34 `kind:'unlock'`
+   * modifier (`data.unlock === "GREAT_BOMBARD"`) for the targeted faction.
    */
   greatBombardUnlocked?: boolean;
   /**
@@ -657,6 +662,29 @@ export interface GameState {
   activeModifiers: ActiveModifier[];
   /** Constantinople sudden-death tracker. */
   constantinopleHold: { faction: Faction | null; rounds: number };
+  /**
+   * The one-per-game Great Bombard (§8.4), delta 3 (CANON correction). The piece is
+   * SPAWNED by Omen event #34 (`great-bombard-forged`) — placed in the Ottoman
+   * capital if the Ottoman is in play, else auctioned (gold + marble) — and NEVER
+   * recruited or rebuilt. This singleton records the live piece:
+   *   - `inPlay`        — has event #34 resolved and put the gun on the board;
+   *   - `ownerId`       — player id currently holding it (transfers INTACT to a
+   *                        victor if its escort/garrison is defeated), or null;
+   *   - `provinceId`    — province the piece currently occupies, or null;
+   *   - `emplacedRound` — the round it ENTERED its current emplacement; it cannot
+   *                        fire (bombard) until `emplacedRound + GREAT_BOMBARD.
+   *                        emplacementRounds` (the ratified 1-round emplacement).
+   * Optional so pre-existing GameState fixtures/literals stay valid; initialised
+   * NOT-in-play in `createInitialState`. Written by events (#34 spawn/placement) +
+   * combat (capture-passes-intact, re-emplacement on move); read by combat (the
+   * emplacement fire-gate) and actions.
+   */
+  greatBombard?: {
+    inPlay: boolean;
+    ownerId: string | null;
+    provinceId: string | null;
+    emplacedRound: number;
+  };
   /** Winner faction once the game has ended. */
   winner?: Faction;
   /** Seed for the deterministic RNG. */

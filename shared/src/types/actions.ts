@@ -185,6 +185,16 @@ export interface DeclareWarAction {
   player: string;
   /** The faction being declared upon. */
   target: Faction;
+  /**
+   * The casus belli this declaration rests on (delta 5, §11 "Casus belli"). A
+   * valid justification — a broken-marriage/seized-key-city `claim`, a `crusade`,
+   * defence of a `vassal`, or answering an `ally-call` — lets the aggressor attack
+   * "without the usual prestige cost". ABSENT (or an invalid/none justification)
+   * means the war is UNJUSTIFIED and costs `balance.UNJUSTIFIED_WAR_PRESTIGE`
+   * prestige. Consumed by actions.ts (validate the claim) + diplomacy.ts (apply
+   * the unjustified-war prestige penalty / grant the casus-belli bonus).
+   */
+  justification?: "claim" | "crusade" | "vassal-defense" | "ally-call";
 }
 
 /** Call up a vassal minor's levy (§11.5), subject to its levy cooldown. */

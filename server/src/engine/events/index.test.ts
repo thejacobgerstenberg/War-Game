@@ -6,12 +6,12 @@
  * draw from a seeded RNG, era-transition retire/shuffle across the Era I/II/III
  * boundaries, empty-deck reshuffle, the 4–5 player "gathering omen" reveal
  * (CONTRACT §9 item 9 / balance.OMEN_DRAW), a spread of representative card
- * effects (incl. #34 Great Bombard unlock and #46 Fall of Constantinople sudden
- * death), and that Standing/Persistent cards register an ActiveModifier on the
- * side-channel. Cited card numbers reference EVENT_CARDS.md.
+ * effects (incl. #34 Great Bombard SPAWN — delta 3 corrected model — and #46 Fall
+ * of Constantinople sudden death), and that Standing/Persistent cards register an
+ * ActiveModifier on the side-channel. Cited card numbers reference EVENT_CARDS.md.
  */
 import { describe, it, expect } from "vitest";
-import { Faction, type GameState } from "@imperium/shared";
+import { Faction, UnitType, type GameState } from "@imperium/shared";
 import { createInitialState, type SeatInput } from "../gameState.js";
 import { drawOmen, resolveCard } from "./index.js";
 import { omenCardId, OMEN_CARD_BY_ID } from "./cards.js";
@@ -180,22 +180,80 @@ describe("resolveCard — representative card effects", () => {
     expect(player(after, "p2").treasury.faith).toBe(ottFaith); // Ottoman unchanged
   });
 
-  it("#34 The Great Bombard Forged unlocks the Great Bombard for the Ottoman (ActiveModifier)", () => {
-    const s = fresh(seats4);
+  // delta 3 (CORRECTED CANON — BALANCE_DELTAS.md "GREAT BOMBARD MODEL", GD §8.4,
+  // EVENT_CARDS #34): #34 SPAWNS the Great Bombard immediately + free onto the
+  // GameState.greatBombard singleton — no "unlock then RECRUIT" modifier any more.
+  it("#34 with the Ottoman in play spawns the Great Bombard FREE in the Ottoman capital (edirne), inPlay + emplacedRound set", () => {
+    const s = fresh(seats4); // Ottoman = p2
+    s.round = 11; // Era III round the card is drawn in
     const after = resolveCard(s, omenCardId(34));
-    const unlock = after.activeModifiers.find((m) => m.kind === "unlock");
-    expect(unlock).toBeDefined();
-    expect(unlock!.data!.unlock).toBe("GREAT_BOMBARD");
-    expect(unlock!.target!.faction).toBe(Faction.OTTOMAN);
-    expect(unlock!.scope).toBe("game");
+    // Singleton tracker: in play, owned by the Ottoman, emplaced this round.
+    expect(after.greatBombard!.inPlay).toBe(true);
+    expect(after.greatBombard!.ownerId).toBe("p2");
+    expect(after.greatBombard!.provinceId).toBe("edirne"); // Ottoman capital
+    expect(after.greatBombard!.emplacedRound).toBe(11);
+    // The GREAT_BOMBARD variant piece (base SIEGE) is emplaced at the capital.
+    const piece = after.armies.find((a) =>
+      (a.variants ?? []).some((v) => v.variant === "GREAT_BOMBARD" && v.count > 0),
+    );
+    expect(piece).toBeDefined();
+    expect(piece!.ownerId).toBe("p2");
+    expect(piece!.locationId).toBe("edirne");
+    expect(piece!.variants!.find((v) => v.variant === "GREAT_BOMBARD")!.base).toBe(UnitType.SIEGE);
+    // Retired model: no `kind:"unlock"` modifier is posted any more.
+    expect(after.activeModifiers.some((m) => m.kind === "unlock")).toBe(false);
   });
 
-  it("#34 with no Ottoman in play posts no unlock (auction path, faction-specific no-op)", () => {
-    const s = fresh(seats2NoOttoman);
+  it("#34 with no Ottoman in play auctions the Bombard to the highest gold+marble holder, placed in their capital", () => {
+    const s = fresh(seats2NoOttoman); // p1 Byzantium, p3 Venice
+    // Make Venice (p3) the clear highest combined gold+marble holder.
+    player(s, "p3").treasury.gold += 50;
+    player(s, "p1").treasury.gold = 0;
+    player(s, "p1").treasury.marble = 0;
     const after = resolveCard(s, omenCardId(34));
-    expect(after.activeModifiers.some((m) => m.kind === "unlock")).toBe(false);
-    // The effect fn still resolves, logging Orban's auction.
+    expect(after.greatBombard!.inPlay).toBe(true);
+    expect(after.greatBombard!.ownerId).toBe("p3"); // Venice won the auction
+    expect(after.greatBombard!.provinceId).toBe("venice"); // Venice's capital
+    const piece = after.armies.find((a) =>
+      (a.variants ?? []).some((v) => v.variant === "GREAT_BOMBARD" && v.count > 0),
+    );
+    expect(piece!.ownerId).toBe("p3");
+    expect(piece!.locationId).toBe("venice");
+    // The effect fn logs Orban's auction.
     expect(after.log.some((e) => /auction|highest bidder/i.test(e.message))).toBe(true);
+    expect(after.activeModifiers.some((m) => m.kind === "unlock")).toBe(false);
+  });
+
+  it("#34 auction ties break by turn order (earliest seated wins)", () => {
+    const s = fresh(seats2NoOttoman); // p1 Byzantium (earlier in turn order), p3 Venice
+    // Force an exact gold+marble tie between p1 and p3.
+    for (const id of ["p1", "p3"]) {
+      player(s, id).treasury.gold = 10;
+      player(s, id).treasury.marble = 5;
+    }
+    const after = resolveCard(s, omenCardId(34));
+    // p1 precedes p3 in turnOrder → wins the tie.
+    expect(s.turnOrder.indexOf("p1")).toBeLessThan(s.turnOrder.indexOf("p3"));
+    expect(after.greatBombard!.ownerId).toBe("p1");
+  });
+
+  it("#34 resolving a SECOND time does NOT spawn a second Great Bombard (exactly one per game)", () => {
+    const s = fresh(seats4);
+    s.round = 11;
+    const once = resolveCard(s, omenCardId(34));
+    const firstOwner = once.greatBombard!.ownerId;
+    const firstProvince = once.greatBombard!.provinceId;
+    // A reshuffle edge re-draws #34 in a later round; the guard makes it a no-op.
+    const twice = resolveCard({ ...once, round: 14 }, omenCardId(34));
+    // Still exactly one piece, unchanged owner/emplacement (not re-emplaced to r14).
+    const pieces = twice.armies.filter((a) =>
+      (a.variants ?? []).some((v) => v.variant === "GREAT_BOMBARD" && v.count > 0),
+    );
+    expect(pieces.length).toBe(1);
+    expect(twice.greatBombard!.ownerId).toBe(firstOwner);
+    expect(twice.greatBombard!.provinceId).toBe(firstProvince);
+    expect(twice.greatBombard!.emplacedRound).toBe(11); // NOT re-set to 14
+    expect(twice.log.some((e) => e.data && "alreadyInPlay" in e.data)).toBe(true);
   });
 
   it("#28 Papal Interdict does NOT post a global faith modifier (EVENT_CARDS Era II #28 targets one faction)", () => {

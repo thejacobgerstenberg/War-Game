@@ -30,6 +30,13 @@ import {
 } from "../economy.js";
 import { EngineError } from "../actions.js";
 import { makeRng } from "../rng.js";
+import { MERC_REVOLT_PILLAGE } from "../balance.js";
+
+/** Tag an army's units as mercenaries (§6.2/§4.4). */
+function tagMercs(stack: Army, mercs: Partial<Record<UnitType, number>>): Army {
+  (stack as { mercenaries?: Partial<Record<UnitType, number>> }).mercenaries = mercs;
+  return stack;
+}
 
 const seats: SeatInput[] = [
   { id: "p1", name: "Basil", faction: Faction.BYZANTIUM, isHost: true },
@@ -705,5 +712,113 @@ describe("upkeep — §4.4/§6.3 elite-mercenary variant heads (FL-10)", () => {
     const a = out.armies[0];
     expect(a.variants ?? []).toHaveLength(0); // Varangian head fled first...
     expect(a.units[UnitType.LEVY]).toBe(1); // ...regular LEVY survives
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §4.4/§11 DELTA 5 — unpaid-mercenary desertion PILLAGES the host province
+// ---------------------------------------------------------------------------
+
+describe("upkeep — §4.4/§11 unpaid-merc desertion pillages host (DELTA 5)", () => {
+  it("strips MERC_REVOLT_PILLAGE gold from the host province's owner when an unpaid merc deserts", () => {
+    const state = fresh();
+    // One mercenary LEVY hosted at selymbria (owned by p1); no grain to feed it.
+    state.armies = [
+      tagMercs(army("p1", "selymbria", { [UnitType.LEVY]: 1 }), { [UnitType.LEVY]: 1 }),
+    ];
+    state.fleets = [];
+    state.players[0].treasury.grain = 0; // due 2 (merc ×2) → deficit 2 → merc deserts
+    state.players[0].treasury.gold = 10;
+    const out = upkeep(state);
+    expect(out.armies[0].units[UnitType.LEVY]).toBe(0); // unpaid merc deserted
+    // DELTA 5: the deserting company pillages its host (selymbria, p1-owned).
+    expect(out.players[0].treasury.gold).toBe(10 - MERC_REVOLT_PILLAGE.pillageGold);
+    // A pillage entry is chronicled.
+    expect(out.log.some((l) => (l.data as { pillageGold?: number })?.pillageGold)).toBe(
+      true,
+    );
+  });
+
+  it("pillages the HOST province's owner, not the mercenary's owner (mercs on foreign soil)", () => {
+    const state = fresh();
+    // p1's mercenaries campaign on Ottoman soil (edirne is p2-owned).
+    state.armies = [
+      tagMercs(army("p1", "edirne", { [UnitType.LEVY]: 1 }), { [UnitType.LEVY]: 1 }),
+    ];
+    state.fleets = [];
+    state.players[0].treasury.grain = 0; // deficit 2 → the merc deserts
+    state.players[0].treasury.gold = 10; // merc owner
+    state.players[1].treasury.gold = 10; // host (edirne) owner
+    const out = upkeep(state);
+    // §4.4/§11: the HOST province owner (p2) is robbed; the merc owner (p1) is not.
+    expect(out.players[1].treasury.gold).toBe(10 - MERC_REVOLT_PILLAGE.pillageGold);
+    expect(out.players[0].treasury.gold).toBe(10);
+  });
+
+  it("does NOT pillage on ordinary (non-mercenary) desertion", () => {
+    const state = fresh();
+    // A regular (un-tagged) LEVY that starves and deserts — no pillage.
+    state.armies = [army("p1", "selymbria", { [UnitType.LEVY]: 1 })];
+    state.fleets = [];
+    state.players[0].treasury.grain = 0; // due 1 → deficit 1 → regular LEVY deserts
+    state.players[0].treasury.gold = 10;
+    const out = upkeep(state);
+    expect(out.armies[0].units[UnitType.LEVY]).toBe(0); // deserted...
+    expect(out.players[0].treasury.gold).toBe(10); // ...but no pillage (DELTA 5 merc-only)
+  });
+
+  it("clamps the pillage at zero gold (never negative)", () => {
+    const state = fresh();
+    state.armies = [
+      tagMercs(army("p1", "selymbria", { [UnitType.LEVY]: 1 }), { [UnitType.LEVY]: 1 }),
+    ];
+    state.fleets = [];
+    state.players[0].treasury.grain = 0;
+    state.players[0].treasury.gold = 1; // less than pillageGold (4) → floors at 0
+    const out = upkeep(state);
+    expect(out.players[0].treasury.gold).toBe(0);
+  });
+
+  it("does not pillage when the host province is neutral (no owner to rob)", () => {
+    const state = fresh();
+    const merc = tagMercs(army("p1", "selymbria", { [UnitType.LEVY]: 1 }), {
+      [UnitType.LEVY]: 1,
+    });
+    state.armies = [merc];
+    state.fleets = [];
+    state.provinces.find((p) => p.id === "selymbria")!.ownerId = null; // neutral host
+    state.players[0].treasury.grain = 0;
+    state.players[0].treasury.gold = 10;
+    const out = upkeep(state);
+    expect(out.armies[0].units[UnitType.LEVY]).toBe(0); // still deserts
+    expect(out.players[0].treasury.gold).toBe(10); // nobody controls the host → no theft
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §5.2 CLARIFICATION — a blockaded hop HALVES (does NOT cancel) route income;
+// only a SEVERED hop zeroes it.
+// ---------------------------------------------------------------------------
+
+describe("trade routes — §5.2 blockade halves, severed cancels (CLARIFICATION §5.2)", () => {
+  it("a blockaded-but-escorted hop earns HALF the route income, strictly greater than zero", () => {
+    const state = fresh();
+    state.seaZones.find((z) => z.id === "bosphorus")!.blockadedBy = "p2"; // enemy fleet
+    state.fleets = [galleyFleet("p1", "bosphorus")]; // friendly escort ⇒ blockaded, not severed
+    addRoute(state, "p1", "constantinople", "selymbria", ["bosphorus"]);
+    const withBlockade = computeIncome(state).perPlayer.p1.gold;
+    // Base route gold 6 (blockaded hop not counted as a controlled hop) → ×0.5 = 3.
+    expect(withBlockade).toBe(13 + 3);
+    // §5.2: HALVED, never cancelled — the route still pays (> the no-route baseline).
+    expect(withBlockade).toBeGreaterThan(13);
+  });
+
+  it("a severed hop (enemy fleet, no escort) zeroes the route income", () => {
+    const state = fresh();
+    state.seaZones.find((z) => z.id === "bosphorus")!.blockadedBy = "p2";
+    state.fleets = []; // no friendly escort on the blockaded hop ⇒ SEVERED
+    addRoute(state, "p1", "constantinople", "selymbria", ["bosphorus"]);
+    // §5.2: only a severed route = 0; province gold alone, no route contribution.
+    expect(computeIncome(state).perPlayer.p1.gold).toBe(13);
   });
 });

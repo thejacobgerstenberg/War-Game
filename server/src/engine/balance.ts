@@ -494,6 +494,21 @@ export const TACTIC = {
   uniqueDesigns: 24,
 } as const;
 
+/**
+ * delta 1 (ratified `treason-at-the-gate` tactic). The card may be played ONLY
+ * against a besieged walled city whose garrison is `<= maxGarrison`, AND its
+ * required "2+ consecutive siege rounds" clock may start no earlier than game
+ * round `minGameRound` (early-game treason is disallowed). Consumed by the tactics
+ * subsystem when validating/resolving the card (structured so the §2 tuning table
+ * can overwrite the values).
+ */
+export const TREASON_GATE = {
+  /** Max defending garrison the card may be played against. */
+  maxGarrison: 4,
+  /** Earliest game round the consecutive-siege clock may begin. */
+  minGameRound: 6,
+} as const;
+
 /** Siege bombardment, garrison starvation and special-bombard values (§8). */
 export const SIEGE = {
   /** Wall HP damage per SIEGE unit, indexed by the d6 roll (1..6). */
@@ -537,12 +552,19 @@ export const SIEGE = {
  * `UnitVariantStack` variant tag (base `SIEGE`), consistent with the 10 faction
  * uniques — it is NOT a `UnitType` member and NOT recruitable. Its per-die wall
  * damage reuses `SIEGE.bombardDamage`; it rolls `bombardDice` dice per round.
+ *
+ * delta 3 (CANON correction): the piece is SPAWNED directly on event #34 resolution
+ * (placed in the Ottoman capital, else auctioned) and tracked on
+ * `GameState.greatBombard` — there is NO "unlock then RECRUIT" acquisition path.
+ * `recruitable:false`/`onePerGame:true` stay true in the new model; the COMBAT
+ * stats (`bombardDice`, `bombardVsWalls`, `ignoresMasonryCap`, `maxWallDamagePerRound`)
+ * are UNCHANGED. Only the acquisition/gating semantics changed.
  */
 export const GREAT_BOMBARD = {
   /** Reserved {@link UnitVariantStack.variant} tag; base type is SIEGE. */
   variant: "GREAT_BOMBARD",
   base: UnitType.SIEGE,
-  /** Free entry — no recruit cost (enters via the Omen only). */
+  /** Free entry — no recruit cost (spawned by the Omen only). */
   cost: {} as Partial<ResourceBundle>,
   /** Grain upkeep/round; if unpaid it falls SILENT (no bombard) — it never deserts. */
   grainUpkeep: 3,
@@ -556,9 +578,21 @@ export const GREAT_BOMBARD = {
   ignoresMasonryCap: true,
   /** Exactly one exists per game. */
   onePerGame: true,
-  /** Cannot be recruited, rebuilt or duplicated. */
+  /** Cannot be recruited, rebuilt or duplicated (spawned by event #34 only). */
   recruitable: false,
-  /** The Omen card (EVENT_CARDS.md #34) that forges/unlocks it. */
+  /**
+   * delta 3: rounds a freshly-placed/relocated Bombard must sit EMPLACED before it
+   * may first fire (bombard) — it cannot bombard the round it arrives at a wall.
+   * Combat gates the first bombardment on
+   * `state.round >= greatBombard.emplacedRound + emplacementRounds`.
+   */
+  emplacementRounds: 1,
+  /**
+   * @deprecated delta 3 — the Bombard is no longer "unlocked" for a recruit; event
+   * #34 SPAWNS the piece and the events subsystem sets `GameState.greatBombard`.
+   * Retained (data-only, not consumed as gating) for provenance / the events log;
+   * do not key acquisition on it. The forging card is still EVENT_CARDS.md #34.
+   */
   unlockOmenId: "omen-34",
   /** Moves 1 province/round (a full Move action); may NOT enter MOUNTAINS. */
   movePerRound: 1,
@@ -633,6 +667,18 @@ export const MERC_MARKET = {
   npcHireRoll: 2,
 } as const;
 
+/**
+ * delta 5 (unpaid-mercenary desertion). When a mercenary company deserts because
+ * its upkeep went unpaid (§4.4), the departing mercs PILLAGE the host province:
+ * this much gold is stripped from the province's owner as the mercs sack their way
+ * out. A flat magnitude (structured so the §2 tuning table can overwrite it).
+ * Consumed by economy.ts (`upkeep`) when it processes an unpaid-merc desertion.
+ */
+export const MERC_REVOLT_PILLAGE = {
+  /** Gold pillaged from the host province owner on unpaid-merc desertion. */
+  pillageGold: 4,
+} as const;
+
 // ---------------------------------------------------------------------------
 // §4 Economy: tax, market, trade
 // ---------------------------------------------------------------------------
@@ -686,6 +732,20 @@ export const TRADE = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// §11 Diplomacy
+// ---------------------------------------------------------------------------
+
+/**
+ * delta 5 (§11 "Casus belli"). Prestige LOST for declaring war WITHOUT a valid
+ * justification (a `claim` / `crusade` / `vassal-defense` / `ally-call` on the
+ * DECLARE_WAR action). A justified war costs nothing here and additionally grants
+ * the §11 casus-belli +1-per-win bonus. Consumed by diplomacy.ts (applied when a
+ * DECLARE_WAR resolves with an absent/invalid justification) + actions.ts (validate
+ * the claim). Positive magnitude = prestige subtracted.
+ */
+export const UNJUSTIFIED_WAR_PRESTIGE = 1;
+
+// ---------------------------------------------------------------------------
 // §11.5 Vassals & minors
 // ---------------------------------------------------------------------------
 
@@ -735,6 +795,21 @@ export const VASSAL = {
 // ---------------------------------------------------------------------------
 // §13 Prestige & victory
 // ---------------------------------------------------------------------------
+
+/**
+ * delta 2 (ratified DIMINISHING trade-monopoly prestige). §13.1's flat "+2/round
+ * per monopolised route" is superseded: a player scores `first` prestige for their
+ * FIRST monopolised major route/sea each Cleanup and `additional` for EACH further
+ * monopoly that round (diminishing, not flat +2 each). Consumed by prestige.ts when
+ * scoring the trade-monopoly row. (`PRESTIGE_VALUES.tradeMonopolyPerRound` = 2 is
+ * kept for back-compat = the `first` value; prestige.ts should read this block.)
+ */
+export const MONOPOLY_PRESTIGE = {
+  /** Prestige for the first monopolised route/sea this round. */
+  first: 2,
+  /** Prestige for each additional monopoly beyond the first (diminishing). */
+  additional: 1,
+} as const;
 
 /** Prestige source values (§13.1). Great works keyed by GreatWorkType. */
 export const PRESTIGE_VALUES = {

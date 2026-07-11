@@ -20,7 +20,7 @@ import {
 import { createInitialState, type SeatInput } from "./gameState.js";
 import { getModifiers } from "./modifiers.js";
 import { makeRng } from "./rng.js";
-import { TACTIC_HAND_LIMIT } from "./balance.js";
+import { TACTIC_HAND_LIMIT, TREASON_GATE } from "./balance.js";
 import {
   drawTactic,
   discardToHandLimit,
@@ -282,5 +282,94 @@ describe("playTactic / resolveTacticEffect — modifiers (§7.7 / CONTRACT2 §12
     });
     expect(player(s1, "p2").treasury.gold).toBe(0);
     expect(player(s1, "p1").treasury.gold).toBe(thiefBefore + 1);
+  });
+});
+
+describe("treason-at-the-gate double-brake (DELTA 1, GD §7.7 + ratification)", () => {
+  const rng = makeRng(1);
+  const { maxGarrison, minGameRound } = TREASON_GATE; // 4, 6
+
+  /**
+   * p2 (Ottoman) besieges constantinople (p1). `garrison` sets the defender
+   * garrison; the siege's consecutive-round clock started at
+   * `round - roundsElapsed`. p2 holds treason-at-the-gate and enough gold for its
+   * printed cost. Battle "b1" is the (siege) assault.
+   */
+  function treasonSetup(opts: { round: number; roundsElapsed: number; garrison: number }): GameState {
+    let s = withHand(fresh(), "p2", ["treason-at-the-gate"]);
+    s = {
+      ...s,
+      round: opts.round,
+      provinces: s.provinces.map((p) =>
+        p.id === "constantinople" ? { ...p, ownerId: "p1", garrison: opts.garrison } : p,
+      ),
+      players: s.players.map((p) =>
+        p.id === "p2" ? { ...p, treasury: { ...p.treasury, gold: 20 } } : p,
+      ),
+      siegeStates: [
+        {
+          provinceId: "constantinople",
+          besiegerId: "p2",
+          besiegingArmyIds: ["a2"],
+          roundsElapsed: opts.roundsElapsed,
+          grainStores: 0,
+          breached: false,
+          circumvallated: true,
+        },
+      ],
+      pendingBattles: [
+        {
+          id: "b1",
+          provinceId: "constantinople",
+          attackerId: "p2",
+          defenderId: "p1",
+          attackerStackIds: ["a2"],
+          defenderStackIds: ["a-def"],
+          isSiege: true,
+        },
+      ],
+    };
+    return s;
+  }
+
+  it("allows treason when garrison <= max AND the siege began at/after minGameRound", () => {
+    // round 8, elapsed 2 → siege started round 6 (== minGameRound); garrison 3 (<= 4).
+    const s0 = treasonSetup({ round: minGameRound + 2, roundsElapsed: 2, garrison: maxGarrison - 1 });
+    const s1 = queueTactic(s0, "b1", "attacker", tid("treason-at-the-gate"));
+    expect(s1.pendingBattles[0].attackerTactics).toEqual([tid("treason-at-the-gate")]);
+    expect(player(s1, "p2").tacticHand).toEqual([]);
+
+    // And it resolves: playTactic posts the siege_mod autoCapture and removes the card.
+    const s2 = playTactic(s0, s0.pendingBattles[0], "attacker", tid("treason-at-the-gate"), rng);
+    const mods = getModifiers(s2, "siege_mod", { faction: Faction.OTTOMAN, provinceId: "constantinople" });
+    expect(mods.some((m) => m.data?.autoCapture === true)).toBe(true);
+    expect(s2.tacticRemoved).toContain(tid("treason-at-the-gate"));
+  });
+
+  it("rejects treason against a garrison larger than maxGarrison", () => {
+    // garrison 5 (> 4); siege timing is otherwise valid (started round 6).
+    const s0 = treasonSetup({ round: minGameRound + 2, roundsElapsed: 2, garrison: maxGarrison + 1 });
+    expect(() => queueTactic(s0, "b1", "attacker", tid("treason-at-the-gate"))).toThrow(/garrison/);
+    // Enforced at play time too (before the card's cost is charged).
+    expect(() =>
+      playTactic(s0, s0.pendingBattles[0], "attacker", tid("treason-at-the-gate"), rng),
+    ).toThrow(/garrison/);
+  });
+
+  it("rejects treason when the siege clock started before minGameRound", () => {
+    // round 6, elapsed 2 → siege started round 4 (< 6); garrison 3 (<= 4).
+    const s0 = treasonSetup({ round: minGameRound, roundsElapsed: 2, garrison: maxGarrison - 1 });
+    expect(() => queueTactic(s0, "b1", "attacker", tid("treason-at-the-gate"))).toThrow(/round/);
+    expect(() =>
+      playTactic(s0, s0.pendingBattles[0], "attacker", tid("treason-at-the-gate"), rng),
+    ).toThrow(/round/);
+  });
+
+  it("allows a non-treason card without invoking the siege gate", () => {
+    // veterans-of-the-border on the same siege battle: no garrison/clock check.
+    let s0 = treasonSetup({ round: 2, roundsElapsed: 0, garrison: maxGarrison + 3 });
+    s0 = withHand(s0, "p2", ["veterans-of-the-border"]);
+    const s1 = queueTactic(s0, "b1", "attacker", tid("veterans-of-the-border"));
+    expect(s1.pendingBattles[0].attackerTactics).toEqual([tid("veterans-of-the-border")]);
   });
 });

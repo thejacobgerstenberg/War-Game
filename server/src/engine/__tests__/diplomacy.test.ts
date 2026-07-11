@@ -28,7 +28,7 @@ import {
 } from "../diplomacy.js";
 import { scorePrestige } from "../prestige.js";
 import { EngineError } from "../actions.js";
-import { PRESTIGE_VALUES, VASSAL } from "../balance.js";
+import { PRESTIGE_VALUES, UNJUSTIFIED_WAR_PRESTIGE, VASSAL } from "../balance.js";
 import { makeRng } from "../rng.js";
 
 const seats: SeatInput[] = [
@@ -518,12 +518,140 @@ describe("declareWar — §11 war START (diplomacy-owned)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// §11 delta 5 — unjustified-war prestige cost (posted as prestige_pending)
+// ---------------------------------------------------------------------------
+
+describe("declareWar — §11 delta 5 unjustified-war cost", () => {
+  /** The prestige_pending posted against `playerId`, if any (CONTRACT2 §12.8). */
+  const pendingFor = (s: GameState, playerId: string) =>
+    s.activeModifiers.find(
+      (m) => m.kind === "prestige_pending" && m.data?.playerId === playerId,
+    );
+
+  const declareWarAction = (
+    player: string,
+    target: Faction,
+    justification?: DeclareWarAction["justification"],
+  ): DeclareWarAction => ({ type: "DECLARE_WAR", player, target, justification });
+
+  it("an UNJUSTIFIED DECLARE_WAR posts a −1 prestige_pending on the declarer (not a direct mutation)", () => {
+    const s = fresh();
+    const before = s.players[0].prestige;
+    // No justification → unjustified war (§11 delta 5).
+    const out = declareWar(s, declareWarAction("p1", Faction.OTTOMAN));
+    // Prestige is NOT mutated directly; the −1 rides a round-scoped prestige_pending.
+    expect(out.players[0].prestige).toBe(before);
+    const pend = pendingFor(out, "p1");
+    expect(pend?.value).toBe(-UNJUSTIFIED_WAR_PRESTIGE); // −1
+    expect(pend?.scope).toBe("round");
+    expect(pend?.data?.reason).toBe("unjustified_war");
+    // target = the declarer's faction.
+    expect(pend?.target?.faction).toBe(Faction.BYZANTIUM);
+    // War bookkeeping still happens.
+    expect(out.wars).toContainEqual({ a: "p1", b: "p2", startedRound: s.round });
+  });
+
+  it("scorePrestige consumes the unjustified-war −1 ONCE and never folds it into the conquest track", () => {
+    const control = scorePrestige(fresh()).players[0].prestige;
+    const declared = declareWar(fresh(), declareWarAction("p1", Faction.OTTOMAN));
+    const scored = scorePrestige(declared);
+    expect(scored.players[0].prestige).toBe(control - UNJUSTIFIED_WAR_PRESTIGE); // −1 once
+    expect(scored.activeModifiers.some((m) => m.kind === "prestige_pending")).toBe(false);
+    // A negative penalty is NOT folded into the conquest track (prestige.ts value>0 gate).
+    expect(scored.players[0].conquestPrestige ?? 0).toBe(0);
+  });
+
+  it.each(["claim", "crusade"] as const)(
+    "a JUSTIFIED (%s) DECLARE_WAR posts NO prestige_pending and costs nothing",
+    (justification) => {
+      const s = fresh();
+      const before = s.players[0].prestige;
+      const out = declareWar(s, declareWarAction("p1", Faction.OTTOMAN, justification));
+      expect(pendingFor(out, "p1")).toBeUndefined();
+      expect(out.players[0].prestige).toBe(before);
+      expect(out.wars).toContainEqual({ a: "p1", b: "p2", startedRound: s.round });
+      const logged = [...out.log].reverse().find((l) => l.type === "diplomacy");
+      expect(logged?.data?.justified).toBe(true);
+      expect(logged?.data?.unjustifiedPenalty).toBe(0);
+    },
+  );
+
+  it("vassal-defense is justified ONLY when the declarer actually holds a vassal", () => {
+    // No vassal held → the claim is implausible → unjustified (still costs −1).
+    const noVassal = declareWar(
+      fresh(),
+      declareWarAction("p1", Faction.OTTOMAN, "vassal-defense"),
+    );
+    expect(pendingFor(noVassal, "p1")?.value).toBe(-UNJUSTIFIED_WAR_PRESTIGE);
+
+    // Holding a vassal makes the same justification valid → no cost.
+    const held = fresh();
+    minorById(held, "ragusa").vassalOf = "p1";
+    held.players[0].vassals = ["ragusa"];
+    const out = declareWar(held, declareWarAction("p1", Faction.OTTOMAN, "vassal-defense"));
+    expect(pendingFor(out, "p1")).toBeUndefined();
+  });
+
+  it("re-declaring an existing war levies NO fresh unjustified-war penalty (single, deduped)", () => {
+    const first = declareWar(fresh(), declareWarAction("p1", Faction.OTTOMAN));
+    expect(pendingFor(first, "p1")?.value).toBe(-UNJUSTIFIED_WAR_PRESTIGE);
+    // Second unjustified declaration against the same target adds no new pending.
+    const again = declareWar(first, declareWarAction("p1", Faction.OTTOMAN));
+    const penalties = again.activeModifiers.filter(
+      (m) =>
+        m.kind === "prestige_pending" &&
+        m.data?.playerId === "p1" &&
+        m.data?.reason === "unjustified_war",
+    );
+    expect(penalties).toHaveLength(1);
+    expect(again.wars.filter((w) => w.a === "p1" && w.b === "p2")).toHaveLength(1);
+  });
+
+  it("the delta-5 war cost is INDEPENDENT of the §11 alliance-break penalty (both fire, distinct reasons)", () => {
+    // Existing alliance-break penalty (−4) still fires unchanged...
+    const s = conclude(fresh(), TreatyType.ALLIANCE);
+    const broken = applyDiplomacy(s, renounce("p1", TreatyType.ALLIANCE, "p2"));
+    const breakPend = broken.activeModifiers.find(
+      (m) =>
+        m.kind === "prestige_pending" &&
+        m.data?.playerId === "p1" &&
+        m.data?.reason === "betrayAlliance",
+    );
+    expect(breakPend?.value).toBe(PRESTIGE_VALUES.betrayAlliance); // −4, intact
+    // ...and an unjustified DECLARE_WAR on top posts its own distinct −1 pending.
+    const warred = declareWar(broken, declareWarAction("p1", Faction.OTTOMAN));
+    const warPend = warred.activeModifiers.filter(
+      (m) =>
+        m.kind === "prestige_pending" &&
+        m.data?.playerId === "p1" &&
+        m.data?.reason === "unjustified_war",
+    );
+    expect(warPend).toHaveLength(1);
+    expect(warPend[0].value).toBe(-UNJUSTIFIED_WAR_PRESTIGE); // −1
+    // The alliance-break −4 is still present and separate from the war −1.
+    expect(
+      warred.activeModifiers.filter(
+        (m) => m.kind === "prestige_pending" && m.data?.playerId === "p1",
+      ),
+    ).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // §13.1 War END (resolveWar) — win-war +3 as prestige_pending
 // ---------------------------------------------------------------------------
 
 describe("resolveWar — §13.1 war END + win-war prestige_pending", () => {
+  // Declare with a valid casus belli (delta 5): these cases exercise war END /
+  // peace, so a JUSTIFIED declaration keeps the setup free of the unjustified-war
+  // −1 prestige_pending and lets the "no award" assertions stay clean.
   const declare = (): GameState =>
-    declareWar(fresh(), { type: "DECLARE_WAR", player: "p1", target: Faction.OTTOMAN });
+    declareWar(fresh(), {
+      type: "DECLARE_WAR",
+      player: "p1",
+      target: Faction.OTTOMAN,
+      justification: "claim",
+    });
 
   it("ends the war and POSTS a +3 win-war prestige_pending to the victor (not a direct mutation)", () => {
     const s = declare();
@@ -568,8 +696,15 @@ describe("resolveWar — §13.1 war END + win-war prestige_pending", () => {
 // ---------------------------------------------------------------------------
 
 describe("applyDiplomacy ACCEPT — §13.1 tribute forces peace (war END)", () => {
+  // Justified declaration (delta 5) so the war-END/peace assertions below are not
+  // perturbed by the unjustified-war −1 prestige_pending.
   const declare = (): GameState =>
-    declareWar(fresh(), { type: "DECLARE_WAR", player: "p1", target: Faction.OTTOMAN });
+    declareWar(fresh(), {
+      type: "DECLARE_WAR",
+      player: "p1",
+      target: Faction.OTTOMAN,
+      justification: "claim",
+    });
 
   it("concluding a TRIBUTE between belligerents ends the war and awards the PAYEE +3", () => {
     let s = declare();

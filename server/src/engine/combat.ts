@@ -313,10 +313,104 @@ function greatBombardUnlocked(state: GameState, playerId: string): boolean {
 }
 
 /**
- * CANON sea-resupply rule (GD §8.2): a besieged COASTAL city cannot be starved
- * while at least one of its adjacent sea zones remains friendly/neutral — an open
- * lane keeps the garrison fed. Starvation resumes only once EVERY adjacent sea
- * zone is enemy-controlled (blockaded by someone other than the defender).
+ * §8.4 (delta 3, 1-round emplacement): a freshly placed or relocated Great Bombard
+ * cannot FIRE (bombard the walls) until the round AFTER it entered play. The
+ * authoritative arrival clock is the {@link GameState.greatBombard} singleton's
+ * `emplacedRound` (set by events on spawn and by combat on capture/re-emplacement):
+ * the gun may bombard only once
+ * `state.round >= emplacedRound + GREAT_BOMBARD.emplacementRounds`. When there is no
+ * singleton tracker, or it does not describe the GB emplaced at THIS province, we
+ * have no arrival clock and default to "emplaced" (back-compat with hand-built
+ * fixtures that field a GREAT_BOMBARD variant without the tracker).
+ */
+function greatBombardEmplaced(state: GameState, prov: Province): boolean {
+  const gb = state.greatBombard;
+  if (!gb || !gb.inPlay || gb.provinceId !== prov.id) return true;
+  return state.round >= gb.emplacedRound + GREAT_BOMBARD.emplacementRounds;
+}
+
+/** Ids of stacks on a side that carry a live GREAT_BOMBARD variant (§8.4). */
+function bombardStacks(side: Working[]): Set<string> {
+  const ids = new Set<string>();
+  for (const w of side) {
+    if (w.variants.some((v) => v.variant === GREAT_BOMBARD.variant && v.count > 0)) {
+      ids.add(w.id);
+    }
+  }
+  return ids;
+}
+
+/**
+ * §8.4 (delta 3, capture-passes-intact): the Great Bombard is NEVER destroyed by
+ * battle. When the DEFEATED side's escort stack that carried it is DESTROYED —
+ * routed with no retreat, or wiped, so it no longer survives in `state.armies` with
+ * the variant — the gun passes INTACT to the victor as loot: it is attached to a
+ * surviving winner stack and the singleton {@link GameState.greatBombard} tracker is
+ * re-homed to the new owner/province and RE-EMPLACED (a captured gun sits a fresh
+ * emplacement round before it may fire again, per {@link greatBombardEmplaced}). A
+ * loser stack that RETREATED intact keeps its gun (not a capture). Mutates and
+ * returns the (already-cloned) state. `loserWorking` are the PRE-writeBack working
+ * copies; `loserBombardIds` is {@link bombardStacks} captured before combat.
+ */
+function salvageBombardToVictor(
+  state: GameState,
+  loserWorking: Working[],
+  loserBombardIds: Set<string>,
+  winnerId: string | null,
+  winnerStackIds: string[],
+): GameState {
+  if (!winnerId || loserBombardIds.size === 0) return state;
+  // Did a GB-carrying loser stack get DESTROYED (rather than merely retreat intact)?
+  let captured = 0;
+  for (const w of loserWorking) {
+    if (!loserBombardIds.has(w.id)) continue;
+    const survivor = state.armies.find((a) => a.id === w.id);
+    const kept = survivor?.variants?.some(
+      (v) => v.variant === GREAT_BOMBARD.variant && v.count > 0,
+    );
+    if (!kept) captured += 1; // escort destroyed → the gun is loot, not scrap
+  }
+  if (captured === 0) return state;
+  // Attach to a surviving winner stack; else re-home the tracker only (degenerate:
+  // the victor kept no stack — e.g. a synthetic garrison held the city).
+  const winnerArmy = state.armies.find(
+    (a) => winnerStackIds.includes(a.id) && a.ownerId === winnerId && realCount(a) > 0,
+  );
+  if (winnerArmy) {
+    const variants = (winnerArmy.variants ??= []);
+    const existing = variants.find((v) => v.variant === GREAT_BOMBARD.variant);
+    if (existing) existing.count += captured;
+    else variants.push({ base: GREAT_BOMBARD.base, variant: GREAT_BOMBARD.variant, count: captured });
+    state.greatBombard = {
+      inPlay: true,
+      ownerId: winnerId,
+      provinceId: winnerArmy.locationId,
+      emplacedRound: state.round,
+    };
+  } else if (state.greatBombard) {
+    state.greatBombard = {
+      ...state.greatBombard,
+      inPlay: true,
+      ownerId: winnerId,
+      emplacedRound: state.round,
+    };
+  }
+  return state;
+}
+
+/**
+ * CANON sea-resupply rule (GD §8.2 / §8.2.3): a besieged COASTAL city cannot be
+ * starved while at least one of its adjacent sea zones remains friendly/neutral —
+ * an open lane keeps the garrison fed. Starvation resumes only once EVERY adjacent
+ * sea zone is enemy-controlled (blockaded by someone other than the defender).
+ *
+ * §8.2.3 clarification (coordinator): sea-resupply SUSPENDS starvation ONLY. It
+ * does NOT freeze naval/harbor action in the adjacent sea — the besieger may still
+ * CONTEST the blockade and the defender may still receive HARBOR REINFORCEMENT via
+ * an ordinary naval battle. This is honoured structurally: this predicate is read
+ * SOLELY to gate the §8.2 step 3 starvation branch below; {@link resolveNaval}
+ * (blockade contest / harbor reinforcement in the adjacent sea) is entirely
+ * independent of it and is never blocked by an active resupply.
  */
 function seaResupplyActive(state: GameState, prov: Province, defenderOwnerId: string | null): boolean {
   if (!prov.coastal) return false;
@@ -871,6 +965,12 @@ export function resolveBattle(
     },
   };
 
+  // §8.4 delta 3 (capture-passes-intact): record which stacks carry the Great
+  // Bombard BEFORE combat mutates the working copies, so a destroyed escort can
+  // hand the gun to the victor after writeBack.
+  const atkBombardIds = bombardStacks(attackers);
+  const defBombardIds = bombardStacks(defenders);
+
   const engine = runEngine(next, ctx, rng);
   const outcome = engine.outcome;
   // A tactic (§7.7) may have posted modifiers → thread the resulting state and
@@ -894,6 +994,18 @@ export function resolveBattle(
 
   writeBack(post, attackers, "army", outcome.attackerRouted, outcome.attackerRetreatTo);
   writeBack(post, defenders, "army", outcome.defenderRouted, outcome.defenderRetreatTo);
+
+  // §8.4 delta 3 (capture-passes-intact): a defeated GB-carrying stack does NOT
+  // lose the gun — it passes INTACT to the victor. Runs on the post-writeBack state
+  // (which has already removed the destroyed loser stack + its variant), attaching
+  // the gun to a surviving winner stack and re-homing the singleton tracker. Covers
+  // both a field battle and a relief that defeats a besieging GB stack (relief is a
+  // field battle where the besieger is the defender).
+  if (winnerId === battle.attackerId) {
+    post = salvageBombardToVictor(post, defenders, defBombardIds, winnerId, battle.attackerStackIds);
+  } else if (winnerId === battle.defenderId) {
+    post = salvageBombardToVictor(post, attackers, atkBombardIds, winnerId, battle.defenderStackIds);
+  }
 
   // §7: winner takes the province if the attacker prevails in a field battle.
   let captured = false;
@@ -1176,6 +1288,12 @@ export function resolveSiege(
     .filter((a) => siege.besiegingArmyIds.includes(a.id))
     .map(toWorking);
 
+  // §8.4 delta 3 (capture-passes-intact): record whether the besieging escort
+  // carries the Great Bombard BEFORE the assault mutates it, so if that escort is
+  // destroyed during the storm (and the city does NOT fall) the gun passes to the
+  // surviving defender rather than being lost with the scrap.
+  const besiegerBombardIds = bombardStacks(besiegers);
+
   // §8.2.5 Relief succeeded: no besieging troops remain → lift siege, repair walls.
   if (besiegers.length === 0 || sideTotal(besiegers) === 0) {
     const maxHp = WALL_TIERS[prov.walls.tier]?.hp ?? prov.walls.hp;
@@ -1205,15 +1323,27 @@ export function resolveSiege(
   const besiegerFaction = factionOf(next, siege.besiegerId);
   // §8.4 CONTRACT2 §12.6: enhanced fire only if the besieger has the Bombard unlocked.
   const bombardUnlocked = greatBombardUnlocked(next, siege.besiegerId);
+  // §8.4 delta 3 (1-round emplacement): a freshly placed/relocated Great Bombard
+  // cannot FIRE until the round AFTER it entered play. An unlocked-but-not-yet-
+  // emplaced piece contributes NO bombardment this round (it does not even fire as a
+  // plain gun — it is still emplacing). A locked/absent tracker defaults to emplaced.
+  const bombardEmplaced = greatBombardEmplaced(next, prov);
   let genericGuns = 0;
   let greatBombards = 0;
   for (const w of besiegers) {
     genericGuns += w.units[UnitType.SIEGE] ?? 0;
     for (const v of w.variants) {
       if (v.base !== UnitType.SIEGE) continue;
-      // §8.4 an UNLOCKED Great Bombard fires enhanced; a locked one is a plain gun.
-      if (v.variant === GREAT_BOMBARD.variant && bombardUnlocked) greatBombards += v.count;
-      else genericGuns += v.count;
+      if (v.variant === GREAT_BOMBARD.variant) {
+        // §8.4: an UNLOCKED + EMPLACED Great Bombard fires enhanced; before it is
+        // emplaced (delta 3) it cannot bombard the walls this round; a LOCKED piece
+        // is treated as a plain single-die siege gun (CONTRACT2 §12.6).
+        if (bombardUnlocked && bombardEmplaced) greatBombards += v.count;
+        else if (!bombardUnlocked) genericGuns += v.count;
+        // unlocked but NOT yet emplaced → no bombardment contribution this round.
+      } else {
+        genericGuns += v.count;
+      }
     }
   }
   // Generic guns roll first (keeps the deterministic bombardment RNG order).
@@ -1389,6 +1519,15 @@ export function resolveSiege(
   // Persist garrison casualties (starvation and/or assault) and besieger losses.
   writeBack(next, defenders, "army", defRouted, defRetreat);
   writeBack(next, besiegers, "army", false, undefined);
+
+  // §8.4 delta 3 (capture-passes-intact): if the besieging escort carrying the
+  // Great Bombard was DESTROYED in the assault and the city did NOT fall, the gun is
+  // loot for the surviving defender (the victor), not scrap. (When the city falls
+  // the besieger holds the field and keeps its gun, so this only fires on !captured.)
+  if (!captured && besiegerBombardIds.size > 0) {
+    const defenderStackIds = defenders.filter((w) => !w.garrison).map((w) => w.id);
+    salvageBombardToVictor(next, besiegers, besiegerBombardIds, prov.ownerId, defenderStackIds);
+  }
 
   const capturedTier = prov.walls.tier;
   let sacked = false;

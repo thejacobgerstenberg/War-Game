@@ -28,7 +28,7 @@ import {
   type TacticCardId,
 } from "@imperium/shared";
 import { EngineError } from "./actions.js";
-import { GREAT_WORK_COSTS, TACTIC, TACTIC_HAND_LIMIT } from "./balance.js";
+import { GREAT_WORK_COSTS, TACTIC, TACTIC_HAND_LIMIT, TREASON_GATE } from "./balance.js";
 import { appendLog } from "./logEntry.js";
 import { addModifier } from "./modifiers.js";
 import { makeRng, type Rng } from "./rng.js";
@@ -91,6 +91,62 @@ function cardData(cardId: TacticCardId): TacticEffectData {
   const card = TACTIC_CARD_BY_ID[cardId];
   if (!card) throw new EngineError("UNKNOWN_TACTIC", `unknown tactic ${cardId}`);
   return card.data as unknown as TacticEffectData;
+}
+
+/** True when `cardId` is a treason-effect card (e.g. `treason-at-the-gate`). */
+function isTreasonCard(cardId: TacticCardId): boolean {
+  const card = TACTIC_CARD_BY_ID[cardId];
+  const data = card?.data as unknown as TacticEffectData | undefined;
+  return data?.effect === "treason";
+}
+
+/**
+ * DELTA 1 — treason-at-the-gate DOUBLE brake (GAME_DESIGN §7.7 "Treason at the
+ * Gate" + coordinator ratification, delta 1). The treason tactic is playable
+ * against a besieged city ONLY when BOTH gates hold (numbers from
+ * `balance.TREASON_GATE`, not hardcoded):
+ *   (a) the besieged province garrison is `<= TREASON_GATE.maxGarrison` (a large
+ *       garrison cannot be suborned); AND
+ *   (b) the siege's consecutive-siege-round clock did NOT start before game round
+ *       `TREASON_GATE.minGameRound` — i.e. the siege BEGAN at/after that round.
+ *       The start round is `state.round - siege.roundsElapsed` (roundsElapsed
+ *       counts consecutive siege rounds since the siege was laid); a siege that
+ *       started earlier cannot host treason.
+ * Enforced at BOTH declaration ({@link queueTactic}) and resolution
+ * ({@link playTactic}), where the target battle + current round are known. Throws
+ * `EngineError("TREASON_GATE", …)` when either gate fails.
+ */
+function assertTreasonGate(state: GameState, battle: PendingBattle): void {
+  const provinceId = battle.provinceId;
+  const prov = provinceId ? state.provinces.find((p) => p.id === provinceId) : undefined;
+
+  // Gate (a): garrison brake.
+  const garrison = prov?.garrison ?? 0;
+  if (garrison > TREASON_GATE.maxGarrison) {
+    throw new EngineError(
+      "TREASON_GATE",
+      `treason-at-the-gate needs the garrison <= ${TREASON_GATE.maxGarrison} (found ${garrison})`,
+    );
+  }
+
+  // Gate (b): the siege must exist and its clock must have begun no earlier than
+  // TREASON_GATE.minGameRound.
+  const siege = provinceId
+    ? state.siegeStates.find((s) => s.provinceId === provinceId)
+    : undefined;
+  if (!siege) {
+    throw new EngineError(
+      "TREASON_GATE",
+      `treason-at-the-gate requires an active siege of ${provinceId ?? "the target province"}`,
+    );
+  }
+  const siegeStartRound = state.round - siege.roundsElapsed;
+  if (siegeStartRound < TREASON_GATE.minGameRound) {
+    throw new EngineError(
+      "TREASON_GATE",
+      `treason-at-the-gate: the siege began at round ${siegeStartRound}, before the earliest permitted round ${TREASON_GATE.minGameRound}`,
+    );
+  }
 }
 
 /** A great work counts as completed once its progress reaches its round count. */
@@ -227,6 +283,8 @@ export function queueTactic(
   }
 
   const card = TACTIC_CARD_BY_ID[cardId];
+  // DELTA 1 (GD §7.7 + ratification): treason double-brake at declaration time.
+  if (isTreasonCard(cardId)) assertTreasonGate(state, battle);
   const queued = (side === "attacker" ? battle.attackerTactics : battle.defenderTactics) ?? [];
   const isReaction = card?.timing === "reaction";
   if (!isReaction && queued.length >= TACTIC.maxPlaysPerBattleRound) {
@@ -279,6 +337,11 @@ export function playTactic(
   const live = battleOf(state, battle.id); // trust current state, not a stale copy.
   const playerId = sidePlayerId(live, side);
   const player = playerOf(state, playerId);
+
+  // DELTA 1 (GD §7.7 + ratification): re-enforce the treason double-brake at
+  // resolution time (before charging any printed cost), in case state changed
+  // between declaration and combat.
+  if (isTreasonCard(cardId)) assertTreasonGate(state, live);
 
   const queued = (side === "attacker" ? live.attackerTactics : live.defenderTactics) ?? [];
   const inQueue = queued.includes(cardId);
