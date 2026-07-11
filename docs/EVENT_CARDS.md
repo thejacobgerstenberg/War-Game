@@ -1,0 +1,123 @@
+# IMPERIUM: Twilight of Empires — EVENT CARDS (The Omen Deck)
+
+Each **year (round)**, before players act, the game runs the **Omen Phase**: the active omen deck is
+drawn from and the card resolves. Events reshape the map through the systems in `MAP.md` and `FACTIONS.md`
+— resources, units, wall tiers, prestige, sea-zone blockades, crusades, loans and vassals.
+
+Every card is tagged: **Good** (blessing), **Ill** (calamity), **Mixed** (a choice / cuts both ways),
+or **Omen** (map-wide morale). Faction-specific cards name their target in the flavor line. Effects that
+touch **vassals/minor states** cross-reference `MAP.md §5`; the full vassalage rules live in `GAME_DESIGN.md`.
+
+---
+
+## Omen Deck Structure — three escalating eras
+
+The deck is **not** one pile. It is split into **three era decks**, each shuffled separately, so the
+mood of the game darkens as 1453 approaches. At the start of each round the game draws from the deck
+matching the current era:
+
+| Era | Rounds | Theme | Deck |
+|-----|--------|-------|------|
+| **Era I — Omens of Peace** | 1–5 | Economy & minor politics; harvests, trade, dynastic games, early Ottoman troubles | 16 cards |
+| **Era II — Omens of War** | 6–10 | Wars & crises; crusades, schisms, revolts, sieges, embargoes | 17 cards |
+| **Era III — Omens of the End** | 11–16 | Existential events; the Great Bombard, plague waves, the last crusade, the Fall | 13 cards |
+
+**Draw rules**
+- One card is drawn per round from the current era's deck (2–3 players may draw 1; 4–5 players draw and
+  resolve 1, and additionally reveal the *next* as a telegraphed "gathering omen"). Exact draw count per
+  player-count is set in `GAME_DESIGN.md`.
+- Cards resolve immediately unless marked **Held** (kept and played later by the drawer) or **Standing**
+  (a lasting modifier).
+- When an era deck empties, reshuffle its discards; on entering the next era, retire the previous deck.
+- **Balance of each era deck** is roughly one-third Good, one-third Ill, one-third Mixed/Omen so no era is
+  pure punishment — but Era III's calamities are far heavier than Era I's.
+- **Faction-specific cards** with no valid target in the current game (e.g. an Ottoman card in a
+  Byzantium-vs-Venice duel) are treated as **neutral** minor events (redraw or apply the generic clause noted
+  on the card).
+
+---
+
+## Era I — Omens of Peace (rounds 1–5) · 16 cards
+
+| # | Card | Type | Historical flavor & trigger | Mechanical effect |
+|---|------|------|------------------------------|-------------------|
+| 1 | **Bumper Harvest** | Good | A golden year across the granaries. | This round every `plains` and grain-primary province produces **+1 🌾**; grain sells favorably (each 🌾 converted to 🪙 yields +1). |
+| 2 | **Hard Winter** | Ill | The hardest winter in living memory. | This round: all armies pay **+1 🌾 upkeep** (attrition — unpaid units lose 1 strength); **land movement −1**; **sieges make no progress**; `black-sea-west`, `black-sea-east` and `sea-of-azov` **freeze** (no fleet movement). |
+| 3 | **Silk Road Caravan** | Good | The great caravan reaches the sea. | Each controller of `trebizond`, `bursa`, `aleppo`, or `kaffa` gains **+3 🪙** this round. |
+| 4 | **Papal Indulgence** | Good (faith) | Rome grants remission of sins for coin. | Any faction holding a faith-yielding province may convert up to **3 ✝️ → 3 🪙** this round. Hungary/Byzantium may instead spend that faith to raise **1 free levy**. |
+| 5 | **Imperial Coronation** | Good (prestige) | A sovereign is crowned, a sultan girded with the sword. | Drawing faction: **+2 prestige**, a one-time **+2 🪙**, and its levies fight at **+1 morale** for 1 round. |
+| 6 | **Comet Omen** | Omen | A blazing star troubles the heavens. | Superstition grips all armies: this round every levy fights at **−1 morale**, **except** the drawing faction's levies (**+1**, they read the sign as favorable). |
+| 7 | **Ottoman Interregnum (Fetret Devri)** | Ill *(Ottoman)* | The sons of Bayezid turn on one another. *Trigger: Ottoman in play.* | Ottoman may **not recruit next round**; loses one Anatolian (`ankara`/`nicaea`/`bursa`) **and** one European (`sofia`/`philippopolis`) province to Independent; **−2 prestige**. Adjacent players may seize the freed provinces. |
+| 8 | **Timurid Shadow** | Ill *(Ottoman)* | The long shadow of Ankara still falls on Anatolia. | The beyliks `ankara`, `konya`, `kastamonu` each gain **+1 levy** and turn hostile to the Ottoman; one Ottoman Anatolian province adjacent to a beylik is raided: **−2 🪙**, yields **0 next round**. |
+| 9 | **Discovery of Alum** | Good *(Genoa/trade)* | Rich alum found at Phocaea and Chios. | The controller of `chios` gains a **permanent +2 🪙/round** (dye-trade monopoly) for the rest of the game — whoever holds `chios`, now and later. **Standing.** |
+| 10 | **Marriage Alliance** | Good (diplomacy) | A dynastic wedding binds two courts. | Drawing faction may form a **2-round non-aggression pact** with a consenting player and take **3 🪙 dowry**; *or* vassalize an eligible minor (`serbia`/`ragusa`/`trebizond`) at **−50% tribute cost**. |
+| 11 | **Corsair Raid** | Ill | Barbary galliots slip out of Tunis. | A coastal province on the `sicilian-channel`/`eastern-mediterranean`/`aegean` shore loses **2 🪙** and one merchant galley (if present); that sea zone is **corsair-blockaded** (trade −1 🪙) until a war galley clears it. |
+| 12 | **Serbian Despotate Submits** | Mixed *(vassal)* | Đurađ Branković bends to the stronger neighbour. | `serbia` becomes a **vassal** of whichever of Hungary/Ottoman is adjacent and stronger (**+2 🪙 tribute, +1 levy/round** to that lord). If neither qualifies, `serbia` stays Independent and its garrison **+1**. *(See `MAP.md §5`.)* |
+| 13 | **Ragusan Tribute** | Good *(vassal)* | Ragusa buys its peace, as it always has. | `ragusa` offers tribute to the strongest adjacent naval power (Venice by default): that power gains **+3 🪙** this round and may take `ragusa` as a **tribute-vassal without a siege**. |
+| 14 | **Plague of Locusts** | Ill | A black cloud devours the fields. | Choose a region (**Anatolia** or **the Balkans**): every `plains` province there produces **−2 🌾** this round. |
+| 15 | **Hussite Handgunners for Hire** | Good (merc) | Bohemian gunners and their wagon-forts seek employ. | Any faction may hire, for 🪙, one **mercenary Handgunner** unit (gunpowder infantry; +defense in a wagon-fort). This round the Genoese Crossbowmen market is undercut — **Genoa earns no brokerage**. |
+| 16 | **Fall of a Beylik** | Mixed *(minor)* | An Anatolian emirate collapses into feud. | Choose `smyrna`, `antalya`, or `kastamonu`: this round its garrison is **−1** (ripe for conquest), **or** it **submits as a vassal** to the strongest adjacent power. |
+
+## Era II — Omens of War (rounds 6–10) · 17 cards
+
+| # | Card | Type | Historical flavor & trigger | Mechanical effect |
+|---|------|------|------------------------------|-------------------|
+| 17 | **Council of Florence (Union of Churches)** | Mixed *(Byzantium)* | 1439 — East and West proclaim one Church. | **Byzantium chooses.** *Accept Union:* gain Western aid (hire **Crusader levies** from a consenting Catholic player; +1 prestige with Hungary/Venice/Genoa) but the Orthodox populace revolts — **−2 ✝️/round for 2 rounds, −1 prestige**. *Refuse:* keep faith income and fulfil the objective *Faith of the Fathers*. |
+| 18 | **Venetian–Genoese War** | Ill *(Venice & Genoa)* | The old rivalry flares from Chios to the Golden Horn. | For **2 rounds**, in any sea zone Venice and Genoa both occupy, their fleets **must fight**; each loses **−2 🪙 trade/round**. All non-maritime factions gain **+1 🪙** as trade reroutes. Ended early by card #43 *Peace of Turin*. **Standing.** |
+| 19 | **Hunyadi's Long Campaign** | Good *(Hungary)* | 1443 — the White Knight drives deep into the Balkans. | This round Hungarian land units fight at **+1** and may make **one extra move/attack** into a Balkan province; Hungary may rally `serbia` and `wallachia` as **temporary allies** for the campaign. |
+| 20 | **Varna Crusade** | Mixed | 1444 — the crusading host marches to the Black Sea. | Christian factions may commit units to a Crusader army at `varna`/`belgrade` and fight the Ottoman. **Crusade wins:** joiners split **+3 prestige** and may take `varna`/`sofia`. **Ottoman wins (Battle of Varna):** Ottoman **+3 prestige**, the crusading commander falls — Hungary loses its **Black Army** unit if present. |
+| 21 | **Fall of Thessalonica** | Ill *(holder of `thessalonica`)* | 1430 — the great city of Macedonia is stormed. *Trigger: an Ottoman army adjacent to `thessalonica`.* | `thessalonica` is assaulted: **wall tier −1**, garrison **−1**; an adjacent Ottoman may capture it at **−50% siege cost** this round. If Venice holds it, Venice loses **3 🪙**. |
+| 22 | **Mercenary Revolt** | Ill | "No pay, no peace." | Any faction that cannot cover its merc / Janissary / Black Army **🪙 upkeep** this round: those units **desert** (removed) and **pillage** their province (**−2 🪙**, yield **0 next round**). |
+| 23 | **Janissary Discontent** | Ill *(Ottoman)* | The Janissaries overturn their kettles and demand a donative. | Ottoman pays a **3 🪙 donative** this round, or every Janissary fights at **−1** and may **not assault walls next round**. |
+| 24 | **Wallachian Revolt** | Ill *(vassal)* | The voivode raises the country against his overlord. *Trigger: `wallachia` is a vassal.* | `wallachia` breaks free → becomes Independent, spawns **2 levy + 1 light cavalry**, and raids one adjacent province of its **former lord** (**−2 🪙**, yield **0 next round**). |
+| 25 | **Earthquake** | Ill | The earth heaves; towers crack and fall. | Choose (or randomize among `constantinople`/`gallipoli`/`rhodes`/`thessalonica`) one walled city: **wall tier −1**, repairable later with 🪨 stone. *(As the quake that once gave Gallipoli to the Ottomans.)* |
+| 26 | **The Grain Fleet Is Lost** | Ill | A storm — or a corsair — takes the grain convoy. | Target a coastal faction (or `constantinople`): it loses **3 🌾** and one **merchant galley**. If it cannot, a levy **starves** (removed). |
+| 27 | **Fire of the Arsenal** | Ill *(Venice/Genoa)* | Fire races through the shipyards. | The targeted maritime power **cannot build fleets for 1 round**, loses one galley under construction, and **−2 🪵**. |
+| 28 | **Papal Interdict** | Ill *(political/faith)* | Rome lays a faction under interdict. *Trigger: the faction that last attacked a fellow Christian.* | Target loses **all ✝️ income for 2 rounds**, **cannot call a Crusade**, and Christian neutrals resist it (**−25%** to its diplomacy/sieges vs Christian neutrals). |
+| 29 | **Schism** | Ill *(faith)* | Rival popes; a Church divided against itself. | **All ✝️ income halved next round.** Faith-reliant factions (Byzantium, Hungary, holder of `rome`) each lose **1 prestige**. |
+| 30 | **Mamluk Embargo** | Ill *(trade)* | Cairo shuts the spice road and raises the tariff. | Trade through `eastern-mediterranean` costs **+1 🪙** and yields **−1** this round; Venice and Genoa each lose **2 🪙**. A Mamluk force may threaten `cyprus`. |
+| 31 | **Anatolian Alliance** | Ill *(Ottoman / minor)* | Karaman and the beyliks league against the Porte. *Trigger: Karaman League (`ankara`/`konya`) unconquered.* | The beyliks gain **+1 levy each** and launch a coordinated attack on one Ottoman Anatolian province (`bithynia`/`bursa`/`nicaea`); the Ottoman fights at **−1** there this round. |
+| 32 | **Hexamilion Rebuilt at Corinth** | Good *(holder of `morea`)* | The wall across the Isthmus rises again. | The controller of `morea` may spend 🪨 stone to fortify: `morea` gains **+1 wall tier** and **+1 defense vs any land attack from `athens`** for the rest of the game (until breached by a bombard). **Standing.** |
+| 33 | **Knights of Rhodes Sortie** | Good *(defensive)* | The Hospitaller galleys ride out of Rhodes. *Trigger: `rhodes` held by the Knights or a Catholic player.* | Their galleys sweep `sea-of-crete` and `eastern-mediterranean` clear of corsairs and damage one enemy/Mamluk fleet there (**−1 strength**). **Blocks the next *Corsair Raid*.** |
+
+## Era III — Omens of the End (rounds 11–16) · 13 cards
+
+| # | Card | Type | Historical flavor & trigger | Mechanical effect |
+|---|------|------|------------------------------|-------------------|
+| 34 | **The Great Bombard Forged** | Good *(Ottoman)* | Orban casts the monster cannon before the walls. | The Ottoman immediately unlocks and may build the **Great Bombard** (damages even **Tier-5 walls by up to 2 tiers/round**). If no Ottoman is in play, the founder Orban sells to the **highest bidder** (auction, 🪙+🪨), granting them one bombard. **Standing.** |
+| 35 | **Black Death Returns** | Ill | Pestilence rides the trade roads once more. | For **2 rounds**, every `city` and high-value (`HV`) province produces **−1 🌾 and −1 🪙**; each faction **destroys 1 levy/infantry per 3 such units** it fields (densest provinces first). |
+| 36 | **Gunpowder Revolution** | Mixed *(tech)* | The age of the cannon dawns for all. | For the rest of the game, **bombards & handgunners cost −1** and gain **+1 siege**, but old-style **stone walls defend at −1 tier** against them. Favors attackers everywhere. **Standing.** |
+| 37 | **The Final Crusade** | Mixed | Christendom's last appeal before the City falls. | All Christian factions may pool units into a grand Crusade targeting any Ottoman-held city. Success: **+4 prestige** to joiners and the city changes hands. Failure or non-participation: each abstaining Christian faction **−1 prestige** (the West stood idle). |
+| 38 | **Pilgrimage / Jubilee Year** | Good *(faith)* | 1450 — the Holy Year fills Rome with pilgrims. | Controller of `rome` gains **+3 🪙 and +2 ✝️**; every Christian faction gains **+1 ✝️** this round. |
+| 39 | **Relic Discovered** | Good *(faith)* | A saint's relic is unearthed; pilgrims flock. | Choose a faith-yielding province you hold (`constantinople`/`thessalonica`/`rome`/`morea`/`nicaea`): **+2 ✝️** now and **+1 🪙 pilgrimage/round** for the rest of the game; **+1 prestige**. **Standing.** |
+| 40 | **Drought** | Ill | The rains fail; the Nile runs low. | This round all `desert` and `plains` provinces produce **−1 🌾**; `alexandria` and `cairo` produce **−2 🌾** (a low Nile). |
+| 41 | **Financial Crisis (Bank Run)** | Ill *(economy)* | Credit collapses; the great banks close their doors. | **Genoese loans are frozen** (none may be taken or called this round); every faction carrying debt pays a **1 🪙 penalty**; any faction hoarding **> 20 🪙** is taxed **−2 🪙**. |
+| 42 | **Byzantine Civil War** | Ill *(Byzantium)* | A Palaiologos pretender raises his standard. *Trigger: Byzantium in play.* | Byzantium loses one province (`thessalonica`/`morea`/`selymbria`) to a pretender — it becomes **Independent** — unless Byzantium pays **4 🪙** to buy off the claimant this round. |
+| 43 | **Peace of Turin** | Good *(if at war)* | The maritime republics are brought to terms. | Immediately **ends the *Venetian–Genoese War*** (card #18): both regain full trade income and each gains **+1 🪙** as commerce resumes. If they are not at war, both simply gain **+1 🪙**. |
+| 44 | **The Great Comet of 1453** | Omen | A vast comet hangs over the doomed City — an omen of the end. | Map-wide dread: this round **every faction's levies and merc morale −1**, and **all sieges gain +1** (defenders and attackers alike fight to exhaustion). The lowest-prestige faction gains **+1 prestige** (rallying to the sign). |
+| 45 | **Genoese Loan Called In** | Ill *(targeted / Genoa)* | The Bank of St George presents its final account. | Genoa names a debtor: it pays Genoa **4 🪙** or cedes a province / **1 prestige** to Genoa. If none are in debt, Genoa collects **+2 🪙** interest. |
+| 46 | **The Fall of Constantinople ("1453")** | Mixed *(endgame)* | The Ottoman guns speak; an age ends. *Trigger: round 16, or whenever `constantinople` is besieged in Era III.* | Resolves the game's climax. If `constantinople` is **still Byzantine at round 16**, Byzantium gains **+5 prestige** (the City endured — history defied) and fulfils *Queen of Cities*. If it **has fallen to the Ottoman**, the Ottoman gains **+5 prestige** and *Fetih* is scored. Triggers the **sudden-death** check (hold `constantinople` two rounds to win outright). |
+
+---
+
+## Quick Index by Type
+
+- **Good (blessings):** Bumper Harvest, Silk Road Caravan, Papal Indulgence, Imperial Coronation,
+  Discovery of Alum, Marriage Alliance, Ragusan Tribute, Hussite Handgunners, Hunyadi's Long Campaign,
+  Hexamilion Rebuilt, Knights of Rhodes Sortie, The Great Bombard Forged *(Ottoman)*, Pilgrimage/Jubilee,
+  Relic Discovered, Peace of Turin.
+- **Ill (calamities):** Hard Winter, Ottoman Interregnum, Timurid Shadow, Corsair Raid, Plague of Locusts,
+  Venetian–Genoese War, Fall of Thessalonica, Mercenary Revolt, Janissary Discontent, Wallachian Revolt,
+  Earthquake, The Grain Fleet Is Lost, Fire of the Arsenal, Papal Interdict, Schism, Mamluk Embargo,
+  Anatolian Alliance, Black Death Returns, Drought, Financial Crisis, Byzantine Civil War, Genoese Loan Called In.
+- **Mixed / Omen:** Comet Omen, Serbian Despotate Submits, Fall of a Beylik, Council of Florence,
+  Varna Crusade, Gunpowder Revolution, The Final Crusade, The Great Comet of 1453, The Fall of Constantinople.
+
+## Faction-Specific Cards (need a valid target, else treated as neutral)
+
+- **Ottoman:** Ottoman Interregnum, Timurid Shadow, Janissary Discontent, Anatolian Alliance, The Great Bombard Forged.
+- **Byzantium:** Council of Florence, Fall of Thessalonica *(holder)*, Byzantine Civil War.
+- **Venice / Genoa:** Discovery of Alum, Venetian–Genoese War, Fire of the Arsenal, Mamluk Embargo, Peace of Turin, Genoese Loan Called In, Ragusan Tribute.
+- **Hungary:** Hunyadi's Long Campaign, Varna Crusade, The Final Crusade *(Christian bloc)*.
+
+**Total: 46 event cards** across three escalating era decks (16 / 17 / 13).
