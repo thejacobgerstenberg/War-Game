@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" id="wall-2-building" role="img" aria-labelledby="wall-2-title">
+  <title id="wall-2-title">Wall II — crenellated stone wall with gate</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — building icon: WALL II
+       Curtain wall of dressed stone: five merlons over a solid
+       body, an arched gate cut open at the base, and ashlar
+       joint lines cut out as negative space. Taller and more
+       massive than the Wall I palisade. currentColor only.
+       ============================================================ -->
+
+  <!-- == wall body: crenellated outline; evenodd cuts carve the
+       gate arch and three offset courses of short ashlar joint
+       dashes (kept short so the mass stays solid) == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M4 44.5 V12 H10 V17 H12.5 V12 H18.5 V17 H21 V12 H27 V17 H29.5 V12 H35.5 V17 H38 V12 H44 V44.5 Z
+    M18.5 44.5 V30.5 Q18.5 25.5 24 25.5 Q29.5 25.5 29.5 30.5 V44.5 Z
+    M8 20.5 H14 V22.3 H8 Z
+    M21 20.5 H27 V22.3 H21 Z
+    M34 20.5 H40 V22.3 H34 Z
+    M8 26 H13 V27.8 H8 Z
+    M35 26 H40 V27.8 H35 Z
+    M10.5 31.5 H16 V33.3 H10.5 Z
+    M32 31.5 H37.5 V33.3 H32 Z"/>
+</svg>

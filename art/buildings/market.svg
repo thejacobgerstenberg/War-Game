@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" id="market-building" role="img" aria-labelledby="market-title">
+  <title id="market-title">Market — striped awning stall with hanging scales</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — building icon: MARKET
+       Bazaar stall: scallop-edged awning whose stripes are cut-out
+       negative space, two side posts, a counter board, and a
+       balance scale hanging from the canopy's midpoint.
+       currentColor silhouette only.
+       ============================================================ -->
+
+  <!-- == awning: solid header band, scalloped hem; the stripes are
+       evenodd cut-outs that stop short of the header above and end
+       at the scallop spring line (y=11.5) below, so every stripe
+       stays inside the outline and the hem reads as an unbroken
+       scallop == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M4.5 6 H43.5 V11.5
+    A4.875 4 0 0 1 33.75 11.5
+    A4.875 4 0 0 1 24 11.5
+    A4.875 4 0 0 1 14.25 11.5
+    A4.875 4 0 0 1 4.5 11.5 Z
+    M8.8 8.5 H13.1 V11.5 H8.8 Z
+    M17.5 8.5 H21.8 V11.5 H17.5 Z
+    M26.2 8.5 H30.5 V11.5 H26.2 Z
+    M34.9 8.5 H39.2 V11.5 H34.9 Z"/>
+
+  <!-- == side posts (feet run past the counter to the ground) == -->
+  <g fill="currentColor">
+    <rect x="6" y="11" width="3.5" height="33.5" rx="1.2"/>
+    <rect x="38.5" y="11" width="3.5" height="33.5" rx="1.2"/>
+  </g>
+
+  <!-- == hanging scales: drop link, beam, chains == -->
+  <g stroke="currentColor" fill="none" stroke-linecap="round">
+    <path stroke-width="2.5" d="M24 12.5 V17"/>
+    <path stroke-width="2.8" d="M15.5 17.5 H32.5"/>
+    <path stroke-width="2.5" d="M15.5 18 V24.5"/>
+    <path stroke-width="2.5" d="M32.5 18 V24.5"/>
+  </g>
+
+  <!-- == scale pans: half-disc bowls == -->
+  <g fill="currentColor">
+    <path d="M11.3 24 H19.7 A4.2 4.2 0 0 1 11.3 24 Z"/>
+    <path d="M28.3 24 H36.7 A4.2 4.2 0 0 1 28.3 24 Z"/>
+  </g>
+
+  <!-- == counter board == -->
+  <rect fill="currentColor" x="4.5" y="33" width="39" height="6.5" rx="1"/>
+</svg>

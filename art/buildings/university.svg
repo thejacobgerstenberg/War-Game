@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" id="university-building" role="img" aria-labelledby="university-title">
+  <title id="university-title">University — classical portico above an open scroll</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — building icon: UNIVERSITY
+       House of learning: pediment (tympanum cut hollow) carried on
+       four columns over a stylobate, and beneath it an unrolled
+       scroll — rolled ends with cut-out cores, text told as two
+       cut-out rules. currentColor silhouette only.
+       ============================================================ -->
+
+  <!-- == pediment with hollow tympanum == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M24 5 L43 15.4 H5 Z
+    M24 8.6 L37.2 13.1 H10.8 Z"/>
+
+  <!-- == entablature == -->
+  <rect fill="currentColor" x="6" y="15" width="36" height="3.4"/>
+
+  <!-- == four column shafts == -->
+  <g fill="currentColor">
+    <rect x="9" y="18" width="4" height="12.2"/>
+    <rect x="17.5" y="18" width="4" height="12.2"/>
+    <rect x="26.5" y="18" width="4" height="12.2"/>
+    <rect x="35" y="18" width="4" height="12.2"/>
+  </g>
+
+  <!-- == stylobate == -->
+  <rect fill="currentColor" x="6" y="30" width="36" height="3"/>
+
+  <!-- == open scroll: page with two cut-out text rules == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M13 35.5 H35 V44.5 H13 Z
+    M16 38.2 H32 V39.7 H16 Z
+    M16 41 H32 V42.5 H16 Z"/>
+
+  <!-- == rolled scroll ends with cut-out cores == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M6 40 A4.5 4.5 0 1 0 15 40 A4.5 4.5 0 1 0 6 40 Z
+    M8.9 40 A1.6 1.6 0 1 0 12.1 40 A1.6 1.6 0 1 0 8.9 40 Z"/>
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M33 40 A4.5 4.5 0 1 0 42 40 A4.5 4.5 0 1 0 33 40 Z
+    M35.9 40 A1.6 1.6 0 1 0 39.1 40 A1.6 1.6 0 1 0 35.9 40 Z"/>
+</svg>
