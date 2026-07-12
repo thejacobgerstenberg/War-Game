@@ -7,8 +7,9 @@
  *   - NORMAL vs EASY: NORMAL must win AT LEAST 60% (competence bound added
  *     with the post-turn-order NORMAL tuning; the ~70% upper edge is a tuning
  *     target, not an assertion);
- *   - HARD vs NORMAL: recorded for the win-matrix report with completion
- *     hygiene only — see the KNOWN INVERSION note on that case below.
+ *   - HARD vs NORMAL: HARD must win AT LEAST 65% (ordering bound promoted
+ *     with the HARD fortress-campaign/economy tuning — the previous
+ *     inversion is fixed; observed 66–73% across three seed bases).
  *
  * Context for readers of the matrix: the 2p pairing (Byzantium vs Ottoman)
  * is heavily faction-imbalanced — in EASY-vs-EASY mirrors the Ottoman seat
@@ -62,22 +63,21 @@ describe("bots battery (d) — difficulty ordering", () => {
   );
 
   it(
-    `records HARD vs NORMAL over ${GAMES} games (report matrix, no threshold)`,
+    `HARD beats NORMAL in >=65% of ${GAMES} alternating-seat games`,
     async () => {
-      // KNOWN INVERSION (recorded, not asserted): with NORMAL no longer
-      // gifting its capital under the enforced turn order, HARD's Ottoman
-      // seat loses its only reliable win path against a garrisoned
-      // Constantinople — its siege plan is infeasible there (T5 masonry cap
-      // §8.3, no war fleet for §8.2.3 sea-resupply denial), its home anchor
-      // pins the Edirne host while any Byzantine garrison stands two steps
-      // away, and its SPY UNREST fallback bleeds prestige on failed rolls.
-      // Restoring HARD > NORMAL needs hard.ts work (out of scope for the
-      // NORMAL tuning change) — tracked as a PR follow-up.
+      // Bound promoted from recorded-only (the post-turn-order NORMAL tuning
+      // had inverted this cell): HARD's fortress campaign (blockade →
+      // §8.2.3 starvation → chosen SIEGE_ASSAULT storm), the retake of
+      // §6.4-occupied own ground, the spy EV gate and the exact §4.4 grain
+      // ledger (faction levy economics) restore the ladder — observed
+      // 66–73% across three independent seed bases at 200 games each.
       const r = await runHeadToHead(Difficulty.HARD, Difficulty.NORMAL, GAMES, SEED_BASE);
       expect(r.winsA + r.winsB).toBe(GAMES);
       expect(r.deadlocks).toBe(0);
       expect(r.fallbackPasses).toBe(0);
       expect(r.outOfTurnRejections).toBe(0);
+      // The ordering assertion: the top of the ladder holds again.
+      expect(r.winsA / r.games).toBeGreaterThanOrEqual(0.65);
       console.info(
         `[ordering] HARD vs NORMAL: ${r.winsA}-${r.winsB} (${((100 * r.winsA) / r.games).toFixed(1)}%)`,
       );
