@@ -10,7 +10,14 @@
  *     lowers the gate; weak neutrals get a discount, crusade targets a small
  *     one via `crusadePreference`);
  *   - defence of threatened high-value provinces: reinforcing MOVEs, garrison
- *     RECRUITs and WALLS builds, scaled by persona `defensiveness`;
+ *     RECRUITs and WALLS builds, scaled by persona `defensiveness`. Threat and
+ *     holding power are UNIT-based: walls and terrain only count where units
+ *     or a garrison actually stand — a MOVE into undefended ground is an
+ *     unopposed occupation (§7 / actions.ts), however high the walls. The own
+ *     capital and key cities are HOME-ANCHORED against rival forces within
+ *     two steps (losing the capital starts the §13.3 sudden-death clock), and
+ *     retaking an enemy-held own capital gets a relaxed odds gate plus a large
+ *     urgency bonus for the same reason;
  *   - treaty honour: ally (ALLIANCE) territory is never attacked directly —
  *     at most a DIPLOMACY RENOUNCE is offered when a capital-grade prize is
  *     exposed AND the prestige-adjusted payoff beats the −4 betrayal cost;
@@ -189,29 +196,46 @@ function movePoints(stack: Army): number {
   return Number.isFinite(min) ? min : 0;
 }
 
-/** Static defence of a province against ME: hostile stacks + garrison + works. */
+/**
+ * Static defence of a province against ME: hostile stacks + garrison, with
+ * walls and terrain counted ONLY where someone actually stands. A province
+ * with no defending units and no garrison is occupied UNOPPOSED (§7 —
+ * `actions.ts` only queues a battle/siege when units or a garrison defend),
+ * so empty walls must not inflate the odds gate.
+ */
 function defensePowerAt(state: Readonly<GameState>, prov: Province, myId: string): number {
-  let power = 0;
+  let units = 0;
   for (const army of state.armies) {
     if (army.locationId !== prov.id || army.ownerId === myId) continue;
-    power += stackDefensePower(army);
+    units += stackDefensePower(army);
   }
-  power += prov.garrison ?? 0;
+  return mannedPower(prov, units, prov.garrison ?? 0);
+}
+
+/**
+ * Holding power of a province manned by `units` defence plus `garrison`:
+ * walls and terrain multiply a standing defence, but an UNMANNED province
+ * (no units, no garrison) is a walk-in whatever the walls (§7).
+ */
+function mannedPower(prov: Province, units: number, garrison: number): number {
+  if (units + garrison <= 0) return 0;
+  let power = units + garrison + TERRAIN_DEF_MOD[prov.terrain];
   if (prov.walls.hp > 0) power += WALL_TIERS[prov.walls.tier]?.defBonus ?? 0;
-  power += TERRAIN_DEF_MOD[prov.terrain];
   return power;
 }
 
-/** My own defensive strength holding a province (stacks + standing walls). */
+/**
+ * My own HOLDING power in a province: stacks + garrison, plus walls/terrain
+ * only while units or a garrison man them (same §7 reading as
+ * {@link defensePowerAt} — an emptied walled city is a walk-in for a rival).
+ */
 function myDefenseAt(state: Readonly<GameState>, prov: Province, myId: string): number {
-  let power = 0;
+  let units = 0;
   for (const army of state.armies) {
     if (army.locationId !== prov.id || army.ownerId !== myId) continue;
-    power += stackDefensePower(army);
+    units += stackDefensePower(army);
   }
-  if (prov.walls.hp > 0) power += WALL_TIERS[prov.walls.tier]?.defBonus ?? 0;
-  power += TERRAIN_DEF_MOD[prov.terrain];
-  return power;
+  return mannedPower(prov, units, prov.garrison ?? 0);
 }
 
 /** Largest hostile attack force in any single adjacent province. */
@@ -232,6 +256,39 @@ function threatAt(
     worst = Math.max(worst, local);
   }
   return worst;
+}
+
+/**
+ * Rival PLAYER attack strength within TWO steps of a province — the rush
+ * warning for home-anchored ground (a stack that marches out this round can
+ * be punished by anything two steps away next round). Minor garrisons sit
+ * still and never march on a capital, so only seated players count.
+ */
+function threatNear(
+  state: Readonly<GameState>,
+  provId: string,
+  myId: string,
+  allies: ReadonlySet<string>,
+): number {
+  const ring = new Set<string>();
+  for (const nb of neighborsOf(provId)) {
+    ring.add(nb);
+    for (const nb2 of neighborsOf(nb)) ring.add(nb2);
+  }
+  ring.delete(provId);
+  const playerIds = new Set(state.players.map((p) => p.id));
+  let total = 0;
+  for (const army of state.armies) {
+    if (army.ownerId === myId || allies.has(army.ownerId)) continue;
+    if (!playerIds.has(army.ownerId)) continue;
+    if (ring.has(army.locationId)) total += stackAttackPower(army);
+  }
+  return total;
+}
+
+/** Ground whose loss bleeds a holding stream (own capital / key city). */
+function isHomeAnchor(prov: Province, myFaction: Faction | null): boolean {
+  return prov.isCapitalOf === myFaction || (prov.highValue ?? 0) >= 3;
 }
 
 // ---------------------------------------------------------------------------
@@ -360,9 +417,20 @@ export const normalPolicy: Policy = {
       }
     }
 
+    const myFaction = me.faction ?? null;
     const mine = state.provinces.filter((p) => p.ownerId === me.id);
     const threat = new Map<string, number>();
-    for (const prov of mine) threat.set(prov.id, threatAt(state, prov.id, me.id, allies));
+    for (const prov of mine) {
+      let t = threatAt(state, prov.id, me.id, allies);
+      // Home ground watches TWO steps out: a rush must be met before it is
+      // adjacent — the §13.3 sudden-death clock leaves no catch-up round for
+      // the capital, and a key city gifts its holding stream when it flips.
+      if (isHomeAnchor(prov, myFaction)) {
+        const near = threatNear(state, prov.id, me.id, allies);
+        t = Math.max(t, prov.isCapitalOf === myFaction ? near : 0.6 * near);
+      }
+      threat.set(prov.id, t);
+    }
     const isThreatened = (prov: Province): boolean =>
       (threat.get(prov.id) ?? 0) > myDefenseAt(state, prov, me.id) * 0.9 &&
       (threat.get(prov.id) ?? 0) > 0;
@@ -395,25 +463,53 @@ export const normalPolicy: Policy = {
       const mp = movePoints(army);
       if (mp <= 0) continue;
       const attack = stackAttackPower(army);
-      // Never strip a threatened capital/key city of its garrison stack.
-      const anchored =
-        from !== undefined &&
-        from.ownerId === me.id &&
-        (from.isCapitalOf === me.faction || (from.highValue ?? 0) >= 3) &&
-        threatenedIds.has(from.id);
+      // HOME ANCHOR: never march the defence out of the own capital / a key
+      // city that a rival force within two steps could then overrun — an
+      // emptied walled city is a walk-in (§7), and a fallen capital starts
+      // the sudden-death clock. The ground must keep at least 60% of the
+      // nearby rival strength after this stack departs. An anchored stack
+      // holds — its ONE licence to move is the SALLY below: an odds-gated
+      // strike on an adjacent province hosting the armies that pin it (a
+      // frozen garrison otherwise watches its hinterland eaten piecemeal).
+      let anchored = false;
+      if (from !== undefined && from.ownerId === me.id && isHomeAnchor(from, myFaction)) {
+        let unitsLeft = 0;
+        for (const other of state.armies) {
+          if (other.ownerId !== me.id || other.id === army.id) continue;
+          if (other.locationId === from.id) unitsLeft += stackDefensePower(other);
+        }
+        const remaining = mannedPower(from, unitsLeft, from.garrison ?? 0);
+        anchored = remaining < 0.6 * (threat.get(from.id) ?? 0);
+      }
 
       for (const nb of neighborsOf(army.locationId)) {
         const dest = provinceById.get(nb);
         if (!dest) continue; // sea zones: NORMAL keeps its fleets home
         if (TERRAIN_MOVE_COST[dest.terrain] > mp) continue;
         if (bustsStackLimit(state, army, dest)) continue;
+        if (anchored) {
+          // Sally only: the destination must host a rival army that is part
+          // of the pressure on this anchor. Everything else stays home.
+          const hostsThreat = state.armies.some(
+            (a) =>
+              a.locationId === dest.id &&
+              a.ownerId !== me.id &&
+              !allies.has(a.ownerId) &&
+              stackSize(a) > 0,
+          );
+          if (!hostsThreat) continue;
+        }
 
         if (dest.ownerId === me.id) {
-          // Reinforce a threatened own province from a calmer one.
+          // Reinforce a threatened own province from a calmer one. "Already
+          // safe" guard: once the destination out-defends its threat, stop —
+          // otherwise two stacks ping-pong between a covered pair of home
+          // provinces and burn the whole budget shuttling.
           if (
             from !== undefined &&
             threatenedIds.has(dest.id) &&
-            !threatenedIds.has(from.id)
+            !threatenedIds.has(from.id) &&
+            myDefenseAt(state, dest, me.id) < (threat.get(dest.id) ?? 0)
           ) {
             const score =
               (4 + 0.5 * provinceValue(dest, objectiveIds) + 0.3 * (threat.get(dest.id) ?? 0)) *
@@ -460,8 +556,6 @@ export const normalPolicy: Policy = {
           continue;
         }
 
-        if (anchored) continue;
-
         const defense = Math.max(1, defensePowerAt(state, dest, me.id));
         const ratio = attack / defense;
         const ownerFaction = ownerId
@@ -472,6 +566,11 @@ export const normalPolicy: Policy = {
         if (ownerFaction === Faction.OTTOMAN) {
           needed *= 1 - 0.2 * Math.max(0, biases.crusadePreference - 0.5); // crusade window
         }
+        // Retaking the OWN capital races the §13.3 sudden-death clock (two
+        // enemy cleanups lose the game outright): accept worse odds and rank
+        // the counter-attack above any opportunistic grab.
+        const retakesMyCapital = dest.isCapitalOf === myFaction;
+        if (retakesMyCapital) needed *= 0.65;
 
         // NAP / ROYAL_MARRIAGE: honoured unless a capital-grade prize is
         // exposed and the prestige-adjusted payoff is positive; betrayals also
@@ -487,7 +586,8 @@ export const normalPolicy: Policy = {
           ownerFaction === Faction.OTTOMAN ? 2 * Math.max(0, biases.crusadePreference - 0.5) : 0;
         const score =
           (provinceValue(dest, objectiveIds) + 2.5 * Math.min(2, ratio - needed) + crusadeBonus) *
-          (0.4 + 0.9 * military);
+            (0.4 + 0.9 * military) +
+          (retakesMyCapital ? 12 : 0);
         out.push({
           action: { type: "MOVE", player: me.id, stackId: army.id, toId: dest.id },
           score,
@@ -505,7 +605,15 @@ export const normalPolicy: Policy = {
       // §3.2 stacking pre-filter — a full city cannot muster another head.
       if (recruitBustsStackLimit(state, me.id, prov)) continue;
 
-      if (threatenedIds.has(prov.id)) {
+      // Garrison urgency: an actively threatened province, or the OWN CAPITAL
+      // still short of the rival strength standing ADJACENT (the two-step
+      // watch belongs to the anchor; recruiting to it would turtle the whole
+      // budget into one stack). It deliberately ignores the grain floor:
+      // starving later beats losing the sudden-death capital now.
+      const homeShort =
+        prov.isCapitalOf === myFaction &&
+        myDefenseAt(state, prov, me.id) < threatAt(state, prov.id, me.id, allies);
+      if (threatenedIds.has(prov.id) || homeShort) {
         const unit = pickUnit(me, [UnitType.INFANTRY, UnitType.ARCHER, UnitType.LEVY]);
         if (unit) {
           const score =
@@ -621,8 +729,25 @@ export const normalPolicy: Policy = {
       ? sumModifierValues(state, "trade_mod", { faction: me.faction })
       : 0;
     const worstRatio = Math.min(6, Math.max(3, 3 - tradeMod));
+    // Structural famine guard: when army upkeep (~1 grain/head/round, §4.4)
+    // outruns grain INCOME, buying grain on the market only treadmills gold
+    // into the same deficit next round — skip the smoothing and let the
+    // recruit floor shrink the problem instead.
+    let upkeepHeads = 0;
+    for (const army of state.armies) {
+      if (army.ownerId === me.id) upkeepHeads += stackSize(army);
+    }
+    let grainIncome = 0;
+    for (const prov of mine) grainIncome += prov.yields.grain;
+    const structuralFamine = grainIncome + 1 < upkeepHeads;
     for (const scarce of TRADEABLE) {
       if (me.treasury[scarce] > SCARCE_AT) continue;
+      if (scarce === "grain" && structuralFamine) continue;
+      // Only the OPERATIONAL currencies are worth buying at a 2:1 loss: gold
+      // pays for everything and grain feeds recruiting. Stockpiling timber or
+      // marble with no build in hand just treadmills actions and treasury —
+      // the old full-cartesian smoothing burned ~40% of a game's budget.
+      if (scarce !== "gold" && scarce !== "grain") continue;
       for (const surplus of TRADEABLE) {
         if (surplus === scarce || me.treasury[surplus] < SURPLUS_AT) continue;
         const score =

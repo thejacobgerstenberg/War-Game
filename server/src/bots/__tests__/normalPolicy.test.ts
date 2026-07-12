@@ -367,7 +367,153 @@ describe("bots/policies/normal — defence of threatened high-value provinces", 
   });
 });
 
+describe("bots/policies/normal — capital survival under the enforced turn order", () => {
+  /**
+   * Round-1-style board: my capital holds my only field army while a rival
+   * host stands within two steps. Pre-tuning NORMAL marched out (walls made
+   * the capital look safe) and was walked in on — the §13.3 sudden-death
+   * root cause of the difficulty-ordering regression.
+   */
+  function capitalScenario(): {
+    state: GameState;
+    meId: string;
+    capital: Province;
+    staging: Province;
+  } {
+    const state = structuredClone(atWindow());
+    const me = state.players[0]; // BYZANTIUM
+    const foe = state.players[1];
+    const capital = state.provinces.find((p) => p.isCapitalOf === Faction.BYZANTIUM)!;
+    const byId = new Map(state.provinces.map((p) => [p.id, p]));
+    const staging = neighborsOf(capital.id)
+      .map((id) => byId.get(id))
+      .find((p): p is Province => p !== undefined)!;
+    staging.ownerId = foe.id;
+    // Isolate the duel: only the holding stack and the rush exist, so the
+    // anchor (and its sally licence) is exercised against exactly one army.
+    state.armies = [
+      {
+        id: "cap-hold",
+        ownerId: me.id,
+        locationId: capital.id,
+        units: units({ [UnitType.INFANTRY]: 3 }),
+      },
+      {
+        id: "rush-1",
+        ownerId: foe.id,
+        locationId: staging.id,
+        units: units({ [UnitType.INFANTRY]: 2 }),
+      },
+    ];
+    return { state, meId: me.id, capital, staging };
+  }
+
+  it("home anchor: never marches the last capital defence out under a nearby rush", () => {
+    const { state, meId, capital, staging } = capitalScenario();
+    // Make the sally unattractive so holding is the only sane play.
+    state.armies.find((a) => a.id === "rush-1")!.units = units({
+      [UnitType.INFANTRY]: 8,
+    });
+    const cands = normalPolicy.chooseAction(ctxFor(state, meId));
+    for (const c of cands) {
+      if (c.type === "MOVE" && c.stackId === "cap-hold") {
+        throw new Error(`anchored capital stack offered a move to ${c.toId}`);
+      }
+    }
+    expect(cands.length).toBeGreaterThan(0);
+    expect(capital.isCapitalOf).toBe(Faction.BYZANTIUM);
+    expect(staging.ownerId).not.toBe(meId);
+  });
+
+  it("sally: the anchored capital stack may still strike the adjacent army pinning it", () => {
+    const { state, meId, staging } = capitalScenario();
+    // 3 INFANTRY (atk 6) vs 2 INFANTRY (def 6 + terrain) fails the gate; give
+    // the garrison a clear edge so the odds-gated sally fires.
+    state.armies.find((a) => a.id === "cap-hold")!.units = units({
+      [UnitType.INFANTRY]: 6,
+    });
+    state.armies.find((a) => a.id === "rush-1")!.units = units({
+      [UnitType.INFANTRY]: 1,
+    });
+    staging.terrain = TerrainType.PLAINS;
+    staging.walls = { tier: 0, hp: 0 };
+    staging.garrison = 0;
+    const cands = normalPolicy.chooseAction(ctxFor(state, meId));
+    const sally = cands.filter(
+      (c) => c.type === "MOVE" && c.stackId === "cap-hold" && c.toId === staging.id,
+    );
+    expect(sally.length).toBeGreaterThan(0);
+  });
+
+  it("unmanned walls are a walk-in: attacks an empty high-walled province the old model refused", () => {
+    const { state, meId, target } = attackScenario(0);
+    target.walls = { tier: 4, hp: 13 }; // T4: defBonus +4, hp 13 — but unmanned
+    target.garrison = 0;
+    const cands = normalPolicy.chooseAction(ctxFor(state, meId));
+    expect(movesTo(cands, target.id).length).toBeGreaterThan(0);
+  });
+
+  it("races the sudden-death clock: retakes its own enemy-held capital at odds it would not risk elsewhere", () => {
+    const state = structuredClone(atWindow());
+    const me = state.players[0]; // BYZANTIUM
+    const foe = state.players[1];
+    const capital = state.provinces.find((p) => p.isCapitalOf === Faction.BYZANTIUM)!;
+    const byId = new Map(state.provinces.map((p) => [p.id, p]));
+    const staging = neighborsOf(capital.id)
+      .map((id) => byId.get(id))
+      .find((p): p is Province => p !== undefined)!;
+    capital.ownerId = foe.id; // the City has fallen
+    capital.garrison = 0;
+    staging.ownerId = me.id;
+    state.armies = state.armies.filter(
+      (x) => x.locationId !== capital.id && x.locationId !== staging.id,
+    );
+    state.armies.push({
+      id: "retake-1",
+      ownerId: me.id,
+      locationId: staging.id,
+      units: units({ [UnitType.INFANTRY]: 6 }),
+    });
+    // Occupier: 4 INFANTRY behind the walls — over the plain odds gate with
+    // walls counted, inside it with the retake relief.
+    state.armies.push({
+      id: "occupier",
+      ownerId: foe.id,
+      locationId: capital.id,
+      units: units({ [UnitType.INFANTRY]: 3 }),
+    });
+    const cands = normalPolicy.chooseAction(ctxFor(state, me.id));
+    const retake = cands.findIndex((c) => c.type === "MOVE" && c.toId === capital.id);
+    expect(retake).toBeGreaterThanOrEqual(0);
+    expect(retake).toBeLessThan(3); // urgency bonus ranks it at the top
+  });
+});
+
 describe("bots/policies/normal — market smoothing", () => {
+  it("does not treadmill gold into a structural grain famine", () => {
+    const state = structuredClone(atWindow());
+    const me = state.players[0];
+    // Upkeep far above grain income: a big host on a tiny grain base.
+    state.armies.push({
+      id: "horde",
+      ownerId: me.id,
+      locationId: state.provinces.find((p) => p.ownerId === me.id)!.id,
+      units: units({ [UnitType.INFANTRY]: 8 }),
+    });
+    for (const prov of state.provinces) {
+      if (prov.ownerId === me.id) prov.yields = { ...prov.yields, grain: 0 };
+    }
+    me.treasury = { gold: 12, grain: 0, timber: 2, marble: 2, faith: 2 };
+    const cands = normalPolicy.chooseAction(ctxFor(state, me.id));
+    const grainBuys = cands.filter(
+      (c) =>
+        c.type === "TRADE" &&
+        c.trade.kind === "CONVERT" &&
+        (c.trade.get.grain ?? 0) > 0,
+    );
+    expect(grainBuys).toEqual([]);
+  });
+
   it("converts a surplus resource toward a scarce one, cheap ratio probed first", () => {
     const state = structuredClone(atWindow());
     const me = state.players[0];
