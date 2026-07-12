@@ -85,8 +85,9 @@ export interface PolicyContext {
  * driver submits candidates in order through the validated reducer path and
  * commits the first one the engine accepts (the standard legality-probe
  * idiom — there is no `legalActions(state)` enumerator). Returning an empty
- * list ends the bot's turn for this action window (the driver treats it as
- * a pass and stops asking).
+ * list ends the bot's turn for this action window: the driver stops asking
+ * and, if budget remains, yields the seat with a real PASS (the engine's
+ * turn pointer only advances past a seat whose budget is spent).
  *
  * Termination rule: while the bot still has budget, candidates should be
  * BUDGETED action types (RECRUIT/MOVE/BUILD/TRADE/DIPLOMACY-PROPOSE/

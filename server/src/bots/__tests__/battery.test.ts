@@ -48,6 +48,9 @@ function expectLegalEnd(r: BotGameReport): void {
   expect(r.actionsSubmitted).toBeGreaterThan(0);
   // Zero invalid submissions: no bot ever ran out of engine-legal candidates.
   expect(r.fallbackPasses).toBe(0);
+  // Turn-order contract: the driver acts only on its own turn, so the
+  // engine's OUT_OF_TURN gate must never fire (not even as a "probe").
+  expect(r.outOfTurnRejections).toBe(0);
   expect(r.violations).toEqual([]);
 }
 
@@ -121,6 +124,7 @@ describe("bots battery (c) — fuzz: 10,000 engine-validated bot actions", () =>
       const rotation = [Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD];
       let actions = 0;
       let fallbacks = 0;
+      let outOfTurn = 0;
       let games = 0;
       for (let i = 0; actions < 10_000; i += 1) {
         const numPlayers = 2 + (i % 4);
@@ -135,12 +139,14 @@ describe("bots battery (c) — fuzz: 10,000 engine-validated bot actions", () =>
         expect(report.deadlock).toBeNull();
         actions += report.actionsSubmitted;
         fallbacks += report.fallbackPasses;
+        outOfTurn += report.outOfTurnRejections;
         games += 1;
       }
       expect(actions).toBeGreaterThanOrEqual(10_000);
       expect(fallbacks).toBe(0);
+      expect(outOfTurn).toBe(0);
       console.info(
-        `[battery:fuzz] ${actions} accepted actions across ${games} games, 0 fallbacks`,
+        `[battery:fuzz] ${actions} accepted actions across ${games} games, 0 fallbacks, 0 out-of-turn`,
       );
     },
     300_000,

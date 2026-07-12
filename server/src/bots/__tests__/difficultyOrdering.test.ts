@@ -31,6 +31,7 @@ describe("bots battery (d) — difficulty ordering", () => {
       expect(r.winsA + r.winsB).toBe(GAMES);
       expect(r.deadlocks).toBe(0);
       expect(r.fallbackPasses).toBe(0);
+      expect(r.outOfTurnRejections).toBe(0);
       // The ordering assertion itself.
       expect(r.winsA / r.games).toBeGreaterThan(0.65);
       console.info(
@@ -47,6 +48,7 @@ describe("bots battery (d) — difficulty ordering", () => {
       expect(r.winsA + r.winsB).toBe(GAMES);
       expect(r.deadlocks).toBe(0);
       expect(r.fallbackPasses).toBe(0);
+      expect(r.outOfTurnRejections).toBe(0);
       console.info(
         `[ordering] NORMAL vs EASY: ${r.winsA}-${r.winsB} (${((100 * r.winsA) / r.games).toFixed(1)}%)`,
       );
@@ -61,6 +63,7 @@ describe("bots battery (d) — difficulty ordering", () => {
       expect(r.winsA + r.winsB).toBe(GAMES);
       expect(r.deadlocks).toBe(0);
       expect(r.fallbackPasses).toBe(0);
+      expect(r.outOfTurnRejections).toBe(0);
       console.info(
         `[ordering] HARD vs NORMAL: ${r.winsA}-${r.winsB} (${((100 * r.winsA) / r.games).toFixed(1)}%)`,
       );

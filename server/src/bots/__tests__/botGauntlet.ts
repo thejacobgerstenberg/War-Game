@@ -78,6 +78,14 @@ export interface BotGameReport {
   probeRejections: number;
   /** Sum of whole-slate rejections — MUST stay 0 for well-formed policies. */
   fallbackPasses: number;
+  /** PASSes yielding a turn the policy ended with budget left (normal). */
+  yieldPasses: number;
+  /**
+   * Rejections carrying the engine's OUT_OF_TURN code — MUST stay 0: a
+   * driver that respects `activePlayerIndex` never submits out of turn, and
+   * counting these separately keeps them from hiding inside probeRejections.
+   */
+  outOfTurnRejections: number;
   violations: Violation[];
   deadlock: string | null;
   /** JSON of every accepted action, in submission order (collectLog). */
@@ -89,9 +97,13 @@ export interface BotGameReport {
 
 /**
  * Drive one full game (INCOME → … → END × rounds) with a BotPlayer on every
- * seat. Turn discipline follows the gauntlet precedent: the driver serializes
- * seats over `state.turnOrder` once per round at RECRUITMENT (the shared
- * CANON #9 action window), then advances the phase machine.
+ * seat. Turn discipline: the driver serializes seats over `state.turnOrder`
+ * once per round at RECRUITMENT (the shared CANON #9 action window), then
+ * advances the phase machine. This matches the engine's enforced turn gate
+ * (`requireActiveTurn` / `activePlayerIndex`): the pointer starts at
+ * `turnOrder[0]` when INCOME resets budgets and advances in `turnOrder`
+ * order as each seat's budget hits 0 — BotPlayer spends its full budget or
+ * yields with PASS, so each seat is exactly the active one when reached.
  */
 export async function runBotGame(opts: BotGameOptions): Promise<BotGameReport> {
   const seats = makeSeats(opts.numPlayers);
@@ -113,6 +125,7 @@ export async function runBotGame(opts: BotGameOptions): Promise<BotGameReport> {
   const advisorLog: string[] = [];
   let deadlock: string | null = null;
   let steps = 0;
+  let outOfTurnRejections = 0;
 
   const baseSubmit = createEngineSubmit(
     () => state,
@@ -129,6 +142,11 @@ export async function runBotGame(opts: BotGameOptions): Promise<BotGameReport> {
         violations.push(...checkInvariants(prev, result.state, { step: steps, action }));
       }
       if (collect) actionLog.push(JSON.stringify(action));
+    } else if (result.code === "OUT_OF_TURN") {
+      // Never legitimate: the driver's active-turn guard means no submission
+      // should ever trip the engine's turn gate. Counted so the battery can
+      // pin it at 0 (it must not hide among ordinary legality probes).
+      outOfTurnRejections += 1;
     }
     return result;
   };
@@ -222,6 +240,8 @@ export async function runBotGame(opts: BotGameOptions): Promise<BotGameReport> {
     actionsSubmitted: bots.reduce((n, b) => n + b.stats.actionsSubmitted, 0),
     probeRejections: bots.reduce((n, b) => n + b.stats.probeRejections, 0),
     fallbackPasses: bots.reduce((n, b) => n + b.stats.fallbackPasses, 0),
+    yieldPasses: bots.reduce((n, b) => n + b.stats.yieldPasses, 0),
+    outOfTurnRejections,
     violations,
     deadlock,
     actionLog,
@@ -250,11 +270,18 @@ export async function runHeadToHead(
   b: Difficulty,
   games: number,
   seedBase: number,
-): Promise<MatchupResult & { fallbackPasses: number; deadlocks: number }> {
+): Promise<
+  MatchupResult & {
+    fallbackPasses: number;
+    deadlocks: number;
+    outOfTurnRejections: number;
+  }
+> {
   let winsA = 0;
   let winsB = 0;
   let fallbackPasses = 0;
   let deadlocks = 0;
+  let outOfTurnRejections = 0;
   for (let i = 0; i < games; i += 1) {
     const aFirst = i % 2 === 0;
     const report = await runBotGame({
@@ -263,11 +290,12 @@ export async function runHeadToHead(
       difficulties: aFirst ? [a, b] : [b, a],
     });
     fallbackPasses += report.fallbackPasses;
+    outOfTurnRejections += report.outOfTurnRejections;
     if (report.deadlock) deadlocks += 1;
     if (report.winnerSeat === null) continue;
     const seatIsA = aFirst ? report.winnerSeat === 0 : report.winnerSeat === 1;
     if (seatIsA) winsA += 1;
     else winsB += 1;
   }
-  return { a, b, games, winsA, winsB, fallbackPasses, deadlocks };
+  return { a, b, games, winsA, winsB, fallbackPasses, deadlocks, outOfTurnRejections };
 }

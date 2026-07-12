@@ -105,11 +105,25 @@ describe("bots/BotPlayer — submit path and budget", () => {
     ).toBe(0);
   });
 
-  it("ends the turn when the policy returns no candidates", async () => {
+  it("yields with a PASS when the policy ends its turn with budget remaining", async () => {
+    // Engine turn-order contract: the window pointer only advances past a
+    // seat whose budget hits 0, so a bot whose policy is done must cede the
+    // turn with a real PASS (not silently strand the pointer on itself).
     const start = stateAtActionWindow();
     const me = start.players[0];
-    const submit: SubmitFn = () => {
-      throw new Error("must not be called");
+    const submitted: GameAction[] = [];
+    const submit: SubmitFn = (action) => {
+      submitted.push(action);
+      if (action.type !== "PASS") throw new Error("only PASS may be submitted");
+      return {
+        ok: true,
+        state: {
+          ...start,
+          players: start.players.map((p) =>
+            p.id === me.id ? { ...p, actionsRemaining: 0 } : p,
+          ),
+        },
+      };
     };
     const bot = new BotPlayer({
       playerId: me.id,
@@ -120,6 +134,33 @@ describe("bots/BotPlayer — submit path and budget", () => {
     });
     const after = await bot.takeTurn(start);
     expect(bot.stats.actionsSubmitted).toBe(0);
+    expect(bot.stats.fallbackPasses).toBe(0);
+    expect(bot.stats.yieldPasses).toBe(1);
+    expect(submitted).toEqual([{ type: "PASS", player: me.id }]);
+    expect(
+      after?.players.find((p) => p.id === me.id)?.actionsRemaining,
+    ).toBe(0);
+  });
+
+  it("declines to act while another seat holds the active turn", async () => {
+    const start = stateAtActionWindow();
+    // Pick the seat the window pointer is NOT resting on.
+    const activeId = start.turnOrder[start.activePlayerIndex];
+    const me = start.players.find((p) => p.id !== activeId);
+    if (!me) throw new Error("test needs two seats");
+    const submit: SubmitFn = () => {
+      throw new Error("must not be called out of turn");
+    };
+    const bot = new BotPlayer({
+      playerId: me.id,
+      gameSeed: GAME_SEED,
+      config: config(),
+      submit,
+      policy: policyOf((pid) => [dummyAction(pid)]),
+    });
+    const after = await bot.takeTurn(start);
+    expect(bot.stats.actionsSubmitted).toBe(0);
+    expect(bot.stats.yieldPasses).toBe(0);
     expect(after).toBe(start);
   });
 
@@ -301,8 +342,9 @@ describe("bots/BotPlayer — against the real engine", () => {
     );
     const byId = new Map(bots.map((b) => [b.playerId, b]));
 
-    // Turn discipline is the driver's job (the reducer does not slice turns):
-    // serialize seats in turnOrder, exactly like the gauntlet harness.
+    // Serialize seats in turnOrder, exactly like the gauntlet harness — this
+    // matches the engine's enforced turn gate (activePlayerIndex starts at
+    // turnOrder[0] and advances as each seat spends or yields its budget).
     for (const seatId of state.turnOrder) {
       const bot = byId.get(seatId);
       if (bot) await bot.takeTurn(state);

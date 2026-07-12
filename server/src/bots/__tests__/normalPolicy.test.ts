@@ -168,8 +168,15 @@ describe("bots/policies/normal — candidate hygiene over fuzzed states", () => 
 
   it("every non-empty slate contains at least one engine-legal action", () => {
     for (const seed of [3, 21, 777, 4321]) {
-      const state = atWindow(seed);
-      for (const player of state.players) {
+      const base = atWindow(seed);
+      for (const player of base.players) {
+        // The engine enforces window turn order (actions.ts
+        // `requireActiveTurn`) and the BotPlayer driver only ever acts on its
+        // own turn — so legality of a seat's slate is defined ON that seat's
+        // turn: hand the seat the active pointer before probing.
+        const state = structuredClone(base);
+        state.activePlayerIndex = state.turnOrder.indexOf(player.id);
+        expect(state.activePlayerIndex).toBeGreaterThanOrEqual(0);
         const cands = normalPolicy.chooseAction(ctxFor(state, player.id, { botSeed: seed }));
         expect(cands.length).toBeGreaterThan(0);
         const accepted = cands.some((c) => {

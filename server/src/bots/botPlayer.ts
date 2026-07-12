@@ -9,13 +9,19 @@
  * {@link createEngineSubmit}; when the socket dispatch lands, the identical
  * SubmitFn shape wraps it with zero changes here.
  *
- * TURN DISCIPLINE: the reducer deliberately does NOT enforce whose turn it
- * is inside the shared RECRUITMENT/MOVEMENT/DIPLOMACY action window (CANON
- * #9 — `spendAction` gates only phase + budget). Whoever owns the room's
- * game loop must therefore serialize seats (gauntlet precedent: iterate
- * `state.turnOrder`, and re-read it each round — `sortTurnOrder` re-sorts by
- * prestige at INCOME and END) and call {@link BotPlayer.takeTurn} for each
- * bot seat in order.
+ * TURN DISCIPLINE: the engine ENFORCES turn order inside the shared
+ * RECRUITMENT/MOVEMENT/DIPLOMACY action window (`actions.ts::requireActiveTurn`,
+ * §10.0/§13.4): only `turnOrder[state.activePlayerIndex]` may take budgeted
+ * actions or PASS — anyone else is rejected with OUT_OF_TURN. The bot honours
+ * that contract rather than probing against it: {@link BotPlayer.takeTurn}
+ * declines to act unless the bot holds the active turn, and when its policy
+ * ends the turn with budget remaining it YIELDS with a real PASS (the pointer
+ * only advances past a seat whose budget is spent — an un-yielded turn would
+ * wedge every later seat). Whoever owns the room's game loop still serializes
+ * seats (gauntlet precedent: iterate `state.turnOrder`, re-read each round —
+ * `sortTurnOrder` re-sorts by prestige at INCOME and END, resetting the
+ * pointer to the head) and calls takeTurn for each bot seat in order, which
+ * matches the engine pointer exactly.
  *
  * TIMER: docs/ARCHITECTURE.md §10's 90s action clock has no code yet. Pacing
  * here is config ({@link import("./types.js").DEFAULT_PACING}, `'instant'`
@@ -106,6 +112,12 @@ export interface BotStats {
    * well-formed policy; the bot logs it and falls back to a safe PASS.
    */
   fallbackPasses: number;
+  /**
+   * PASSes submitted to yield the window after the policy ended its turn with
+   * budget remaining (normal, occasional — e.g. a seat with nothing left to
+   * do). Distinct from fallbackPasses, which flag a malfunctioning policy.
+   */
+  yieldPasses: number;
   /** Advisor lines emitted. */
   advisorLines: number;
 }
@@ -148,6 +160,7 @@ export class BotPlayer {
     actionsSubmitted: 0,
     probeRejections: 0,
     fallbackPasses: 0,
+    yieldPasses: 0,
     advisorLines: 0,
   };
 
@@ -190,12 +203,21 @@ export class BotPlayer {
     const me = current.players.find((p) => p.id === this.playerId);
     if (!me || !ACTION_WINDOW.has(current.phase)) return current;
 
+    // TURN ORDER (engine contract, `actions.ts::requireActiveTurn`): inside
+    // the window only the active seat may take budgeted actions or PASS —
+    // anyone else harvests OUT_OF_TURN rejections. Decline to act until the
+    // room loop calls this bot on its own turn. (An empty `turnOrder` /
+    // out-of-range pointer disables the engine gate — hand-built fixtures —
+    // and disables this guard identically.)
+    if (!this.isActiveTurn(current)) return current;
+
     // Decision stream for this (game, bot, round); table-talk gets its own
     // split so emitting a line never shifts a decision.
     const rng = makeBotRng(this.gameSeed, this.config.botSeed, current.round);
     this.emitAdvisorLine(current, rng.split("advisor"));
 
     const cap = this.budgetOf(current) + FREE_ACTION_SLACK;
+    let passed = false;
     for (let slot = 0; slot < cap; slot += 1) {
       if (this.budgetOf(current) <= 0) break;
 
@@ -235,6 +257,7 @@ export class BotPlayer {
           candidates: candidates.length,
         });
         const pass = await this.submit({ type: "PASS", player: this.playerId });
+        passed = true;
         if (pass.ok) {
           current = pass.state;
           this.latestState = current;
@@ -242,7 +265,31 @@ export class BotPlayer {
         break;
       }
     }
+
+    // YIELD (engine turn-order contract): the pointer only advances past this
+    // seat once its budget hits 0, so a turn ended early (policy returned no
+    // candidates, or the iteration cap tripped) must be ceded with a real
+    // PASS — otherwise every later seat is wedged behind OUT_OF_TURN.
+    // Policies never return PASS (types.ts: the driver owns it).
+    if (!passed && this.budgetOf(current) > 0 && this.isActiveTurn(current)) {
+      this.stats.yieldPasses += 1;
+      const pass = await this.submit({ type: "PASS", player: this.playerId });
+      if (pass.ok) {
+        current = pass.state;
+        this.latestState = current;
+      }
+    }
     return current;
+  }
+
+  /**
+   * True when the engine's window turn gate permits this bot to act: either
+   * the pointer rests on this seat, or the gate is disabled (empty/out-of-
+   * range `turnOrder` — mirrors `requireActiveTurn`'s defensive clause).
+   */
+  private isActiveTurn(state: GameState): boolean {
+    const activeId = state.turnOrder[state.activePlayerIndex];
+    return activeId === undefined || activeId === this.playerId;
   }
 
   private budgetOf(state: GameState): number {
