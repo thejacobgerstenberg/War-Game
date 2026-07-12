@@ -13,6 +13,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  BuildingType,
   Faction,
   GamePhase,
   GreatWorkType,
@@ -95,6 +96,7 @@ const ALLOWED = new Set([
   "TRADE",
   "DIPLOMACY",
   "SPY",
+  "SIEGE_ASSAULT", // §8.2 step 4 — the chosen storm on a prosecuted siege
   "VASSALIZE",
   "DECLARE_WAR",
   "LEVY_CALL",
@@ -317,6 +319,89 @@ describe("bots/policies/hard — siege timing & the Ottoman line", () => {
     }
   });
 
+  it("declares the storm on its own siege once the odds tip (SIEGE_ASSAULT)", () => {
+    // p2 besieges a BREACHED Constantinople with a crushing host inside —
+    // the chosen §8.2 step 4 assault must lead the slate (an undeclared
+    // siege round is bombardment/starvation only and can never storm).
+    const state = mutate(stateAtActionWindow(), (draft) => {
+      draft.armies = draft.armies.filter((a) => a.ownerId !== "p2");
+      draft.armies.push(
+        mkArmy("army-p2-host", "p2", "constantinople", {
+          [UnitType.CAVALRY]: 8,
+          [UnitType.SIEGE]: 2,
+        }),
+      );
+      const cple = draft.provinces.find((p) => p.id === "constantinople");
+      if (cple) cple.walls = { tier: 5, hp: 0 }; // breached
+      draft.siegeStates = [
+        {
+          provinceId: "constantinople",
+          besiegerId: "p2",
+          besiegingArmyIds: ["army-p2-host"],
+          roundsElapsed: 3,
+          grainStores: 0,
+          breached: true,
+          circumvallated: true,
+        },
+      ];
+    });
+    for (let botSeed = 0; botSeed < 10; botSeed += 1) {
+      const [first] = hardPolicy.chooseAction(ctxFor(state, "p2", botSeed));
+      expect(first).toBeDefined();
+      if (first?.type !== "SIEGE_ASSAULT") {
+        throw new Error(`expected SIEGE_ASSAULT, got ${first?.type}`);
+      }
+      expect(first.provinceId).toBe("constantinople");
+    }
+  });
+
+  it("keeps bombarding instead of storming while the odds are hopeless", () => {
+    // Two lonely levies cannot storm the manned Theodosian walls — the
+    // assault is never the top of the slate.
+    const state = mutate(stateAtActionWindow(), (draft) => {
+      draft.armies = draft.armies.filter((a) => a.ownerId !== "p2");
+      draft.armies.push(
+        mkArmy("army-p2-host", "p2", "constantinople", { [UnitType.LEVY]: 2 }),
+      );
+      draft.siegeStates = [
+        {
+          provinceId: "constantinople",
+          besiegerId: "p2",
+          besiegingArmyIds: ["army-p2-host"],
+          roundsElapsed: 1,
+          grainStores: 3,
+          breached: false,
+          circumvallated: true,
+        },
+      ];
+    });
+    for (let botSeed = 0; botSeed < 10; botSeed += 1) {
+      const [first] = hardPolicy.chooseAction(ctxFor(state, "p2", botSeed));
+      expect(first?.type === "SIEGE_ASSAULT").toBe(false);
+    }
+  });
+
+  it("fights an enemy stack squatting on its own ground (pending occupation)", () => {
+    // A rival levy stands in Ottoman bithynia (a §6.4 pending occupation —
+    // invisible to adjacency-based threat maps); the bursa host must offer
+    // the retake at field odds.
+    const state = mutate(stateAtActionWindow(), (draft) => {
+      draft.armies = draft.armies.filter((a) => a.ownerId !== "p2");
+      draft.armies.push(
+        mkArmy("army-p2-host", "p2", "bursa", { [UnitType.CAVALRY]: 6 }),
+        mkArmy("army-p1-squatter", "p1", "bithynia", { [UnitType.LEVY]: 2 }),
+      );
+    });
+    for (let botSeed = 0; botSeed < 10; botSeed += 1) {
+      const candidates = hardPolicy.chooseAction(ctxFor(state, "p2", botSeed));
+      expect(
+        candidates.some(
+          (a) => a.type === "MOVE" && a.stackId === "army-p2-host" && a.toId === "bithynia",
+        ),
+      ).toBe(true);
+    }
+  });
+
   it("builds a siege train once the obsession window approaches (Era II+)", () => {
     const state = mutate(stateAtActionWindow(), (draft) => {
       draft.round = 6;
@@ -451,6 +536,51 @@ describe("bots/policies/hard — espionage", () => {
     expect(
       candidates.some((a) => a.type === "SPY" && a.mission === SpyMission.UNREST),
     ).toBe(true);
+  });
+
+  it("does not fish for UNREST against a hard §10.7 target (EV gate)", () => {
+    // Byzantium behind a University: target 3+1+1 → 2-in-6 odds. A failed
+    // UNREST costs −2 prestige, so the mission is not offered; the one-shot
+    // OBJECTIVE read is still worth the roll.
+    const state = mutate(stateAtActionWindow(), (draft) => {
+      draft.armies = [];
+      draft.fleets = [];
+      const rival = draft.players.find((p) => p.id === "p1");
+      if (rival) rival.prestige = 50;
+      const me = draft.players.find((p) => p.id === "p2");
+      // Gold only: recruits/builds/trades stay off the slate so the ranked
+      // slice isolates the espionage line.
+      if (me) me.treasury = { gold: 10, grain: 0, timber: 0, marble: 0, faith: 0 };
+      const cple = draft.provinces.find((p) => p.id === "constantinople");
+      if (cple) cple.buildings = [BuildingType.UNIVERSITY];
+    });
+    const candidates = hardPolicy.chooseAction(ctxFor(state, "p2", 7));
+    expect(
+      candidates.some((a) => a.type === "SPY" && a.mission === SpyMission.UNREST),
+    ).toBe(false);
+    expect(
+      candidates.some((a) => a.type === "SPY" && a.mission === SpyMission.OBJECTIVE),
+    ).toBe(true);
+  });
+
+  it("stops spying entirely after two captured agents (own log intel)", () => {
+    const state = withLeader((draft) => {
+      for (let k = 0; k < 2; k += 1) {
+        draft.log.push({
+          id: `log-cap-${k}`,
+          round: 1,
+          phase: draft.phase,
+          type: "spy",
+          actors: ["p1"],
+          targets: ["p2"],
+          data: { captured: true },
+          message: "an agent was captured",
+          timestamp: k,
+        });
+      }
+    });
+    const candidates = hardPolicy.chooseAction(ctxFor(state, "p1", 7));
+    expect(candidates.some((a) => a.type === "SPY")).toBe(false);
   });
 
   it("keeps its agents home when gold is short (cost + reserve)", () => {

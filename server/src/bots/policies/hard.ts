@@ -30,13 +30,35 @@
  *    the Great Bombard) and the Bombard's 1-round EMPLACEMENT delay before
  *    it may fire. War-fleet moves that close a besieged port's supply zones
  *    score as siege support.
+ *  - FORTRESS CAMPAIGN: ONE enemy walled CITY worth a §13 capital/key-city
+ *    stream is prosecuted as a multi-round plan — build the hulls (shipyard,
+ *    GALLEY pickets), station a war fleet on EVERY adjacent sea zone
+ *    (blockade → the §8.2.3 starvation clock), stage the host in, INVEST
+ *    (§8.2 step 1 queues no immediate battle), then STORM via the budgeted
+ *    SIEGE_ASSAULT action once starvation/bombardment tip the odds. Anchored
+ *    stand-offs release: rival armies parked in their OWN capital are
+ *    discounted in the rush warning, an anchored stack keeps NORMAL's sally
+ *    licence (odds-gated strike on an adjacent pinning army), and a stack
+ *    far behind in the race may march on the ready fortress outright (the
+ *    desperation licence). Own ground is defended in kind: enemy stacks
+ *    STANDING IN an owned province (a pending §6.4 occupation) are fought at
+ *    field odds, a defender named in a pending battle stands its ground, and
+ *    the §13.3 sudden-death City never goes unmanned.
  *  - TACTIC CARDS at high-leverage combats only (capital / HV(3)+ province,
  *    a siege, or a large committed stack): timing/domain/side-matched cards
  *    from the bot's OWN hand are offered as free candidates.
- *  - SPY when information value is high: OBJECTIVE against the prestige
- *    leader (once per rival — previous successes are read from the bot's own
- *    log intel), UNREST on the leader's best province; both expectation-
- *    weighted by the §10.7 success roll (University / Byzantium resistance).
+ *  - SPY when information value is high AND the odds carry positive
+ *    expectation: OBJECTIVE against the prestige leader (once per rival —
+ *    previous successes are read from the bot's own log intel), UNREST on
+ *    the leader's best province only at even §10.7 odds or better
+ *    (University / Byzantium resistance priced in), and ALL fishing stops
+ *    after two captured agents — a failed roll costs REAL prestige.
+ *  - ECONOMY DISCIPLINE: the §4.4 grain bill is computed EXACTLY (faction
+ *    levy economics — Ottoman levies eat 0 — and per-unique overrides), a
+ *    structurally unpayable bill is never treadmilled at the 2:1 market, and
+ *    hoards convert into the prestige budget: a GREAT-WORK PIPELINE picks
+ *    the best financeable work and pulls its missing marble/timber through
+ *    the market until the full cost is in hand.
  *  - FACTION LINES (persona biases, HARD strength): Ottoman
  *    `constantinopleObsession` (Era III, only when militarily sane — breach
  *    plan or open walls), Venice/Genoa `tradeFocus` monopoly defence + trade
@@ -71,6 +93,8 @@ import {
 import { neighborsOf } from "../../engine/adjacency.js";
 import {
   CONQUEST_PRESTIGE,
+  FACTION_LEVY_ECONOMY,
+  GREAT_BOMBARD,
   GREAT_WORK_COSTS,
   MERC_COMPANIES,
   MERC_MARKET,
@@ -109,6 +133,27 @@ const ODDS_GATE_BASE = 1.45;
 const ODDS_GATE_WAR_RELIEF = 0.5;
 /** A siege plan must land within this many rounds to be worth opening. */
 const SIEGE_MAX_ROUNDS = 4;
+/**
+ * A fortress CAMPAIGN plan (enemy capital / HV(3)+ walled CITY — see
+ * {@link HardCtx.campaignTarget}) may run this many rounds: the §8.2.3
+ * starvation clock alone is holdout+1 (up to 6 with a Granary), and the storm
+ * follows once the garrison hungers — worth it for a §13 capital stream.
+ */
+const CAMPAIGN_MAX_ROUNDS = 8;
+/**
+ * Rush-warning discount for rival armies parked in their OWN capital / key
+ * city: a home-anchored garrison almost never marches (its own doctrine pins
+ * it — every policy in this codebase anchors its capital), so it should warn,
+ * not paralyse. Field armies count at full strength. This is what releases
+ * the mutual home-anchor deadlock (both capitals two steps apart, both hosts
+ * frozen forever).
+ */
+const GARRISON_THREAT_DISCOUNT = 0.35;
+/** Storm odds gates for a declared SIEGE_ASSAULT (walls up / breached). */
+const ASSAULT_GATE_WALLED = 1.3;
+const ASSAULT_GATE_BREACHED = 1.1;
+/** Own agents captured (§10.7) after which ALL further spy fishing stops. */
+const SPY_CAPTURE_STOP = 2;
 /** Gold kept back before starting great works / spy missions. */
 const GOLD_RESERVE = 3;
 /** Era III Constantinople bonus for an obsessed (Ottoman) HARD bot. */
@@ -163,8 +208,27 @@ interface HardCtx {
   siegeNeed: boolean;
   /** War-fleet build-up wanted (blockade gap / contested monopoly sea). */
   navalNeed: boolean;
-  /** Marble is the binding constraint on a wanted great work. */
+  /** Marble is a binding constraint on the wanted great work (pipeline). */
   wantsMarble: boolean;
+  /** Timber is a binding constraint on the wanted great work (pipeline). */
+  wantsTimber: boolean;
+  /**
+   * FORTRESS CAMPAIGN: the one enemy-held walled CITY worth prosecuting as a
+   * multi-round siege (an enemy capital or HV(3)+ key city within marching
+   * reach). A COASTAL fortress is starved by stationing war fleets on EVERY
+   * adjacent sea zone (§8.2.3 — sea resupply feeds the garrison through any
+   * open lane) BEFORE the host invests; the storm itself is a scored
+   * SIEGE_ASSAULT once bombardment/starvation shave the garrison.
+   */
+  campaignTarget: Province | null;
+  /** Campaign target's adjacent sea zones (empty for an inland fortress). */
+  campaignZones: string[];
+  /** Campaign zones not yet held by my uncontested war fleets. */
+  campaignUncovered: string[];
+  /** The reachable armies cannot yet clear the fortress — keep mustering. */
+  campaignMuster: boolean;
+  /** My agents captured so far this game (own log intel — spy EV gate). */
+  capturedAgents: number;
   /**
    * Stack-space escrow for the merc auction: heads of companies this bot
    * currently stands high bidder on (they field at `mercFieldLocId` at
@@ -210,6 +274,37 @@ function unitCount(stack: Army | Fleet): number {
 function siegeUnitsIn(stack: Army | Fleet): number {
   let n = stack.units[UnitType.SIEGE] ?? 0;
   for (const v of stack.variants ?? []) if (v.base === UnitType.SIEGE) n += v.count;
+  return n;
+}
+
+/**
+ * My exact §4.4 grain bill per round — faction levy economics (Ottoman
+ * levies eat 0 under Devshirme) and per-unique overrides included. The old
+ * heads×1 approximation overcharged a levy-heavy host so badly that the
+ * policy read a permanent famine and treadmilled its whole action budget
+ * into 2:1 grain buys.
+ */
+function myGrainUpkeep(hc: HardCtx): number {
+  let n = 0;
+  const faction = hc.me.faction;
+  for (const stack of [...hc.state.armies, ...hc.state.fleets]) {
+    if (stack.ownerId !== hc.me.id) continue;
+    for (const t of Object.values(UnitType)) {
+      const count = stack.units[t] ?? 0;
+      if (count === 0) continue;
+      let per = UNIT_STATS[t].grainUpkeep;
+      if (t === UnitType.LEVY && faction !== null) {
+        per = FACTION_LEVY_ECONOMY[faction]?.grainUpkeep ?? per;
+      }
+      n += count * per;
+    }
+    for (const v of stack.variants ?? []) {
+      n +=
+        v.count *
+        (UNIQUE_UNIT_OVERRIDES[v.variant]?.grainUpkeep ??
+          UNIT_STATS[v.base].grainUpkeep);
+    }
+  }
   return n;
 }
 
@@ -265,14 +360,19 @@ function threatAt(hc: HardCtx, provId: string): number {
   return n;
 }
 
-/** My standing defence in an owned province (stacks + garrison + walls). */
+/**
+ * My standing defence in an owned province (stacks + garrison + walls).
+ * §7 reading: walls count only while units or a garrison man them — an
+ * emptied walled city is a walk-in, whatever the tier.
+ */
 function myDefenceAt(hc: HardCtx, prov: Province): number {
-  const wallBonus = prov.walls.hp > 0 ? (WALL_TIERS[prov.walls.tier]?.defBonus ?? 0) : 0;
-  let n = (prov.garrison ?? 0) + wallBonus;
+  let manned = prov.garrison ?? 0;
   for (const a of hc.state.armies) {
-    if (a.locationId === prov.id && a.ownerId === hc.me.id) n += stackDef(a);
+    if (a.locationId === prov.id && a.ownerId === hc.me.id) manned += stackDef(a);
   }
-  return n;
+  if (manned <= 0) return 0;
+  const wallBonus = prov.walls.hp > 0 ? (WALL_TIERS[prov.walls.tier]?.defBonus ?? 0) : 0;
+  return manned + wallBonus;
 }
 
 /** A partner whose treaty cover lapses within `rounds` is a threat again. */
@@ -288,21 +388,38 @@ function partnerCoverLapsing(hc: HardCtx, playerId: string, rounds = 2): boolean
  * sit still; they never march on a capital). Partners whose treaty lapses
  * within two rounds count at full strength: a NAP about to expire stops
  * shielding NOTHING, and the garrison must already be manned when it does.
+ *
+ * A rival army PARKED IN ITS OWN capital / key city is weighed at
+ * `homeGarrisonWeight` (default {@link GARRISON_THREAT_DISCOUNT}): a
+ * home-anchored garrison rarely marches, and counting it at full strength
+ * froze this bot's own host in a mutual stand-off two steps from a rival
+ * capital. Pass 0 to read only genuine FIELD forces.
  */
-function threatNear(hc: HardCtx, provId: string): number {
+function threatNear(
+  hc: HardCtx,
+  provId: string,
+  homeGarrisonWeight: number = GARRISON_THREAT_DISCOUNT,
+): number {
   const ring = new Set<string>();
   for (const nb of neighborsOf(provId)) {
     ring.add(nb);
     for (const nb2 of neighborsOf(nb)) ring.add(nb2);
   }
   ring.delete(provId);
-  const playerIds = new Set(hc.state.players.map((p) => p.id));
+  const playerById = new Map(hc.state.players.map((p) => [p.id, p]));
   let n = 0;
   for (const a of hc.state.armies) {
     if (a.ownerId === hc.me.id) continue;
-    if (!playerIds.has(a.ownerId)) continue;
+    const owner = playerById.get(a.ownerId);
+    if (!owner) continue;
     if (!partnerCoverLapsing(hc, a.ownerId)) continue;
-    if (ring.has(a.locationId)) n += stackAtk(a);
+    if (!ring.has(a.locationId)) continue;
+    const at = hc.provinceById.get(a.locationId);
+    const homeGarrison =
+      at !== undefined &&
+      at.ownerId === a.ownerId &&
+      (at.isCapitalOf === owner.faction || (at.highValue ?? 0) >= 3);
+    n += stackAtk(a) * (homeGarrison ? homeGarrisonWeight : 1);
   }
   return n;
 }
@@ -350,7 +467,8 @@ function holdStreamValue(hc: HardCtx, prov: Province): number {
 /**
  * §13.1 trade-monopoly count via sea-port majorities (replicates the scorer's
  * public computation, read-only). `extraOwned` evaluates a hypothetical
- * capture of that province by `playerId`.
+ * capture of that province by THIS BOT (hc.me) — pass a rival `playerId` to
+ * read how many monopolies the RIVAL would keep after my capture.
  */
 function monopolyCount(
   hc: HardCtx,
@@ -363,7 +481,7 @@ function monopolyCount(
     for (const nb of neighborsOf(zone.id)) {
       const prov = hc.provinceById.get(nb);
       if (!prov || !prov.coastal) continue;
-      const owner = prov.id === extraOwned ? playerId : prov.ownerId;
+      const owner = prov.id === extraOwned ? hc.me.id : prov.ownerId;
       if (owner) portOwners.push(owner);
     }
     if (portOwners.length < 2) continue;
@@ -385,7 +503,15 @@ function monopolyDelta(hc: HardCtx, provId: string): number {
   if (!prov?.coastal) return 0;
   const before = monopolyPrestige(monopolyCount(hc, hc.me.id));
   const after = monopolyPrestige(monopolyCount(hc, hc.me.id, provId));
-  return Math.max(0, after - before);
+  let delta = Math.max(0, after - before);
+  // MONOPOLY DENIAL: a capture that breaks the OWNER's §13.1 sea majority
+  // stops their per-round stream — worth as much as gaining one.
+  if (prov.ownerId !== null && prov.ownerId !== hc.me.id) {
+    const theirBefore = monopolyPrestige(monopolyCount(hc, prov.ownerId));
+    const theirAfter = monopolyPrestige(monopolyCount(hc, prov.ownerId, provId));
+    delta += Math.max(0, theirBefore - theirAfter);
+  }
+  return delta;
 }
 
 /** Share of my own secret objectives' prestige advanced by taking `provId`. */
@@ -406,8 +532,13 @@ function objectiveCaptureBonus(hc: HardCtx, provId: string): number {
     }
     if (obj.minProvinces !== undefined) {
       const held = hc.state.provinces.filter((p) => p.ownerId === hc.me.id).length;
-      if (held < obj.minProvinces) {
-        bonus += (obj.prestige * 0.25) / Math.max(1, obj.minProvinces - held);
+      const missing = obj.minProvinces - held;
+      // The province-count clause only pays if the gap can still close before
+      // game end — then every capture carries a real share of the prize.
+      if (missing > 0 && missing <= ROUNDS - hc.state.round + 1) {
+        bonus += (obj.prestige * 0.5) / missing;
+      } else if (missing > 0) {
+        bonus += (obj.prestige * 0.25) / missing;
       }
     }
   }
@@ -483,7 +614,76 @@ function siegePlan(hc: HardCtx, dest: Province, moving: Army | Fleet): SiegePlan
 
   const rounds = Math.min(breachRounds, starveRounds);
   const remaining = ROUNDS - hc.state.round;
-  return { feasible: rounds <= SIEGE_MAX_ROUNDS && rounds <= remaining, rounds };
+  // A campaign fortress (enemy capital / key city — see HardCtx) justifies a
+  // longer clock: the §8.2.3 starvation line alone runs holdout+1 rounds.
+  const cap =
+    hc.campaignTarget !== null && hc.campaignTarget.id === dest.id
+      ? CAMPAIGN_MAX_ROUNDS
+      : SIEGE_MAX_ROUNDS;
+  return { feasible: rounds <= cap && rounds <= remaining, rounds };
+}
+
+// ---------------------------------------------------------------------------
+// SIEGE_ASSAULT — the chosen storm (§8.2 step 4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Declare the storm on a siege I already prosecute. An undeclared siege round
+ * is bombardment + starvation only (§8.2 step 4) — a besieger that never
+ * declares can only ever take a city by starving the garrison to nothing,
+ * which the §8.2.3 grain clock rarely allows before round 16.
+ */
+function siegeAssaultActions(hc: HardCtx): GameAction[] {
+  const out: GameAction[] = [];
+  for (const s of hc.state.siegeStates) {
+    if (s.besiegerId !== hc.me.id || s.assaultDeclared === true) continue;
+    out.push({ type: "SIEGE_ASSAULT", player: hc.me.id, provinceId: s.provinceId });
+  }
+  return out;
+}
+
+function scoreSiegeAssault(
+  hc: HardCtx,
+  action: Extract<GameAction, { type: "SIEGE_ASSAULT" }>,
+): number {
+  const prov = hc.provinceById.get(action.provinceId);
+  if (!prov) return 0.02;
+  let att = 0;
+  let guns = 0;
+  for (const a of hc.state.armies) {
+    if (a.ownerId !== hc.me.id || a.locationId !== prov.id) continue;
+    att += stackAtk(a);
+    guns += siegeUnitsIn(a);
+  }
+  if (att + guns <= 0) return 0.02;
+  let def = prov.garrison ?? 0;
+  for (const a of hc.state.armies) {
+    if (a.locationId === prov.id && a.ownerId !== hc.me.id) def += stackDef(a);
+  }
+  // §7.2 / §8.2.4: the storming troops fight the garrison plus the standing
+  // wall's bonus and the escalade −1 while Wall HP > 0; the train's SIEGE
+  // engines add their own +3-vs-walls dice (≈1 hit each), breach included.
+  const wallsUp = prov.walls.hp > 0;
+  const effDef = Math.max(
+    1,
+    def + (wallsUp ? (WALL_TIERS[prov.walls.tier]?.defBonus ?? 0) + 1 : 0),
+  );
+  const odds = (att + guns) / effDef;
+  let gate = wallsUp ? ASSAULT_GATE_WALLED : ASSAULT_GATE_BREACHED;
+  // Round pressure: an unstormed siege is a wasted host — near the end the
+  // storm is the only value left in it.
+  if (ROUNDS - hc.state.round <= 3) gate *= 0.85;
+  if (odds < gate) return 0.03;
+  let capture =
+    holdStreamValue(hc, prov) +
+    objectiveCaptureBonus(hc, prov.id) +
+    (prov.walls.tier >= 4
+      ? CONQUEST_PRESTIGE.takeWalledCityHighTier
+      : prov.walls.tier >= 1
+        ? CONQUEST_PRESTIGE.takeWalledCity
+        : 0);
+  if (prov.id === CONSTANTINOPLE) capture += 5; // §13.3 sudden-death clock
+  return Math.max(0.05, capture * Math.min(1.4, odds / gate));
 }
 
 // ---------------------------------------------------------------------------
@@ -496,16 +696,93 @@ function scoreLandMove(hc: HardCtx, action: MoveA): number {
   const moving = hc.state.armies.find((a) => a.id === action.stackId);
   if (!moving) return 0.02;
 
+  // SIEGE LOCK (self-imposed): marching out of a city I am besieging lifts
+  // the siege (§8.2 step 1) and lets the walls repair — the host stays until
+  // the storm or the surrender. The same hold applies to a stack standing
+  // INSIDE the campaign fortress (a pending §6.4 occupation, or a co-located
+  // ownership contest): wandering off hands the prize back.
+  if (
+    hc.mySiegeTargets.has(moving.locationId) ||
+    (hc.campaignTarget !== null && moving.locationId === hc.campaignTarget.id)
+  ) {
+    return 0.01;
+  }
+
+  // DECLARED-BATTLE HOLD: a stack standing where a pending battle names me
+  // DEFENDER stands its ground — marching off before COMBAT resolves gifts
+  // the field (a declared siege then "storms" the emptied walls the same
+  // round, §8.2).
+  if (
+    hc.state.pendingBattles.some(
+      (b) => b.defenderId === hc.me.id && b.provinceId === moving.locationId,
+    )
+  ) {
+    return 0.01;
+  }
+
   // HOME ANCHOR: never march defence out of a stream province (own capital /
   // key city) that a rival force within two steps could then overrun — a rush
   // walks in "unopposed" and the holding stream flips to it. This was HARD's
   // fatal leak vs the EASY rusher: it traded its own +1..+3/round streams for
   // a one-shot capture elsewhere. The province must keep at least 60% of the
-  // nearby rival strength after the stack departs.
+  // nearby rival strength after the stack departs — with rival armies that
+  // are themselves parked in their OWN capital/key city discounted (see
+  // threatNear), so two garrisoned capitals never pin each other forever.
   const origin = hc.provinceById.get(moving.locationId);
   if (origin && origin.ownerId === hc.me.id && isStreamProvince(origin)) {
-    const remaining = myDefenceAt(hc, origin) - stackDef(moving);
-    if (remaining < 0.6 * threatNear(hc, origin.id)) return 0.01;
+    // §7 reading: walls hold only while someone mans them — an emptied walled
+    // city is a walk-in, so the wall bonus drops out with the last defender.
+    let unitsLeft = 0;
+    for (const a of hc.state.armies) {
+      if (a.ownerId === hc.me.id && a.id !== moving.id && a.locationId === origin.id) {
+        unitsLeft += stackDef(a);
+      }
+    }
+    const manned = unitsLeft + (origin.garrison ?? 0);
+    const wallBonus =
+      origin.walls.hp > 0 ? (WALL_TIERS[origin.walls.tier]?.defBonus ?? 0) : 0;
+    const remaining = manned > 0 ? manned + wallBonus : 0;
+    // Walk-in guard: leaving the province UNMANNED is licensed only while no
+    // rival FIELD force stands within two steps (a home-parked rival garrison
+    // is itself anchored — the race then favours whoever strikes first). The
+    // §13.3 sudden-death City never goes unmanned while ANY rival army is
+    // that close, parked or not: one walk-in there loses the GAME, not a
+    // stream. (An ordinary capital may still gamble — its loss is -3 and a
+    // stream, recoverable — otherwise the capital-muster host re-freezes.)
+    const neverUnmanned = origin.id === CONSTANTINOPLE;
+    const anchored =
+      remaining < 0.6 * threatNear(hc, origin.id) ||
+      (manned === 0 && threatNear(hc, origin.id, neverUnmanned ? 1 : 0) > 0);
+    if (anchored) {
+      // SALLY LICENCE (mirrors NORMAL's): an anchored stack may still make an
+      // odds-gated strike on an ADJACENT province hosting the rival armies
+      // that pin it — a frozen garrison otherwise watches its hinterland
+      // eaten piecemeal. The strike is gated by the normal odds machinery
+      // below; everything else stays home.
+      const destHostsRival = hc.state.armies.some(
+        (a) =>
+          a.locationId === action.toId &&
+          a.ownerId !== hc.me.id &&
+          !hc.partners.has(a.ownerId) &&
+          unitCount(a) > 0,
+      );
+      // DESPERATION LICENCE: far behind in the race a frozen host is a
+      // CERTAIN loss — once the campaign is ready, marching on the fortress
+      // outweighs the anchor gamble (the §13.3 race usually resolves before
+      // a home-parked rival garrison can even reach this capital). Never for
+      // the sudden-death City itself.
+      const losingBadly =
+        hc.prestigeLeader !== null &&
+        hc.prestigeLeader.prestige - hc.me.prestige >= 12;
+      const advancesCampaign =
+        hc.campaignTarget !== null &&
+        campaignReady(hc) &&
+        !neverUnmanned &&
+        (action.toId === hc.campaignTarget.id ||
+          (landDistance(hc, action.toId, hc.campaignTarget.id, 4) ?? 9) <
+            (landDistance(hc, moving.locationId, hc.campaignTarget.id, 4) ?? 9));
+      if (!destHostsRival && !(losingBadly && advancesCampaign)) return 0.01;
+    }
   }
 
   // Reinforcement of my own ground: worth it where a stream is threatened.
@@ -513,6 +790,34 @@ function scoreLandMove(hc: HardCtx, action: MoveA): number {
     if (bustsMercEscrow(hc, dest.id, unitCount(moving))) {
       return 0.02; // keep room for the company we stand high bidder on
     }
+    // RETAKE: an enemy stack standing IN my province is a §6.4 pending
+    // occupation — left uncontested it flips my ground at cleanup, and it is
+    // invisible to the adjacency-based threat map. Fight it at field odds
+    // (not for own walled CITIES — moving in there only invests, §8.2).
+    let enemyInside = 0;
+    for (const a of hc.state.armies) {
+      if (
+        a.locationId === dest.id &&
+        a.ownerId !== hc.me.id &&
+        !hc.partners.has(a.ownerId)
+      ) {
+        enemyInside += stackDef(a);
+      }
+    }
+    if (enemyInside > 0 && !(dest.terrain === TerrainType.CITY && dest.walls.hp > 0)) {
+      const retakeOdds = stackAtk(moving) / Math.max(1, enemyInside);
+      const gate = ODDS_GATE_BASE - ODDS_GATE_WAR_RELIEF * hc.biases.warAppetite;
+      if (retakeOdds >= gate) {
+        return Math.max(
+          0.1,
+          (holdStreamValue(hc, dest) + 1.5) * Math.min(1.3, retakeOdds / gate),
+        );
+      }
+    }
+    // CAMPAIGN STAGING: with the blockade up, the siege host also marches
+    // ACROSS OWN GROUND toward the fortress (e.g. through the strait
+    // province facing the target) — staged approach beats idling.
+    const stage = campaignStagingScore(hc, moving, dest);
     // Stream provinces look two steps out (come home BEFORE the rush is
     // adjacent); ordinary ground only reacts to adjacent threats. The own
     // CAPITAL weighs the whole approaching force — losing it is -3 prestige
@@ -520,16 +825,17 @@ function scoreLandMove(hc: HardCtx, action: MoveA): number {
     const nearFactor =
       dest.isCapitalOf === hc.me.faction ? 1.0 : isStreamProvince(dest) ? 0.6 : 0;
     const threat = Math.max(threatAt(hc, dest.id), nearFactor * threatNear(hc, dest.id));
-    if (threat <= 0) return 0.1;
+    if (threat <= 0) return Math.max(0.1, stage);
     // Already safe → no oscillation: two stacks must never ping-pong between
     // a pair of covered stream provinces burning the whole budget.
-    if (myDefenceAt(hc, dest) >= threat) return 0.08;
+    if (myDefenceAt(hc, dest) >= threat) return Math.max(0.08, stage);
     const shortfall = threat / Math.max(1, myDefenceAt(hc, dest));
     const streamWorth =
       holdStreamValue(hc, dest) +
       (dest.coastal && monopolyCount(hc, hc.me.id) > 0 ? hc.biases.tradeFocus * 2 : 0);
     return Math.max(
       0.1,
+      stage,
       Math.min(shortfall, 1.5) *
         streamWorth *
         (isStreamProvince(dest) ? 0.45 : 0.3) *
@@ -583,6 +889,28 @@ function scoreLandMove(hc: HardCtx, action: MoveA): number {
     const plan = siegePlan(hc, dest, moving);
     if (!plan.feasible) return 0.03;
     captureVal = captureVal * (1 - 0.12 * plan.rounds) + (obsessed ? OBSESSION_BONUS : 0);
+    // TRUE SIEGE (walled CITY, defended): this MOVE only INVESTS the city
+    // (§8.2 step 1 — no immediate battle is fought), and the storm comes
+    // later as a chosen SIEGE_ASSAULT once bombardment/starvation shave the
+    // garrison. Gate on the EVENTUAL storm — field strength against the
+    // garrison sans walls — not on field odds against a manned wall.
+    if (dest.terrain === TerrainType.CITY && defended) {
+      const wallBonus = WALL_TIERS[dest.walls.tier]?.defBonus ?? 0;
+      const unitDefence = Math.max(1, defence - wallBonus);
+      // The whole in-province force storms together: stacks of mine ALREADY
+      // standing inside the fortress (a §6.4 walk-in now being contested)
+      // join the besieging set when this stack invests.
+      let groupAttack = attack;
+      for (const a of hc.state.armies) {
+        if (a.ownerId === hc.me.id && a.locationId === dest.id) groupAttack += stackAtk(a);
+      }
+      if (groupAttack < 1.15 * unitDefence) return 0.04;
+      const campaign = hc.campaignTarget?.id === dest.id ? 2.5 : 0;
+      return Math.max(
+        0.05,
+        (captureVal + campaign) * Math.min(1.3, groupAttack / (1.1 * unitDefence)),
+      );
+    }
   } else if (obsessed) {
     captureVal += OBSESSION_BONUS;
   }
@@ -605,6 +933,30 @@ function scoreLandMove(hc: HardCtx, action: MoveA): number {
   return Math.max(0.05, score);
 }
 
+/** Blockade lanes this bot must close: besieged ports' + the campaign's zones. */
+function blockadeLanes(hc: HardCtx): Set<string> {
+  const lanes = new Set<string>();
+  for (const target of hc.mySiegeTargets) {
+    for (const z of neighborsOf(target)) {
+      if (hc.seaZoneIds.has(z)) lanes.add(z);
+    }
+  }
+  for (const z of hc.campaignZones) lanes.add(z);
+  return lanes;
+}
+
+/** Is a blockade lane already held by my uncontested war fleets (§8.2.3)? */
+function laneCovered(hc: HardCtx, zoneId: string): boolean {
+  if (warFleetUnitsIn(hc.state, zoneId, hc.me.id) === 0) return false;
+  for (const f of hc.state.fleets) {
+    if (f.locationId !== zoneId || f.ownerId === hc.me.id) continue;
+    if (hc.partners.has(f.ownerId)) continue;
+    if ((f.units[UnitType.GALLEY] ?? 0) + (f.units[UnitType.WARSHIP] ?? 0) > 0) return false;
+    if ((f.variants ?? []).some((v) => v.count > 0)) return false;
+  }
+  return true;
+}
+
 function scoreNavalMove(hc: HardCtx, action: MoveA): number {
   const zoneId = action.toId;
   const enemyFleetUnits = hc.state.fleets
@@ -617,13 +969,45 @@ function scoreNavalMove(hc: HardCtx, action: MoveA): number {
     .reduce((acc, f) => acc + unitCount(f), 0);
   const moving = hc.state.fleets.find((f) => f.id === action.stackId);
   const myPower = moving ? stackAtk(moving) : 0;
+  const lanes = blockadeLanes(hc);
 
-  // Siege support: closing a supply zone of a coastal city I am besieging
-  // (sea-resupply denial is what makes the grain clock run — §8.2.3).
-  for (const target of hc.mySiegeTargets) {
-    if (!neighborsOf(target).includes(zoneId)) continue;
-    if (warFleetUnitsIn(hc.state, zoneId, hc.me.id) > 0) break; // already held
-    if (enemyFleetUnits === 0 || myPower > enemyFleetUnits) return 2.6;
+  // STATION KEEPING: the sole picket on a covered blockade lane holds it —
+  // a wandered-off blockade re-opens the §8.2.3 resupply lane and resets the
+  // starvation clock. When hulls are still short a sole picket MAY slide to
+  // another open lane, but only DOWN a fixed total order (smaller zone id),
+  // so a lone fleet settles on one lane instead of ping-ponging its budget
+  // between two open lanes forever.
+  let soleCoverOrigin = false;
+  if (moving && lanes.has(moving.locationId) && laneCovered(hc, moving.locationId)) {
+    let movingWarUnits =
+      (moving.units[UnitType.GALLEY] ?? 0) + (moving.units[UnitType.WARSHIP] ?? 0);
+    for (const v of moving.variants ?? []) movingWarUnits += v.count;
+    soleCoverOrigin =
+      warFleetUnitsIn(hc.state, moving.locationId, hc.me.id) - movingWarUnits <= 0;
+  }
+  const destOpenLane = lanes.has(zoneId) && !laneCovered(hc, zoneId);
+  if (soleCoverOrigin && (!destOpenLane || !(moving && zoneId < moving.locationId))) {
+    return 0.02;
+  }
+
+  // Blockade support: closing a supply lane of a coastal city I besiege OR of
+  // the campaign fortress (sea-resupply denial is what makes the grain clock
+  // run — §8.2.3). Contested lanes are entered only with superior force.
+  if (destOpenLane && (enemyFleetUnits === 0 || myPower > enemyFleetUnits)) {
+    return 2.6;
+  }
+
+  // Sea approach: close the distance toward an open blockade lane. FLEET
+  // DISCIPLINE: while any lane stands open, no war fleet joyrides — every
+  // naval move either closes distance to a lane or scores as filler.
+  if (moving) {
+    const open = new Set([...lanes].filter((z) => !laneCovered(hc, z)));
+    if (open.size > 0) {
+      const before = seaHops(hc, moving.locationId, open);
+      const after = open.has(zoneId) ? 0 : seaHops(hc, zoneId, open);
+      if (after !== null && (before === null || after < before)) return 1.5;
+      return 0.03;
+    }
   }
 
   // Monopoly defence: contest enemy war fleets loitering in a sea whose ports
@@ -681,15 +1065,26 @@ function scoreRecruit(hc: HardCtx, action: RecruitA): number {
   // prices the crisis buy above 2.5).
   let grainDamp = 1;
   if (homeShortfall === 0) {
-    let upkeep = 0;
-    for (const a of hc.state.armies) if (a.ownerId === hc.me.id) upkeep += unitCount(a);
+    const upkeep = myGrainUpkeep(hc);
     let grainYield = 0;
     for (const p of hc.state.provinces) {
       if (p.ownerId === hc.me.id) grainYield += p.yields.grain;
     }
     if (grainYield < upkeep + 1 && hc.me.treasury.grain < upkeep * 1.5) grainDamp = 0.25;
   }
-  let score = 0.3 + homeShortfall;
+  // Campaign muster: the fortress storm wants a host — line recruits at
+  // provinces within reach rank above the market treadmill until the
+  // reachable armies could clear the walls (grain solvency still applies).
+  // NOT at the own capital: recruits merge into the capital garrison, which
+  // the home anchor rightly never releases — the strike host must form at a
+  // muster province that is free to march (recruits there are its garrison).
+  const musterBoost =
+    hc.campaignMuster &&
+    hc.campaignTarget !== null &&
+    landDistance(hc, prov.id, hc.campaignTarget.id, 3) !== null
+      ? 1.6 * grainDamp
+      : 0;
+  let score = 0.3 + homeShortfall + musterBoost;
   for (const t of Object.values(UnitType)) {
     const count = action.units[t] ?? 0;
     if (count <= 0) continue;
@@ -701,7 +1096,8 @@ function scoreRecruit(hc: HardCtx, action: RecruitA): number {
     } else if (t === UnitType.WARSHIP) {
       score += hc.navalNeed ? 2.0 : (0.4 + hc.biases.tradeFocus * 0.6) * grainDamp;
     } else if (t === UnitType.GALLEY) {
-      score += 0.5 + hc.biases.tradeFocus * 1.2;
+      // A GALLEY is a war-fleet unit (§5.3) — the cheapest blockade picket.
+      score += hc.navalNeed ? 2.0 : 0.5 + hc.biases.tradeFocus * 1.2;
     } else {
       const value =
         stats.atk + stats.def * (0.4 + 0.6 * hc.biases.defensiveness);
@@ -751,8 +1147,17 @@ function scoreBuild(hc: HardCtx, action: BuildA): number {
     }
     case BuildingType.UNIVERSITY:
       return 0.9; // +1 tactic draw per round: HARD plays its tactics
-    case BuildingType.SHIPYARD:
-      return 0.4 + hc.biases.tradeFocus * 0.9;
+    case BuildingType.SHIPYARD: {
+      let s = 0.4 + hc.biases.tradeFocus * 0.9;
+      // The campaign blockade needs hulls, and hulls need a coastal yard.
+      if (hc.navalNeed && prov.coastal) {
+        const haveYard = hc.state.provinces.some(
+          (p) => p.ownerId === hc.me.id && p.buildings.includes(BuildingType.SHIPYARD),
+        );
+        if (!haveYard) s += 1.8;
+      }
+      return s;
+    }
     case BuildingType.BARRACKS: {
       const musters =
         prov.isCapitalOf !== undefined || prov.terrain === TerrainType.CITY;
@@ -770,26 +1175,56 @@ function scoreConvert(hc: HardCtx, action: TradeA): number {
   const getKey = RESOURCE_KEYS.find((k) => (trade.get[k] ?? 0) > 0);
   if (!giveKey || !getKey) return 0.02;
   if (hc.me.treasury[giveKey] < 4) return 0.02; // keep a working reserve
-  // Approximate grain upkeep: every land unit eats ~1/round.
-  let upkeep = 0;
-  for (const a of hc.state.armies) if (a.ownerId === hc.me.id) upkeep += unitCount(a);
+  // Exact §4.4 grain bill (faction levy economics, unique overrides).
+  const upkeep = myGrainUpkeep(hc);
   if (giveKey === "grain" && hc.me.treasury.grain < upkeep + 2) return 0.02;
   if (getKey === "gold" && hc.me.treasury.gold < 4) return 2.1;
-  if (getKey === "grain") {
-    // Desertion maths (§4.4 unfed hosts desert — and a deserted wall is an
-    // open wall): if the granary after next income will not cover upkeep,
-    // buy grain NOW; feeding the garrison outranks any capture.
+  // ENABLEMENT BUYS rank ABOVE the hoard conversion below — the point of the
+  // gold is to be spent, so the resources that unlock a shipyard hull or a
+  // great work must never starve behind another grain→gold slot.
+  // Timber for the campaign shipyard / hulls, or the wanted great work.
+  if (
+    getKey === "timber" &&
+    hc.me.treasury.gold >= 8 &&
+    ((hc.navalNeed && hc.me.treasury.timber < 4) || hc.wantsTimber)
+  ) {
+    return 1.5;
+  }
+  // HOARD CONVERSION: grain piled beyond the famine buffer buys the prestige
+  // budget (great works, walls, hulls) instead of rotting in the granary —
+  // the observed failure mode was a seat sitting on 90 grain while losing
+  // the prestige race. A SUSTAINABLE grain income (fields feed the whole
+  // host) licenses selling down to a thinner buffer.
+  if (getKey === "gold" && giveKey === "grain") {
     let grainYield = 0;
     for (const p of hc.state.provinces) {
       if (p.ownerId === hc.me.id) grainYield += p.yields.grain;
     }
+    const buffer = grainYield >= upkeep ? 4 : 8;
+    if (hc.me.treasury.grain > upkeep + buffer) return 1.25;
+  }
+  if (getKey === "grain") {
+    // Desertion maths (§4.4 unfed hosts desert — and a deserted wall is an
+    // open wall): if the granary after next income will not cover upkeep,
+    // buy grain NOW; feeding the garrison outranks any capture. STRUCTURAL
+    // famine (income can never cover the bill) is the exception: the market
+    // buy only treadmills gold into the same deficit next round — let the
+    // host desert down to a sustainable size instead of booking the whole
+    // budget into 2:1 grain forever.
+    let grainYield = 0;
+    for (const p of hc.state.provinces) {
+      if (p.ownerId === hc.me.id) grainYield += p.yields.grain;
+    }
+    const structural = grainYield + 2 < upkeep;
     const projected = hc.me.treasury.grain - upkeep + grainYield;
     if (hc.me.treasury.grain < upkeep) {
-      return 2.5 + Math.min(2.5, (upkeep - hc.me.treasury.grain) * 0.5);
+      return structural
+        ? 0.8
+        : 2.5 + Math.min(2.5, (upkeep - hc.me.treasury.grain) * 0.5);
     }
-    if (projected < upkeep) return 2.2;
+    if (projected < upkeep) return structural ? 0.5 : 2.2;
   }
-  if (getKey === "marble" && hc.wantsMarble && hc.me.treasury.gold >= 8) return 1.1;
+  if (getKey === "marble" && hc.wantsMarble && hc.me.treasury.gold >= 8) return 1.5;
   return 0.03;
 }
 
@@ -807,6 +1242,8 @@ function scoreAction(hc: HardCtx, action: GameAction): number {
         : scoreConvert(hc, action);
     case "SPY":
       return scoreSpy(hc, action);
+    case "SIEGE_ASSAULT":
+      return scoreSiegeAssault(hc, action);
     case "VASSALIZE":
       return scoreVassalize(hc, action);
     case "DECLARE_WAR":
@@ -952,6 +1389,87 @@ function seaPath(hc: HardCtx, fromId: string, toId: string): string[] | null {
   return null;
 }
 
+/** BFS hop count from a port/zone to the NEAREST goal zone (≤ cap), else null. */
+function seaHops(
+  hc: HardCtx,
+  fromId: string,
+  goals: ReadonlySet<string>,
+  cap = 5,
+): number | null {
+  if (goals.has(fromId)) return 0;
+  const seen = new Set([fromId]);
+  let frontier = [fromId];
+  for (let d = 1; d <= cap; d += 1) {
+    const next: string[] = [];
+    for (const cur of frontier) {
+      for (const nb of neighborsOf(cur)) {
+        if (!hc.seaZoneIds.has(nb) || seen.has(nb)) continue;
+        if (goals.has(nb)) return d;
+        seen.add(nb);
+        next.push(nb);
+      }
+    }
+    frontier = next;
+  }
+  return null;
+}
+
+/** BFS land distance between two provinces (≤ cap steps), else null. */
+function landDistance(
+  hc: HardCtx,
+  fromId: string,
+  toId: string,
+  cap: number,
+): number | null {
+  if (fromId === toId) return 0;
+  const seen = new Set([fromId]);
+  let frontier = [fromId];
+  for (let d = 1; d <= cap; d += 1) {
+    const next: string[] = [];
+    for (const cur of frontier) {
+      for (const nb of neighborsOf(cur)) {
+        if (!hc.provinceById.has(nb) || seen.has(nb)) continue;
+        if (nb === toId) return d;
+        seen.add(nb);
+        next.push(nb);
+      }
+    }
+    frontier = next;
+  }
+  return null;
+}
+
+/** The campaign may march: an inland fortress always, a coastal one once the
+ *  §8.2.3 blockade is up (all lanes held) or every hull is already at sea. */
+function campaignReady(hc: HardCtx): boolean {
+  if (hc.campaignTarget === null) return false;
+  return hc.campaignZones.length === 0 || hc.campaignUncovered.length === 0;
+}
+
+/**
+ * Score for STAGING the siege host across own/neutral ground toward the
+ * campaign fortress (only once {@link campaignReady} — marching a host to sit
+ * under open walls it cannot starve just feeds the defender's sally). A stack
+ * carrying the GREAT BOMBARD stages regardless of the blockade: the gun
+ * rewrites the breach math (§8.4 lifts the T5 masonry cap), so bringing it to
+ * the wall IS the plan.
+ */
+function campaignStagingScore(hc: HardCtx, moving: Army | Fleet, dest: Province): number {
+  const target = hc.campaignTarget;
+  if (!target) return 0;
+  const hasBombard = (moving.variants ?? []).some(
+    (v) => v.variant === GREAT_BOMBARD.variant,
+  );
+  if (!hasBombard) {
+    if (!campaignReady(hc)) return 0;
+    if (stackAtk(moving) < 6) return 0; // a lone levy just feeds the walls
+  }
+  const before = landDistance(hc, moving.locationId, target.id, 4);
+  const after = landDistance(hc, dest.id, target.id, 4);
+  if (after === null || (before !== null && after >= before)) return 0;
+  return (hasBombard ? 3.2 : 2.2) + 0.5 * Math.max(0, 3 - after);
+}
+
 /** Depth guard for {@link seaPath}: stop expanding past 5 hops. */
 function path5Exceeded(prev: Map<string, string | null>, zone: string): boolean {
   let depth = 0;
@@ -1042,16 +1560,26 @@ function objectiveKnown(hc: HardCtx, rivalId: string): boolean {
   );
 }
 
-/** SPY missions offered only when the information value is high. */
+/**
+ * SPY missions offered only when the information value is high AND the §10.7
+ * roll odds carry a positive expectation. A captured agent costs REAL
+ * prestige (−1, or −2 inciting unrest), so repeated fishing against a hard
+ * target (rival University, Byzantium's resistance) is a guaranteed slow
+ * bleed — the observed failure mode was a HARD seat spying itself to
+ * NEGATIVE prestige. Gates: per-mission success-odds floors, and a full stop
+ * once {@link SPY_CAPTURE_STOP} of my agents have been taken this game.
+ */
 function spyActions(hc: HardCtx): GameAction[] {
   if (hc.me.treasury.gold < SPY.goldCost + GOLD_RESERVE) return [];
+  if (hc.capturedAgents >= SPY_CAPTURE_STOP) return [];
   const leader = hc.prestigeLeader;
   if (!leader) return [];
   const leading = leader.prestige - hc.me.prestige >= 8;
   const endgameNear = leader.prestige >= hc.threshold * 0.6;
   if (!leading && !endgameNear && !hc.atWar.has(leader.id)) return [];
+  const p = spySuccessP(hc, leader);
   const out: GameAction[] = [];
-  if (!objectiveKnown(hc, leader.id)) {
+  if (!objectiveKnown(hc, leader.id) && p >= 1 / 3) {
     out.push({
       type: "SPY",
       player: hc.me.id,
@@ -1059,16 +1587,18 @@ function spyActions(hc: HardCtx): GameAction[] {
       targetPlayerId: leader.id,
     });
   }
-  // Suppress the leader's richest province next Income.
+  // Suppress the leader's richest province next Income. UNREST failure costs
+  // double (§10.7 inciteUnrestFailPrestige) — demand at least even odds.
+  if (p < 0.5) return out;
   let best: Province | undefined;
   let bestYield = 0;
-  for (const p of hc.state.provinces) {
-    if (p.ownerId !== leader.id) continue;
-    const y = p.yields;
+  for (const prov of hc.state.provinces) {
+    if (prov.ownerId !== leader.id) continue;
+    const y = prov.yields;
     const total = 2 * y.gold + y.grain + y.timber + y.marble + y.faith;
     if (total > bestYield) {
       bestYield = total;
-      best = p;
+      best = prov;
     }
   }
   if (best && (leading || hc.atWar.has(leader.id))) {
@@ -1090,18 +1620,18 @@ function scoreSpy(hc: HardCtx, action: Extract<GameAction, { type: "SPY" }>): nu
         hc.provinceById.get(action.targetProvinceId)?.ownerId === p.id),
   );
   const p = spySuccessP(hc, rival);
-  // A captured agent costs a REAL -2 prestige (§10.7) plus the wasted
-  // action — price the full expected loss into both missions.
-  const failCost = (1 - p) * 2.0;
-  if (action.mission === SpyMission.OBJECTIVE) return 0.8 + 2.2 * p - failCost;
+  // A captured agent costs REAL prestige (§10.7: −1, −2 inciting unrest) plus
+  // the wasted action — price the full expected loss into each mission.
+  if (action.mission === SpyMission.OBJECTIVE) return 0.8 + 2.2 * p - (1 - p) * 1.0;
   if (action.mission === SpyMission.UNREST) {
-    // Value scales with the income actually denied next round.
+    // Value scales with the income actually denied next round (capped —
+    // denied income never dents the rival's PRESTIGE streams directly).
     const prov = action.targetProvinceId
       ? hc.provinceById.get(action.targetProvinceId)
       : undefined;
     const y = prov?.yields;
     const denied = y ? 2 * y.gold + y.grain + y.timber + y.marble + y.faith : 4;
-    return (0.5 + denied * 0.3) * p - failCost;
+    return (0.5 + Math.min(denied, 10) * 0.3) * p - (1 - p) * 2.0;
   }
   return 0.3;
 }
@@ -1355,8 +1885,7 @@ function tributeProposals(hc: HardCtx): GameAction[] {
  */
 function mercBids(hc: HardCtx): GameAction[] {
   if (hc.state.mercMarket.length === 0) return [];
-  let upkeep = 0;
-  for (const a of hc.state.armies) if (a.ownerId === hc.me.id) upkeep += unitCount(a);
+  const upkeep = myGrainUpkeep(hc);
   let grainYield = 0;
   for (const p of hc.state.provinces) {
     if (p.ownerId === hc.me.id) grainYield += p.yields.grain;
@@ -1707,9 +2236,78 @@ function buildContext(ctx: PolicyContext, realMe: Player): HardCtx {
     siegeNeed: false,
     navalNeed: false,
     wantsMarble: false,
+    wantsTimber: false,
+    campaignTarget: null,
+    campaignZones: [],
+    campaignUncovered: [],
+    campaignMuster: false,
+    capturedAgents: 0,
     mercReservedHeads: 0,
     mercFieldLocId: null,
   };
+
+  // Own-log spy intel: how many of my agents have been captured (§10.7 —
+  // each cost real prestige; the EV gate stops the bleed).
+  for (const e of state.log) {
+    if (e.type === "spy" && e.actors[0] === me.id && e.data?.captured === true) {
+      hc.capturedAgents += 1;
+    }
+  }
+
+  // FORTRESS CAMPAIGN (see the HardCtx field docs): the richest enemy-held
+  // walled CITY within marching reach — an enemy capital or HV(3)+ key city.
+  // Constantinople's §13.3 sudden-death clock makes it the supreme prize for
+  // ANY rival of its holder.
+  let campaignVal = 0;
+  for (const p of state.provinces) {
+    if (p.ownerId === null || p.ownerId === me.id || partners.has(p.ownerId)) continue;
+    if (p.terrain !== TerrainType.CITY || p.walls.tier < 1) continue;
+    if (p.isCapitalOf === undefined && (p.highValue ?? 0) < 3) continue;
+    let reach = false;
+    for (const a of state.armies) {
+      if (a.ownerId !== me.id) continue;
+      if (landDistance(hc, a.locationId, p.id, 3) !== null) {
+        reach = true;
+        break;
+      }
+    }
+    if (!reach) continue;
+    const val =
+      holdStreamValue(hc, p) +
+      (p.isCapitalOf !== undefined ? 3 : 0) +
+      (p.id === CONSTANTINOPLE ? 4 : 0);
+    if (val > campaignVal) {
+      campaignVal = val;
+      hc.campaignTarget = p;
+    }
+  }
+  if (hc.campaignTarget !== null && hc.campaignTarget.coastal) {
+    const target = hc.campaignTarget;
+    hc.campaignZones = neighborsOf(target.id).filter((z) => seaZoneIds.has(z));
+    const defId = target.ownerId;
+    hc.campaignUncovered = hc.campaignZones.filter(
+      (z) =>
+        warFleetUnitsIn(state, z, me.id) === 0 ||
+        (defId !== null && warFleetUnitsIn(state, z, defId) > 0),
+    );
+  }
+  // CAMPAIGN MUSTER: the storm gate (scoreSiegeAssault) wants the armies
+  // within reach to outfight the garrison-plus-walls — keep raising line
+  // troops until they could, or the "plan" is a host that can only watch.
+  if (hc.campaignTarget !== null) {
+    let reachAtk = 0;
+    for (const a of state.armies) {
+      if (a.ownerId !== me.id) continue;
+      // The own-capital garrison never converges on the fortress (the home
+      // anchor rightly pins it) — only genuinely free stacks count.
+      const at = provinceById.get(a.locationId);
+      if (at?.isCapitalOf === me.faction) continue;
+      if (landDistance(hc, a.locationId, hc.campaignTarget.id, 3) !== null) {
+        reachAtk += stackAtk(a);
+      }
+    }
+    hc.campaignMuster = reachAtk < 1.25 * defenceAt(hc, hc.campaignTarget);
+  }
 
   // Merc-auction stack-space escrow (see the HardCtx field docs).
   const fieldLoc =
@@ -1731,6 +2329,7 @@ function buildContext(ctx: PolicyContext, realMe: Player): HardCtx {
   for (const a of state.armies) if (a.ownerId === me.id) train += siegeUnitsIn(a);
   const wantsSiege =
     (biases.constantinopleObsession && ctx.difficulty === Difficulty.HARD && state.era >= 2) ||
+    hc.campaignTarget !== null ||
     state.provinces.some(
       (p) =>
         p.ownerId !== me.id &&
@@ -1751,6 +2350,19 @@ function buildContext(ctx: PolicyContext, realMe: Player): HardCtx {
     const zones = neighborsOf(target).filter((z) => seaZoneIds.has(z));
     if (zones.some((z) => warFleetUnitsIn(state, z, me.id) === 0)) navalNeed = true;
   }
+  // Campaign blockade: one war-fleet stack per adjacent lane of the fortress
+  // (§8.2.3 — starvation needs EVERY lane held), so short hull counts drive
+  // shipyard builds and GALLEY/WARSHIP recruits.
+  if (!navalNeed && hc.campaignUncovered.length > 0) {
+    let warFleets = 0;
+    for (const f of state.fleets) {
+      if (f.ownerId !== me.id) continue;
+      let war = (f.units[UnitType.GALLEY] ?? 0) + (f.units[UnitType.WARSHIP] ?? 0);
+      for (const v of f.variants ?? []) war += v.count;
+      if (war > 0) warFleets += 1;
+    }
+    if (warFleets < hc.campaignZones.length) navalNeed = true;
+  }
   if (!navalNeed && monopolyCount(hc, me.id) > 0) {
     navalNeed = state.fleets.some(
       (f) =>
@@ -1765,12 +2377,37 @@ function buildContext(ctx: PolicyContext, realMe: Player): HardCtx {
   }
   hc.navalNeed = navalNeed;
 
-  hc.wantsMarble =
-    me.treasury.marble < 4 &&
-    Object.values(GreatWorkType).some((t) => {
+  // GREAT-WORK PIPELINE: pick the best work the treasury could finance via
+  // 2:1 market buys (gold-equivalent pricing; faith is unbuyable), then flag
+  // the missing resources so scoreConvert pulls them in until the full cost
+  // is in hand. This is what converts a late-game gold/grain hoard into the
+  // §13.1 great-work prestige instead of dying on the ledger.
+  const remainingRounds = ROUNDS - state.round;
+  let workInProgress = false;
+  for (const p of state.provinces) {
+    if (p.ownerId !== me.id) continue;
+    for (const gw of p.greatWorks) {
+      if (gw.progress < GREAT_WORK_COSTS[gw.type].rounds) workInProgress = true;
+    }
+  }
+  if (!workInProgress) {
+    let bestValue = 0;
+    for (const t of Object.values(GreatWorkType)) {
       const def = GREAT_WORK_COSTS[t];
-      return (def.cost.marble ?? 0) > me.treasury.marble;
-    });
+      if (remainingRounds < def.rounds + 1) continue;
+      if (me.treasury.faith < (def.cost.faith ?? 0)) continue;
+      const missMarble = Math.max(0, (def.cost.marble ?? 0) - me.treasury.marble);
+      const missTimber = Math.max(0, (def.cost.timber ?? 0) - me.treasury.timber);
+      const goldEquiv = (def.cost.gold ?? 0) + 2 * (missMarble + missTimber);
+      if (me.treasury.gold < goldEquiv + GOLD_RESERVE) continue;
+      const value = def.prestige / (goldEquiv + def.rounds);
+      if (value > bestValue) {
+        bestValue = value;
+        hc.wantsMarble = missMarble > 0;
+        hc.wantsTimber = missTimber > 0;
+      }
+    }
+  }
 
   return hc;
 }
@@ -1815,6 +2452,7 @@ export const hardPolicy: Policy = {
       ...greatWorkBuilds(hc),
       ...tradeRouteActions(hc),
       ...convertCandidates(ctx.state, hc.me),
+      ...siegeAssaultActions(hc),
       ...spyActions(hc),
       ...vassalizeActions(hc),
       ...declareWarActions(hc),
