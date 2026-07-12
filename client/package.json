@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:offline": "tsc --noEmit && vite build --config vite.offline.config.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "gen:map": "tsx src/board/tools/genMapData.ts",
@@ -25,6 +26,7 @@
     "tsx": "^4.23.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
+    "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^2.1.9"
   }
 }
