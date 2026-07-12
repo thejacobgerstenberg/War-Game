@@ -36,6 +36,7 @@ import {
 } from "@imperium/shared";
 import { PRESTIGE_VALUES, STACKING, UNJUSTIFIED_WAR_PRESTIGE, VASSAL } from "./balance.js";
 import { appendLog } from "./logEntry.js";
+import { getModifiers } from "./modifiers.js";
 import { makeRng, type Rng } from "./rng.js";
 import { EngineError } from "./actions.js";
 
@@ -241,43 +242,47 @@ export function resolveWar(
 }
 
 /**
- * §11 "Casus belli" (delta 5) — best-effort plausibility gate for a DECLARE_WAR's
- * optional `justification` (`claim` | `crusade` | `vassal-defense` | `ally-call`).
- * A war resting on a VALID casus belli costs no prestige (and, per §11, earns the
- * casus-belli +1-per-win bonus that combat/prestige apply); an ABSENT or
- * IMPLAUSIBLE justification is UNJUSTIFIED and costs `UNJUSTIFIED_WAR_PRESTIGE`.
+ * §11 "Casus belli" (delta 5, NARROWED per the marshal FULL-MINORS answer-key
+ * item "actions.ts:646 unjustified-war justification enum broader than ratified
+ * casus belli — only 'claim' exempts the E5a −1; both isJustifiedWar copies"):
+ * ONLY `justification: "claim"` is a ratified casus belli that exempts the
+ * declarer from the `UNJUSTIFIED_WAR_PRESTIGE` (E5a −1) cost. The other three
+ * enum values (`crusade` | `vassal-defense` | `ally-call`) are still ACCEPTED on
+ * the wire and RECORDED verbatim in the declaration's log entry
+ * (`data.justification`) — but they do NOT exempt the penalty. Whether any of
+ * them should become exempting casus belli PENDS DESIGN RATIFICATION; until
+ * ratified they behave exactly like an unjustified declaration.
  *
  * The gate mirrors actions.ts's `isJustifiedWar` verbatim so the result is
  * identical whether the reducer routes DECLARE_WAR through this subsystem
- * (NEEDS-FROM-INTEGRATOR below) or the reducer's inline copy:
- *  - `vassal-defense` requires the declarer to actually hold a vassal minor;
- *  - `ally-call` requires an ALLIANCE partner who is itself currently at war;
- *  - `claim` / `crusade` cannot be cheaply verified from GameState (a `claim`
- *    rides the broken-royal-marriage casus belli that the RENOUNCE path already
- *    posts), so they are trusted at declaration time;
- *  - anything else (absent / unrecognised) is unjustified.
+ * (NEEDS-FROM-INTEGRATOR at {@link declareWar}) or the reducer's inline copy.
+ * (A `claim` — broken royal marriage / seized key city — cannot be cheaply
+ * verified from GameState, so it stays trusted at declaration time; the richer
+ * marriage-claim bookkeeping is posted by the RENOUNCE path.)
  */
-function isJustifiedWar(state: GameState, actor: Player, action: GameAction): boolean {
+function isJustifiedWar(action: GameAction): boolean {
   if (action.type !== "DECLARE_WAR") return false;
-  switch (action.justification) {
-    case "claim":
-    case "crusade":
-      return true; // best-effort: trusted at declaration (see doc above)
-    case "vassal-defense":
-      return state.minors.some((m) => m.vassalOf === actor.id);
-    case "ally-call": {
-      const allyIds = new Set<string>();
-      for (const t of actor.treaties) {
-        if (t.type !== TreatyType.ALLIANCE) continue;
-        for (const party of t.parties) {
-          if (party !== actor.id) allyIds.add(party);
-        }
-      }
-      return state.wars.some((w) => allyIds.has(w.a) || allyIds.has(w.b));
-    }
-    default:
-      return false; // absent / unrecognised → unjustified
-  }
+  return action.justification === "claim";
+}
+
+/**
+ * TRUCE reader (marshal Stage-B residual — the `truce` modifier posted by the
+ * `a-death-in-the-palace` tactic had NO consumer): true while a live
+ * `ActiveModifier { kind:"truce", data.parties:[A,B] }` binds BOTH given player
+ * ids. While it holds, A↔B hostilities are rejected with `TRUCE_ACTIVE`
+ * (DECLARE_WAR here and in actions.ts's inline copy; MOVE-attacks into each
+ * other's provinces in actions.ts's applyMove). Third parties are unaffected,
+ * and expiry (the modifier is round-scoped — roundLoop.expireRoundModifiers
+ * clears it at cleanup, "until the start of your next turn") restores full
+ * hostilities. Exported for actions.ts so both DECLARE_WAR copies and the MOVE
+ * gate share ONE definition of "under truce".
+ */
+export function truceActive(state: GameState, aId: string, bId: string): boolean {
+  if (aId === bId) return false;
+  return getModifiers(state, "truce").some((m) => {
+    const parties = m.data?.parties;
+    return Array.isArray(parties) && parties.includes(aId) && parties.includes(bId);
+  });
 }
 
 /**
@@ -287,9 +292,9 @@ function isJustifiedWar(state: GameState, actor: Player, action: GameAction): bo
  * casus-belli checks. Rejects a self-declaration (BAD_TARGET) or a faction no
  * seated player holds (NO_TARGET). Assumes the reducer already spent the action.
  *
- * DELTA 5 (§11 "Casus belli"): an UNJUSTIFIED war (no valid
- * claim/crusade/vassal-defense/ally-call — see {@link isJustifiedWar}) costs the
- * declarer `UNJUSTIFIED_WAR_PRESTIGE` (1). Per the CONTRACT2 §12.8
+ * DELTA 5 (§11 "Casus belli", narrowed per the marshal answer-key minor): an
+ * UNJUSTIFIED war — anything but a `claim`, see {@link isJustifiedWar} — costs
+ * the declarer `UNJUSTIFIED_WAR_PRESTIGE` (1). Per the CONTRACT2 §12.8
  * prestige_pending convention this subsystem already uses for its break/win
  * deltas, the cost is POSTED as a round-scoped negative `prestige_pending` (via
  * {@link postPrestigePending}; `value = −UNJUSTIFIED_WAR_PRESTIGE`, target = the
@@ -319,7 +324,17 @@ export function declareWar(state: GameState, action: GameAction): GameState {
   if (!defender) {
     throw new EngineError("NO_TARGET", `No seated player is playing ${action.target}.`);
   }
-  const justified = isJustifiedWar(state, actor, action);
+  // TRUCE reader (marshal Stage-B residual): a live truce binding the declarer
+  // and the target suspends A↔B hostilities — the declaration is rejected
+  // BEFORE any state is cloned/mutated. Third parties may still declare freely;
+  // once the round-scoped truce lapses this same declaration succeeds.
+  if (truceActive(state, actor.id, defender.id)) {
+    throw new EngineError(
+      "TRUCE_ACTIVE",
+      `A truce binds ${actor.name} and ${defender.name} — war cannot be declared until it lapses.`,
+    );
+  }
+  const justified = isJustifiedWar(action);
   const next = clone(state);
   const added = addWar(next, action.player, defender.id);
 

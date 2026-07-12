@@ -194,7 +194,7 @@ no `Math.random()` inside it). Everything is a function of explicit inputs.
 |---|---|---|
 | `engine/mapData.ts` | `PROVINCES`, `SEA_ZONES`, `ADJACENCY` | Static map definition; every province/sea-zone id matches the [`MAP.md`](./MAP.md) registry verbatim (e.g. `edirne`, `sea-of-marmara`, `aegean`, `bosphorus`, `black-sea-west`) |
 | `engine/gameState.ts` | `createInitialState(roomCode, seats)` | Build a fresh `GameState` for a started game |
-| `engine/income.ts` | `computeIncome(state, playerId)` | Sum owned-province yields minus army grain upkeep → `ResourceBundle` (buildings/trade routes land with those systems) |
+| `engine/economy.ts` | `computeIncome(state)` | Sum owned-province yields minus army grain upkeep per player → `IncomeResult` (buildings/trade routes included; supersedes the retired `engine/income.ts`) |
 | `engine/adjacency.ts` | `areAdjacent(a, b)` | Graph queries over the map (movement/attack legality) |
 | `engine/actions.ts` *(planned — §12)* | `applyAction(state, action)` | The reducer: `(state, action) → newState` |
 | `engine/rng.ts` *(planned — §12)* | `makeRng(seed)`, `roll(rng, n)` | Seeded deterministic RNG for dice/draws |

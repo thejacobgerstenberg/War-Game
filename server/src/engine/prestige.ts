@@ -76,7 +76,7 @@ function keyCityCount(state: GameState, playerId: string): number {
 
 /**
  * §13.1 trade monopoly: control most ports of a sea (a strict majority of the
- * owned coastal provinces bordering a sea zone), or a card-posted explicit
+ * owned PORT provinces bordering a sea zone), or a card-posted explicit
  * 'trade_monopoly' modifier. The "both ends of a major route" clause is not
  * computable without route/port-tier data on Province (see NEEDS-FROM-INTEGRATOR).
  *
@@ -85,7 +85,7 @@ function keyCityCount(state: GameState, playerId: string): number {
  * caller can award `MONOPOLY_PRESTIGE.first` for the first and
  * `MONOPOLY_PRESTIGE.additional` for each further one (no longer a flat +2 each).
  * Each matching `trade_monopoly` modifier counts as one route; each sea whose
- * owned coastal ports the player strictly dominates counts as one.
+ * owned ports the player strictly dominates counts as one.
  */
 function countTradeMonopolies(state: GameState, playerId: string): number {
   let count = 0;
@@ -101,13 +101,17 @@ function countTradeMonopolies(state: GameState, playerId: string): number {
     if (matches) count++;
   }
 
-  // Sea majority: each sea with a strict majority of the player's owned coastal
-  // ports is one monopolised sea route.
+  // Sea majority: each sea with a strict majority of the player's owned ports
+  // is one monopolised sea route.
+  // CALL-SITE DECISION (coastal→port rename): §13.1 counts "ports of a sea" —
+  // harbor infrastructure (`Province.port`), not mere shoreline; a non-port
+  // shore province (e.g. thessaly on the Aegean) never counts toward a
+  // trade monopoly. Same as before the rename (the field always encoded Port?=Y).
   for (const zone of state.seaZones) {
     const portOwners: string[] = [];
     for (const neighbourId of neighborsOf(zone.id)) {
       const prov = state.provinces.find((p) => p.id === neighbourId);
-      if (prov && prov.coastal && prov.ownerId) portOwners.push(prov.ownerId);
+      if (prov && prov.port && prov.ownerId) portOwners.push(prov.ownerId);
     }
     if (portOwners.length < 2) continue; // a single port is not a monopoly
     const mine = portOwners.filter((o) => o === playerId).length;
@@ -158,12 +162,14 @@ function countSackedHighValueCities(player: Player): number {
 }
 
 /**
- * B4 (STAGE-A-PREP): number of PORT provinces a player controls. A "port" is a
- * coastal province (`Province.coastal === true`), matching economy.ts portTier
+ * B4 (STAGE-A-PREP): number of PORT provinces a player controls
+ * (`Province.port === true`, MAP.md "Port?" = Y), matching economy.ts portTier
  * (§5.2). Feeds the `minPorts` and `morePortsThan` clause predicates.
+ * CALL-SITE DECISION (coastal→port rename): objectives count HARBORS, so this
+ * reads `.port`, never the derived borders-sea predicate.
  */
 function portCount(state: GameState, playerId: string): number {
-  return state.provinces.filter((p) => p.ownerId === playerId && p.coastal).length;
+  return state.provinces.filter((p) => p.ownerId === playerId && p.port).length;
 }
 
 /**
@@ -202,7 +208,7 @@ function clauseHasContent(clause: SecretObjectiveClause): boolean {
  * objective's legacy `provinceRefs` into the base clause's all-of. Read-only.
  *
  * B4/B5 leaf predicates (STAGE-A-PREP):
- *  - minPorts / morePortsThan count coastal provinces (§5.2 "port"); morePortsThan
+ *  - minPorts / morePortsThan count PORT provinces (`Province.port`, §5.2); morePortsThan
  *    is STRICT (ties fail) and, when NO player is seated as the named faction,
  *    degrades to "any port count > 0" (evaluator's call per STAGE-A-PREP — a
  *    rival that never sat down cannot be out-ported except by holding nothing).
@@ -259,7 +265,7 @@ function clauseSatisfied(
   }
   if (scaleGates.length > 0 && !scaleGates.some(Boolean)) return false;
 
-  // B4 minPorts (ven-stato-da-mar "control 8 ports"): ports = coastal provinces.
+  // B4 minPorts (ven-stato-da-mar "control 8 ports"): ports = `Province.port`.
   if (clause.minPorts !== undefined && portCount(state, player.id) < clause.minPorts) {
     return false;
   }
@@ -369,7 +375,9 @@ function objectiveSatisfied(state: GameState, player: Player, obj: SecretObjecti
  */
 function decideWinner(state: GameState): Faction | null {
   const playerCount = state.players.length;
-  // §13.2 threshold by player count (2→25, 3→30, 4–5→35).
+  // §13.2 threshold by player count — balance.PRESTIGE_THRESHOLDS, the ratified
+  // sim-tuned values (2→72, 3→75, 4→80, 5→78); never hardcode the retired
+  // 25/30/35 scaffold numbers here.
   const threshold = PRESTIGE_THRESHOLDS[playerCount] ?? 35;
 
   /** Highest prestige; tiebreak most key cities, then most gold (§13.3). */

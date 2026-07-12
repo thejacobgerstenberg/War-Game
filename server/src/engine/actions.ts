@@ -25,6 +25,7 @@ import {
   TerrainType,
   TreatyType,
   UnitType,
+  type ActiveModifier,
   type Army,
   type Fleet,
   type GameAction,
@@ -46,10 +47,11 @@ import {
   UNJUSTIFIED_WAR_PRESTIGE,
   VASSAL,
 } from "./balance.js";
-import { areAdjacent } from "./adjacency.js";
+import { areAdjacent, bordersSea } from "./adjacency.js";
 import { appendLog } from "./logEntry.js";
 import { applyBuild, applyTrade } from "./economy.js";
-import { applyDiplomacy, applyVassalize } from "./diplomacy.js";
+import { applyDiplomacy, applyVassalize, truceActive } from "./diplomacy.js";
+import { getModifiers, removeModifier } from "./modifiers.js";
 import { applySpy } from "./spy.js";
 import { applyMercBid } from "./mercenaries.js";
 import { resolveCard } from "./events/index.js";
@@ -532,6 +534,14 @@ function applyRecruit(state: GameState, action: GameAction): GameState {
  * the COMBAT phase instead of resolving inline; otherwise the stack relocates
  * and may flip ownership of an empty enemy/neutral province (§6.4 occupation).
  * Assumes the reducer has spent the action.
+ *
+ * Modifier READERS wired here (marshal Stage-B residuals — both kinds were
+ * POSTED by tactics.ts with no consumer):
+ *  - `move_mod` (forced-march): extends this MOVE's movement allowance; consumed
+ *    by the one move that needs it (see the inline block at the allowance check).
+ *  - `truce` (a-death-in-the-palace): A↔B hostilities — attacking the partner's
+ *    stacks or entering their provinces hostilely — throw TRUCE_ACTIVE while the
+ *    round-scoped truce lives (see the inline blocks at defender detection).
  */
 function applyMove(state: GameState, action: GameAction): GameState {
   if (action.type !== "MOVE") {
@@ -577,10 +587,14 @@ function applyMove(state: GameState, action: GameAction): GameState {
   }
   if (isNaval && destProv) {
     // A FLEET sails on water: legal destinations are sea zones, plus the one
-    // legal PORT interaction — putting in at a COASTAL province arrived at FROM
-    // an adjacent sea zone. A landlocked destination and a port-to-port hop
+    // legal shore interaction — putting in at a province arrived at FROM an
+    // adjacent sea zone. A landlocked destination and a port-to-port hop
     // over a land edge (a fleet "marching" along a coastline) are rejected.
-    if (!destProv.coastal) {
+    // CALL-SITE DECISION (coastal→port rename): fleet shore entry is the
+    // PHYSICAL "borders a sea" predicate (bordersSea, adjacency-derived),
+    // NOT harbor infrastructure (`Province.port`) — a fleet may anchor off
+    // any shore province (morea/thessaly/wallachia/kastamonu included).
+    if (!bordersSea(destProv.id)) {
       throw new EngineError(
         "BAD_DESTINATION",
         `${destProv.name} is landlocked; a fleet cannot enter it.`,
@@ -599,9 +613,9 @@ function applyMove(state: GameState, action: GameAction): GameState {
   // GD §6.4 says a unit "moves up to its Move value in province move-cost". A
   // single MOVE action is ONE adjacency step (the payload carries one `toId`), so
   // the stack's slowest-unit Move budget must cover the destination's
-  // TERRAIN_MOVE_COST[terrain] (§3.1: plains/hills/forest/coast/city 1, mountains
-  // 2, desert 2). Thus a CAVALRY stack (mv2) may chain into a cost-2 tile in one
-  // step; a SIEGE/INFANTRY stack (mv1) may NOT enter mountains/desert (cost 2) —
+  // TERRAIN_MOVE_COST[terrain] (§3.1: plains/hills/forest/coast/city 1,
+  // mountains 2). Thus a CAVALRY stack (mv2) may chain into a cost-2 tile in one
+  // step; a SIEGE/INFANTRY stack (mv1) may NOT enter mountains (cost 2) —
   // it must route around. The doc gives NO guaranteed-minimum-1 clause (unlike
   // some wargames), so a strict budget is the literal reading; entering high-cost
   // terrain with an over-slow stack is rejected with INSUFFICIENT_MOVEMENT. Sea
@@ -609,12 +623,38 @@ function applyMove(state: GameState, action: GameAction): GameState {
   const mp = stackMovePoints(stack);
   if (mp <= 0) throw new EngineError("BAD_MOVE", "An empty stack cannot move.");
   const moveCost = destProv ? TERRAIN_MOVE_COST[destProv.terrain] : 1;
+  // move_mod READER (marshal Stage-B residual — the forced-march tactic POSTED a
+  // `move_mod` nothing consumed). Printed effect (tactics/cards.ts
+  // `forced-march`): "Rider on one of your Move actions: that army moves +1
+  // province; it may not Besiege or Assault this round." Engine reading: the
+  // rider EXTENDS this MOVE's movement allowance by the modifier's value, so a
+  // move that is illegal on the stack's own pace (INSUFFICIENT_MOVEMENT) becomes
+  // legal while a live faction-scoped move_mod covers the shortfall. "One of
+  // your Move actions" = the rider is CONSUMED (removed) by the single MOVE that
+  // needs it; a legal-anyway MOVE leaves it untouched, and an unused rider
+  // expires per its scope (round — roundLoop.expireRoundModifiers). Armies only
+  // (the printed rider names "that army"); fleets never read it.
+  let forcedMarch: ActiveModifier | undefined;
   if (moveCost > mp) {
-    throw new EngineError(
-      "INSUFFICIENT_MOVEMENT",
-      `${action.toId} costs ${moveCost} to enter; the stack moves ${mp}.`,
-    );
+    if (!isNaval) {
+      forcedMarch = getModifiers(state, "move_mod").find(
+        (m) =>
+          (m.target?.faction === undefined || m.target.faction === player.faction) &&
+          mp + (m.value ?? 0) >= moveCost,
+      );
+    }
+    if (!forcedMarch) {
+      throw new EngineError(
+        "INSUFFICIENT_MOVEMENT",
+        `${action.toId} costs ${moveCost} to enter; the stack moves ${mp}.`,
+      );
+    }
   }
+  // Consume the rider up front (a thrown error below still never mutates the
+  // caller's state — `afterMods` is a fresh object). All later reads that feed
+  // the clone-and-apply helpers use `afterMods` so the spent rider is gone from
+  // the returned state.
+  const afterMods = forcedMarch ? removeModifier(state, forcedMarch.id) : state;
 
   // §6.4 stacking limit at the destination (own units only).
   const moving = realCount(stack);
@@ -640,7 +680,18 @@ function applyMove(state: GameState, action: GameAction): GameState {
         realCount(f) > 0,
     );
     if (enemyFleets.length > 0) {
-      return queueBattle(state, action, player, {
+      // TRUCE reader (marshal Stage-B residual): attacking a truce partner's
+      // fleet is an A↔B hostility — rejected while the truce modifier lives.
+      const trucedFleet = enemyFleets.find((f) =>
+        truceActive(state, player.id, f.ownerId),
+      );
+      if (trucedFleet) {
+        throw new EngineError(
+          "TRUCE_ACTIVE",
+          `A truce binds ${player.name} and the owner of ${trucedFleet.id} — no hostilities until it lapses.`,
+        );
+      }
+      return queueBattle(afterMods, action, player, {
         // MAP major (typed gating audit): a naval clash keys the battle on the
         // ACTUAL location type — a sea zone at sea, a provinceId for the legal
         // port-call interaction (previously a port battle mis-filed the port's
@@ -653,7 +704,7 @@ function applyMove(state: GameState, action: GameAction): GameState {
         isSiege: false,
       });
     }
-    return relocate(state, action, player, false);
+    return relocate(afterMods, action, player, false);
   }
 
   const prov = destProv!;
@@ -671,21 +722,58 @@ function applyMove(state: GameState, action: GameAction): GameState {
   const garrisonDefends =
     (prov.garrison ?? 0) > 0 && (prov.ownerId === null || ownerHostile);
 
+  // TRUCE reader (marshal Stage-B residual — the `truce` modifier posted by
+  // a-death-in-the-palace had NO consumer): while the truce lives, A↔B
+  // MOVE-attacks into each other's provinces are rejected — invading the
+  // partner's province (battle, garrison assault, OR unopposed hostile
+  // occupation) and attacking the partner's army anywhere. Third parties are
+  // untouched; the round-scoped modifier's expiry restores full hostilities.
+  const hostileEntry = enemyArmies.length > 0 || garrisonDefends || ownerHostile;
+  if (hostileEntry && prov.ownerId && truceActive(state, player.id, prov.ownerId)) {
+    throw new EngineError(
+      "TRUCE_ACTIVE",
+      `A truce binds ${player.name} and the owner of ${prov.name} — no hostilities until it lapses.`,
+    );
+  }
+  const trucedArmy = enemyArmies.find((a) => truceActive(state, player.id, a.ownerId));
+  if (trucedArmy) {
+    throw new EngineError(
+      "TRUCE_ACTIVE",
+      `A truce binds ${player.name} and the owner of ${trucedArmy.id} — no hostilities until it lapses.`,
+    );
+  }
+
   if (enemyArmies.length > 0 || garrisonDefends) {
     // §7/§8 a defended tile queues a battle; a walled CITY assault is a siege.
-    return queueBattle(state, action, player, {
+    const isSiege = prov.walls.hp > 0 && prov.terrain === TerrainType.CITY;
+    // Forced-march rider (printed effect): the force-marched army "may not
+    // Besiege or Assault this round" — a march that NEEDED the move_mod bonus
+    // may not end by declaring a siege/assault on a walled city. Field battles
+    // remain legal (the printed text forbids only besiege/assault). NOTE:
+    // defensive under the SHIPPED balance data — CITY move cost is 1, so a
+    // consuming march (cost > pace) can't currently END on a walled CITY; the
+    // guard goes live if tuning ever raises a besiegeable terrain's cost, and
+    // documents the rider's un-modelled half (army-wide no-siege for the WHOLE
+    // round would need per-army state — ratification checklist).
+    if (forcedMarch && isSiege) {
+      throw new EngineError(
+        "FORCED_MARCH_NO_SIEGE",
+        `A force-marched army may not besiege or assault ${prov.name} this round.`,
+      );
+    }
+    return queueBattle(afterMods, action, player, {
       provinceId: prov.id,
       defenderId: enemyArmies[0]?.ownerId ?? prov.ownerId ?? null,
       defenderStackIds: enemyArmies.map((a) => a.id),
       isNaval: false,
       amphibious: action.transportFleetId !== undefined,
-      isSiege: prov.walls.hp > 0 && prov.terrain === TerrainType.CITY,
+      isSiege,
     });
   }
 
   // §6.4 empty tile → relocate; an empty enemy/neutral tile is a DEFERRED
   // occupation (ownership flips at cleanup unless contested — see relocate).
-  return relocate(state, action, player, ownerHostile || prov.ownerId === null);
+  return relocate(afterMods, action, player, ownerHostile || prov.ownerId === null);
 }
 
 /**
@@ -795,46 +883,25 @@ function queueBattle(
 // ---------------------------------------------------------------------------
 
 /**
- * §11 "Casus belli" (delta 5): a DECLARE_WAR carries an optional `justification`
- * — `claim` | `crusade` | `vassal-defense` | `ally-call`. A war with a VALID
- * justification is a legitimate casus belli (GD §11: "attack without the usual
- * prestige cost" and "+1 extra prestige for wins in that war"); a war with an
- * ABSENT or IMPLAUSIBLE justification is UNJUSTIFIED and costs the declarer
- * `balance.UNJUSTIFIED_WAR_PRESTIGE` prestige.
+ * §11 "Casus belli" (delta 5, NARROWED per the marshal FULL-MINORS answer-key
+ * item "actions.ts:646 unjustified-war justification enum broader than ratified
+ * casus belli — only 'claim' exempts the E5a −1; both isJustifiedWar copies"):
+ * ONLY `justification: "claim"` is a ratified casus belli exempting the declarer
+ * from `balance.UNJUSTIFIED_WAR_PRESTIGE` (the E5a −1). The other enum values
+ * (`crusade` | `vassal-defense` | `ally-call`) are still ACCEPTED on the wire and
+ * RECORDED verbatim in the declaration log (`data.justification`), but do NOT
+ * exempt — whether any should become exempting casus belli PENDS DESIGN
+ * RATIFICATION; until then they behave like an unjustified declaration.
  *
- * This is a BEST-EFFORT plausibility gate (documented, not a full CB engine):
- * - `vassal-defense` requires the declarer to actually hold a vassal minor.
- * - `ally-call` requires the declarer to have an ALLIANCE partner who is itself
- *   currently at war (someone to be "called" to defend).
- * - `claim` / `crusade` are accepted as plausible: a `claim` (broken royal
- *   marriage / seized key city) and a `crusade` (faith stance) cannot be cheaply
- *   verified from `GameState` here, so they are trusted at declaration time; the
- *   richer marriage-claim bookkeeping is posted by diplomacy.ts's RENOUNCE path.
- * Returns `true` when the declaration is a valid casus belli.
+ * A `claim` (broken royal marriage / seized key city) cannot be cheaply verified
+ * from `GameState` here, so it is trusted at declaration time; the richer
+ * marriage-claim bookkeeping is posted by diplomacy.ts's RENOUNCE path. Mirrors
+ * diplomacy.ts's `isJustifiedWar` verbatim (single-owner collapse is the
+ * integrator's NEEDS-FROM-INTEGRATOR at diplomacy.declareWar).
  */
-function isJustifiedWar(state: GameState, actor: Player, action: GameAction): boolean {
+function isJustifiedWar(action: GameAction): boolean {
   if (action.type !== "DECLARE_WAR") return false;
-  switch (action.justification) {
-    case "claim":
-    case "crusade":
-      return true; // best-effort: trusted at declaration (see doc above)
-    case "vassal-defense":
-      return state.minors.some((m) => m.vassalOf === actor.id);
-    case "ally-call": {
-      const allyIds = new Set<string>();
-      for (const t of actor.treaties) {
-        if (t.type !== TreatyType.ALLIANCE) continue;
-        for (const party of t.parties) {
-          if (party !== actor.id) allyIds.add(party);
-        }
-      }
-      return state.wars.some(
-        (w) => allyIds.has(w.a) || allyIds.has(w.b),
-      );
-    }
-    default:
-      return false; // absent / unrecognised → unjustified
-  }
+  return action.justification === "claim";
 }
 
 /**
@@ -867,12 +934,22 @@ function applyDeclareWar(state: GameState, action: GameAction): GameState {
   if (!defender) {
     throw new EngineError("NO_TARGET", `No seated player is playing ${action.target}.`);
   }
+  // TRUCE reader (marshal Stage-B residual): a live truce binding the declarer
+  // and the target suspends A↔B hostilities — rejected before any state is
+  // built. Third parties declare freely; expiry of the round-scoped modifier
+  // (roundLoop.expireRoundModifiers) restores the declaration.
+  if (truceActive(state, actor.id, defender.id)) {
+    throw new EngineError(
+      "TRUCE_ACTIVE",
+      `A truce binds ${actor.name} and ${defender.name} — war cannot be declared until it lapses.`,
+    );
+  }
   const already = state.wars.some(
     (w) =>
       (w.a === actor.id && w.b === defender.id) ||
       (w.a === defender.id && w.b === actor.id),
   );
-  const justified = isJustifiedWar(state, actor, action);
+  const justified = isJustifiedWar(action);
 
   const next: GameState = {
     ...state,
@@ -1343,6 +1420,16 @@ export function applyAction(state: GameState, action: GameAction): GameState {
 
     case "LEVY_CALL": {
       // §11.5 Calling up a vassal's levy is a Diplomacy-window action (costs 1).
+      //
+      // ENGINE INTERPRETATION (marshal FULL-MINORS actions item "LEVY_CALL
+      // charges 1 action canon never states — ratification item / mark engine
+      // interpretation"): GD §11.5 grants the once-per-2-rounds levy but never
+      // says whether calling it costs an action. The engine reads it as a
+      // budgeted 1-action political act, symmetrical with DECLARE_WAR /
+      // DIPLOMACY(PROPOSE) — a deliberate call, not a free rider on the vassal.
+      // The 1-action cost is DELIBERATELY KEPT and flagged on the PR
+      // ratification checklist; if design ratifies "free", drop only the
+      // spendAction routing here (applyLevyCall itself assumes the spend).
       const next = spendAction(state, action.player);
       return advanceTurnPointer(applyLevyCall(next, action));
     }

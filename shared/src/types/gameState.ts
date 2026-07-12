@@ -27,8 +27,8 @@ export enum TerrainType {
   FOREST = "FOREST",
   COAST = "COAST",
   CITY = "CITY",
-  /** Arid Egypt/Levant edge (Cairo, Alexandria, Tunis). Trade-city gold, no grain. */
-  DESERT = "DESERT",
+  // DESERT removed (MINORS-FOLLOWUP-PREP): no province is authored DESERT after
+  // the Cairo→CITY / Tunis→COAST registry fixes; MAP.md §2 defines no desert row.
 }
 
 /**
@@ -139,8 +139,15 @@ export interface Province {
   yields: ResourceBundle;
   /** Owning player id, or null if unowned/neutral. */
   ownerId: string | null;
-  /** True for coastal provinces that border a sea zone. */
-  coastal: boolean;
+  /**
+   * True for PORT provinces — MAP.md §3 registry "Port?" = Y (harbor: trade
+   * routes, port tiers §5.2, shipyard/naval sites). Renamed from `coastal`
+   * (MINORS-FOLLOWUP-PREP): the old name suggested "borders a sea zone", which
+   * is a DIFFERENT predicate (morea/thessaly/wallachia/kastamonu border seas
+   * but are not ports; buda/belgrade are "R" river ports with no sea zone).
+   * "Borders a sea" is derived from adjacency — engine `bordersSea(provinceId)`.
+   */
+  port: boolean;
   /** Rendering hint: centroid on the strategic map (0–100 viewBox space). */
   position: { x: number; y: number };
   /** Fortification state; tier 0 / hp 0 when unwalled. */
@@ -302,7 +309,7 @@ export interface SecretObjectiveClause {
   refusedChurchUnion?: boolean;
   /** Minimum count of high-value cities sacked over the game (FL-07 alternative). */
   sackedHighValueCities?: number;
-  /** Controls at least this many PORT provinces (§5.2 port = coastal province) (B4; ven-stato-da-mar "8 ports"). */
+  /** Controls at least this many PORT provinces (§5.2 `Province.port`) (B4; ven-stato-da-mar "8 ports"). */
   minPorts?: number;
   /** For EACH entry, controls at least `min` of the listed province ids (count-clause; B4 "any 3 Aegean islands"). */
   minOfProvinces?: { provinceIds: string[]; min: number }[];
@@ -316,7 +323,7 @@ export interface SecretObjectiveClause {
   mostGold?: boolean;
   /** At least this many DISTINCT other players currently in this player's `Player.debtors` (outstanding loans owed to the player) (B5). */
   minDebtors?: number;
-  /** Controls STRICTLY more PORT (coastal) provinces than the named faction's player — ties fail (gen-overshadow-the-lion). */
+  /** Controls STRICTLY more PORT provinces (`Province.port`) than the named faction's player — ties fail (gen-overshadow-the-lion). */
   morePortsThan?: Faction;
   /** Has destroyed at least one FLEET belonging to the named faction over the game (reads `Player.fleetsDestroyed`) (ven-queen-of-the-adriatic). */
   destroyedFleetOf?: Faction;

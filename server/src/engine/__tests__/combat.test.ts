@@ -29,8 +29,17 @@ import {
 } from "@imperium/shared";
 import { emptyUnits } from "../gameState.js";
 import { makeRng } from "../rng.js";
-import { CONQUEST_PRESTIGE, GREAT_BOMBARD, SIEGE, TREASON_GATE } from "../balance.js";
+import {
+  CONQUEST_PRESTIGE,
+  GREAT_BOMBARD,
+  ROUNDS,
+  SIEGE,
+  TEMPLE_MORALE_BONUS,
+  TREASON_GATE,
+} from "../balance.js";
 import { resolveBattle, resolveNaval, resolveSiege } from "../combat.js";
+import { scorePrestige } from "../prestige.js";
+import { startingObjectives } from "../factions.js";
 import { playTactic } from "../tactics/index.js";
 // The REAL resolver, imported from the flat module ("../tactics.js" — a different
 // specifier than the mocked barrel), for the Stage-B CONSUMPTION tests: those must
@@ -107,7 +116,7 @@ function province(id: string, opts: Partial<Province> = {}): Province {
     terrain: TerrainType.PLAINS,
     yields: { gold: 0, grain: 0, timber: 0, marble: 0, faith: 0 },
     ownerId: null,
-    coastal: false,
+    port: false,
     position: { x: 0, y: 0 },
     walls: { tier: 0, hp: 0 },
     buildings: [],
@@ -1026,7 +1035,7 @@ describe("sea-resupply siege rule (GD §8.2, CANON — FRESH fleet presence, Sta
       provinces: [
         province("constantinople", {
           ownerId: "p2",
-          coastal: true,
+          port: true,
           walls: { tier: 0, hp: 0 },
           garrison: 5,
         }),
@@ -1106,7 +1115,7 @@ describe("sea-resupply does not freeze naval/harbor action (§8.2.3, CANON)", ()
       provinces: [
         province("constantinople", {
           ownerId: "p2",
-          coastal: true,
+          port: true,
           walls: { tier: 0, hp: 0 },
           garrison: 5,
         }),
@@ -2522,5 +2531,237 @@ describe("tactic error containment (marshal major — COMBAT phase must not cras
     expect(res.state.rngCursor).toBe(baseline.state.rngCursor); // no +2 dice happened
     expect(res.state.tacticDiscard).toContain(asTacticCardId("condottieri-contract"));
     expect(res.state.players.find((p) => p.id === "p1")?.treasury.gold).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §9.1 TEMPLE "+1 defender morale" CONSUMER (marshal minors list, ECONOMY:
+// balance.ts:345 — the bonus existed as data with no combat reader)
+// ---------------------------------------------------------------------------
+
+describe("TEMPLE defender morale (§9.1, minors follow-up)", () => {
+  // 8 INF vs 8 INF on HILLS. Seed 112 (hunted against the real kernel): the
+  // defender's first §7.5 rout die is EXACTLY routThreshold (3), so the temple's
+  // +1 morale (threshold 3 → 2) is the single deciding input: without it the
+  // defender routs round 1 and the attacker takes the field; with it the same
+  // die MISSES, the defence holds, and the shattered attacker is wiped in round
+  // 2 — the whole battle flips on the temple.
+  const TEMPLE_SEED = 112;
+  const build = (buildings: BuildingType[]): [GameState, PendingBattle] => [
+    makeState({
+      provinces: [
+        province("field", { ownerId: "p2", terrain: TerrainType.HILLS, buildings }),
+      ],
+      armies: [
+        army("a1", "p1", "field", { [UnitType.INFANTRY]: 8 }),
+        army("d1", "p2", "field", { [UnitType.INFANTRY]: 8 }),
+      ],
+    }),
+    {
+      id: "b1",
+      provinceId: "field",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+    },
+  ];
+
+  it("same seed: the defender routs without the temple, holds (and wins) with it", () => {
+    // The fixture's dice math is tuned to a ±1 threshold shift.
+    expect(TEMPLE_MORALE_BONUS).toBe(1);
+
+    const [bare, bareBattle] = build([]);
+    const noTemple = resolveBattle(bare, bareBattle, makeRng(TEMPLE_SEED, 0));
+    expect(noTemple.defender.routed).toContain("d1");
+    expect(noTemple.winnerId).toBe("p1");
+    // "field" has no map neighbours → the routed stack surrenders wholly (§7.5).
+    expect(noTemple.state.armies.find((a) => a.id === "d1")).toBeUndefined();
+    expect(noTemple.state.provinces[0].ownerId).toBe("p1");
+
+    const [blessed, blessedBattle] = build([BuildingType.TEMPLE]);
+    const withTemple = resolveBattle(blessed, blessedBattle, makeRng(TEMPLE_SEED, 0));
+    // Identical dice stream up to the rout die — only the threshold moved.
+    expect(withTemple.defender.routed).toHaveLength(0);
+    expect(withTemple.winnerId).toBe("p2");
+    const survivor = withTemple.state.armies.find((a) => a.id === "d1");
+    expect(survivor).toBeDefined();
+    expect(withTemple.state.provinces[0].ownerId).toBe("p2");
+
+    // Deterministic under the temple: same (state, seed) → identical result.
+    const [blessed2, blessedBattle2] = build([BuildingType.TEMPLE]);
+    expect(resolveBattle(blessed2, blessedBattle2, makeRng(TEMPLE_SEED, 0))).toEqual(withTemple);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §8.4 capture row — GB spike-on-capture (marshal minors list, COMBAT:
+// combat.ts:371 "GB captor 'spike it' option unimplemented")
+// ---------------------------------------------------------------------------
+
+describe("Great Bombard spike-on-capture (§8.4 capture row, minors follow-up)", () => {
+  const build = (): [GameState, PendingBattle] => [
+    makeState({
+      provinces: [province("field", { ownerId: "p2", terrain: TerrainType.PLAINS })],
+      armies: [
+        army("a1", "p1", "field", { [UnitType.INFANTRY]: 20 }),
+        bombardArmy("d1", "p2", "field"),
+      ],
+      greatBombard: { inPlay: true, ownerId: "p2", provinceId: "field", emplacedRound: 1 },
+    }),
+    {
+      id: "b1",
+      provinceId: "field",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["a1"],
+      defenderStackIds: ["d1"],
+    },
+  ];
+  const totalGb = (s: GameState): number =>
+    s.armies.reduce(
+      (n, a) => n + (a.variants?.find((v) => v.variant === GREAT_BOMBARD.variant)?.count ?? 0),
+      0,
+    );
+
+  it("default (spikeOnCapture=false): the captured gun transfers intact to the victor", () => {
+    expect(GREAT_BOMBARD.spikeOnCapture).toBe(false); // authored default
+    const [state, battle] = build();
+    const res = resolveBattle(state, battle, makeRng(SEED, 0));
+    expect(res.winnerId).toBe("p1");
+    expect(totalGb(res.state)).toBe(1); // the piece lives on, on the winner's stack
+    expect(res.state.armies.find((a) => a.id === "a1")?.variants?.some(
+      (v) => v.variant === GREAT_BOMBARD.variant && v.count === 1,
+    )).toBe(true);
+    expect(res.state.greatBombard?.inPlay).toBe(true);
+    expect(res.state.greatBombard?.ownerId).toBe("p1");
+    expect(res.state.log.some((l) => l.data?.greatBombardSpiked === true)).toBe(false);
+  });
+
+  it("spikeOnCapture=true: the captured gun is PERMANENTLY removed (tracker out of play, piece gone, logged)", () => {
+    // Flip the balance default for this test only (runtime override of the
+    // `as const` literal; restored in finally so sibling tests see the default).
+    const knob = GREAT_BOMBARD as unknown as { spikeOnCapture: boolean };
+    knob.spikeOnCapture = true;
+    try {
+      const [state, battle] = build();
+      const res = resolveBattle(state, battle, makeRng(SEED, 0));
+      expect(res.winnerId).toBe("p1");
+      // The one-per-game piece is gone from every stack…
+      expect(totalGb(res.state)).toBe(0);
+      // …and the singleton tracker is retired for good.
+      expect(res.state.greatBombard?.inPlay).toBe(false);
+      expect(res.state.greatBombard?.ownerId).toBeNull();
+      expect(res.state.greatBombard?.provinceId).toBeNull();
+      // The spiking is chronicled.
+      expect(res.state.log.some((l) => l.data?.greatBombardSpiked === true)).toBe(true);
+      // Purity: the caller's input tracker is untouched.
+      expect(state.greatBombard?.inPlay).toBe(true);
+      expect(state.greatBombard?.ownerId).toBe("p2");
+    } finally {
+      knob.spikeOnCapture = false;
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §7.6 / B4 residual — resolveNaval tallies destroyed enemy fleets onto the
+// winner's Player.fleetsDestroyed (consumed by prestige's destroyedFleetOf)
+// ---------------------------------------------------------------------------
+
+describe("fleetsDestroyed counter (§7.6, B4 residual — minors follow-up)", () => {
+  it("credits the winner one tally per destroyed enemy fleet, keyed by victim faction", () => {
+    const build = (): GameState =>
+      makeState({
+        seaZones: [seaZone("aegean")],
+        fleets: [
+          fleet("f1", "p1", "aegean", { [UnitType.WARSHIP]: 6 }),
+          fleet("f2", "p2", "aegean", { [UnitType.GALLEY]: 1 }),
+          fleet("f3", "p2", "aegean", { [UnitType.GALLEY]: 1 }),
+        ],
+      });
+    const battle: PendingBattle = {
+      id: "n1",
+      seaZoneId: "aegean",
+      attackerId: "p1",
+      defenderId: "p2",
+      attackerStackIds: ["f1"],
+      defenderStackIds: ["f2", "f3"],
+      isNaval: true,
+    };
+    const state = build();
+    const res = resolveNaval(state, battle, makeRng(SEED, 0));
+    expect(res.winnerId).toBe("p1");
+    // Both defending fleets were wiped → the winner's per-victim tally reads 2.
+    expect(res.state.fleets.filter((f) => f.ownerId === "p2")).toHaveLength(0);
+    const winner = res.state.players.find((p) => p.id === "p1");
+    expect(winner?.fleetsDestroyed?.[Faction.BYZANTIUM]).toBe(2);
+    // The loser is credited nothing (its own surviving-victim view stays empty),
+    // and the winner's damaged-but-surviving fleet counts for no one.
+    expect(res.state.players.find((p) => p.id === "p2")?.fleetsDestroyed).toBeUndefined();
+    // Purity: the input state's players are untouched.
+    expect(state.players.find((p) => p.id === "p1")?.fleetsDestroyed).toBeUndefined();
+    // Determinism re-run.
+    expect(resolveNaval(build(), battle, makeRng(SEED, 0))).toEqual(res);
+  });
+
+  it("end-to-end: the tally makes ven-queen-of-the-adriatic's destroyedFleetOf clause satisfiable (B4)", () => {
+    const queen = startingObjectives(Faction.VENICE).find(
+      (o) => o.id === "ven-queen-of-the-adriatic",
+    );
+    expect(queen).toBeDefined();
+    const pv = player("pv", Faction.VENICE);
+    pv.objectives = [structuredClone(queen!)];
+    const pg = player("pg", Faction.GENOA);
+    const state = makeState({
+      // Final round → this cleanup ends the game, so objectives are revealed & scored.
+      round: ROUNDS,
+      turn: ROUNDS,
+      players: [pv, pg],
+      turnOrder: ["pv", "pg"],
+      provinces: [
+        // The objective's territorial all-of: every Adriatic port is Venetian.
+        province("venice", { ownerId: "pv" }),
+        province("dalmatia", { ownerId: "pv" }),
+        province("corfu", { ownerId: "pv" }),
+        province("ragusa", { ownerId: "pv" }),
+        // No Genoese colony (pera/chios/lesbos/kaffa) is owned, so the OR-group
+        // can ONLY be satisfied through destroyedFleetOf.
+      ],
+      seaZones: [seaZone("adriatic")],
+      fleets: [
+        fleet("fv", "pv", "adriatic", { [UnitType.WARSHIP]: 6 }),
+        fleet("fg", "pg", "adriatic", { [UnitType.GALLEY]: 1 }),
+      ],
+    });
+    const battle: PendingBattle = {
+      id: "n1",
+      seaZoneId: "adriatic",
+      attackerId: "pv",
+      defenderId: "pg",
+      attackerStackIds: ["fv"],
+      defenderStackIds: ["fg"],
+      isNaval: true,
+    };
+    const naval = resolveNaval(state, battle, makeRng(SEED, 0));
+    expect(naval.winnerId).toBe("pv");
+    expect(
+      naval.state.players.find((p) => p.id === "pv")?.fleetsDestroyed?.[Faction.GENOA],
+    ).toBe(1);
+
+    // Game-end scoring WITH the tally: the objective completes and pays out.
+    const scored = scorePrestige(naval.state);
+    const scoredPv = scored.players.find((p) => p.id === "pv")!;
+    expect(scoredPv.objectives[0].completed).toBe(true);
+
+    // Control: the SAME post-battle state with the tally stripped — the OR-group
+    // has no other satisfiable arm, so the objective does NOT complete and the
+    // prestige difference is exactly the objective award.
+    const control = structuredClone(naval.state) as GameState;
+    delete control.players.find((p) => p.id === "pv")!.fleetsDestroyed;
+    const controlScored = scorePrestige(control);
+    const controlPv = controlScored.players.find((p) => p.id === "pv")!;
+    expect(controlPv.objectives[0].completed).not.toBe(true);
+    expect(scoredPv.prestige - controlPv.prestige).toBe(queen!.prestige);
   });
 });

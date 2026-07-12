@@ -14,7 +14,12 @@ import type {
   ResourceBundle,
 } from "@imperium/shared";
 import type { BoardOverlayState, DemoSetup } from "../types";
-import { BOARD_PROVINCES, BOARD_SEA_ZONES } from "../mapData";
+import { BOARD_PROVINCES, BOARD_SEA_ZONES, CANON_PROVINCES } from "../mapData";
+
+/** MAP.md "Port?" = Y ids — the shared Province.port flag (harbor, not shoreline). */
+const PORT_IDS: ReadonlySet<string> = new Set(
+  CANON_PROVINCES.filter((p) => p.port === "Y").map((p) => p.id),
+);
 
 function bundle(
   gold: number,
@@ -172,7 +177,9 @@ export function createDemoState(): DemoSetup {
     terrain: p.terrain,
     yields: { ...p.yields },
     ownerId: OWNER_BY_PROVINCE[p.id] ?? null,
-    coastal: p.coastal,
+    // Shared Province.port = MAP.md "Port?" (harbor); BoardProvince.coastal is
+    // the DIFFERENT borders-a-sea display predicate, so read the canon flag.
+    port: PORT_IDS.has(p.id),
     position: { x: 50, y: 50 },
     walls: { tier: 0, hp: 0 },
     buildings: [],

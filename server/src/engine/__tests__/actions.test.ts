@@ -23,6 +23,7 @@ import {
   type RecruitAction,
 } from "@imperium/shared";
 import { createInitialState, type SeatInput } from "../gameState.js";
+import { expireRoundModifiers } from "../modifiers.js";
 import { applyAction, EngineError } from "../actions.js";
 import { advancePhase } from "../roundLoop.js";
 import { omenCardId, resolveCard } from "../events/index.js";
@@ -437,6 +438,148 @@ describe("movement points (§3.1 / §6.4)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// move_mod READER (§7.7 forced-march rider — marshal Stage-B residual)
+// ---------------------------------------------------------------------------
+
+describe("move_mod reader (forced-march rider, §7.7 / marshal Stage-B residual)", () => {
+  /** The exact `move_mod` shape tactics.ts posts for forced-march. */
+  function pushForcedMarch(s: GameState, faction: Faction): void {
+    s.activeModifiers.push({
+      id: "tactic:forced-march:move_mod:0",
+      sourceCardId: "forced-march",
+      scope: "round",
+      kind: "move_mod",
+      value: 1,
+      target: { faction },
+      data: { moveBonus: 1, noSiege: true, noAssault: true, tactic: "forced-march" },
+    });
+  }
+
+  /** Fixture: selymbria forced to MOUNTAINS (cost 2), a p1 mv1 SIEGE stack. */
+  function mountainFixture(): GameState {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    s.provinces.find((p) => p.id === "selymbria")!.terrain = TerrainType.MOUNTAINS;
+    s.armies.push(makeArmy("siege1", "p1", "constantinople", { [UnitType.SIEGE]: 1 }));
+    return s;
+  }
+
+  it("an illegal-without-card MOVE (mv1 into cost-2) SUCCEEDS with a live forced-march move_mod — and consumes it", () => {
+    // Without the rider the identical MOVE is INSUFFICIENT_MOVEMENT (§3.1)…
+    expect(() =>
+      applyAction(mountainFixture(), { type: "MOVE", player: "p1", stackId: "siege1", toId: "selymbria" }),
+    ).toThrowError(expect.objectContaining({ code: "INSUFFICIENT_MOVEMENT" }));
+
+    // …with it, the printed effect ("that army moves +1 province") extends the
+    // allowance and the move lands.
+    const s = mountainFixture();
+    pushForcedMarch(s, Faction.BYZANTIUM);
+    const next = applyAction(s, { type: "MOVE", player: "p1", stackId: "siege1", toId: "selymbria" });
+    expect(next.armies.find((a) => a.id === "siege1")!.locationId).toBe("selymbria");
+    // CONSUMPTION (the marshal meta-lens — posted AND consumed): the rider is a
+    // rider on ONE Move, so it is gone from the returned state…
+    expect(next.activeModifiers.some((m) => m.kind === "move_mod")).toBe(false);
+    // …and a second over-slow stack cannot ride the same card again.
+    const s2 = structuredClone(next);
+    s2.armies.push(makeArmy("siege2", "p1", "constantinople", { [UnitType.SIEGE]: 1 }));
+    expect(() =>
+      applyAction(s2, { type: "MOVE", player: "p1", stackId: "siege2", toId: "selymbria" }),
+    ).toThrowError(expect.objectContaining({ code: "INSUFFICIENT_MOVEMENT" }));
+  });
+
+  it("a MOVE that is legal on the stack's own pace does NOT consume the rider", () => {
+    const s = mountainFixture();
+    s.armies.push(makeArmy("cav1", "p1", "constantinople", { [UnitType.CAVALRY]: 1 }));
+    pushForcedMarch(s, Faction.BYZANTIUM);
+    // Cavalry (mv2) affords the cost-2 tile unaided — the rider stays banked.
+    const next = applyAction(s, { type: "MOVE", player: "p1", stackId: "cav1", toId: "selymbria" });
+    expect(next.armies.find((a) => a.id === "cav1")!.locationId).toBe("selymbria");
+    expect(next.activeModifiers.some((m) => m.kind === "move_mod")).toBe(true);
+  });
+
+  it("a RIVAL faction's move_mod never extends the move (faction-scoped)", () => {
+    const s = mountainFixture();
+    pushForcedMarch(s, Faction.OTTOMAN); // p2's card, not p1's
+    expect(() =>
+      applyAction(s, { type: "MOVE", player: "p1", stackId: "siege1", toId: "selymbria" }),
+    ).toThrowError(expect.objectContaining({ code: "INSUFFICIENT_MOVEMENT" }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TRUCE reader (a-death-in-the-palace — marshal Stage-B residual)
+// ---------------------------------------------------------------------------
+
+describe("truce reader (a-death-in-the-palace, marshal Stage-B residual)", () => {
+  /** The exact round-scoped `truce` shape tactics.ts posts. */
+  function pushTruce(s: GameState, parties: [string, string]): void {
+    s.activeModifiers.push({
+      id: "tactic:a-death-in-the-palace:truce:0",
+      sourceCardId: "a-death-in-the-palace",
+      scope: "round",
+      kind: "truce",
+      data: { parties, tactic: "a-death-in-the-palace" },
+    });
+  }
+
+  it("rejects a MOVE-attack into the truce partner's province with TRUCE_ACTIVE", () => {
+    // bithynia is p2-owned (Ottoman) with a 1-LEVY defender, adjacent to
+    // constantinople — a legal battle-queuing attack without the truce.
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    pushTruce(s, ["p1", "p2"]);
+    expect(() =>
+      applyAction(s, { type: "MOVE", player: "p1", stackId: BYZ_ARMY, toId: "bithynia" }),
+    ).toThrowError(expect.objectContaining({ code: "TRUCE_ACTIVE" }));
+  });
+
+  it("rejects DECLARE_WAR between the truce parties with TRUCE_ACTIVE", () => {
+    const s = fresh();
+    s.phase = GamePhase.DIPLOMACY;
+    pushTruce(s, ["p1", "p2"]);
+    expect(() =>
+      applyAction(s, { type: "DECLARE_WAR", player: "p1", target: Faction.OTTOMAN }),
+    ).toThrowError(expect.objectContaining({ code: "TRUCE_ACTIVE" }));
+  });
+
+  it("leaves THIRD parties untouched — an outside player still attacks either party", () => {
+    const seats3: SeatInput[] = [
+      ...seats,
+      { id: "p3", name: "Corvinus", faction: Faction.HUNGARY, isHost: false },
+    ];
+    const s = structuredClone(createInitialState("ROOM01", seats3, 12345));
+    s.phase = GamePhase.MOVEMENT;
+    pushTruce(s, ["p1", "p2"]);
+    // p3 (no party to the truce) marches on p2's bithynia — battle queues.
+    s.armies.push(makeArmy("h1", "p3", "constantinople", { [UnitType.INFANTRY]: 2 }));
+    s.activePlayerIndex = s.turnOrder.indexOf("p3");
+    const next = applyAction(s, { type: "MOVE", player: "p3", stackId: "h1", toId: "bithynia" });
+    expect(
+      next.pendingBattles.some((b) => b.provinceId === "bithynia" && b.attackerId === "p3"),
+    ).toBe(true);
+  });
+
+  it("expiry restores hostilities — after round cleanup the same MOVE-attack queues its battle", () => {
+    const s = fresh();
+    s.phase = GamePhase.MOVEMENT;
+    pushTruce(s, ["p1", "p2"]);
+    // The truce is round-scoped; the roundLoop cleanup (expireRoundModifiers)
+    // drops it ("until the start of your next turn") and the attack goes through.
+    const lapsed = expireRoundModifiers(s);
+    expect(lapsed.activeModifiers.some((m) => m.kind === "truce")).toBe(false);
+    const next = applyAction(lapsed, {
+      type: "MOVE",
+      player: "p1",
+      stackId: BYZ_ARMY,
+      toId: "bithynia",
+    });
+    expect(
+      next.pendingBattles.some((b) => b.provinceId === "bithynia" && b.attackerId === "p1"),
+    ).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // GREAT BOMBARD not recruitable (§8.4, DELTA 3)
 // ---------------------------------------------------------------------------
 
@@ -804,20 +947,32 @@ describe("DECLARE_WAR (§11)", () => {
     expect(unjustifiedMod(next, "p1")).toBeUndefined();
   });
 
-  it("DELTA 5 §11 vassal-defense with NO vassal is implausible → unjustified (penalty)", () => {
+  it("E5a narrowing: a `crusade` war now POSTS the −1 (recorded, but only 'claim' exempts)", () => {
+    // Marshal FULL-MINORS answer-key item: "unjustified-war justification enum
+    // broader than ratified casus belli (only 'claim' exempts the E5a −1; both
+    // isJustifiedWar copies)". crusade/vassal-defense/ally-call still ride the
+    // wire and are recorded in the log, pending ratification — no exemption.
     const s = fresh();
     s.phase = GamePhase.DIPLOMACY;
-    // p1 holds no vassal minor, so the claimed defence is implausible.
     const next = applyAction(s, {
       type: "DECLARE_WAR",
       player: "p1",
       target: Faction.OTTOMAN,
-      justification: "vassal-defense",
+      justification: "crusade",
     });
-    expect(unjustifiedMod(next, "p1")).toBeDefined();
+    const mod = unjustifiedMod(next, "p1");
+    expect(mod).toBeDefined();
+    expect(mod!.value).toBe(-UNJUSTIFIED_WAR_PRESTIGE);
+    // The declaration's justification is still RECORDED verbatim…
+    const logged = [...next.log].reverse().find((l) => l.type === "diplomacy");
+    expect(logged?.data?.justification).toBe("crusade");
+    // …but is not exempting.
+    expect(logged?.data?.justified).toBe(false);
   });
 
-  it("DELTA 5 §11 vassal-defense WITH a vassal is a valid casus belli (no penalty)", () => {
+  it("E5a narrowing: vassal-defense WITH a vassal STILL posts the −1 (not ratified casus belli)", () => {
+    // Previously a held vassal made vassal-defense exempting; under the
+    // answer-key narrowing only `claim` exempts — plausibility no longer matters.
     const s = fresh();
     s.phase = GamePhase.DIPLOMACY;
     s.minors.push({
@@ -835,7 +990,8 @@ describe("DECLARE_WAR (§11)", () => {
       target: Faction.OTTOMAN,
       justification: "vassal-defense",
     });
-    expect(unjustifiedMod(next, "p1")).toBeUndefined();
+    expect(unjustifiedMod(next, "p1")).toBeDefined();
+    expect(unjustifiedMod(next, "p1")!.value).toBe(-UNJUSTIFIED_WAR_PRESTIGE);
   });
 
   it("DELTA 5 §11 re-declaring an existing war levies no fresh unjustified penalty", () => {
@@ -1020,9 +1176,19 @@ describe("turn order (marshal actions major: OUT_OF_TURN + pointer)", () => {
 describe("turn-order exemptions (documented at requireActiveTurn)", () => {
   it("MERC_BID by a non-active player is NOT turn-gated (auction round-robin owns sequencing)", () => {
     const s = fresh();
-    s.phase = GamePhase.RECRUITMENT; // window; active = p1
+    // MERC_BID is INCOME-gated (§6.3) and sequenced by the offer's OWN
+    // round-robin pointer (activeBidderId) — NOT by requireActiveTurn. With the
+    // general window on p1 (activePlayerIndex 0), p2 acts because the AUCTION
+    // pointer is on p2.
+    s.phase = GamePhase.INCOME; // §6.3 window; general pointer still = p1
     s.mercMarket = [
-      { companyId: "CATALAN", currentBid: 0, highBidderId: null, sold: false },
+      {
+        companyId: "CATALAN",
+        currentBid: 0,
+        highBidderId: null,
+        sold: false,
+        activeBidderId: "p2",
+      },
     ];
     const next = applyAction(s, {
       type: "MERC_BID",
@@ -1248,27 +1414,25 @@ describe("typed land/sea move gating (marshal map major, BAD_DESTINATION)", () =
   });
 
   it("a FLEET may NOT enter a LANDLOCKED province (BAD_DESTINATION)", () => {
+    // Re-keyed for the coastal→port rename: "landlocked" is now the DERIVED
+    // borders-sea predicate (adjacency.bordersSea over the static canonical
+    // map), so it can no longer be faked by mutating a state field. Use a real
+    // landlocked destination instead: edirne shares a LAND edge with gallipoli
+    // but touches no sea zone, so a fleet lying at gallipoli may not enter it.
     const s = fresh();
     s.phase = GamePhase.MOVEMENT;
-    // Force selymbria landlocked; even arriving from the adjacent sea zone the
-    // port call is now illegal.
-    s.provinces.find((p) => p.id === "selymbria")!.coastal = false;
-    const atSea = applyAction(s, {
-      type: "MOVE",
-      player: "p1",
-      stackId: BYZ_FLEET,
-      toId: "sea-of-marmara",
-      naval: true,
-    });
+    s.fleets.find((f) => f.id === BYZ_FLEET)!.locationId = "gallipoli";
     expect(() =>
-      applyAction(atSea, {
+      applyAction(s, {
         type: "MOVE",
         player: "p1",
         stackId: BYZ_FLEET,
-        toId: "selymbria",
+        toId: "edirne",
         naval: true,
       }),
     ).toThrowError(expect.objectContaining({ code: "BAD_DESTINATION" }));
+    // The fleet never moved.
+    expect(s.fleets.find((f) => f.id === BYZ_FLEET)!.locationId).toBe("gallipoli");
   });
 });
 

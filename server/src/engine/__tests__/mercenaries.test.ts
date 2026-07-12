@@ -12,6 +12,7 @@
 import { describe, it, expect } from "vitest";
 import {
   Faction,
+  GamePhase,
   UnitType,
   type Army,
   type GameState,
@@ -199,20 +200,21 @@ describe("applyMercBid — §6.3 raise-or-pass bidding", () => {
   });
 
   it("a voluntary pass with rivals still active does NOT close the auction (round-robin, DA-3)", () => {
-    // Three wealthy bidders: p1 opens, p3 passes, but p2 is still active → the
-    // auction stays open and the round-robin pointer moves to the remaining rival.
+    // Three wealthy bidders: p1 opens (pointer → p2), p2 passes IN TURN, but p3
+    // is still active → the auction stays open and the round-robin pointer moves
+    // to the remaining rival.
     const s = game(threeSeat);
     s.players[0].treasury.gold = 100;
     s.players[1].treasury.gold = 100;
     s.players[2].treasury.gold = 100;
     s.mercMarket = [offer("CATALAN")];
     const s1 = applyMercBid(s, bid("p1", "CATALAN", 12));
-    const out = applyMercBid(s1, pass("p3", "CATALAN"));
-    expect(out.mercMarket[0].sold).toBe(false); // p2 still active → open
-    expect(out.mercMarket[0].passedPlayerIds).toEqual(["p3"]);
+    const out = applyMercBid(s1, pass("p2", "CATALAN"));
+    expect(out.mercMarket[0].sold).toBe(false); // p3 still active → open
+    expect(out.mercMarket[0].passedPlayerIds).toEqual(["p2"]);
     expect(out.mercMarket[0].highBidderId).toBe("p1");
-    // Round-robin pointer: the next non-passed rival after the high bidder is p2.
-    expect(out.mercMarket[0].activeBidderId).toBe("p2");
+    // Round-robin pointer: the next non-passed rival after the passer is p3.
+    expect(out.mercMarket[0].activeBidderId).toBe("p3");
   });
 
   it("a passed player cannot re-enter the offer's round-robin (DA-3)", () => {
@@ -236,6 +238,148 @@ describe("applyMercBid — §6.3 raise-or-pass bidding", () => {
     expect(a.rngCursor).toBe(base.rngCursor); // no cursor advance on a bid
     // Input left untouched (returns a new state).
     expect(base).toEqual(snapshot);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §6.3 round-robin pointer + INCOME window (marshal minors, mercenaries.ts:434)
+// ---------------------------------------------------------------------------
+
+describe("applyMercBid — §6.3 round-robin pointer + INCOME window", () => {
+  /** Three wealthy bidders (turn order p1 → p2 → p3), one fresh CATALAN offer. */
+  function threeWay(): GameState {
+    const s = game(threeSeat);
+    s.players.forEach((p) => (p.treasury.gold = 100));
+    s.mercMarket = [offer("CATALAN")]; // minBid 12
+    expect(s.phase).toBe(GamePhase.INCOME); // createInitialState opens in INCOME
+    return s;
+  }
+
+  it("rejects a RAISE from anyone but the pointer (MERC_OUT_OF_TURN) and leaves state untouched", () => {
+    // Fresh offer, pointer unset → the expected opener is the first non-passed
+    // player in turn order (p1). p2 jumping the queue is rejected BEFORE any
+    // clone, so the input state is byte-identical afterwards.
+    const s = threeWay();
+    const snapshot = structuredClone(s);
+    expect(() => applyMercBid(s, bid("p2", "CATALAN", 12))).toThrowError(
+      expect.objectContaining({ code: "MERC_OUT_OF_TURN" }),
+    );
+    expect(s).toEqual(snapshot); // no mutation, no log entry, no bid recorded
+  });
+
+  it("rejects a PASS from anyone but the pointer (MERC_OUT_OF_TURN) and leaves state untouched", () => {
+    // After p1 opens, the pointer is p2 — p3 passing out of turn is rejected.
+    const s1 = applyMercBid(threeWay(), bid("p1", "CATALAN", 12));
+    expect(s1.mercMarket[0].activeBidderId).toBe("p2");
+    const snapshot = structuredClone(s1);
+    expect(() => applyMercBid(s1, pass("p3", "CATALAN"))).toThrowError(
+      expect.objectContaining({ code: "MERC_OUT_OF_TURN" }),
+    );
+    expect(s1).toEqual(snapshot);
+    // The high bidder may not re-raise their own bid out of turn either.
+    expect(() => applyMercBid(s1, bid("p1", "CATALAN", 20))).toThrowError(
+      expect.objectContaining({ code: "MERC_OUT_OF_TURN" }),
+    );
+  });
+
+  it("walks the pointer raise → pass → raise, skipping passed bidders (§6.3 step 2)", () => {
+    // p1 raises → pointer p2; p2 passes → pointer p3; p3 raises → the pointer
+    // wraps PAST the passed p2 back to p1.
+    const s1 = applyMercBid(threeWay(), bid("p1", "CATALAN", 12));
+    expect(s1.mercMarket[0].activeBidderId).toBe("p2");
+
+    const s2 = applyMercBid(s1, pass("p2", "CATALAN"));
+    expect(s2.mercMarket[0].activeBidderId).toBe("p3");
+    expect(s2.mercMarket[0].sold).toBe(false);
+
+    const s3 = applyMercBid(s2, bid("p3", "CATALAN", 13));
+    expect(s3.mercMarket[0].highBidderId).toBe("p3");
+    expect(s3.mercMarket[0].currentBid).toBe(13);
+    expect(s3.mercMarket[0].sold).toBe(false); // p1 may still respond
+    expect(s3.mercMarket[0].activeBidderId).toBe("p1"); // p2 (passed) skipped
+  });
+
+  it("rejects MERC_BID outside the §6.3 INCOME window (WRONG_PHASE) and leaves state untouched", () => {
+    // DECISION (documented in applyMercBid): the contract-§8 WRONG_PHASE code is
+    // REUSED — no new MERC_WRONG_PHASE. Both a raise and a pass are gated.
+    const s = threeWay();
+    s.phase = GamePhase.MOVEMENT;
+    const snapshot = structuredClone(s);
+    expect(() => applyMercBid(s, bid("p1", "CATALAN", 12))).toThrowError(
+      expect.objectContaining({ code: "WRONG_PHASE" }),
+    );
+    expect(() => applyMercBid(s, pass("p1", "CATALAN"))).toThrowError(
+      expect.objectContaining({ code: "WRONG_PHASE" }),
+    );
+    expect(s).toEqual(snapshot); // rejected before any clone — state untouched
+    // Sanity: the identical raise in INCOME is legal.
+    s.phase = GamePhase.INCOME;
+    const ok = applyMercBid(s, bid("p1", "CATALAN", 12));
+    expect(ok.mercMarket[0].highBidderId).toBe("p1");
+  });
+
+  it("resolves a full pointer-ordered auction deterministically inside INCOME", () => {
+    // Full §6.3 round-robin: p1 opens 12 → p2 raises 13 → p3 passes → pointer
+    // skips back to p1 who re-raises 15 → p2 passes → only p1 non-passed →
+    // auction CLOSES in-phase: p1 pays the FINAL bid (15, face value) once and
+    // the company musters in the Byzantine capital. Replaying the identical
+    // sequence yields an identical state; no RNG is consumed.
+    const run = (base: GameState): GameState => {
+      let st = applyMercBid(base, bid("p1", "CATALAN", 12));
+      st = applyMercBid(st, bid("p2", "CATALAN", 13));
+      st = applyMercBid(st, pass("p3", "CATALAN"));
+      expect(st.mercMarket[0].activeBidderId).toBe("p1"); // wrapped past p3
+      st = applyMercBid(st, bid("p1", "CATALAN", 15));
+      expect(st.mercMarket[0].activeBidderId).toBe("p2"); // p3 (passed) skipped
+      return applyMercBid(st, pass("p2", "CATALAN"));
+    };
+    const base = threeWay();
+    const a = run(structuredClone(base));
+    const b = run(structuredClone(base));
+
+    expect(a.phase).toBe(GamePhase.INCOME); // resolved in-phase, no advance needed
+    expect(a.mercMarket[0].sold).toBe(true);
+    expect(a.players[0].treasury.gold).toBe(100 - 15); // winner pays face value once
+    expect(a.players[1].treasury.gold).toBe(100); // losers pay nothing
+    expect(a.players[2].treasury.gold).toBe(100);
+    const capital = a.provinces.find(
+      (p) => p.isCapitalOf === Faction.BYZANTIUM && p.ownerId === "p1",
+    )!;
+    const army = a.armies.find(
+      (x) => x.ownerId === "p1" && x.locationId === capital.id,
+    ) as (Army & MercTagged) | undefined;
+    expect(army?.mercenaries?.[UnitType.INFANTRY]).toBe(5); // CATALAN fielded
+    // Determinism: identical inputs → identical outcome, zero RNG consumed.
+    expect(a.rngCursor).toBe(base.rngCursor);
+    expect(a.mercMarket).toEqual(b.mercMarket);
+    expect(a.players.map((p) => p.treasury.gold)).toEqual(
+      b.players.map((p) => p.treasury.gold),
+    );
+  });
+
+  it("refreshMercMarket resolution is NOT phase-gated: a standing bid still fields at END cleanup", () => {
+    // Only the MERC_BID PLAYER ACTION is INCOME-gated; the round loop's cleanup
+    // resolution (standing-bid fielding / unsold → NPC-minor roll) runs in END.
+    const s = game(byzOtt);
+    s.phase = GamePhase.END;
+    s.players[0].treasury.gold = 100;
+    s.mercMarket = [
+      {
+        companyId: "CATALAN",
+        currentBid: 12,
+        highBidderId: "p1",
+        sold: false,
+        passedPlayerIds: ["p2"],
+        activeBidderId: undefined,
+      },
+    ];
+    const out = refreshMercMarket(s);
+    expect(out.players[0].treasury.gold).toBe(100 - 12); // fielded in-phase at END
+    expect(
+      out.armies.some(
+        (a) => a.ownerId === "p1" && (a as Army & MercTagged).mercenaries,
+      ),
+    ).toBe(true);
   });
 });
 

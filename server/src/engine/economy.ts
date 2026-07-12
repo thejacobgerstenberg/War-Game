@@ -43,7 +43,12 @@ import {
 } from "./balance.js";
 import { areAdjacent } from "./adjacency.js";
 import { appendLog } from "./logEntry.js";
-import { getModifiers, removeModifier, sumModifierValues } from "./modifiers.js";
+import {
+  addModifier,
+  getModifiers,
+  removeModifier,
+  sumModifierValues,
+} from "./modifiers.js";
 import { makeRng } from "./rng.js";
 import { EngineError } from "./actions.js";
 
@@ -91,13 +96,15 @@ function isMaritimeFaction(faction: Faction | null): boolean {
 /**
  * Port tier 0..3 used by the trade-route formula (§5.2). Derived from the port's
  * MAP HV flag per the §5.2 band table: HV(4)+ port = 3, HV(3) port = 2, any other
- * (coastal) port = 1; a non-port (non-coastal) province scores 0. Replaces the old
+ * port = 1; a non-port province scores 0. Replaces the old
  * `clamp(highValue, 0, 3)`, which over-counted HV3 ports (3 vs doc 2) and
  * under-counted ordinary ports (0 vs doc 1) — see FL-09 / the §5.2 Venice↔Crete
  * worked example.
+ * CALL-SITE DECISION (coastal→port rename): §5.2 port tiers are HARBOR
+ * infrastructure — reads `Province.port`, never the derived borders-sea predicate.
  */
 function portTier(prov: Province): number {
-  if (!prov.coastal) return 0; // §5.2: only ports carry a tier; guard non-ports
+  if (!prov.port) return 0; // §5.2: only ports carry a tier; guard non-ports
   const hv = prov.highValue ?? 0;
   if (hv >= 4) return 3; // §5.2 HV(4)+ port
   if (hv === 3) return 2; // §5.2 HV(3) port
@@ -248,9 +255,11 @@ function specialtyPorts(
 ): { prov: Province; specialty: SpecialtyKey }[] {
   const out: { prov: Province; specialty: SpecialtyKey }[] = [];
   for (const prov of ownedProvinces(state, player.id)) {
-    // §4.3 trade-ratio port: Venice/Genoa at a coastal port, or a Grand Bazaar.
+    // §4.3 trade-ratio port: Venice/Genoa at an owned PORT, or a Grand Bazaar.
+    // CALL-SITE DECISION (coastal→port rename): the specialty lane is a harbor
+    // facility — reads `Province.port`.
     const qualifies =
-      (isMaritimeFaction(player.faction) && prov.coastal) ||
+      (isMaritimeFaction(player.faction) && prov.port) ||
       hasCompletedGreatWork(prov, GreatWorkType.GRAND_BAZAAR);
     if (qualifies) out.push({ prov, specialty: portSpecialty(prov) });
   }
@@ -295,6 +304,13 @@ interface TradeRoute {
   toProvinceId: string;
   seaZonePath: string[];
   fleetId?: string;
+  /**
+   * §5.3 raid split (minors list economy.ts:625): round in which corsairs last
+   * raided this route. When it equals the CURRENT round the route pays 0 this
+   * Income phase; a stale stamp (any earlier round) has no effect, so the
+   * suppression self-expires without cleanup.
+   */
+  raidedRound?: number;
 }
 
 /** Read every persisted trade route (kind='trade_route') off the side-channel. */
@@ -310,6 +326,7 @@ function tradeRoutesFor(state: GameState, ownerId: string): TradeRoute[] {
       toProvinceId: String(d.toProvinceId),
       seaZonePath: Array.isArray(d.seaZonePath) ? (d.seaZonePath as string[]) : [],
       fleetId: d.fleetId ? String(d.fleetId) : undefined,
+      raidedRound: typeof d.raidedRound === "number" ? d.raidedRound : undefined,
     });
   }
   return out;
@@ -352,6 +369,11 @@ function routeEscorted(state: GameState, route: TradeRoute): boolean {
  * (floor), severed = 0, and the Venice/Genoa ×1.5 (floor) maritime multiplier.
  */
 function routeIncome(state: GameState, route: TradeRoute): number {
+  // §5.3 raid split (minors list economy.ts:625): a route corsair-raided THIS
+  // round "loses that round's route income" — it pays 0 this Income phase even
+  // when the merchantman survived the separate sink roll. The stamp only
+  // matches the current round, so the route pays again next Income.
+  if (route.raidedRound === state.round) return 0;
   const from = state.provinces.find((p) => p.id === route.fromProvinceId);
   const to = state.provinces.find((p) => p.id === route.toProvinceId);
   if (!from || !to) return 0;
@@ -476,16 +498,48 @@ function goldUpkeepDue(state: GameState, playerId: string): number {
  * PR #11 @d332061. Effective GRAIN upkeep of a BASE unit for a faction: a base LEVY
  * reads FACTION_LEVY_ECONOMY[faction].grainUpkeep when defined (`??` so an explicit
  * 0 — the Ottoman devshirme rate — wins over the base 1); every other base unit,
- * and any player with no faction, keeps UNIT_STATS[u].grainUpkeep. Shared by
- * {@link grainDue} and the starvation-desertion relief so the ledger stays balanced
- * (a 0-grain levy contributes nothing to the bill AND relieves nothing on desert).
- * Only the base LEVY rate is faction-scoped; variant/mercenary upkeep is untouched.
+ * and any player with no faction, keeps UNIT_STATS[u].grainUpkeep. Consumed via
+ * {@link stackBaseGrainUpkeep} (which layers the §6.1 no-home-upkeep rule on top)
+ * by {@link grainDue} and the starvation-desertion relief so the ledger stays
+ * balanced (a 0-grain levy contributes nothing to the bill AND relieves nothing
+ * on desert). Only the base LEVY rate is faction-scoped; variant/mercenary
+ * upkeep is untouched.
  */
 function baseGrainUpkeep(u: UnitType, faction: Faction | null): number {
   if (u === UnitType.LEVY && faction != null) {
     return FACTION_LEVY_ECONOMY[faction]?.grainUpkeep ?? UNIT_STATS[u].grainUpkeep;
   }
   return UNIT_STATS[u].grainUpkeep;
+}
+
+/**
+ * §6.1 LEVY "no map upkeep in home province" (minors list economy.ts:478;
+ * balance tag `UNIT_STATS[LEVY].special` "no-home-upkeep", balance.ts:~91).
+ * Effective per-unit grain rate of a BASE unit for a specific STACK: a unit
+ * whose stat row carries the `no-home-upkeep` tag owes 0 grain while it
+ * garrisons a province its owner CONTROLS — the peasant militia feeds itself
+ * off its own land. In the FIELD (enemy or neutral soil; or afloat, where a
+ * fleet's sea-zone locationId resolves to no province) the normal rate stands.
+ *
+ * Composes with the Ottoman devshirme lever WITHOUT double-application: home is
+ * an unconditional 0, otherwise the faction-scoped {@link baseGrainUpkeep}
+ * decides — an Ottoman levy owes 0 either way, and the two levers can never
+ * stack into a doubled relief. The rate is shared by the regular AND mercenary
+ * ledgers (×2 of a home 0 is 0) and by {@link grainDue} plus BOTH desertion
+ * phases, so the ledger stays balanced: a unit that owes nothing relieves
+ * nothing and never starves for grain.
+ */
+function stackBaseGrainUpkeep(
+  state: GameState,
+  stack: Army | Fleet,
+  u: UnitType,
+  faction: Faction | null,
+): number {
+  if (UNIT_STATS[u].special.includes("no-home-upkeep")) {
+    const prov = state.provinces.find((p) => p.id === stack.locationId);
+    if (prov && prov.ownerId === stack.ownerId) return 0; // §6.1 home garrison
+  }
+  return baseGrainUpkeep(u, faction);
 }
 
 /** Grain a player owes this Income phase: Σ unit upkeep (mercenaries ×2, §4.4). */
@@ -505,7 +559,9 @@ function grainDue(state: GameState, playerId: string): number {
       const regular = total - mercs;
       // §LEVY faction lever (PR #11 @d332061): a base LEVY owes this faction's
       // grain rate (Ottoman devshirme = 0); other base units keep UNIT_STATS.
-      const per = baseGrainUpkeep(u, faction);
+      // §6.1 no-home-upkeep (minors list economy.ts:478): a LEVY garrisoning a
+      // province its owner controls owes 0 (stack-location-aware rate).
+      const per = stackBaseGrainUpkeep(state, stack, u, faction);
       due += regular * per + mercs * per * MERC_UPKEEP_MULTIPLIER; // §4.4 merc double
     }
     for (const v of stack.variants ?? []) {
@@ -637,22 +693,50 @@ export function computeIncome(state: GameState): IncomeResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve the whole Income phase: resolve piracy on unescorted merchant routes,
- * credit computed income into treasuries, run {@link upkeep} (grain + starvation
- * desertion), and roll the Heavy-tax 1-in-6 revolt check. Consumes the seeded
- * RNG and writes the advanced cursor back onto the returned state. Pure.
+ * Resolve the whole Income phase: resolve piracy on unescorted merchant routes
+ * (§5.3 raid split — a raid suppresses that route's income this phase; a
+ * separate sink roll decides galley loss), credit computed income into
+ * treasuries, run {@link upkeep} (grain + starvation desertion), and roll the
+ * Heavy-tax 1-in-6 revolt check. Consumes the seeded RNG and writes the
+ * advanced cursor back onto the returned state. Pure.
  */
 export function applyIncomePhase(state: GameState): GameState {
   const rng = makeRng(state.rngSeed, state.rngCursor);
   let next = structuredClone(state) as GameState;
 
-  // 1) Piracy: unescorted merchant fleets risk being sunk (§5.3). Resolved first
-  //    so a sunk route contributes no income when we recompute below.
+  // 1) Piracy (§5.3; minors list economy.ts:625 "raid income-loss not applied"):
+  //    neutral corsairs raid UNESCORTED merchant routes. Raid-OCCURRENCE and the
+  //    galley's SINKING are now SEPARATE outcomes on separate dice:
+  //      • RAID roll — corsairs strike this route (d6 <= TRADE.piracySinkRoll;
+  //        the sink threshold doubles as the raid odds so overall raid frequency
+  //        matches the pre-split behaviour — a dedicated TRADE.piracyRaidRoll is
+  //        a NEEDS-FROM-INTEGRATOR balance addition, balance.ts is prep-owned).
+  //        A raided route "loses that round's route income" (§5.3): its modifier
+  //        is stamped `raidedRound` and routeIncome pays 0 for it below.
+  //      • SINK roll — a SEPARATE 1d6 <= TRADE.piracySinkRoll (§5.3 doc-exact
+  //        "on a failed 1d6 ≤ 2 check") decides whether the merchant galley is
+  //        ALSO sunk; only then is the galley removed and the route broken. A
+  //        raided-but-unsunk merchantman survives and pays again next round.
+  //    Resolved first so raided/sunk routes contribute no income when we
+  //    recompute below. Deterministic seeded rng; cursor persisted at phase end.
   for (const player of next.players) {
     for (const route of tradeRoutesFor(next, player.id)) {
       if (routeEscorted(next, route)) continue; // war fleet escort prevents piracy
-      if (rng.rollD6() > TRADE.piracySinkRoll) continue; // §5.3 sink on 1d6 <= 2
-      // Sink one merchant galley from the route's fleet and drop the route.
+      if (rng.rollD6() > TRADE.piracySinkRoll) continue; // no corsair raid this round
+      // RAID: suppress this route's income for THIS Income phase only.
+      const mod = next.activeModifiers.find((m) => m.id === route.modifierId);
+      if (mod) mod.data = { ...(mod.data ?? {}), raidedRound: next.round };
+      next = appendLog(next, {
+        round: next.round,
+        phase: next.phase,
+        type: "trade",
+        actors: [player.id],
+        targets: [route.fromProvinceId, route.toProvinceId],
+        message: `Corsairs raid the unescorted ${route.fromProvinceId}→${route.toProvinceId} route of ${player.name}: it earns nothing this round.`,
+        data: { route: route.modifierId, raided: true },
+      });
+      // SEPARATE sink roll: sink one merchant galley and drop the route.
+      if (rng.rollD6() > TRADE.piracySinkRoll) continue; // raided, not sunk
       const fleet = route.fleetId
         ? next.fleets.find((f) => f.id === route.fleetId)
         : undefined;
@@ -667,7 +751,7 @@ export function applyIncomePhase(state: GameState): GameState {
         actors: [player.id],
         targets: [route.fromProvinceId, route.toProvinceId],
         message: `A merchant galley of ${player.name} was lost to piracy; the ${route.fromProvinceId}→${route.toProvinceId} route is broken.`,
-        data: { route: route.modifierId },
+        data: { route: route.modifierId, sunk: true },
       });
     }
   }
@@ -749,10 +833,12 @@ export function upkeep(state: GameState): GameState {
       ...next.fleets.filter((f) => f.ownerId === player.id),
     ];
     const deserted: Partial<Record<UnitType, number>> = {};
-    // DELTA 5 (§4.4/§11): host provinces where an UNPAID mercenary deserted this
-    // upkeep. The departing company PILLAGES its host on the way out — collected
-    // here (Phase A only) and settled after desertion resolves. Populated ONLY by
-    // mercenary desertion, never by ordinary (Phase B) desertion.
+    // EVENT_CARDS #22 `mercenary-revolt` / ratified errata E5b (sim/RULES_MODEL.md
+    // "(was #7)"; minors list economy.ts:753 — formerly mis-cited as §4.4/§11):
+    // host provinces where an UNPAID mercenary deserted this upkeep. The departing
+    // company PILLAGES its host on the way out — collected here (Phase A only) and
+    // settled after desertion resolves. Populated ONLY by mercenary desertion,
+    // never by ordinary (Phase B) desertion.
     const pillagedHosts = new Set<string>();
 
     const record = (u: UnitType, n: number) => {
@@ -766,19 +852,23 @@ export function upkeep(state: GameState): GameState {
     // train that created the doubled shortfall is exactly what unwinds it) rather
     // than culling a phantom second unit per grain owed.
     for (const u of DESERTION_ORDER) {
-      // §LEVY faction lever (PR #11 @d332061): relief per deserting merc uses this
-      // faction's base grain rate ×2 (mirrors grainDue). A 0-grain base levy
-      // (Ottoman devshirme) relieves nothing, so it never deserts for grain.
-      const per = baseGrainUpkeep(u, player.faction) * MERC_UPKEEP_MULTIPLIER;
-      if (per <= 0) continue;
       for (const stack of stacks) {
+        // §LEVY faction lever (PR #11 @d332061) + §6.1 no-home-upkeep (minors
+        // list economy.ts:478): relief per deserting merc uses this STACK's
+        // base grain rate ×2 (mirrors grainDue). A 0-grain levy (Ottoman
+        // devshirme, or any levy garrisoning its owner's home province)
+        // relieves nothing, so it never deserts for grain.
+        const per =
+          stackBaseGrainUpkeep(next, stack, u, player.faction) *
+          MERC_UPKEEP_MULTIPLIER;
+        if (per <= 0) continue;
         const m = stack.mercenaries;
         // Generic mercenary-tagged units of this type desert first (×2 relief).
         while (deficit > 0 && mercCount(stack, u) > 0) {
           stack.units[u] -= 1;
           if (m) m[u] = (m[u] ?? 0) - 1;
           record(u, 1);
-          pillagedHosts.add(stack.locationId); // DELTA 5: merc deserts → pillage host
+          pillagedHosts.add(stack.locationId); // E5b/#22: merc deserts → pillage host
           deficit -= per;
         }
         // §4.4/§6.3 FL-10: elite-mercenary VARIANT heads of this base type also
@@ -792,7 +882,7 @@ export function upkeep(state: GameState): GameState {
             while (deficit > 0 && v.count > 0) {
               v.count -= 1;
               record(u, 1);
-              pillagedHosts.add(stack.locationId); // DELTA 5: merc deserts → pillage host
+              pillagedHosts.add(stack.locationId); // E5b/#22: merc deserts → pillage host
               deficit -= per;
             }
             if (deficit <= 0) break;
@@ -806,12 +896,14 @@ export function upkeep(state: GameState): GameState {
     // Phase B: regular units desert lowest-value first (§4.4).
     if (deficit > 0) {
       for (const u of DESERTION_ORDER) {
-        // §LEVY faction lever (PR #11 @d332061): a base LEVY relieves this faction's
-        // grain rate (Ottoman devshirme = 0). A 0-grain unit relieves nothing, so it
-        // never deserts for grain (and the loop can never stall on a 0-relief unit).
-        const per = baseGrainUpkeep(u, player.faction);
-        if (per <= 0) continue;
         for (const stack of stacks) {
+          // §LEVY faction lever (PR #11 @d332061) + §6.1 no-home-upkeep (minors
+          // list economy.ts:478): a base LEVY relieves this STACK's grain rate
+          // (Ottoman devshirme = 0; home-garrison levy = 0). A 0-grain unit
+          // relieves nothing, so it never deserts for grain (and the loop can
+          // never stall on a 0-relief unit).
+          const per = stackBaseGrainUpkeep(next, stack, u, player.faction);
+          if (per <= 0) continue;
           while (deficit > 0 && (stack.units[u] ?? 0) > 0) {
             stack.units[u] -= 1;
             record(u, 1);
@@ -845,17 +937,37 @@ export function upkeep(state: GameState): GameState {
       });
     }
 
-    // DELTA 5 (§4.4/§11, delta 5): unpaid mercenaries that DESERTED this upkeep
-    // PILLAGE the province that hosted them — MERC_REVOLT_PILLAGE.pillageGold is
-    // stripped from each host province's OWNER (clamped at 0) as the departing
-    // company sacks its way out. Fires ONLY for mercenary (Phase A) desertion —
-    // `pillagedHosts` is never populated by ordinary Phase B desertion. A neutral
-    // (owner-less) host has no controller to rob, so it is skipped.
+    // EVENT_CARDS #22 `mercenary-revolt` / ratified errata E5b (minors list
+    // economy.ts:753 — formerly mis-cited as "§4.4/§11 delta 5"): unpaid
+    // mercenaries that DESERTED this upkeep PILLAGE the province that hosted
+    // them ("−2 🪙, yield 0 next round"). BOTH printed halves now land:
+    //   • GOLD half — MERC_REVOLT_PILLAGE.pillageGold is stripped from the host
+    //     province's OWNER (clamped at 0) as the departing company sacks its way
+    //     out. A neutral (owner-less) host has no controller to rob.
+    //   • YIELD half (minors follow-up; previously missing) — the pillaged host
+    //     yields 0 at the NEXT Income: a 1-round 'no_income' suppression
+    //     modifier (the spy incite-unrest pattern, expiresRound = round + 1) is
+    //     posted against the province, honoured by computeIncome and retired by
+    //     roundLoop's expireRoundModifiers at that round's cleanup — so the
+    //     suppression lands EXACTLY once. Posted for neutral hosts too (the
+    //     sacked land yields nothing to whoever takes it next round).
+    // Fires ONLY for mercenary (Phase A) desertion — `pillagedHosts` is never
+    // populated by ordinary Phase B desertion.
     for (const provId of pillagedHosts) {
       const prov = next.provinces.find((pr) => pr.id === provId);
       if (!prov) continue;
+      // YIELD half (E5b/#22): province yields 0 next Income, exactly once.
+      next = addModifier(next, {
+        id: `merc_pillage:no_income:${prov.id}:r${next.round}:${player.id}`,
+        scope: "persistent",
+        kind: "no_income",
+        target: { provinceId: prov.id },
+        value: 0,
+        expiresRound: next.round + 1,
+        data: { source: "merc_revolt_pillage", pillagedBy: player.id },
+      });
       const victim = playerById(next, prov.ownerId);
-      if (!victim) continue; // §4.4 neutral host: no controller to pillage
+      if (!victim) continue; // E5b gold half: neutral host — no controller to rob
       const before = victim.treasury.gold;
       victim.treasury.gold = Math.max(0, before - MERC_REVOLT_PILLAGE.pillageGold);
       const stripped = before - victim.treasury.gold;
@@ -865,7 +977,7 @@ export function upkeep(state: GameState): GameState {
         type: "mercenary",
         actors: [player.id],
         targets: [prov.id],
-        message: `Deserting mercenaries pillage ${prov.name}, stripping ${stripped} gold from ${victim.name}.`,
+        message: `Deserting mercenaries pillage ${prov.name}, stripping ${stripped} gold from ${victim.name}; the province will yield nothing next round.`,
         data: { pillageGold: stripped, province: prov.id, victim: victim.id },
       });
     }
@@ -1011,8 +1123,10 @@ function bestMarketRatio(state: GameState, player: Player): number {
     ratio = Math.min(ratio, MARKET_RATIOS.market); // 2:1
   }
   if (
+    // CALL-SITE DECISION (coastal→port rename): the §4.3 maritime 2:1 ratio
+    // needs an owned HARBOR (`Province.port`), not mere shoreline.
     isMaritimeFaction(player.faction) &&
-    provs.some((p) => p.coastal)
+    provs.some((p) => p.port)
   ) {
     ratio = Math.min(ratio, MARKET_RATIOS.port); // 2:1 trade-ratio port
   }
@@ -1130,9 +1244,11 @@ export function applyTrade(state: GameState, action: GameAction): GameState {
   if (from.ownerId !== player.id || to.ownerId !== player.id) {
     throw new EngineError("NOT_OWNER", "Both ports of a route must be owned.");
   }
-  // §5.1 routes link owned coastal ports.
-  if (!from.coastal || !to.coastal) {
-    throw new EngineError("BAD_TRADE", "Route endpoints must be coastal ports.");
+  // §5.1 routes link owned ports.
+  // CALL-SITE DECISION (coastal→port rename): route ENDPOINTS are harbors
+  // (`Province.port`) — a shore province without a port cannot anchor a route.
+  if (!from.port || !to.port) {
+    throw new EngineError("BAD_TRADE", "Route endpoints must be ports.");
   }
   // B1 (§5.2, marshal blocker): the seaZonePath MUST be validated before a
   // route is created — an unvalidated path let a client mint unbounded route
