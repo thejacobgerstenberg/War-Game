@@ -1,0 +1,37 @@
+/**
+ * Offline-build font faces (spec §7).
+ *
+ * theme.css declares these same three faces against url("/fonts/...") in
+ * public/ — public/ assets are NOT inlined by vite-plugin-singlefile, so on
+ * file:// those declarations fail silently. This file re-declares the exact
+ * same families/weights/styles against copies of the woff2 files inside the
+ * module graph (src/offline/assets/fonts/); with build.assetsInlineLimit
+ * maxed in vite.offline.config.ts they are emitted as data: URIs.
+ *
+ * main-offline.tsx imports this file AFTER theme.css so these faces win.
+ * Keep family/weight/style/display in lockstep with theme.css.
+ */
+
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400 900; /* variable file; covers the 500/700/900 uses in theme.css */
+  font-display: swap;
+  src: url("./assets/fonts/cinzel-latin-600-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 400 800; /* variable file; covers 400/500/700 */
+  font-display: swap;
+  src: url("./assets/fonts/eb-garamond-latin-400-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: italic;
+  font-weight: 400 800; /* variable file */
+  font-display: swap;
+  src: url("./assets/fonts/eb-garamond-latin-italic-400.woff2") format("woff2");
+}
