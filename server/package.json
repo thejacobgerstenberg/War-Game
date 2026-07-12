@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "gauntlet": "node --import tsx scripts/gauntlet.mjs",
     "typecheck": "tsc -b"
   },
   "dependencies": {

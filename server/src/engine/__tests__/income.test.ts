@@ -13,21 +13,22 @@ describe("computeIncome", () => {
     const state = createInitialState("ROOM01", seats);
     const income = computeIncome(state, "p1");
 
-    // Byzantium starts owning Constantinople + Thessalonica + Morea.
-    // gold: 6 + 3 + 2 = 11
-    // timber: 0 + 1 + 0 = 1
-    // marble: 1 + 0 + 2 = 3
-    // faith: 3 + 2 + 2 = 7
-    expect(income.gold).toBe(11);
-    expect(income.timber).toBe(1);
-    expect(income.marble).toBe(3);
+    // Byzantium (canonical map) starts owning constantinople + selymbria +
+    // thessalonica + morea + lemnos.
+    // gold:   6 + 1 + 4 + 1 + 1 = 13
+    // timber: 0 + 0 + 0 + 0 + 0 = 0
+    // marble:  1 + 0 + 0 + 1 + 0 = 2
+    // faith:  4 + 0 + 2 + 1 + 0 = 7
+    expect(income.gold).toBe(13);
+    expect(income.timber).toBe(0);
+    expect(income.marble).toBe(2);
     expect(income.faith).toBe(7);
   });
 
   it("subtracts army grain upkeep from grain yield", () => {
     const state = createInitialState("ROOM01", seats);
-    // Byzantium grain yield: 2 + 2 + 1 = 5. Starting army = 2 INF + 1 LEVY = 3
-    // units => 3 grain upkeep => net 2.
+    // Byzantium gross grain yield: 2 + 2 + 1 + 1 + 3 = 9. Starting armies total
+    // 7 units => 7 grain upkeep => net 2.
     const income = computeIncome(state, "p1");
     expect(income.grain).toBe(2);
   });
@@ -46,10 +47,12 @@ describe("computeIncome", () => {
   it("computes the Ottoman player's income independently", () => {
     const state = createInitialState("ROOM01", seats);
     const income = computeIncome(state, "p2");
-    // Ottoman owns Edirne + Gallipoli + Bursa.
-    // gold: 3 + 3 + 4 = 10 ; grain: (4 + 1 + 2) - 3 upkeep = 4
-    expect(income.gold).toBe(10);
-    expect(income.grain).toBe(4);
+    // Ottoman (canonical map) owns edirne + gallipoli + philippopolis + sofia +
+    // bithynia + bursa + nicaea.
+    // gold:  2 + 1 + 1 + 1 + 1 + 3 + 2 = 11
+    // grain: (3 + 2 + 2 + 1 + 2 + 1 + 2) - 11 upkeep = 13 - 11 = 2
+    expect(income.gold).toBe(11);
+    expect(income.grain).toBe(2);
   });
 
   it("yields nothing (and no upkeep) for a player owning no provinces", () => {

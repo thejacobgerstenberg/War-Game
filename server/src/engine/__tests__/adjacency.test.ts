@@ -5,7 +5,10 @@ import { ADJACENCY, PROVINCES, SEA_ZONES } from "../mapData.js";
 describe("adjacency", () => {
   it("reports known neighbours of Constantinople", () => {
     const neighbours = neighborsOf("constantinople");
-    expect(neighbours).toContain("edirne");
+    // Canonical map: constantinople borders selymbria + pera + bithynia on
+    // land and the sea-of-marmara + bosphorus sea zones.
+    expect(neighbours).toContain("selymbria");
+    expect(neighbours).toContain("pera");
     expect(neighbours).toContain("sea-of-marmara");
     expect(neighbours).toContain("bosphorus");
   });

@@ -1,20 +1,39 @@
 /**
  * Construction of a fresh {@link GameState} from a set of seated players,
  * projected onto the sample map in {@link mapData}.
+ *
+ * This constructor initialises every growth field (RNG, prestige, objectives,
+ * treaties, minors, merc market, Omen decks, wall/building/great-work province
+ * fields, and the monotonic counters) so the engine subsystems have a complete,
+ * typed state to build against. The Data phase swaps in the canonical map,
+ * faction rosters and minor garrisons using the same shapes.
  */
 import {
   Faction,
   GamePhase,
+  TaxPosture,
   UnitType,
-  type Army,
   type Card,
-  type GameLogEntry,
   type GameState,
   type Player,
   type Province,
-  type ResourceBundle,
+  type TacticCardId,
+  type Treaty,
 } from "@imperium/shared";
-import { PROVINCES, SEA_ZONES } from "./mapData.js";
+import { NPC_MINORS, PROVINCES, SEA_ZONES } from "./mapData.js";
+import {
+  ACTIONS_PER_ROUND,
+  FACTION_STARTING_RESOURCES,
+} from "./balance.js";
+import {
+  buildFactionForces,
+  startingObjectives,
+  startingWallState,
+} from "./factions.js";
+import { OMEN_CARDS_BY_ERA } from "./events/cards.js";
+import { buildTacticDeck } from "./tactics/cards.js";
+import { makeRng } from "./rng.js";
+import { appendLog } from "./logEntry.js";
 
 /** Minimal descriptor needed to seat a player into a new game. */
 export interface SeatInput {
@@ -24,14 +43,6 @@ export interface SeatInput {
   isHost: boolean;
 }
 
-const STARTING_TREASURY: ResourceBundle = {
-  gold: 10,
-  grain: 8,
-  timber: 4,
-  marble: 4,
-  faith: 2,
-};
-
 /** A zeroed unit record covering every {@link UnitType}. */
 export function emptyUnits(): Record<UnitType, number> {
   const units = {} as Record<UnitType, number>;
@@ -40,18 +51,35 @@ export function emptyUnits(): Record<UnitType, number> {
 }
 
 /**
+ * Deterministic 32-bit hash of a string, used to derive a stable default seed
+ * from the room code when no explicit seed is supplied (keeps the engine pure —
+ * no Math.random). Same room code → same game.
+ */
+function hashSeed(text: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/**
  * Build the initial, ready-to-play state.
  *
  * - Provinces are owned by whichever seated player holds their starting
  *   faction; unclaimed factions leave their provinces neutral.
  * - Each seated player receives one starting army (a small garrison) at the
- *   first province they own, which is what {@link computeIncome} charges upkeep
- *   against.
+ *   first province they own, which is what income/upkeep charges against.
+ * - `seed` drives all determinism; when omitted it is derived from `roomCode`.
  */
 export function createInitialState(
   roomCode: string,
   seats: SeatInput[],
+  seed?: number,
 ): GameState {
+  const rngSeed = seed ?? hashSeed(roomCode);
+
   const factionToPlayerId = new Map<Faction, string>();
   for (const seat of seats) factionToPlayerId.set(seat.faction, seat.id);
 
@@ -65,6 +93,25 @@ export function createInitialState(
     ownerId: p.startingFaction
       ? factionToPlayerId.get(p.startingFaction) ?? null
       : null,
+    // Walls (and garrison/highValue/isCapitalOf/minorId) are authored on the
+    // canonical map (docs/MAP.md); fall back to the faction's Theodosian-tier
+    // data only if the map omits them, then to unwalled.
+    walls: p.walls
+      ? { ...p.walls }
+      : p.startingFaction
+        ? startingWallState(p.startingFaction, p.id)
+        : { tier: 0, hp: 0 },
+    buildings: [],
+    greatWorks: [],
+    // A city becomes `sacked` only when captured by ASSAULT (combat sets it);
+    // starvation-surrender does NOT sack. Prestige reads it for the never-sacked
+    // "Faith of the Fathers" objective (RULING 1). Starts intact.
+    sacked: false,
+    ...(p.siege ? { siege: p.siege } : {}),
+    ...(p.garrison !== undefined ? { garrison: p.garrison } : {}),
+    ...(p.isCapitalOf ? { isCapitalOf: p.isCapitalOf } : {}),
+    ...(p.highValue !== undefined ? { highValue: p.highValue } : {}),
+    ...(p.minorId ? { minorId: p.minorId } : {}),
   }));
 
   const players: Player[] = seats.map((seat) => ({
@@ -73,49 +120,90 @@ export function createInitialState(
     faction: seat.faction,
     isHost: seat.isHost,
     connected: true,
-    treasury: { ...STARTING_TREASURY },
+    treasury: { ...FACTION_STARTING_RESOURCES[seat.faction] },
     hand: [] as Card[],
+    prestige: 0,
+    objectives: startingObjectives(seat.faction),
+    tax: TaxPosture.NORMAL,
+    treaties: [] as Treaty[],
+    vassals: [] as string[],
+    betrayals: 0,
+    actionsRemaining: ACTIONS_PER_ROUND,
+    tacticHand: [] as TacticCardId[],
+    // FL-07 — Ottoman "Ghazi Empire" sacked-high-value-cities counter (init 0).
+    // FL-08 — Church-Union acceptance flag left undefined (= refused) until the
+    // events agent sets it true on Omen #17 ACCEPT.
+    sackedHighValueCities: 0,
   }));
 
-  const armies: Army[] = [];
-  for (const seat of seats) {
-    const home = provinces.find((p) => p.ownerId === seat.id);
-    if (!home) continue;
-    const units = emptyUnits();
-    units[UnitType.INFANTRY] = 2;
-    units[UnitType.LEVY] = 1;
-    armies.push({
-      id: `army_${seat.id}`,
-      ownerId: seat.id,
-      locationId: home.id,
-      units,
-    });
-  }
+  // Asymmetric starting armies & fleets per province (docs/FACTIONS.md), placed
+  // by the factions helper. Forces whose province is absent from the current
+  // board or not owned by the seated player are skipped.
+  const { armies, fleets } = buildFactionForces(provinces, factionToPlayerId);
 
-  const log: GameLogEntry[] = [
-    {
-      round: 1,
-      phase: GamePhase.INCOME,
-      type: "game_start",
-      actors: seats.map((s) => s.id),
-      message: `The game begins in room ${roomCode} with ${seats.length} rival powers.`,
-      data: {
-        factions: seats.map((s) => s.faction),
-      },
-    },
-  ];
+  // Seed the Omen deck for Era I (shuffled by the RNG); stash the later eras.
+  const rng = makeRng(rngSeed, 0);
+  const omenDeck = rng.shuffle(OMEN_CARDS_BY_ERA[1]);
+  // Build + shuffle the tactic deck from the same RNG stream (§7.7). Empty until
+  // the tactic agent authors TACTIC_CARDS; consumes no cursor while empty.
+  const tacticDeck = buildTacticDeck(rng);
 
-  return {
+  const base: GameState = {
     roomCode,
     phase: GamePhase.INCOME,
     turn: 1,
+    round: 1,
+    era: 1,
     activePlayerIndex: 0,
     turnOrder: seats.map((s) => s.id),
     players,
     provinces,
     seaZones: SEA_ZONES.map((s) => ({ ...s, position: { ...s.position } })),
     armies,
-    fleets: [],
-    log,
+    fleets,
+    omenDeck,
+    omenDiscard: [],
+    eraDecksRemaining: {
+      2: [...OMEN_CARDS_BY_ERA[2]],
+      3: [...OMEN_CARDS_BY_ERA[3]],
+    },
+    tacticDeck,
+    tacticDiscard: [],
+    tacticRemoved: [],
+    mercMarket: [],
+    minors: NPC_MINORS.map((m) => ({ ...m, provinceIds: [...m.provinceIds] })),
+    pendingBattles: [],
+    siegeStates: [],
+    wars: [],
+    pendingOccupations: [],
+    activeModifiers: [],
+    constantinopleHold: { faction: null, rounds: 0 },
+    // delta 3 (CANON correction): the one-per-game Great Bombard starts NOT in
+    // play; Omen event #34 (`great-bombard-forged`) spawns/places it and sets
+    // ownerId/provinceId/emplacedRound. Never recruited.
+    greatBombard: {
+      inPlay: false,
+      ownerId: null,
+      provinceId: null,
+      emplacedRound: 0,
+    },
+    rngSeed,
+    rngCursor: rng.cursor,
+    logCounter: 0,
+    clock: 0,
+    log: [],
   };
+
+  // The one existing game_start entry, now id- and timestamp-stamped.
+  return appendLog(base, {
+    round: 1,
+    phase: GamePhase.INCOME,
+    type: "game_start",
+    actors: seats.map((s) => s.id),
+    message: `The game begins in room ${roomCode} with ${seats.length} rival powers.`,
+    data: {
+      factions: seats.map((s) => s.faction),
+      seed: rngSeed,
+    },
+  });
 }

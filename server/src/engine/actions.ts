@@ -1,0 +1,1367 @@
+/**
+ * actions.ts — the pure validating reducer.
+ *
+ * `applyAction(state, action)` is the single entry point for every player
+ * command. It validates legality (issuer exists, phase legality, action budget,
+ * and — for the subsystems — adjacency / resource sufficiency), then dispatches
+ * to the owning subsystem function and returns a NEW GameState.
+ *
+ * ERROR CONVENTION (frozen): illegal actions throw an {@link EngineError} with a
+ * machine-readable `code` and human `message`. The transport layer wraps
+ * `applyAction` in try/catch and emits `action_rejected { reason, code }` to the
+ * issuing socket; a thrown error never mutates state. Successful actions return
+ * the next state. (This is why the signature is `=> GameState`, not a result
+ * union.)
+ *
+ * This file owns RECRUIT (§6.2), MOVE/ATTACK (§6.4/§7/§10.2) and PASS in
+ * addition to the reducer dispatch table, budget accounting and error
+ * convention; the remaining action bodies live in their subsystem files.
+ */
+import {
+  BuildingType,
+  Faction,
+  GamePhase,
+  TaxPosture,
+  TerrainType,
+  TreatyType,
+  UnitType,
+  type Army,
+  type Fleet,
+  type GameAction,
+  type GameState,
+  type MoveAction,
+  type PendingBattle,
+  type Player,
+  type Province,
+  type ResourceBundle,
+} from "@imperium/shared";
+import {
+  FACTION_LEVY_ECONOMY,
+  GREAT_BOMBARD,
+  MERC_MARKET,
+  STACKING,
+  TERRAIN_MOVE_COST,
+  UNIQUE_UNIT_OVERRIDES,
+  UNIT_STATS,
+  UNJUSTIFIED_WAR_PRESTIGE,
+  VASSAL,
+} from "./balance.js";
+import { areAdjacent } from "./adjacency.js";
+import { appendLog } from "./logEntry.js";
+import { applyBuild, applyTrade } from "./economy.js";
+import { applyDiplomacy, applyVassalize } from "./diplomacy.js";
+import { applySpy } from "./spy.js";
+import { applyMercBid } from "./mercenaries.js";
+import { resolveCard } from "./events/index.js";
+import {
+  playGlobalTactic,
+  playSiegeTactic,
+  queueTactic,
+  type BattleSide,
+} from "./tactics.js";
+import { advancePhase } from "./roundLoop.js";
+
+/** A typed, rejectable engine error (see the module-level error convention). */
+export class EngineError extends Error {
+  readonly code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "EngineError";
+    this.code = code;
+  }
+}
+
+/**
+ * The ACTION WINDOW (CANON #9, GD §10.0, ARCHITECTURE §10): the engine's
+ * RECRUITMENT → MOVEMENT → DIPLOMACY phases together form the acting player's
+ * single action window and do **not** gate which action TYPE may be played when.
+ * During any of these phases a player may perform ANY action type (recruit, move,
+ * build, trade, diplomacy, spy, merc-bid, …) in any mix and any order, limited
+ * only by the shared 4-action budget (+1 with a University or a card). This set
+ * is therefore a phase-window gate, never a per-type gate; INCOME / COMBAT / END
+ * remain outside the window (a budgeted action there throws WRONG_PHASE).
+ */
+const ACTION_PHASES: ReadonlySet<GamePhase> = new Set([
+  GamePhase.RECRUITMENT,
+  GamePhase.MOVEMENT,
+  GamePhase.DIPLOMACY,
+]);
+
+const RESOURCE_KEYS = ["gold", "grain", "timber", "marble", "faith"] as const;
+
+// ---------------------------------------------------------------------------
+// Small shared helpers
+// ---------------------------------------------------------------------------
+
+/** Look up a player by id or throw. */
+function requirePlayer(state: GameState, playerId: string): Player {
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) {
+    throw new EngineError("UNKNOWN_PLAYER", `No such player: ${playerId}`);
+  }
+  return player;
+}
+
+/**
+ * TURN ORDER (marshal-review actions MAJOR "turn order never enforced —
+ * activePlayerIndex dead"; GD §10.0/§13.4): during the action-window phases only
+ * the ACTIVE player — `turnOrder[state.activePlayerIndex]` — may take
+ * budget-costing actions or PASS; anyone else is rejected with OUT_OF_TURN.
+ * Deliberate EXEMPTIONS (response/auction/battle flows with their own
+ * sequencing, never window turns):
+ *   - DIPLOMACY ACCEPT — the RESPONDER answers a standing proposal (free, §10.0);
+ *   - MERC_BID — the auction owns its own round-robin (`passedPlayerIds` /
+ *     `activeBidderId`, DA-3), not the window pointer;
+ *   - PLAY_TACTIC — a battle-scoped declaration by either belligerent (§7.7);
+ *   - SET_TAX (free knob) and ADVANCE_PHASE (its own WINDOW_NOT_DONE gate).
+ * Defensive: an empty `turnOrder` / out-of-range pointer (hand-built fixtures)
+ * disables the gate rather than deadlocking the game.
+ */
+function requireActiveTurn(state: GameState, playerId: string): void {
+  const activeId = state.turnOrder[state.activePlayerIndex];
+  if (activeId !== undefined && activeId !== playerId) {
+    throw new EngineError(
+      "OUT_OF_TURN",
+      `It is not ${playerId}'s turn to act (active player: ${activeId}).`,
+    );
+  }
+}
+
+/**
+ * TURN ORDER (marshal actions major, pointer half): once the active player is
+ * DONE — they PASSed (PASS zeroes the budget) or spent their last action —
+ * advance `activePlayerIndex` to the next player in `turnOrder` who still has
+ * budget, SKIPPING players already done and WRAPPING past the end of the order.
+ * While the active player still holds budget, or when nobody does (the window
+ * is complete and ADVANCE_PHASE becomes legal), the pointer stays put. Outside
+ * the action window this is a no-op.
+ */
+function advanceTurnPointer(state: GameState): GameState {
+  if (!ACTION_PHASES.has(state.phase)) return state;
+  const order = state.turnOrder;
+  if (order.length === 0) return state;
+  const budgetOf = (id: string | undefined): number =>
+    id === undefined
+      ? 0
+      : (state.players.find((p) => p.id === id)?.actionsRemaining ?? 0);
+  if (budgetOf(order[state.activePlayerIndex]) > 0) return state; // still acting
+  for (let step = 1; step <= order.length; step += 1) {
+    const idx = (state.activePlayerIndex + step) % order.length;
+    if (budgetOf(order[idx]) > 0) return { ...state, activePlayerIndex: idx };
+  }
+  return state; // everyone done — window complete, pointer parks
+}
+
+/** Assert the game is in an action phase and the player has budget; deduct one. */
+function spendAction(state: GameState, playerId: string): GameState {
+  if (!ACTION_PHASES.has(state.phase)) {
+    throw new EngineError(
+      "WRONG_PHASE",
+      `Cannot act during the ${state.phase} phase.`,
+    );
+  }
+  // TURN ORDER major: every budget-costing action is gated on the window turn.
+  requireActiveTurn(state, playerId);
+  const player = requirePlayer(state, playerId);
+  if (player.actionsRemaining <= 0) {
+    throw new EngineError("NO_ACTIONS", `${player.name} has no actions left.`);
+  }
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === playerId ? { ...p, actionsRemaining: p.actionsRemaining - 1 } : p,
+    ),
+  };
+}
+
+function zeroUnits(): Record<UnitType, number> {
+  const u = {} as Record<UnitType, number>;
+  for (const t of Object.values(UnitType)) u[t] = 0;
+  return u;
+}
+
+function emptyBundle(): ResourceBundle {
+  return { gold: 0, grain: 0, timber: 0, marble: 0, faith: 0 };
+}
+
+/** Live units (generic + variant) in a stack. */
+function realCount(stack: Army | Fleet): number {
+  let n = 0;
+  for (const t of Object.values(UnitType)) n += stack.units[t] ?? 0;
+  for (const v of stack.variants ?? []) n += v.count;
+  return n;
+}
+
+/** ALLIANCE treaty check (a non-ally destination triggers battle, §6.4). */
+function areAllied(state: GameState, a: string, b: string | null): boolean {
+  if (!b) return false;
+  if (a === b) return true;
+  const pa = state.players.find((p) => p.id === a);
+  if (!pa) return false;
+  return pa.treaties.some(
+    (t) =>
+      t.type === TreatyType.ALLIANCE &&
+      t.parties.includes(a) &&
+      t.parties.includes(b),
+  );
+}
+
+/** A CITY or a capital province takes the larger (12) stacking limit (§6.4). */
+function isCityProvince(prov: Province): boolean {
+  return prov.terrain === TerrainType.CITY || prov.isCapitalOf !== undefined;
+}
+
+/**
+ * A stack's movement allowance for a single MOVE step (§3.1/§6.4): the pace of
+ * its SLOWEST live unit (cavalry mv2, most land units mv1, naval mv2), applying
+ * any unique-unit `mvMod`. Entering a province costs TERRAIN_MOVE_COST[terrain].
+ */
+function stackMovePoints(stack: Army | Fleet): number {
+  let min = Number.POSITIVE_INFINITY;
+  for (const t of Object.values(UnitType)) {
+    if ((stack.units[t] ?? 0) > 0) min = Math.min(min, UNIT_STATS[t].mv);
+  }
+  for (const v of stack.variants ?? []) {
+    if (v.count > 0) {
+      const def = UNIQUE_UNIT_OVERRIDES[v.variant];
+      min = Math.min(min, UNIT_STATS[v.base].mv + (def?.mvMod ?? 0));
+    }
+  }
+  return Number.isFinite(min) ? min : 0;
+}
+
+/** Total units a player already has stacked at a location (land or naval). */
+function ownUnitsAt(
+  state: GameState,
+  playerId: string,
+  locationId: string,
+  naval: boolean,
+): number {
+  const list: (Army | Fleet)[] = naval ? state.fleets : state.armies;
+  return list
+    .filter((s) => s.ownerId === playerId && s.locationId === locationId)
+    .reduce((acc, s) => acc + realCount(s), 0);
+}
+
+// §8.4 (delta 3): the Great Bombard unlock/recruit helpers
+// (`isGreatBombardUnlocked`, `greatBombardExists`, `syncGreatBombardUnlock`) were
+// REMOVED with the recruit path. The corrected canon spawns the piece via Omen
+// #34 onto the `GameState.greatBombard` singleton (events subsystem); it is never
+// recruited, so the actions layer no longer reads or mirrors the deprecated
+// `Player.greatBombardUnlocked` flag. Combat still reads the flag OR the Omen #34
+// `kind:"unlock"` modifier via its own helper (out of this file's scope).
+
+/**
+ * §8.4 Emplacement (marshal combat-cluster major "MOVE doesn't update
+ * greatBombard emplacement"; DELTA-PREP `GameState.greatBombard` consumer map:
+ * "actions (on move/re-emplace)"): when a MOVE relocates a stack that CARRIES
+ * the GREAT_BOMBARD variant piece, the singleton tracker must follow the gun —
+ * `provinceId` moves to the destination and `emplacedRound` resets to the
+ * CURRENT round, so the gun "rolls no wall-damage dice the round it arrives, and
+ * counts as emplaced from the following round" (§8.4 Emplacement row; combat's
+ * `greatBombardEmplaced` fire-gate reads `emplacedRound +
+ * GREAT_BOMBARD.emplacementRounds`). Applies to BOTH move outcomes — a plain
+ * relocation and an advance-into-battle — and to the §8.4 naval carriage
+ * (a fleet hauling the gun re-emplaces it on arrival all the same). Mutates the
+ * already-cloned `next` in place (callers own the clone).
+ */
+function syncGreatBombardMove(next: GameState, stack: Army | Fleet, toId: string): void {
+  const gb = next.greatBombard;
+  if (!gb || !gb.inPlay) return;
+  const carries = (stack.variants ?? []).some(
+    (v) => v.variant === GREAT_BOMBARD.variant && v.count > 0,
+  );
+  if (!carries) return;
+  next.greatBombard = { ...gb, provinceId: toId, emplacedRound: next.round };
+}
+
+// ---------------------------------------------------------------------------
+// RECRUIT (§6.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Raise units (and/or unique variants) in one owned province (§6.2). Validates
+ * the recruitment location (capital / CITY / Barracks for land, Shipyard for
+ * naval; mercenaries may raise anywhere), pays the raise cost from the treasury —
+ * the UNIT_STATS base cost, or, for a unique variant with a §2.3 `cost` override in
+ * UNIQUE_UNIT_OVERRIDES, that per-unique override (§6.1; mercenaries: ×1.5 gold —
+ * Genoa ×1.0 — and 0 grain) — and enforces the per-player stacking limit (§6.4).
+ * A BASE LEVY additionally reads the faction-scoped FACTION_LEVY_ECONOMY.cost lever
+ * (balance A/B PR #11 @d332061: a Hungary levy pays gold 1 + base grain 1).
+ * Assumes the reducer has spent the action.
+ */
+function applyRecruit(state: GameState, action: GameAction): GameState {
+  if (action.type !== "RECRUIT") {
+    throw new EngineError("UNKNOWN_ACTION", "applyRecruit requires RECRUIT.");
+  }
+  const player = requirePlayer(state, action.player);
+  const prov = state.provinces.find((p) => p.id === action.provinceId);
+  if (!prov) throw new EngineError("BAD_RECRUIT", "No such province.");
+  if (prov.ownerId !== player.id) {
+    throw new EngineError("NOT_OWNER", "Can only recruit in owned provinces.");
+  }
+
+  const variants = action.variants ?? [];
+  const mercenary = action.mercenary === true;
+
+  // AUTHORITY MAJOR (marshal "Number.isInteger ≥ 0 guards on give/get + recruit
+  // counts"): every count PRESENT on the order must be a POSITIVE INTEGER.
+  // A fractional count previously leaked straight into the cost maths and the
+  // stack merge (0.5 infantry on the board); negatives were silently skipped.
+  // Both now reject with BAD_COUNT before any tallying or payment. (MOVE carries
+  // NO counts — a MOVE always relocates the whole stack, CONTRACT §2 — so the
+  // recruit order is the only unit-count surface in this file.)
+  for (const [type, n] of Object.entries(action.units) as [
+    UnitType,
+    number | undefined,
+  ][]) {
+    if (n === undefined) continue;
+    if (!Number.isInteger(n) || n < 1) {
+      throw new EngineError(
+        "BAD_COUNT",
+        `Recruit count for ${type} must be a positive integer (got ${n}).`,
+      );
+    }
+  }
+  for (const v of variants) {
+    if (!Number.isInteger(v.count) || v.count < 1) {
+      throw new EngineError(
+        "BAD_COUNT",
+        `Recruit count for ${v.variant} must be a positive integer (got ${v.count}).`,
+      );
+    }
+  }
+
+  // Tally requested land/naval counts and validate variant legality (§6.2/§FACTIONS).
+  let landCount = 0;
+  let navalCount = 0;
+  for (const [type, n] of Object.entries(action.units) as [UnitType, number][]) {
+    if (!n || n <= 0) continue;
+    if (UNIT_STATS[type].naval) navalCount += n;
+    else landCount += n;
+  }
+  for (const v of variants) {
+    if (v.count <= 0) continue;
+    // §8.4 (delta 3, CANON "Great Bombard model — CORRECTED"): the Great Bombard
+    // is NEVER recruitable. It is the one-per-game unique siege engine that
+    // "cannot be recruited, rebuilt, or duplicated" (GD §8.4) and enters play
+    // ONLY when Omen #34 'great-bombard-forged' resolves — spawned FREE onto the
+    // `GameState.greatBombard` singleton in the Ottoman capital (or auctioned).
+    // The former unlock→RECRUIT path (and its NOT_UNLOCKED / greatBombardUnlocked
+    // gating) is removed; a RECRUIT order for it is rejected outright. Mirrors
+    // balance.GREAT_BOMBARD.recruitable === false.
+    if (v.variant === GREAT_BOMBARD.variant) {
+      throw new EngineError(
+        "NOT_RECRUITABLE",
+        "The Great Bombard cannot be recruited; it enters play only via Omen #34 'The Great Bombard Forged'.",
+      );
+    }
+    const def = UNIQUE_UNIT_OVERRIDES[v.variant];
+    if (!def) throw new EngineError("BAD_RECRUIT", `Unknown variant ${v.variant}.`);
+    if (player.faction !== def.faction) {
+      throw new EngineError("BAD_RECRUIT", `${def.name} is not a ${player.faction} unit.`);
+    }
+    if (def.recruitProvinces && !def.recruitProvinces.includes(prov.id)) {
+      throw new EngineError("BAD_RECRUIT", `${def.name} cannot be raised at ${prov.name}.`);
+    }
+    if (UNIT_STATS[def.base].naval) navalCount += v.count;
+    else landCount += v.count;
+  }
+  if (landCount === 0 && navalCount === 0) {
+    throw new EngineError("BAD_RECRUIT", "Recruit order is empty.");
+  }
+
+  // §6.2 recruitment-location legality.
+  const isCapital = prov.isCapitalOf !== undefined;
+  const canRaiseLand =
+    mercenary || isCapital || prov.terrain === TerrainType.CITY ||
+    prov.buildings.includes(BuildingType.BARRACKS);
+  if (landCount > 0 && !canRaiseLand) {
+    throw new EngineError(
+      "BAD_RECRUIT",
+      `${prov.name} cannot raise land units (needs capital/CITY/Barracks).`,
+    );
+  }
+  if (navalCount > 0 && !prov.buildings.includes(BuildingType.SHIPYARD)) {
+    throw new EngineError("BAD_RECRUIT", `${prov.name} needs a Shipyard for naval units.`);
+  }
+
+  // §6.2 cost — mercenaries pay ×1.5 gold (Genoa ×1.0) and 0 grain; land only.
+  const mercGoldMult =
+    player.faction === Faction.GENOA
+      ? MERC_MARKET.genoaGoldMultiplier
+      : MERC_MARKET.hireGoldMultiplier;
+  const cost = emptyBundle();
+  // §6.1 / §2.3 PER-UNIQUE RAISE COST: a unique variant whose
+  // UNIQUE_UNIT_OVERRIDES entry carries a `cost` override is priced at that
+  // override, NOT the base UnitType cost. The override is a COMPONENT-LEVEL merge
+  // (§2.3): a resource PRESENT in the override overrides that component of
+  // UNIT_STATS[base].cost; resources ABSENT from the override (and an absent
+  // override entirely) fall through to the base cost. So the Varangian Guard pays
+  // gold 6 / grain 1 (base INFANTRY grain), the Great Galley pays gold 8 / timber 1
+  // (base WARSHIP gold), and the Genoese Crossbowmen — with NO override — pay the
+  // plain base ARCHER cost (gold 3). The `variant` param threads the variant key so
+  // the merc gold-premium / 0-grain rules still layer on top of the override cost.
+  // Faction-scoped base-LEVY economy (devshirme / strongest-levies) — balance A/B
+  // PR #11 @d332061: a BASE LEVY (UnitType.LEVY, no variant) reads this faction's
+  // FACTION_LEVY_ECONOMY.cost as a §2.3-style COMPONENT-LEVEL cost override.
+  const factionLevyCost =
+    player.faction != null ? FACTION_LEVY_ECONOMY[player.faction]?.cost : undefined;
+  const addUnitCost = (base: UnitType, n: number, variant?: string): void => {
+    const stat = UNIT_STATS[base];
+    // A unique variant reads its per-unique UNIQUE_UNIT_OVERRIDES cost; a BASE LEVY
+    // (no variant) reads the faction-scoped FACTION_LEVY_ECONOMY.cost lever. Both
+    // merge component-wise over the base UnitType cost via the `?? stat.cost[k]`
+    // below — a Hungary levy pays gold 1 (override) + grain 1 (base). No other
+    // base unit type has a faction cost lever, so they keep the plain base cost.
+    const override = variant
+      ? UNIQUE_UNIT_OVERRIDES[variant]?.cost
+      : base === UnitType.LEVY
+        ? factionLevyCost
+        : undefined;
+    const merc = mercenary && !stat.naval;
+    for (const k of RESOURCE_KEYS) {
+      // `?? stat.cost[k]` does the §2.3 component merge; nullish-coalescing keeps
+      // an explicit override of 0 (e.g. a waived component) authoritative.
+      const per = override?.[k] ?? stat.cost[k] ?? 0;
+      if (per === 0) continue;
+      if (merc && k === "gold") cost.gold += Math.ceil(per * n * mercGoldMult);
+      else if (merc && k === "grain") continue; // §6.2 mercenaries eat 0 grain to raise
+      else cost[k] += per * n;
+    }
+  };
+  for (const [type, n] of Object.entries(action.units) as [UnitType, number][]) {
+    if (n && n > 0) addUnitCost(type, n);
+  }
+  for (const v of variants) {
+    if (v.count <= 0) continue;
+    // §8.4 (delta 3): a Great Bombard variant never reaches here — a RECRUIT for
+    // it is rejected above (NOT_RECRUITABLE), so no free-entry cost skip is needed.
+    // §6.1 / §2.3: pass the variant key so a per-unique `cost` override is charged.
+    addUnitCost(v.base, v.count, v.variant);
+  }
+
+  for (const k of RESOURCE_KEYS) {
+    if (player.treasury[k] < cost[k]) {
+      throw new EngineError(
+        "INSUFFICIENT_RESOURCES",
+        `${player.name} cannot afford this recruitment (${k}).`,
+      );
+    }
+  }
+
+  // §6.4 stacking limits (per player, per location).
+  if (landCount > 0) {
+    const limit = isCityProvince(prov) ? STACKING.city : STACKING.land;
+    if (ownUnitsAt(state, player.id, prov.id, false) + landCount > limit) {
+      throw new EngineError("STACK_LIMIT", `Stacking limit (${limit} land) exceeded at ${prov.name}.`);
+    }
+  }
+  if (navalCount > 0) {
+    if (ownUnitsAt(state, player.id, prov.id, true) + navalCount > STACKING.naval) {
+      throw new EngineError("STACK_LIMIT", `Stacking limit (${STACKING.naval} naval) exceeded at ${prov.name}.`);
+    }
+  }
+
+  // Apply: pay, then merge into the player's stack(s) at the province.
+  const next = structuredClone(state) as GameState;
+  const p = next.players.find((x) => x.id === action.player)!;
+  for (const k of RESOURCE_KEYS) p.treasury[k] -= cost[k];
+
+  const findOrMake = (naval: boolean): Army | Fleet => {
+    const list: (Army | Fleet)[] = naval ? next.fleets : next.armies;
+    const existing = list.find(
+      (s) => s.ownerId === player.id && s.locationId === prov.id,
+    );
+    if (existing) return existing;
+    const created: Army | Fleet = {
+      id: `${naval ? "fleet" : "army"}-${player.id}-${prov.id}-${next.logCounter}`,
+      ownerId: player.id,
+      locationId: prov.id,
+      units: zeroUnits(),
+      variants: [],
+    };
+    list.push(created);
+    return created;
+  };
+
+  const markMerc = (stack: Army | Fleet, type: UnitType, n: number): void => {
+    if (!stack.mercenaries) stack.mercenaries = {};
+    stack.mercenaries[type] = (stack.mercenaries[type] ?? 0) + n;
+  };
+
+  for (const [type, n] of Object.entries(action.units) as [UnitType, number][]) {
+    if (!n || n <= 0) continue;
+    const naval = UNIT_STATS[type].naval;
+    const stack = findOrMake(naval);
+    stack.units[type] = (stack.units[type] ?? 0) + n;
+    if (mercenary && !naval) markMerc(stack, type, n);
+  }
+  for (const v of variants) {
+    if (v.count <= 0) continue;
+    const naval = UNIT_STATS[v.base].naval;
+    const stack = findOrMake(naval);
+    if (!stack.variants) stack.variants = [];
+    const found = stack.variants.find((x) => x.variant === v.variant);
+    if (found) found.count += v.count;
+    else stack.variants.push({ base: v.base, variant: v.variant, count: v.count });
+  }
+
+  return appendLog(next, {
+    round: next.round,
+    phase: next.phase,
+    type: "recruit",
+    actors: [action.player],
+    targets: [prov.id],
+    message: `${player.name} recruits ${landCount + navalCount} unit(s) at ${prov.name}${
+      mercenary ? " (mercenaries)" : ""
+    }.`,
+    data: { units: action.units, variants, mercenary, cost },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// MOVE / ATTACK (§6.4, §7, §10.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Move one army or fleet one step along the adjacency graph (§6.4). Validates
+ * adjacency (straits included), the slowest-unit movement allowance against
+ * TERRAIN_MOVE_COST (§3.1), and the destination stacking limit. Entering a tile
+ * defended by a non-ally (units or garrison) queues a {@link PendingBattle} for
+ * the COMBAT phase instead of resolving inline; otherwise the stack relocates
+ * and may flip ownership of an empty enemy/neutral province (§6.4 occupation).
+ * Assumes the reducer has spent the action.
+ */
+function applyMove(state: GameState, action: GameAction): GameState {
+  if (action.type !== "MOVE") {
+    throw new EngineError("UNKNOWN_ACTION", "applyMove requires MOVE.");
+  }
+  const player = requirePlayer(state, action.player);
+  const isNaval = action.naval === true;
+  const stacks: (Army | Fleet)[] = isNaval ? state.fleets : state.armies;
+  const stack = stacks.find((s) => s.id === action.stackId);
+  if (!stack) throw new EngineError("UNKNOWN_STACK", `No such stack: ${action.stackId}.`);
+  if (stack.ownerId !== player.id) {
+    throw new EngineError("NOT_OWNER", "Cannot move another player's stack.");
+  }
+
+  // §6.4 adjacency (ADJACENCY includes strait edges).
+  if (!areAdjacent(stack.locationId, action.toId)) {
+    throw new EngineError(
+      "NOT_ADJACENT",
+      `${action.toId} is not adjacent to ${stack.locationId}.`,
+    );
+  }
+
+  const destProv = state.provinces.find((p) => p.id === action.toId);
+  const destZone = state.seaZones.find((z) => z.id === action.toId);
+  if (!destProv && !destZone) {
+    throw new EngineError("BAD_MOVE", `Unknown destination: ${action.toId}.`);
+  }
+
+  // MAP MAJOR (marshal "untyped adjacency lets fleets cross land / army MOVE
+  // into a sea zone crashes (TypeError)"): ADJACENCY is one untyped graph (land
+  // edges, port↔sea-zone edges, sea↔sea straits), so land/sea domain legality
+  // is enforced HERE, typed by destination:
+  if (!isNaval && destZone) {
+    // An ARMY can never END a move in open water. Crossing water is the
+    // amphibious TRANSPORT path (`transportFleetId`), whose destination is
+    // still a coastal PROVINCE (§6.4). Rejecting cleanly replaces the old
+    // TypeError crash (`prov.ownerId` on `destProv!` = undefined) with a typed
+    // BAD_DESTINATION rejection.
+    throw new EngineError(
+      "BAD_DESTINATION",
+      `${destZone.name} is a sea zone; an army cannot enter open water.`,
+    );
+  }
+  if (isNaval && destProv) {
+    // A FLEET sails on water: legal destinations are sea zones, plus the one
+    // legal PORT interaction — putting in at a COASTAL province arrived at FROM
+    // an adjacent sea zone. A landlocked destination and a port-to-port hop
+    // over a land edge (a fleet "marching" along a coastline) are rejected.
+    if (!destProv.coastal) {
+      throw new EngineError(
+        "BAD_DESTINATION",
+        `${destProv.name} is landlocked; a fleet cannot enter it.`,
+      );
+    }
+    const fromSea = state.seaZones.some((z) => z.id === stack.locationId);
+    if (!fromSea) {
+      throw new EngineError(
+        "BAD_DESTINATION",
+        `A fleet must put in at ${destProv.name} from an adjacent sea zone, not overland from ${stack.locationId}.`,
+      );
+    }
+  }
+
+  // §3.1/§6.4 movement allowance (READING — resolves the flagged ambiguity):
+  // GD §6.4 says a unit "moves up to its Move value in province move-cost". A
+  // single MOVE action is ONE adjacency step (the payload carries one `toId`), so
+  // the stack's slowest-unit Move budget must cover the destination's
+  // TERRAIN_MOVE_COST[terrain] (§3.1: plains/hills/forest/coast/city 1, mountains
+  // 2, desert 2). Thus a CAVALRY stack (mv2) may chain into a cost-2 tile in one
+  // step; a SIEGE/INFANTRY stack (mv1) may NOT enter mountains/desert (cost 2) —
+  // it must route around. The doc gives NO guaranteed-minimum-1 clause (unlike
+  // some wargames), so a strict budget is the literal reading; entering high-cost
+  // terrain with an over-slow stack is rejected with INSUFFICIENT_MOVEMENT. Sea
+  // zones cost 1 (a naval step). See the ambiguity note for the PR list.
+  const mp = stackMovePoints(stack);
+  if (mp <= 0) throw new EngineError("BAD_MOVE", "An empty stack cannot move.");
+  const moveCost = destProv ? TERRAIN_MOVE_COST[destProv.terrain] : 1;
+  if (moveCost > mp) {
+    throw new EngineError(
+      "INSUFFICIENT_MOVEMENT",
+      `${action.toId} costs ${moveCost} to enter; the stack moves ${mp}.`,
+    );
+  }
+
+  // §6.4 stacking limit at the destination (own units only).
+  const moving = realCount(stack);
+  const stackLimit = isNaval
+    ? STACKING.naval
+    : destProv && isCityProvince(destProv)
+      ? STACKING.city
+      : STACKING.land;
+  if (ownUnitsAt(state, player.id, action.toId, isNaval) + moving > stackLimit) {
+    throw new EngineError(
+      "STACK_LIMIT",
+      `Stacking limit (${stackLimit}) exceeded at ${action.toId}.`,
+    );
+  }
+
+  // --- Detect defenders ----------------------------------------------------
+  if (isNaval) {
+    const enemyFleets = state.fleets.filter(
+      (f) =>
+        f.locationId === action.toId &&
+        f.ownerId !== player.id &&
+        !areAllied(state, player.id, f.ownerId) &&
+        realCount(f) > 0,
+    );
+    if (enemyFleets.length > 0) {
+      return queueBattle(state, action, player, {
+        // MAP major (typed gating audit): a naval clash keys the battle on the
+        // ACTUAL location type — a sea zone at sea, a provinceId for the legal
+        // port-call interaction (previously a port battle mis-filed the port's
+        // province id under seaZoneId).
+        ...(destZone ? { seaZoneId: action.toId } : { provinceId: action.toId }),
+        defenderId: enemyFleets[0].ownerId,
+        defenderStackIds: enemyFleets.map((f) => f.id),
+        isNaval: true,
+        amphibious: false,
+        isSiege: false,
+      });
+    }
+    return relocate(state, action, player, false);
+  }
+
+  const prov = destProv!;
+  const enemyArmies = state.armies.filter(
+    (a) =>
+      a.locationId === action.toId &&
+      a.ownerId !== player.id &&
+      !areAllied(state, player.id, a.ownerId) &&
+      realCount(a) > 0,
+  );
+  const ownerHostile =
+    prov.ownerId !== null &&
+    prov.ownerId !== player.id &&
+    !areAllied(state, player.id, prov.ownerId);
+  const garrisonDefends =
+    (prov.garrison ?? 0) > 0 && (prov.ownerId === null || ownerHostile);
+
+  if (enemyArmies.length > 0 || garrisonDefends) {
+    // §7/§8 a defended tile queues a battle; a walled CITY assault is a siege.
+    return queueBattle(state, action, player, {
+      provinceId: prov.id,
+      defenderId: enemyArmies[0]?.ownerId ?? prov.ownerId ?? null,
+      defenderStackIds: enemyArmies.map((a) => a.id),
+      isNaval: false,
+      amphibious: action.transportFleetId !== undefined,
+      isSiege: prov.walls.hp > 0 && prov.terrain === TerrainType.CITY,
+    });
+  }
+
+  // §6.4 empty tile → relocate; an empty enemy/neutral tile is a DEFERRED
+  // occupation (ownership flips at cleanup unless contested — see relocate).
+  return relocate(state, action, player, ownerHostile || prov.ownerId === null);
+}
+
+/**
+ * Clone and relocate the moving stack. For an unopposed march into an empty
+ * enemy/neutral province the ownership flip is DEFERRED, not applied inline
+ * (§6.4 "occupation → ownership flips at cleanup unless contested"; §10 phase-5
+ * "Flip contested ownership"): record the occupation in `pendingOccupations`
+ * WITHOUT touching `ownerId`, and let the roundLoop END/cleanup step perform the
+ * flip for entries still occupied-and-uncontested.
+ */
+function relocate(
+  state: GameState,
+  action: MoveAction,
+  player: Player,
+  occupy: boolean,
+): GameState {
+  const isNaval = action.naval === true;
+  const next = structuredClone(state) as GameState;
+  const list: (Army | Fleet)[] = isNaval ? next.fleets : next.armies;
+  const stack = list.find((s) => s.id === action.stackId)!;
+  stack.locationId = action.toId;
+  // §8.4: a moved Great Bombard drags the singleton tracker along and re-emplaces.
+  syncGreatBombardMove(next, stack, action.toId);
+
+  const prov = next.provinces.find((p) => p.id === action.toId);
+  let occupied = false;
+  if (!isNaval && prov && occupy && prov.ownerId !== player.id) {
+    // §6.4 / §10 phase-5: mark the province pending-occupation but do NOT flip
+    // `ownerId` (nor clear the garrison) here — roundLoop END flips it if the
+    // occupation still stands uncontested at cleanup. One pending occupant per
+    // province: a later entrant replaces any prior pending claim.
+    const existing = next.pendingOccupations ?? [];
+    next.pendingOccupations = [
+      ...existing.filter((o) => o.provinceId !== prov.id),
+      { provinceId: prov.id, occupantId: player.id, sinceRound: next.round },
+    ];
+    occupied = true;
+  }
+
+  return appendLog(next, {
+    round: next.round,
+    phase: next.phase,
+    type: occupied ? "battle" : "phase",
+    actors: [action.player],
+    targets: [action.toId],
+    message: occupied
+      ? `${player.name} occupies ${prov?.name ?? action.toId} unopposed.`
+      : `${player.name} moves ${action.stackId} to ${action.toId}.`,
+    data: { move: action.stackId, to: action.toId, occupied },
+  });
+}
+
+/** Clone, advance the attacker into the tile, and push a PendingBattle (§7). */
+function queueBattle(
+  state: GameState,
+  action: MoveAction,
+  player: Player,
+  spec: {
+    provinceId?: string;
+    seaZoneId?: string;
+    defenderId: string | null;
+    defenderStackIds: string[];
+    isNaval: boolean;
+    amphibious: boolean;
+    isSiege: boolean;
+  },
+): GameState {
+  const isNaval = action.naval === true;
+  const next = structuredClone(state) as GameState;
+  const list: (Army | Fleet)[] = isNaval ? next.fleets : next.armies;
+  const stack = list.find((s) => s.id === action.stackId)!;
+  // The attacker advances to the contested tile; COMBAT resolves the clash.
+  stack.locationId = action.toId;
+  // §8.4: the gun advances with its escort — tracker follows + re-emplaces (it
+  // cannot fire the round it arrives at the new siege).
+  syncGreatBombardMove(next, stack, action.toId);
+
+  const battle: PendingBattle = {
+    id: `pb-${next.round}-${next.pendingBattles.length}-${action.stackId}`,
+    ...(spec.provinceId ? { provinceId: spec.provinceId } : {}),
+    ...(spec.seaZoneId ? { seaZoneId: spec.seaZoneId } : {}),
+    attackerId: player.id,
+    defenderId: spec.defenderId,
+    attackerStackIds: [action.stackId],
+    defenderStackIds: spec.defenderStackIds,
+    isNaval: spec.isNaval,
+    amphibious: spec.amphibious,
+    isSiege: spec.isSiege,
+  };
+  next.pendingBattles = [...next.pendingBattles, battle];
+
+  return appendLog(next, {
+    round: next.round,
+    phase: next.phase,
+    type: "battle",
+    actors: [player.id, ...(spec.defenderId ? [spec.defenderId] : [])],
+    targets: [action.toId],
+    message: `${player.name} advances on ${action.toId} — a ${
+      spec.isSiege ? "siege" : spec.isNaval ? "naval battle" : "battle"
+    } is declared.`,
+    data: { battleId: battle.id, declared: true, isSiege: spec.isSiege, isNaval: spec.isNaval },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// DECLARE_WAR (§11 casus belli)
+// ---------------------------------------------------------------------------
+
+/**
+ * §11 "Casus belli" (delta 5): a DECLARE_WAR carries an optional `justification`
+ * — `claim` | `crusade` | `vassal-defense` | `ally-call`. A war with a VALID
+ * justification is a legitimate casus belli (GD §11: "attack without the usual
+ * prestige cost" and "+1 extra prestige for wins in that war"); a war with an
+ * ABSENT or IMPLAUSIBLE justification is UNJUSTIFIED and costs the declarer
+ * `balance.UNJUSTIFIED_WAR_PRESTIGE` prestige.
+ *
+ * This is a BEST-EFFORT plausibility gate (documented, not a full CB engine):
+ * - `vassal-defense` requires the declarer to actually hold a vassal minor.
+ * - `ally-call` requires the declarer to have an ALLIANCE partner who is itself
+ *   currently at war (someone to be "called" to defend).
+ * - `claim` / `crusade` are accepted as plausible: a `claim` (broken royal
+ *   marriage / seized key city) and a `crusade` (faith stance) cannot be cheaply
+ *   verified from `GameState` here, so they are trusted at declaration time; the
+ *   richer marriage-claim bookkeeping is posted by diplomacy.ts's RENOUNCE path.
+ * Returns `true` when the declaration is a valid casus belli.
+ */
+function isJustifiedWar(state: GameState, actor: Player, action: GameAction): boolean {
+  if (action.type !== "DECLARE_WAR") return false;
+  switch (action.justification) {
+    case "claim":
+    case "crusade":
+      return true; // best-effort: trusted at declaration (see doc above)
+    case "vassal-defense":
+      return state.minors.some((m) => m.vassalOf === actor.id);
+    case "ally-call": {
+      const allyIds = new Set<string>();
+      for (const t of actor.treaties) {
+        if (t.type !== TreatyType.ALLIANCE) continue;
+        for (const party of t.parties) {
+          if (party !== actor.id) allyIds.add(party);
+        }
+      }
+      return state.wars.some(
+        (w) => allyIds.has(w.a) || allyIds.has(w.b),
+      );
+    }
+    default:
+      return false; // absent / unrecognised → unjustified
+  }
+}
+
+/**
+ * Open a state of war against a rival faction (§11). Records a {@link WarState}
+ * on `state.wars` (de-duplicated on the unordered player pair) so combat/prestige
+ * can read it for the "win a war +3" award and casus-belli-adjacent checks.
+ *
+ * DELTA 5 (§11 "Casus belli"): the reducer VALIDATES the action's `justification`
+ * and, when the war is UNJUSTIFIED, applies the `UNJUSTIFIED_WAR_PRESTIGE` (1)
+ * penalty. Per CONTRACT2 §12.8 the penalty is posted as a round-scoped negative
+ * `prestige_pending` modifier (value `−UNJUSTIFIED_WAR_PRESTIGE`, `conquest:false`
+ * so it never touches the conquest track) which prestige.scorePrestige consumes
+ * ONCE at Cleanup and roundLoop.expireRoundModifiers clears — the same convention
+ * diplomacy.ts uses for its own signed prestige deltas, so there is no
+ * double-count and the reducer never mutates `Player.prestige` directly.
+ *
+ * The richer casus-belli claim (a broken royal marriage → free attacks + war-win
+ * bonus) is still posted by diplomacy.ts's RENOUNCE path, which also calls addWar.
+ * Assumes the reducer has spent the action.
+ */
+function applyDeclareWar(state: GameState, action: GameAction): GameState {
+  if (action.type !== "DECLARE_WAR") {
+    throw new EngineError("UNKNOWN_ACTION", "applyDeclareWar requires DECLARE_WAR.");
+  }
+  const actor = requirePlayer(state, action.player);
+  if (actor.faction === action.target) {
+    throw new EngineError("BAD_TARGET", "Cannot declare war on your own faction.");
+  }
+  const defender = state.players.find((p) => p.faction === action.target);
+  if (!defender) {
+    throw new EngineError("NO_TARGET", `No seated player is playing ${action.target}.`);
+  }
+  const already = state.wars.some(
+    (w) =>
+      (w.a === actor.id && w.b === defender.id) ||
+      (w.a === defender.id && w.b === actor.id),
+  );
+  const justified = isJustifiedWar(state, actor, action);
+
+  const next: GameState = {
+    ...state,
+    wars: already
+      ? state.wars
+      : [...state.wars, { a: actor.id, b: defender.id, startedRound: state.round }],
+    // DELTA 5 (§11): post the unjustified-war prestige penalty via the
+    // prestige_pending convention (CONTRACT2 §12.8). Signed negative; `conquest:false`
+    // keeps it off the conquest track. Only posted for a NEW, unjustified war (a
+    // re-declaration of an existing war levies no fresh penalty).
+    activeModifiers:
+      justified || already
+        ? state.activeModifiers
+        : [
+            ...state.activeModifiers,
+            {
+              id: `prestige_pending-${state.logCounter}-${actor.id}-unjustified_war`,
+              scope: "round",
+              kind: "prestige_pending",
+              ...(actor.faction ? { target: { faction: actor.faction } } : {}),
+              value: -UNJUSTIFIED_WAR_PRESTIGE,
+              data: {
+                playerId: actor.id,
+                reason: "unjustified_war",
+                conquest: false,
+                source: "actions",
+              },
+            },
+          ],
+  };
+  return appendLog(next, {
+    round: next.round,
+    phase: next.phase,
+    type: "diplomacy",
+    actors: [actor.id],
+    targets: [defender.id],
+    message: `${actor.name} declares ${
+      justified ? "a justified war" : "an unjustified war"
+    } on ${defender.name} (${action.target})${
+      justified || already ? "" : ` (−${UNJUSTIFIED_WAR_PRESTIGE} prestige)`
+    }.`,
+    data: {
+      target: action.target,
+      alreadyAtWar: already,
+      startedRound: next.round,
+      justification: action.justification ?? null,
+      justified,
+      unjustifiedPenalty: justified || already ? 0 : UNJUSTIFIED_WAR_PRESTIGE,
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// LEVY_CALL (§11.5 vassal levy)
+// ---------------------------------------------------------------------------
+
+/**
+ * Call up a vassal minor's levy (§11.5): "Once per 2 rounds you may call its
+ * levies: gain a free stack of 2 LEVY (+1 per garrison tier) raised in the
+ * vassal's capital." Validates ownership and the once-per-`VASSAL.levyEveryRounds`
+ * cadence (via the minor's `roundsUntilLevy`/`levyCooldown`), raises the levies in
+ * the minor's first province, and re-arms the cooldown. Re-arming the SAME
+ * cooldown fields diplomacy.runRevolts reads guarantees the automatic and manual
+ * levy paths never double-fire in one cadence. Assumes the reducer has spent the
+ * action.
+ */
+function applyLevyCall(state: GameState, action: GameAction): GameState {
+  if (action.type !== "LEVY_CALL") {
+    throw new EngineError("UNKNOWN_ACTION", "applyLevyCall requires LEVY_CALL.");
+  }
+  const actor = requirePlayer(state, action.player);
+  const minor = state.minors.find((m) => m.id === action.minorId);
+  if (!minor) throw new EngineError("NO_MINOR", `No such minor: ${action.minorId}.`);
+  if (minor.vassalOf !== actor.id) {
+    throw new EngineError("NOT_OWNER", `${minor.name} is not ${actor.name}'s vassal.`);
+  }
+  const cooldown = minor.roundsUntilLevy ?? minor.levyCooldown ?? 0;
+  if (cooldown > 0) {
+    throw new EngineError(
+      "LEVY_COOLDOWN",
+      `${minor.name} cannot answer a levy for ${cooldown} more round(s).`,
+    );
+  }
+  const capital = minor.provinceIds[0];
+  if (!capital) {
+    throw new EngineError("BAD_LEVY", `${minor.name} holds no province to raise levies in.`);
+  }
+  // §11.5 levy size = `levyBase` (2) + `levyPerTier` (1) per GARRISON tier,
+  // where garrison tier = ⌊garrison-unit-count ÷ garrisonTierDivisor⌋ (FL-17 /
+  // FL-05 shared garrison-tier definition; CANON §11.5 supersedes the CONTRACT2
+  // baseline). This is the SAME formula the diplomacy.runRevolts automatic-levy
+  // path uses — previously this path used `minor.tier` (the MAP WALL tier),
+  // over-producing free levies whenever wall tier ≠ garrison tier.
+  const garrisonTier = Math.floor(minor.garrison / VASSAL.garrisonTierDivisor);
+  const requested = VASSAL.levyBase + VASSAL.levyPerTier * garrisonTier;
+  // §6.4 stacking limit — the free levy may not push the caller's stack at the
+  // vassal capital past the land (8) / city (12) cap; trim the excess (mirrors
+  // the clamp diplomacy.runRevolts applies on the automatic levy path). This is
+  // the only levy path that adds units, so clamping here keeps the §6.4
+  // invariant that no location ever exceeds 8 land / 12 city for one player.
+  const capProv = state.provinces.find((p) => p.id === capital);
+  const cap = capProv && isCityProvince(capProv) ? STACKING.city : STACKING.land;
+  const already = ownUnitsAt(state, actor.id, capital, false);
+  const levied = Math.max(0, Math.min(requested, cap - already));
+
+  const next = structuredClone(state) as GameState;
+  const m = next.minors.find((x) => x.id === action.minorId)!;
+  let army = next.armies.find(
+    (a) => a.ownerId === actor.id && a.locationId === capital,
+  );
+  if (!army) {
+    army = {
+      id: `army-levy-${m.id}-${next.round}`,
+      ownerId: actor.id,
+      locationId: capital,
+      units: zeroUnits(),
+      variants: [],
+    };
+    next.armies = [...next.armies, army];
+  }
+  army.units[UnitType.LEVY] = (army.units[UnitType.LEVY] ?? 0) + levied;
+  // §11.5 re-arm the cadence (same fields runRevolts reads → no double-levy).
+  m.roundsUntilLevy = VASSAL.levyEveryRounds;
+  m.levyCooldown = VASSAL.levyEveryRounds;
+
+  return appendLog(next, {
+    round: next.round,
+    phase: next.phase,
+    type: "diplomacy",
+    actors: [action.player],
+    targets: [m.id],
+    message: `${actor.name} calls up ${levied} levies from ${m.name} at ${capital}.`,
+    data: { minorId: m.id, levies: levied, requested, location: capital },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// SIEGE_ASSAULT (§8.2 step 4 — the CHOSEN assault)
+// ---------------------------------------------------------------------------
+
+/**
+ * Declare an assault on a besieged city (§8.2 step 4; marshal combat-cluster
+ * major "sieges auto-assault every round — should be a chosen ASSAULT action";
+ * STAGE-B-PREP §2). Assaulting is a deliberate CHOICE, not an automatic
+ * consequence of the siege: the besieger spends a budgeted action-window action
+ * (the reducer routes this through `spendAction`, so phase/budget/turn gating
+ * matches MOVE) to set `SiegeState.assaultDeclared = true`. The COMBAT phase
+ * (`combat.resolveSiege`) storms the walls ONLY for sieges carrying the flag —
+ * Wall HP > 0 keeps the full wall bonus + escalade −1, a breach fights at field
+ * odds — and consumes/clears the declaration with the round (it never carries
+ * over). An undeclared siege round is bombardment + starvation only.
+ *
+ * Validates: an ACTIVE SiegeState exists at `provinceId` (`NO_SUCH_SIEGE`) and
+ * the actor is its besieger (`NOT_BESIEGER`). Assumes the reducer has spent the
+ * action.
+ */
+function applySiegeAssault(state: GameState, action: GameAction): GameState {
+  if (action.type !== "SIEGE_ASSAULT") {
+    throw new EngineError("UNKNOWN_ACTION", "applySiegeAssault requires SIEGE_ASSAULT.");
+  }
+  const player = requirePlayer(state, action.player);
+  const siege = state.siegeStates.find((s) => s.provinceId === action.provinceId);
+  if (!siege) {
+    throw new EngineError(
+      "NO_SUCH_SIEGE",
+      `No active siege at ${action.provinceId} to assault.`,
+    );
+  }
+  if (siege.besiegerId !== player.id) {
+    throw new EngineError(
+      "NOT_BESIEGER",
+      `${player.name} is not the besieger of ${action.provinceId}.`,
+    );
+  }
+
+  const next: GameState = {
+    ...state,
+    siegeStates: state.siegeStates.map((s) =>
+      s.provinceId === action.provinceId ? { ...s, assaultDeclared: true } : s,
+    ),
+  };
+  return appendLog(next, {
+    round: next.round,
+    phase: next.phase,
+    type: "siege",
+    actors: [player.id],
+    targets: [action.provinceId],
+    message: `${player.name} declares an assault on ${action.provinceId} — the storm comes with the battle phase.`,
+    data: { provinceId: action.provinceId, assaultDeclared: true },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// applyAction — the dispatch table
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate and apply a single {@link GameAction}, returning a new GameState.
+ * Throws {@link EngineError} on any illegality.
+ */
+export function applyAction(state: GameState, action: GameAction): GameState {
+  switch (action.type) {
+    case "ADVANCE_PHASE": {
+      // ACTIONS MAJOR (marshal "ADVANCE_PHASE unbudgeted/unauthorized"): during
+      // the action-window phases the phase may only advance once EVERY player is
+      // done — 0 actionsRemaining. (PASS zeroes the passer's budget, so "has
+      // passed" is subsumed by the same check.) Otherwise the advance is
+      // rejected with WINDOW_NOT_DONE so no caller can slam the window shut on
+      // players still holding actions. Non-window phases (LOBBY/INCOME/COMBAT/
+      // END) stay advanceable as today — the driver/host advances them.
+      if (ACTION_PHASES.has(state.phase)) {
+        const waiting = state.players.filter((p) => p.actionsRemaining > 0);
+        if (waiting.length > 0) {
+          throw new EngineError(
+            "WINDOW_NOT_DONE",
+            `Cannot advance out of ${state.phase}: ${waiting
+              .map((p) => p.name)
+              .join(", ")} still hold actions (spend or PASS them).`,
+          );
+        }
+      }
+      return advancePhase(state);
+    }
+
+    case "SET_TAX": {
+      const player = requirePlayer(state, action.player);
+      if (!Object.values(TaxPosture).includes(action.posture)) {
+        throw new EngineError("BAD_TAX", `Invalid tax posture.`);
+      }
+      void player;
+      return {
+        ...state,
+        players: state.players.map((p) =>
+          p.id === action.player ? { ...p, tax: action.posture } : p,
+        ),
+      };
+    }
+
+    case "PASS": {
+      const player = requirePlayer(state, action.player);
+      // TURN ORDER major: inside the window only the ACTIVE player may PASS
+      // (a rival "passing" for someone else would scramble the pointer);
+      // outside the window PASS stays the harmless budget-zeroing no-op.
+      if (ACTION_PHASES.has(state.phase)) requireActiveTurn(state, action.player);
+      // §10 forfeit remaining actions this turn (yield the budget).
+      const next = {
+        ...state,
+        players: state.players.map((p) =>
+          p.id === action.player ? { ...p, actionsRemaining: 0 } : p,
+        ),
+      };
+      const logged = appendLog(next, {
+        round: next.round,
+        phase: next.phase,
+        type: "phase",
+        actors: [action.player],
+        message: `${player.name} passes and yields the remaining actions.`,
+        data: {},
+      });
+      // TURN ORDER major: the pass hands the window to the next undone player.
+      return advanceTurnPointer(logged);
+    }
+
+    case "MERC_BID":
+      // §6.3 Bidding / passing happens in the merc-market window, not as a
+      // budgeted action. DA-3 (CANON CLARIFICATION 3 — true round-robin with a
+      // voluntary pass): a MERC_BID may carry `pass:true` (Prep4's
+      // MercBidAction.pass), a deliberate withdrawal from the offer's round-robin,
+      // or be an ordinary raise. The reducer only validates the issuer and
+      // FORWARDS the whole action — the `pass` flag included — to the mercenaries
+      // handler (frozen signature `applyMercBid(state, action)`), whose round-robin
+      // records a pass in the offer's `passedPlayerIds` and closes the auction when
+      // one non-passed bidder remains (a raise is dispatched unchanged). actions.ts
+      // does NOT interpret the pass itself; it is the dispatch/validation half of
+      // DA-3, the mercenaries round-robin is the resolution half.
+      // TURN ORDER exemption (documented at requireActiveTurn): the auction's
+      // own round-robin (`activeBidderId`) sequences bidders — the window
+      // pointer never gates a MERC_BID.
+      requirePlayer(state, action.player);
+      return applyMercBid(state, action);
+
+    // Every budget-costing branch below wraps its result in advanceTurnPointer
+    // (TURN ORDER major): when the spend was the active player's LAST action the
+    // window pointer moves on to the next player still holding budget.
+    case "RECRUIT":
+      return advanceTurnPointer(
+        applyRecruit(spendAction(state, action.player), action),
+      );
+
+    case "MOVE":
+      return advanceTurnPointer(
+        applyMove(spendAction(state, action.player), action),
+      );
+
+    case "BUILD": {
+      const next = spendAction(state, action.player);
+      if (!action.building && !action.greatWork) {
+        throw new EngineError(
+          "BAD_BUILD",
+          "BUILD requires a building or greatWork.",
+        );
+      }
+      return advanceTurnPointer(applyBuild(next, action));
+    }
+
+    case "TRADE": {
+      const next = spendAction(state, action.player);
+      return advanceTurnPointer(applyTrade(next, action));
+    }
+
+    case "DIPLOMACY": {
+      // Propose/renounce cost the initiator an action; responder is free (§10.0).
+      // ACCEPT is also EXEMPT from the turn-order gate (see requireActiveTurn):
+      // the responder answers whenever the proposal stands, budget untouched —
+      // so the window pointer is only advanced on the budgeted kinds.
+      if (action.diplomacy.kind === "ACCEPT") {
+        return applyDiplomacy(state, action);
+      }
+      const next = spendAction(state, action.player);
+      return advanceTurnPointer(applyDiplomacy(next, action));
+    }
+
+    case "VASSALIZE": {
+      const next = spendAction(state, action.player);
+      return advanceTurnPointer(applyVassalize(next, action));
+    }
+
+    case "SPY": {
+      const next = spendAction(state, action.player);
+      return advanceTurnPointer(applySpy(next, action));
+    }
+
+    case "PLAY_CARD": {
+      // B2 (marshal BLOCKER; §10.0/§10.6): playing a held political/event card
+      // COSTS 1 ACTION and is legal ONLY inside the action-window phases —
+      // routed through spendAction BEFORE the hand lookup, so an out-of-window
+      // (WRONG_PHASE), out-of-budget (NO_ACTIONS) or out-of-turn (OUT_OF_TURN)
+      // play is rejected up front. (Previously the branch mis-cited "§8", spent
+      // nothing and was playable in any phase — a free card dump.)
+      const spent = spendAction(state, action.player);
+      const player = requirePlayer(spent, action.player);
+      const idx = player.hand.findIndex((c) => c.id === action.cardId);
+      if (idx < 0) {
+        throw new EngineError(
+          "NOT_IN_HAND",
+          `${player.name} does not hold card ${action.cardId}.`,
+        );
+      }
+      // FL-03 (EVENT_CARDS.md Era II #28 Papal Interdict, "Target loses all
+      // ✝️ income for 2 rounds"): thread the action's targeting fields into the
+      // events subsystem so a targeted card reaches its target. Without the
+      // `targetPlayerId`, resolveCard's ctx.targetPlayerId was always undefined
+      // and #28's faith_income modifier stayed untargeted → economy zeroed EVERY
+      // faction's faith instead of only the interdicted one. `targetProvinceId`
+      // and `choice` (PLAY_CARD payload, CONTRACT §2) are forwarded too for the
+      // province-scoped / choice-driven cards.
+      // B8 (marshal BLOCKER): also thread the ACTING player (`playerId`) so the
+      // card's BENEFICIARY is the player who PLAYED it — resolveCard resolves
+      // its drawer/beneficiary as `ctx.playerId ?? turnOrder[activePlayerIndex]`,
+      // so a coronation/marriage/indulgence played by a later-seat player pays
+      // THAT player, never whoever the window pointer happens to rest on.
+      let next = resolveCard(spent, action.cardId, {
+        playerId: action.player,
+        targetPlayerId: action.targetPlayerId,
+        targetProvinceId: action.targetProvinceId,
+        choice: action.choice,
+      });
+      // Discard exactly one copy of the played card (hand order preserved by
+      // resolveCard, which touches treasury/prestige/modifiers, not the hand).
+      next = {
+        ...next,
+        players: next.players.map((p) => {
+          if (p.id !== player.id) return p;
+          const i = p.hand.findIndex((c) => c.id === action.cardId);
+          if (i < 0) return p;
+          return { ...p, hand: [...p.hand.slice(0, i), ...p.hand.slice(i + 1)] };
+        }),
+      };
+      // §8.4 (delta 3): the Great Bombard is no longer acquired via an unlock
+      // flag + RECRUIT. Omen #34 resolution (inside `resolveCard`) spawns the
+      // piece directly onto `GameState.greatBombard`, so PLAY_CARD no longer needs
+      // to mirror any unlock modifier onto `Player.greatBombardUnlocked`.
+      // B2/TURN ORDER: the spend above may have been the last action.
+      return advanceTurnPointer(next);
+    }
+
+    case "PLAY_TACTIC": {
+      // §7.7 Play a tactic card into a pending battle. Free (not budget-gated by
+      // phase, per CONTRACT2 §12.4); the ≤1/side/battle-round cap and the actual
+      // effect are enforced in the tactic subsystem / combat.
+      // TURN ORDER exemption (documented at requireActiveTurn): a battle-scoped
+      // declaration — EITHER belligerent (e.g. the non-active defender) may
+      // queue a tactic; the window pointer never gates it.
+      const player = requirePlayer(state, action.player);
+      // Marshal B3 / STAGE-B-PREP §1 target-mode dispatch: exactly ONE mode per
+      // play — `battleId` XOR `siegeProvinceId` XOR neither (global/immediate).
+      // Setting both is ambiguous and rejected up front (TACTIC_TARGET_CONFLICT,
+      // the STAGE-B-PREP reducer-contract code). Each mode routes to its tactic
+      // subsystem path; a card played through the WRONG mode for its printed
+      // play path is rejected inside that path (TACTIC_WRONG_TARGET).
+      if (action.battleId && action.siegeProvinceId) {
+        throw new EngineError(
+          "TACTIC_TARGET_CONFLICT",
+          "PLAY_TACTIC takes battleId XOR siegeProvinceId, not both.",
+        );
+      }
+      if (!action.battleId) {
+        // Mode 2 (SIEGE): an ongoing-siege card (night-sortie, treason-at-the-
+        // gate, sails-from-the-west, bribed-gatekeeper, ladders-and-fascines,
+        // master-founders-hired) played against the ACTIVE SiegeState — no
+        // PendingBattle exists for an undeclared siege (B3's dead-card root
+        // cause). playSiegeTactic validates siege existence (NO_SUCH_SIEGE),
+        // party (NOT_BELLIGERENT), path/side legality and the DELTA-1 treason
+        // brake, then resolves at once into the round-scoped siege/wall
+        // modifiers combat's resolveSiege consumes THIS round.
+        if (action.siegeProvinceId) {
+          return playSiegeTactic(
+            state,
+            action.player,
+            action.siegeProvinceId,
+            action.cardId,
+            {
+              targetPlayerId: action.targetPlayerId,
+              targetProvinceId: action.targetProvinceId,
+            },
+          );
+        }
+        // Mode 3 (GLOBAL/IMMEDIATE): a card with no engagement scope
+        // (papal-indulgence, the-counting-house, grain-barges, ears-in-the-
+        // bazaar, the-pay-chest-taken, holy-war-proclaimed, a-death-in-the-
+        // palace, chain-across-the-horn, forced-march) resolves immediately —
+        // direct state delta or faction-wide modifier. Battle-/siege-scoped
+        // cards are rejected there (TACTIC_WRONG_TARGET — they need a target).
+        return playGlobalTactic(state, action.player, action.cardId, {
+          targetPlayerId: action.targetPlayerId,
+          targetProvinceId: action.targetProvinceId,
+        });
+      }
+      // Mode 1 (BATTLE): queue onto the PendingBattle; combat resolves it.
+      const battle = state.pendingBattles.find((b) => b.id === action.battleId);
+      if (!battle) {
+        throw new EngineError("NO_SUCH_BATTLE", `No pending battle ${action.battleId}.`);
+      }
+      let side: BattleSide;
+      if (battle.attackerId === player.id) side = "attacker";
+      else if (battle.defenderId === player.id) side = "defender";
+      else {
+        throw new EngineError(
+          "NOT_BELLIGERENT",
+          `${player.name} is not a party to battle ${battle.id}.`,
+        );
+      }
+      if (!(player.tacticHand ?? []).includes(action.cardId)) {
+        throw new EngineError(
+          "NOT_IN_HAND",
+          `${player.name} does not hold that tactic card.`,
+        );
+      }
+      // Queue it onto PendingBattle.{attacker,defender}Tactics + remove from hand.
+      return queueTactic(state, action.battleId, side, action.cardId);
+    }
+
+    case "DECLARE_WAR": {
+      // §11 A deliberate political act taken in the action window (costs 1 action).
+      const next = spendAction(state, action.player);
+      return advanceTurnPointer(applyDeclareWar(next, action));
+    }
+
+    case "LEVY_CALL": {
+      // §11.5 Calling up a vassal's levy is a Diplomacy-window action (costs 1).
+      const next = spendAction(state, action.player);
+      return advanceTurnPointer(applyLevyCall(next, action));
+    }
+
+    case "SIEGE_ASSAULT": {
+      // §8.2 step 4 (marshal major "sieges auto-assault every round"): a
+      // BUDGETED action-window declaration — spendAction gives it the same
+      // phase (WRONG_PHASE) / budget (NO_ACTIONS) / turn (OUT_OF_TURN) gates
+      // as MOVE. Sets SiegeState.assaultDeclared; combat resolves ONLY
+      // declared assaults and the declaration is consumed with the round.
+      const next = spendAction(state, action.player);
+      return advanceTurnPointer(applySiegeAssault(next, action));
+    }
+
+    default: {
+      // Exhaustiveness guard.
+      const _never: never = action;
+      void _never;
+      throw new EngineError("UNKNOWN_ACTION", "Unrecognised action type.");
+    }
+  }
+}
