@@ -664,7 +664,7 @@ export const normalPolicy: Policy = {
           case BuildingType.GRANARY:
             return (2 + (me.treasury.grain <= 4 ? 2 : 0)) * economy;
           case BuildingType.SHIPYARD:
-            return prov.coastal ? (1.5 + 3 * (biases.tradeFocus - 0.3)) * economy : null;
+            return prov.port ? (1.5 + 3 * (biases.tradeFocus - 0.3)) * economy : null;
           case BuildingType.TEMPLE:
             return 1.5 * economy;
           case BuildingType.UNIVERSITY:
@@ -768,16 +768,19 @@ export const normalPolicy: Policy = {
           },
           score,
         });
-        if (me.treasury[surplus] >= SURPLUS_AT + 1) {
-          out.push({
-            action: {
-              type: "TRADE",
-              player: me.id,
-              trade: { kind: "CONVERT", give: { [surplus]: 3 }, get: { [scarce]: 1 } },
-            },
-            score: score - (JITTER + 0.2),
-          });
-        }
+        // Always offered (the surplus gate above already guarantees
+        // >= SURPLUS_AT (6) >= 3): gating this twin on SURPLUS_AT+1 left a
+        // seat holding EXACTLY 6 of the surplus, with no 2:1 infrastructure,
+        // a slate of pure BAD_TRADE rejections — a fallback PASS that
+        // forfeited the whole turn.
+        out.push({
+          action: {
+            type: "TRADE",
+            player: me.id,
+            trade: { kind: "CONVERT", give: { [surplus]: 3 }, get: { [scarce]: 1 } },
+          },
+          score: score - (JITTER + 0.2),
+        });
         // Final fallback at the modifier-worsened ratio (4:1..6:1), offset
         // below both cheaper probes by more than the ranking jitter. Always
         // affordable: the surplus gate above guarantees ≥ SURPLUS_AT (6) ≥

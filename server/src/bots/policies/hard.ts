@@ -90,7 +90,8 @@ import {
   type ResourceBundle,
   type TacticCardId,
 } from "@imperium/shared";
-import { neighborsOf } from "../../engine/adjacency.js";
+import { bordersSea, neighborsOf } from "../../engine/adjacency.js";
+import { sumModifierValues } from "../../engine/modifiers.js";
 import {
   CONQUEST_PRESTIGE,
   FACTION_LEVY_ECONOMY,
@@ -480,7 +481,7 @@ function monopolyCount(
     const portOwners: string[] = [];
     for (const nb of neighborsOf(zone.id)) {
       const prov = hc.provinceById.get(nb);
-      if (!prov || !prov.coastal) continue;
+      if (!prov || !prov.port) continue; // §13.1 counts PORTS of a sea
       const owner = prov.id === extraOwned ? hc.me.id : prov.ownerId;
       if (owner) portOwners.push(owner);
     }
@@ -500,7 +501,7 @@ function monopolyPrestige(count: number): number {
 /** Marginal per-round monopoly prestige from capturing `provId`. */
 function monopolyDelta(hc: HardCtx, provId: string): number {
   const prov = hc.provinceById.get(provId);
-  if (!prov?.coastal) return 0;
+  if (!prov?.port) return 0;
   const before = monopolyPrestige(monopolyCount(hc, hc.me.id));
   const after = monopolyPrestige(monopolyCount(hc, hc.me.id, provId));
   let delta = Math.max(0, after - before);
@@ -597,7 +598,7 @@ function siegePlan(hc: HardCtx, dest: Province, moving: Army | Fleet): SiegePlan
     SIEGE.baseHoldoutRounds +
     (dest.buildings.includes(BuildingType.GRANARY) ? SIEGE.granaryBonusRounds : 0);
   let canStarve = true;
-  if (dest.coastal) {
+  if (bordersSea(dest.id)) {
     const zones = neighborsOf(dest.id).filter((id) => hc.seaZoneIds.has(id));
     // §8.2.3: supply slips in through ANY zone not enemy-controlled. Only when
     // every adjacent zone already holds my uncontested war fleet does the port
@@ -832,7 +833,7 @@ function scoreLandMove(hc: HardCtx, action: MoveA): number {
     const shortfall = threat / Math.max(1, myDefenceAt(hc, dest));
     const streamWorth =
       holdStreamValue(hc, dest) +
-      (dest.coastal && monopolyCount(hc, hc.me.id) > 0 ? hc.biases.tradeFocus * 2 : 0);
+      (dest.port && monopolyCount(hc, hc.me.id) > 0 ? hc.biases.tradeFocus * 2 : 0);
     return Math.max(
       0.1,
       stage,
@@ -1016,7 +1017,7 @@ function scoreNavalMove(hc: HardCtx, action: MoveA): number {
     const portOwners: string[] = [];
     for (const nb of neighborsOf(zoneId)) {
       const prov = hc.provinceById.get(nb);
-      if (prov?.coastal && prov.ownerId) portOwners.push(prov.ownerId);
+      if (prov?.port && prov.ownerId) portOwners.push(prov.ownerId);
     }
     const mine = portOwners.filter((o) => o === hc.me.id).length;
     const monopolySea = portOwners.length >= 2 && mine * 2 > portOwners.length;
@@ -1132,7 +1133,7 @@ function scoreBuild(hc: HardCtx, action: BuildA): number {
     case BuildingType.WALLS: {
       let s = 0.4 + (threatened && stream ? 2.0 * hc.biases.defensiveness : 0.3 * hc.biases.defensiveness);
       // Monopoly-port defence (Venice/Genoa keep their ports walled).
-      if (prov.coastal && monopolyCount(hc, hc.me.id) > 0) s += hc.biases.tradeFocus;
+      if (prov.port && monopolyCount(hc, hc.me.id) > 0) s += hc.biases.tradeFocus;
       return s;
     }
     case BuildingType.GRANARY:
@@ -1149,8 +1150,8 @@ function scoreBuild(hc: HardCtx, action: BuildA): number {
       return 0.9; // +1 tactic draw per round: HARD plays its tactics
     case BuildingType.SHIPYARD: {
       let s = 0.4 + hc.biases.tradeFocus * 0.9;
-      // The campaign blockade needs hulls, and hulls need a coastal yard.
-      if (hc.navalNeed && prov.coastal) {
+      // The campaign blockade needs hulls, and hulls need a harbor yard.
+      if (hc.navalNeed && prov.port) {
         const haveYard = hc.state.provinces.some(
           (p) => p.ownerId === hc.me.id && p.buildings.includes(BuildingType.SHIPYARD),
         );
@@ -1168,17 +1169,55 @@ function scoreBuild(hc: HardCtx, action: BuildA): number {
   }
 }
 
+/**
+ * 3:1 and worst-case-ratio twins of the shared 2:1 CONVERT candidates. §4.3:
+ * the 2:1 ratio needs infrastructure (Market / maritime port / Grand Bazaar)
+ * and events can worsen the BASE ratio via trade_mod — a slate built only on
+ * 2:1 probes dies as a run of BAD_TRADE rejections for a seat with none.
+ * Scored by scoreConvert with the ladder penalty, so the cheapest legal
+ * ratio always wins the slot.
+ */
+function convertFallbacks(hc: HardCtx): TradeA[] {
+  const tradeMod =
+    hc.me.faction !== null
+      ? sumModifierValues(hc.state, "trade_mod", { faction: hc.me.faction })
+      : 0;
+  const worst = Math.min(6, Math.max(3, 3 - tradeMod));
+  const out: TradeA[] = [];
+  for (const give of RESOURCE_KEYS) {
+    if (give === "faith") continue;
+    for (const get of RESOURCE_KEYS) {
+      if (get === give || get === "faith") continue;
+      for (const amt of worst > 3 ? [3, worst] : [3]) {
+        if (hc.me.treasury[give] < amt + 2) continue;
+        out.push({
+          type: "TRADE",
+          player: hc.me.id,
+          trade: { kind: "CONVERT", give: { [give]: amt }, get: { [get]: 1 } },
+        });
+      }
+    }
+  }
+  return out;
+}
+
 function scoreConvert(hc: HardCtx, action: TradeA): number {
   const trade = action.trade;
   if (trade.kind !== "CONVERT") return 0.02;
   const giveKey = RESOURCE_KEYS.find((k) => (trade.give[k] ?? 0) > 0);
   const getKey = RESOURCE_KEYS.find((k) => (trade.get[k] ?? 0) > 0);
   if (!giveKey || !getKey) return 0.02;
-  if (hc.me.treasury[giveKey] < 4) return 0.02; // keep a working reserve
+  // Ratio-ladder penalty: a 3:1 / worst-ratio twin (convertFallbacks) must
+  // rank BELOW its 2:1 sibling but stay a live candidate — without the
+  // ladder a seat with no 2:1 infrastructure (§4.3 Market / maritime port /
+  // Bazaar) dies in a run of BAD_TRADE rejections.
+  const giveAmt = trade.give[giveKey] ?? 0;
+  const ladder = Math.max(0, giveAmt - 2) * 0.12;
+  if (hc.me.treasury[giveKey] < giveAmt + 2) return 0.02; // working reserve
   // Exact §4.4 grain bill (faction levy economics, unique overrides).
   const upkeep = myGrainUpkeep(hc);
   if (giveKey === "grain" && hc.me.treasury.grain < upkeep + 2) return 0.02;
-  if (getKey === "gold" && hc.me.treasury.gold < 4) return 2.1;
+  if (getKey === "gold" && hc.me.treasury.gold < 4) return 2.1 - ladder;
   // ENABLEMENT BUYS rank ABOVE the hoard conversion below — the point of the
   // gold is to be spent, so the resources that unlock a shipyard hull or a
   // great work must never starve behind another grain→gold slot.
@@ -1188,7 +1227,7 @@ function scoreConvert(hc: HardCtx, action: TradeA): number {
     hc.me.treasury.gold >= 8 &&
     ((hc.navalNeed && hc.me.treasury.timber < 4) || hc.wantsTimber)
   ) {
-    return 1.5;
+    return 1.5 - ladder;
   }
   // HOARD CONVERSION: grain piled beyond the famine buffer buys the prestige
   // budget (great works, walls, hulls) instead of rotting in the granary —
@@ -1201,7 +1240,7 @@ function scoreConvert(hc: HardCtx, action: TradeA): number {
       if (p.ownerId === hc.me.id) grainYield += p.yields.grain;
     }
     const buffer = grainYield >= upkeep ? 4 : 8;
-    if (hc.me.treasury.grain > upkeep + buffer) return 1.25;
+    if (hc.me.treasury.grain > upkeep + buffer) return 1.25 - ladder;
   }
   if (getKey === "grain") {
     // Desertion maths (§4.4 unfed hosts desert — and a deserted wall is an
@@ -1218,13 +1257,14 @@ function scoreConvert(hc: HardCtx, action: TradeA): number {
     const structural = grainYield + 2 < upkeep;
     const projected = hc.me.treasury.grain - upkeep + grainYield;
     if (hc.me.treasury.grain < upkeep) {
-      return structural
-        ? 0.8
-        : 2.5 + Math.min(2.5, (upkeep - hc.me.treasury.grain) * 0.5);
+      return (
+        (structural ? 0.8 : 2.5 + Math.min(2.5, (upkeep - hc.me.treasury.grain) * 0.5)) -
+        ladder
+      );
     }
-    if (projected < upkeep) return structural ? 0.5 : 2.2;
+    if (projected < upkeep) return (structural ? 0.5 : 2.2) - ladder;
   }
-  if (getKey === "marble" && hc.wantsMarble && hc.me.treasury.gold >= 8) return 1.5;
+  if (getKey === "marble" && hc.wantsMarble && hc.me.treasury.gold >= 8) return 1.5 - ladder;
   return 0.03;
 }
 
@@ -1498,7 +1538,7 @@ function tradeRouteActions(hc: HardCtx): TradeA[] {
   }
   if (routeCount >= galleys) return []; // one merchantman per route, roughly
   const ports = hc.state.provinces.filter(
-    (p) => p.ownerId === hc.me.id && p.coastal,
+    (p) => p.ownerId === hc.me.id && p.port, // §5.1 route endpoints are ports
   );
   const out: TradeA[] = [];
   for (let i = 0; i < ports.length && out.length < 2; i += 1) {
@@ -2281,7 +2321,7 @@ function buildContext(ctx: PolicyContext, realMe: Player): HardCtx {
       hc.campaignTarget = p;
     }
   }
-  if (hc.campaignTarget !== null && hc.campaignTarget.coastal) {
+  if (hc.campaignTarget !== null && bordersSea(hc.campaignTarget.id)) {
     const target = hc.campaignTarget;
     hc.campaignZones = neighborsOf(target.id).filter((z) => seaZoneIds.has(z));
     const defId = target.ownerId;
@@ -2346,7 +2386,7 @@ function buildContext(ctx: PolicyContext, realMe: Player): HardCtx {
   let navalNeed = false;
   for (const target of mySiegeTargets) {
     const prov = provinceById.get(target);
-    if (!prov?.coastal) continue;
+    if (!prov || !bordersSea(prov.id)) continue;
     const zones = neighborsOf(target).filter((z) => seaZoneIds.has(z));
     if (zones.some((z) => warFleetUnitsIn(state, z, me.id) === 0)) navalNeed = true;
   }
@@ -2371,7 +2411,7 @@ function buildContext(ctx: PolicyContext, realMe: Player): HardCtx {
         seaZoneIds.has(f.locationId) &&
         neighborsOf(f.locationId).some((nb) => {
           const p = provinceById.get(nb);
-          return p?.coastal === true && p.ownerId === me.id;
+          return p?.port === true && p.ownerId === me.id;
         }),
     );
   }
@@ -2452,6 +2492,7 @@ export const hardPolicy: Policy = {
       ...greatWorkBuilds(hc),
       ...tradeRouteActions(hc),
       ...convertCandidates(ctx.state, hc.me),
+      ...convertFallbacks(hc),
       ...siegeAssaultActions(hc),
       ...spyActions(hc),
       ...vassalizeActions(hc),
