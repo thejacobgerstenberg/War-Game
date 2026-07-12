@@ -26,6 +26,7 @@
  * cast, mirroring how economy.ts reads it. See NEEDS-FROM-INTEGRATOR.
  */
 import {
+  GamePhase,
   TerrainType,
   UnitType,
   type GameAction,
@@ -248,7 +249,11 @@ export function refreshMercMarket(state: GameState): GameState {
     sold: false,
     // DA-3 (§6.3 step 2, CANON CLARIFICATION 3): each offer runs a true round-robin
     // voluntary-pass auction. Seed the pass set empty and leave the round-robin
-    // pointer unset (first raise/pass populates it). Prep4 added these fields.
+    // pointer DELIBERATELY unset: this refresh runs at END cleanup BEFORE the
+    // §13.4 turn-order re-sort (roundLoop), so seeding turnOrder[0] here would
+    // pin a STALE opener. applyMercBid derives the expected opening bidder
+    // lazily from the current turn order and the first raise/pass populates the
+    // pointer (marshal minors, mercenaries.ts:434). Prep4 added these fields.
     passedPlayerIds: [],
     activeBidderId: undefined,
   }));
@@ -364,6 +369,27 @@ function resolveAuctionRound(state: GameState, companyId: string): GameState {
  *  - a voluntary PASS (`action.pass === true`) — the issuer withdraws from this
  *    offer's round-robin (recorded in `passedPlayerIds`); `bid` is ignored.
  *
+ * PHASE WINDOW (marshal minors, mercenaries.ts:434): a MERC_BID is only legal
+ * during the §6.3 INCOME window — any other phase throws `WRONG_PHASE`.
+ * DECISION: the existing contract-§8 `WRONG_PHASE` code is REUSED rather than
+ * minting a `MERC_WRONG_PHASE` — transport/clients already handle it and the
+ * rejection semantics ("this action is illegal in the current phase") are
+ * identical. Only the PLAYER ACTION is gated: `refreshMercMarket`'s END-cleanup
+ * resolution (standing-bid fielding, unsold → NPC-minor roll) is NOT phase-gated
+ * and still resolves in whatever phase the round loop calls it.
+ *
+ * ROUND-ROBIN POINTER (same minors item): a raise or pass from anyone but the
+ * offer's `activeBidderId` throws `MERC_OUT_OF_TURN` (before any clone — state
+ * untouched). When the pointer is still unset (a freshly revealed offer — see
+ * {@link refreshMercMarket}, which deliberately leaves it undefined because the
+ * §13.4 turn-order re-sort runs AFTER the market refresh in cleanup), the
+ * expected bidder is derived lazily from the CURRENT turn order:
+ * {@link nextActiveBidder} over the non-passed bidders — i.e. the first
+ * non-passed player in turn order on an unopened offer, or the next non-passed
+ * rival after the high bidder on a hand-seeded one. Each accepted raise/pass
+ * then advances the pointer via {@link resolveAuctionRound}, skipping passed
+ * and auto-passed bidders.
+ *
  * After the raise/pass is recorded the round-robin advances
  * ({@link resolveAuctionRound}): rivals who cannot afford the minimum legal raise
  * are AUTO-passed (affordability is retained ONLY as a forced pass — CANON
@@ -381,6 +407,16 @@ export function applyMercBid(state: GameState, action: GameAction): GameState {
   }
   const player = state.players.find((p) => p.id === action.player);
   if (!player) throw new EngineError("UNKNOWN_PLAYER", "No such player.");
+
+  // §6.3 window gate (marshal minors, mercenaries.ts:434): bidding/passing is an
+  // INCOME-phase flow. Reuses the contract-§8 WRONG_PHASE code (documented in the
+  // fn docblock — no new MERC_WRONG_PHASE). Thrown before any clone: state untouched.
+  if (state.phase !== GamePhase.INCOME) {
+    throw new EngineError(
+      "WRONG_PHASE",
+      `MERC_BID is only legal during the INCOME phase (§6.3); the game is in ${state.phase}.`,
+    );
+  }
 
   const offer = state.mercMarket.find((o) => o.companyId === action.companyId);
   if (!offer) {
@@ -405,6 +441,29 @@ export function applyMercBid(state: GameState, action: GameAction): GameState {
     throw new EngineError(
       "MERC_PASSED",
       `${player.name} has already passed on ${def.name} and cannot bid again.`,
+    );
+  }
+
+  // §6.3 step 2 round-robin pointer (marshal minors, mercenaries.ts:434): only
+  // the offer's active bidder may raise OR pass. With the pointer unset (fresh
+  // offer — refreshMercMarket leaves it undefined so the §13.4 turn-order re-sort,
+  // which runs AFTER the market refresh in cleanup, governs the new round's
+  // opening bidder), derive it from the CURRENT turn order: the next non-passed
+  // bidder after the high bidder, or the first non-passed player when unopened.
+  // Thrown before any clone: a rejected out-of-turn bid leaves state untouched.
+  const bidders = biddersOf(state);
+  const expectedBidder =
+    offer.activeBidderId ??
+    nextActiveBidder(
+      bidders,
+      new Set(bidders.filter((id) => !alreadyPassed.includes(id))),
+      offer.highBidderId,
+    );
+  if (expectedBidder !== undefined && expectedBidder !== player.id) {
+    const expected = state.players.find((p) => p.id === expectedBidder);
+    throw new EngineError(
+      "MERC_OUT_OF_TURN",
+      `It is ${expected?.name ?? expectedBidder}'s turn to raise or pass on ${def.name}, not ${player.name}'s.`,
     );
   }
 

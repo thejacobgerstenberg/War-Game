@@ -117,8 +117,8 @@ Five resources drive everything, modelled as `ResourceBundle`:
 
 During the **Income & upkeep** phase each round, every player collects the summed
 yields of all owned provinces into their treasury. This is the engine function
-[`computeIncome(state, playerId)`](../server/src/engine/income.ts) →
-`ResourceBundle`.
+[`computeIncome(state)`](../server/src/engine/economy.ts) →
+`IncomeResult` (per-player `ResourceBundle`s).
 
 ```
 income(player) = Σ province.yields  for province where province.ownerId == player.id

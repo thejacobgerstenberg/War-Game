@@ -3,10 +3,8 @@
  *
  * Re-exports the full engine surface: map/adjacency data, state construction,
  * the balance constants, the deterministic RNG, the log factory, the reducer and
- * every subsystem. NOTE: the legacy `income.ts` module is intentionally NOT
- * re-exported here — its `computeIncome(state, playerId)` would collide with the
- * new `economy.ts` `computeIncome(state)`; import it directly where needed
- * (only its own test does).
+ * every subsystem. (The legacy pre-economy `income.ts` module and its stale
+ * exclusion note were deleted — `economy.ts` is the one income implementation.)
  */
 export * from "./mapData.js";
 export * from "./adjacency.js";

@@ -88,7 +88,7 @@ export function createInitialState(
     name: p.name,
     terrain: p.terrain,
     yields: { ...p.yields },
-    coastal: p.coastal,
+    port: p.port,
     position: { ...p.position },
     ownerId: p.startingFaction
       ? factionToPlayerId.get(p.startingFaction) ?? null

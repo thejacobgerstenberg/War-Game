@@ -45,12 +45,12 @@ describe("adjacency", () => {
     for (const s of SEA_ZONES) expect(ADJACENCY[s.id]).toBeDefined();
   });
 
-  it("connects every coastal province to at least one sea zone", () => {
+  it("connects every port province to at least one sea zone", () => {
     const seaIds = new Set(SEA_ZONES.map((s) => s.id));
     for (const p of PROVINCES) {
-      if (!p.coastal) continue;
+      if (!p.port) continue;
       const touchesSea = neighborsOf(p.id).some((n) => seaIds.has(n));
-      expect(touchesSea, `${p.id} is coastal but touches no sea`).toBe(true);
+      expect(touchesSea, `${p.id} is a port but touches no sea`).toBe(true);
     }
   });
 });

@@ -13,7 +13,7 @@
 import { describe, it, expect } from "vitest";
 import { Faction, TerrainType, UnitType, type GameState } from "@imperium/shared";
 import { createInitialState, type SeatInput } from "../gameState.js";
-import { neighborsOf } from "../adjacency.js";
+import { bordersSea, neighborsOf } from "../adjacency.js";
 import { applyIncomePhase } from "../economy.js";
 import { WALL_TIERS } from "../balance.js";
 import { drawOmen, resolveCard } from "./index.js";
@@ -247,7 +247,7 @@ describe("resolveCard — representative card effects", () => {
     expect(after.activeModifiers.some((m) => m.kind === "unlock")).toBe(false);
   });
 
-  it("#34 with no Ottoman in play auctions the Bombard to the highest gold+marble holder, placed in their capital", () => {
+  it("#34 with no Ottoman in play awards the Bombard to the highest gold+marble holder, placed in their capital", () => {
     const s = fresh(seats2NoOttoman); // p1 Byzantium, p3 Venice
     // Make Venice (p3) the clear highest combined gold+marble holder.
     player(s, "p3").treasury.gold += 50;
@@ -255,19 +255,24 @@ describe("resolveCard — representative card effects", () => {
     player(s, "p1").treasury.marble = 0;
     const after = resolveCard(s, omenCardId(34));
     expect(after.greatBombard!.inPlay).toBe(true);
-    expect(after.greatBombard!.ownerId).toBe("p3"); // Venice won the auction
+    expect(after.greatBombard!.ownerId).toBe("p3"); // Venice, the richest court
     expect(after.greatBombard!.provinceId).toBe("venice"); // Venice's capital
     const piece = after.armies.find((a) =>
       (a.variants ?? []).some((v) => v.variant === "GREAT_BOMBARD" && v.count > 0),
     );
     expect(piece!.ownerId).toBe("p3");
     expect(piece!.locationId).toBe("venice");
-    // The effect fn logs Orban's auction.
-    expect(after.log.some((e) => /auction|highest bidder/i.test(e.message))).toBe(true);
+    // Stage-A nit 3 (minors follow-up): the log describes the deterministic
+    // richest-award — it must NOT claim anyone "wins the auction" (the full bid
+    // auction is deferred pending design ratification).
+    const entry = after.log.find((e) => /Great Bombard Forged: no Ottoman/i.test(e.message))!;
+    expect(entry).toBeDefined();
+    expect(entry.message).toMatch(/richest court|most combined gold and marble/i);
+    expect(entry.message).not.toMatch(/wins the auction|highest bidder/i);
     expect(after.activeModifiers.some((m) => m.kind === "unlock")).toBe(false);
   });
 
-  it("#34 auction ties break by turn order (earliest seated wins)", () => {
+  it("#34 richest-award ties break by turn order (earliest seated wins)", () => {
     const s = fresh(seats2NoOttoman); // p1 Byzantium (earlier in turn order), p3 Venice
     // Force an exact gold+marble tie between p1 and p3.
     for (const id of ["p1", "p3"]) {
@@ -543,7 +548,9 @@ describe("#11 Corsair Raid — victim predicate selects a named-sea shore provin
     expect(victimId).toBeDefined();
     expect(neighborsOf(victimId)).toContain(zone);
     const victim = s.provinces.find((p) => p.id === victimId)!;
-    expect(victim.coastal).toBe(true);
+    // coastal→port rename: the raid predicate is "borders the raided sea"
+    // (adjacency-derived), not harbor status — a portless shore is raidable.
+    expect(bordersSea(victim.id)).toBe(true);
     expect(victim.ownerId).not.toBeNull();
     // … which Constantinople (Marmara/Bosphorus) does not — the pre-fix predicate
     // was vacuously true and ALWAYS struck Constantinople.
@@ -655,5 +662,140 @@ describe("#29 Schism — faith halving CONSUMED by economy (EVENT_CARDS #29)", (
     const after = resolveCard(s, omenCardId(29));
     expect(player(after, "p1").prestige).toBe(-1); // Byzantium
     expect(player(after, "p3").prestige).toBe(0); // Venice not faith-reliant
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINORS FOLLOW-UP: pickFrom uniformity (#25), #12 Serbian Despotate adjacency /
+// no invented tribute / NpcMinor ledger (EVENT_CARDS.md #25, #12)
+// ---------------------------------------------------------------------------
+
+describe("#25 Earthquake — pickFrom target fallback is UNIFORM (minors: d6-modulo bias)", () => {
+  // The 4 printed candidate cities, verbatim from EVENT_CARDS.md #25:
+  // "Choose (or randomize among constantinople/gallipoli/rhodes/thessalonica)".
+  const CITIES = ["constantinople", "gallipoli", "rhodes", "thessalonica"] as const;
+
+  /** Base state with every candidate city pinned to wall tier 3 (observable −1). */
+  function walledBase(): GameState {
+    const s = fresh(seats4);
+    for (const id of CITIES) {
+      const prov = s.provinces.find((p) => p.id === id)!;
+      prov.walls = { tier: 3, hp: WALL_TIERS[3].hp };
+    }
+    return s;
+  }
+
+  /** Resolve #25 (no choice) at rng cursor `c`; return the city that lost a tier. */
+  function struckCityAt(base: GameState, c: number): string {
+    const s = structuredClone(base);
+    s.rngCursor = c;
+    const after = resolveCard(s, omenCardId(25));
+    // REAL state delta: exactly one candidate city dropped 3 → 2.
+    const struck = CITIES.filter(
+      (id) => after.provinces.find((p) => p.id === id)!.walls.tier === 2,
+    );
+    expect(struck).toHaveLength(1);
+    expect(after.provinces.find((p) => p.id === struck[0])!.walls.hp).toBe(WALL_TIERS[2].hp);
+    return struck[0];
+  }
+
+  it("spreads the rng fallback ~evenly over all 4 cities (the d6-modulo pick gave constantinople/gallipoli 2/6 each vs 1/6 for rhodes/thessalonica)", () => {
+    const base = walledBase();
+    const N = 600;
+    const counts: Record<string, number> = {};
+    for (let c = 0; c < N; c += 1) {
+      const city = struckCityAt(base, c);
+      counts[city] = (counts[city] ?? 0) + 1;
+    }
+    // Uniform share = 0.25. The pre-fix modulo bias put constantinople and
+    // gallipoli at ~1/3 (≈200/600) and rhodes/thessalonica at ~1/6 (≈100/600),
+    // both far outside these bounds; a uniform pick sits well inside them.
+    for (const id of CITIES) {
+      expect(counts[id] ?? 0).toBeGreaterThan(0.18 * N);
+      expect(counts[id] ?? 0).toBeLessThan(0.32 * N);
+    }
+  });
+
+  it("consumes exactly ONE cursor step and is replayable from the persisted cursor (determinism)", () => {
+    const base = walledBase();
+    const s = structuredClone(base);
+    s.rngCursor = 42;
+    const after = resolveCard(s, omenCardId(25));
+    // One rng draw for the target pick; the advanced cursor is written back.
+    expect(after.rngCursor).toBe(43);
+    // Replaying from the same (seed, cursor) strikes the same city.
+    expect(struckCityAt(base, 42)).toBe(struckCityAt(base, 42));
+  });
+
+  it("an explicit choice bypasses the rng entirely (no cursor consumed)", () => {
+    const s = walledBase();
+    s.rngCursor = 7;
+    const after = resolveCard(s, omenCardId(25), { choice: "rhodes" });
+    expect(after.provinces.find((p) => p.id === "rhodes")!.walls.tier).toBe(2);
+    expect(after.rngCursor).toBe(7); // pickFrom returned the choice before drawing
+  });
+});
+
+describe("#12 Serbian Despotate Submits — adjacent-and-stronger, no invented tribute, NpcMinor ledger (EVENT_CARDS #12)", () => {
+  const seats3Hun: SeatInput[] = [
+    { id: "p1", name: "Basil", faction: Faction.BYZANTIUM, isHost: true },
+    { id: "p2", name: "Murad", faction: Faction.OTTOMAN, isHost: false },
+    { id: "p5", name: "Corvinus", faction: Faction.HUNGARY, isHost: false },
+  ];
+
+  const serbiaMinor = (s: GameState) => s.minors.find((m) => m.id === "serbia")!;
+  const serbiaProvince = (s: GameState) => s.provinces.find((p) => p.id === "serbia")!;
+  const provinceCount = (s: GameState, id: string) =>
+    s.provinces.filter((p) => p.ownerId === id).length;
+
+  it("vassalises serbia to the stronger ADJACENT power and grants the lord NO gold (the +2 'tribute' was invented — §11.5 benefits flow via vassalOf)", () => {
+    const s = fresh(seats3Hun);
+    // Both candidates are adjacent at start (Ottoman via sofia, Hungary via
+    // belgrade — MAP ADJACENCY), and the Ottoman is stronger by province count.
+    expect(neighborsOf("serbia")).toContain("sofia");
+    expect(neighborsOf("serbia")).toContain("belgrade");
+    expect(provinceCount(s, "p2")).toBeGreaterThan(provinceCount(s, "p5"));
+    const goldBefore = player(s, "p2").treasury.gold;
+    const after = resolveCard(s, omenCardId(12));
+    // The vassal pointer is the ONLY grant — standard §11.5 benefits are paid
+    // by the vassal subsystem (tribute at Income, callable levies), not here.
+    expect(serbiaMinor(after).vassalOf).toBe("p2");
+    expect(player(after, "p2").treasury.gold).toBe(goldBefore); // no +2 gold
+    // No side effects on the ledgers or the map on the submit branch.
+    expect(serbiaMinor(after).garrison).toBe(serbiaMinor(s).garrison);
+    expect(serbiaProvince(after).ownerId).toBeNull();
+  });
+
+  it("respects ADJACENCY: a stronger but non-adjacent Ottoman loses the vassal to the adjacent Hungary (card: 'adjacent AND stronger')", () => {
+    const s = fresh(seats3Hun);
+    // Strip the Ottoman's only serbia-bordering province (sofia). It remains
+    // the stronger faction overall — pre-fix, strength alone picked the lord.
+    s.provinces.find((p) => p.id === "sofia")!.ownerId = null;
+    expect(provinceCount(s, "p2")).toBeGreaterThan(provinceCount(s, "p5"));
+    expect(
+      s.provinces.some((p) => p.ownerId === "p2" && neighborsOf("serbia").includes(p.id)),
+    ).toBe(false);
+    const after = resolveCard(s, omenCardId(12));
+    expect(serbiaMinor(after).vassalOf).toBe("p5"); // Hungary, adjacent via belgrade
+    expect(player(after, "p5").treasury.gold).toBe(player(s, "p5").treasury.gold);
+  });
+
+  it("with NO qualifying lord, +1 lands on the NpcMinor garrison LEDGER (read by vassalize/diplomacy), not the province garrison", () => {
+    const s = fresh(seats2NoOttoman); // Byzantium + Venice: neither candidate seated
+    const minorBefore = serbiaMinor(s).garrison;
+    const provBefore = serbiaProvince(s).garrison ?? 0;
+    const after = resolveCard(s, omenCardId(12));
+    expect(serbiaMinor(after).vassalOf).toBeNull();
+    // Pre-fix the +1 went to Province.garrison and the NpcMinor ledger — the
+    // one vassalize bribes/rolls read — never moved.
+    expect(serbiaMinor(after).garrison).toBe(minorBefore + 1);
+    expect(serbiaProvince(after).garrison ?? 0).toBe(provBefore);
+  });
+
+  it("is rng-free: resolving #12 consumes no cursor (deterministic either way)", () => {
+    const s = fresh(seats3Hun);
+    s.rngCursor = 13;
+    const after = resolveCard(s, omenCardId(12));
+    expect(after.rngCursor).toBe(13);
   });
 });

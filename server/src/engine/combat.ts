@@ -31,12 +31,13 @@ import {
   SIEGE,
   SIEGE_ENGINES_FIGHT_AT_BREACH,
   STACKING,
+  TEMPLE_MORALE_BONUS,
   UNIQUE_UNIT_OVERRIDES,
   UNIT_STATS,
   WALL_TIERS,
 } from "./balance.js";
 import { appendLog, type LogInput } from "./logEntry.js";
-import { neighborsOf } from "./adjacency.js";
+import { bordersSea, neighborsOf } from "./adjacency.js";
 import { addModifier, getModifiers, removeModifier, sumModifierValues } from "./modifiers.js";
 import { playTactic } from "./tactics/index.js";
 // Card DATA is imported from the data-only module (not the subsystem barrel) so
@@ -401,6 +402,21 @@ function moraleShift(state: GameState, faction: Faction | null, ctx: BattleCtx):
 }
 
 /**
+ * §9.1 Church/Mosque CONSUMER (marshal minors list, ECONOMY: "balance.ts:345
+ * Church/Mosque '+1 defender morale' §9.1 unimplemented"): a TEMPLE standing in
+ * the embattled province steadies the DEFENDER — `balance.TEMPLE_MORALE_BONUS`
+ * is folded into the defender's §7.5 rout-threshold shift exactly like a
+ * positive `morale` modifier (steadier = lower threshold = the garrison holds
+ * where a temple-less defence would break). Land battles and siege assaults
+ * only: a sea zone has no buildings, and naval combat has no rout anyway.
+ */
+function templeMoraleBonus(state: GameState, ctx: BattleCtx): number {
+  if (!ctx.provinceId) return 0;
+  const prov = state.provinces.find((p) => p.id === ctx.provinceId);
+  return prov?.buildings.includes(BuildingType.TEMPLE) ? TEMPLE_MORALE_BONUS : 0;
+}
+
+/**
  * §8.4 (delta 3, 1-round emplacement): a freshly placed or relocated Great Bombard
  * cannot FIRE (bombard the walls) until the round AFTER it entered play. The
  * authoritative arrival clock is the {@link GameState.greatBombard} singleton's
@@ -472,6 +488,32 @@ function salvageBombardToVictor(
     if (!kept) captured += 1; // escort destroyed → the gun is loot, not scrap
   }
   if (captured === 0) return state;
+  // §8.4 capture row CONSUMER (marshal minors list, COMBAT: "combat.ts:371 GB
+  // captor 'spike it' option unimplemented"): when `GREAT_BOMBARD.spikeOnCapture`
+  // is true the captor SPIKES the captured gun instead of taking it — the piece
+  // is PERMANENTLY REMOVED from play (the destroyed escort already carried the
+  // variant piece off the board via writeBack; nothing is attached to the victor,
+  // and the one-per-game singleton tracker goes `inPlay: false` so the gun can
+  // never return). The default `false` keeps the ratified capture-passes-intact
+  // transfer below.
+  const spikeCapturedBombard: boolean = GREAT_BOMBARD.spikeOnCapture;
+  if (spikeCapturedBombard) {
+    state.greatBombard = {
+      ...(state.greatBombard ?? { emplacedRound: state.round }),
+      inPlay: false,
+      ownerId: null,
+      provinceId: null,
+    };
+    return appendLog(state, {
+      round: state.round,
+      phase: state.phase,
+      type: "battle",
+      actors: winnerId ? [winnerId] : [],
+      message:
+        "The captured Great Bombard is spiked — the great gun is destroyed for good.",
+      data: { greatBombardSpiked: true, captured },
+    });
+  }
   // Attach to a surviving winner stack; else re-home the tracker only (degenerate:
   // the victor kept no stack — e.g. a synthetic garrison held the city).
   const winnerArmy = state.armies.find(
@@ -514,7 +556,10 @@ function salvageBombardToVictor(
  * independent of it and is never blocked by an active resupply.
  */
 function seaResupplyActive(state: GameState, prov: Province, defenderOwnerId: string | null): boolean {
-  if (!prov.coastal) return false;
+  // CALL-SITE DECISION (coastal→port rename): sea-resupply is the PHYSICAL
+  // "borders a sea" lane (adjacency-derived bordersSea), not `Province.port` —
+  // a non-port shore city can still be fed over an open beach lane.
+  if (!bordersSea(prov.id)) return false;
   const seaIds = new Set(state.seaZones.map((z) => z.id));
   const adjacentSeas = neighborsOf(prov.id).filter((n) => seaIds.has(n));
   if (adjacentSeas.length === 0) return false; // no sea lane → treat as landlocked
@@ -1143,8 +1188,12 @@ function runEngine(
         0,
         6,
       );
+      // §9.1: a TEMPLE in the defended province adds TEMPLE_MORALE_BONUS to the
+      // defender's morale (on top of any `morale` modifiers) — defender only.
       const defRoutThreshold = clamp(
-        COMBAT_MODS.routThreshold - moraleShift(s, ctx.defenderFaction, ctx),
+        COMBAT_MODS.routThreshold -
+          moraleShift(s, ctx.defenderFaction, ctx) -
+          templeMoraleBonus(s, ctx),
         0,
         6,
       );
@@ -1773,6 +1822,27 @@ export function resolveNaval(
   // §7.6 the winner controls the zone (enabling blockade).
   if (zonePost && winnerId) zonePost.blockadedBy = winnerId;
 
+  // B4 residual (marshal Stage-B / minors follow-up): tally every enemy FLEET the
+  // winner destroyed onto `Player.fleetsDestroyed`, keyed by the victim's faction.
+  // prestige.ts CONSUMES this counter for the `destroyedFleetOf` objective clause
+  // (ven-queen-of-the-adriatic) — without the increment that clause could never be
+  // satisfied. Only fleets that STARTED the battle manned and ended wiped count.
+  if (winnerId) {
+    const winner = post.players.find((p) => p.id === winnerId);
+    const losers = winnerId === battle.attackerId ? defenders : attackers;
+    const losersInitial = winnerId === battle.attackerId ? defInitial : atkInitial;
+    if (winner) {
+      for (const w of losers) {
+        if ((losersInitial.get(w.id) ?? 0) === 0 || stackTotal(w) > 0) continue;
+        const victimFaction = factionOf(post, w.ownerId);
+        if (!victimFaction) continue;
+        const tally = winner.fleetsDestroyed ?? {};
+        tally[victimFaction] = (tally[victimFaction] ?? 0) + 1;
+        winner.fleetsDestroyed = tally;
+      }
+    }
+  }
+
   // §13.1 decisive naval battle (one side wiped) → +1 prestige_pending.
   const pending: Record<string, number> = {};
   if (winnerId) {
@@ -1830,7 +1900,11 @@ export function resolveSiege(
   siege: SiegeState,
   rng: Rng,
 ): SiegeResult {
-  const next = structuredClone(state) as GameState;
+  // `let`: salvageBombardToVictor may append a spike log (§8.4 capture row),
+  // returning a shallow-copied state that must be threaded onward. Its
+  // provinces/armies/siegeStates arrays are shared references, so `prov`/`live`
+  // stay valid across the reassignment.
+  let next = structuredClone(state) as GameState;
   const prov = next.provinces.find((p) => p.id === siege.provinceId);
   const live =
     next.siegeStates.find((s) => s.provinceId === siege.provinceId) ??
@@ -2156,7 +2230,7 @@ export function resolveSiege(
   // the besieger holds the field and keeps its gun, so this only fires on !captured.)
   if (!captured && besiegerBombardIds.size > 0) {
     const defenderStackIds = defenders.filter((w) => !w.garrison).map((w) => w.id);
-    salvageBombardToVictor(next, besiegers, besiegerBombardIds, prov.ownerId, defenderStackIds);
+    next = salvageBombardToVictor(next, besiegers, besiegerBombardIds, prov.ownerId, defenderStackIds);
   }
 
   const capturedTier = prov.walls.tier;

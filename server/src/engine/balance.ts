@@ -22,7 +22,7 @@ import {
 // §3.1 Terrain
 // ---------------------------------------------------------------------------
 
-/** Base per-turn yield of each terrain (§3.1). DESERT authored: trade gold, no grain. */
+/** Base per-turn yield of each terrain (§3.1). */
 export const TERRAIN_YIELDS: Record<TerrainType, ResourceBundle> = {
   [TerrainType.PLAINS]: { gold: 1, grain: 2, timber: 0, marble: 0, faith: 0 },
   [TerrainType.HILLS]: { gold: 1, grain: 0, timber: 0, marble: 1, faith: 0 },
@@ -30,7 +30,6 @@ export const TERRAIN_YIELDS: Record<TerrainType, ResourceBundle> = {
   [TerrainType.FOREST]: { gold: 0, grain: 1, timber: 2, marble: 0, faith: 0 },
   [TerrainType.COAST]: { gold: 1, grain: 1, timber: 0, marble: 0, faith: 0 },
   [TerrainType.CITY]: { gold: 3, grain: 0, timber: 0, marble: 0, faith: 1 },
-  [TerrainType.DESERT]: { gold: 1, grain: 0, timber: 0, marble: 0, faith: 0 },
 };
 
 /** Movement point cost to enter a terrain (§3.1). */
@@ -41,7 +40,6 @@ export const TERRAIN_MOVE_COST: Record<TerrainType, number> = {
   [TerrainType.FOREST]: 1,
   [TerrainType.COAST]: 1,
   [TerrainType.CITY]: 1,
-  [TerrainType.DESERT]: 2,
 };
 
 /** Defender combat bonus granted by terrain (§3.1 / §7.3). */
@@ -52,7 +50,6 @@ export const TERRAIN_DEF_MOD: Record<TerrainType, number> = {
   [TerrainType.FOREST]: 1,
   [TerrainType.COAST]: 0,
   [TerrainType.CITY]: 0, // walls provide the city bonus, not terrain
-  [TerrainType.DESERT]: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -237,8 +234,9 @@ export const UNIQUE_UNIT_OVERRIDES: Record<string, UniqueUnitDef> = {
     name: "Great Galley (Galeazza)",
     faction: Faction.VENICE,
     atkMod: 1,
-    // §2.3 economy: Venice Arsenal timber cost 1 (overrides base timber; gold unchanged).
-    cost: { timber: 1 },
+    // §2.3 economy (marshal answer-key minor): canon timber cost 2 — base
+    // WARSHIP timber 3 minus the Venice Arsenal −1 discount (gold unchanged).
+    cost: { timber: 2 },
     abilities: ["anti-galley", "coastal-siege-support"],
     recruitProvinces: ["venice"],
   },
@@ -322,8 +320,11 @@ export interface BuildingEffect {
   tradeRatio?: number;
   /** Extra siege hold-out rounds (Granary). */
   siegeHoldoutBonus?: number;
-  /** Extra grain storage capacity. */
-  grainStorageBonus?: number;
+  // `grainStorageBonus` DELETED (marshal economy minor): the Granary's "+2
+  // grain storage" (§9.1) had NO reader anywhere in the engine — a dead field.
+  // Whether a storage cap mechanic should exist at all PENDS DESIGN
+  // RATIFICATION; the Granary's live effect is the siege hold-out bonus
+  // (SIEGE.granaryBonusRounds, consumed by combat.ts).
   /** Extra fleet capacity (Shipyard). */
   fleetCapBonus?: number;
   /** Extra card/omen draws per round (University). */
@@ -340,12 +341,22 @@ export interface BuildingEffect {
 export const BUILDING_EFFECTS: Record<BuildingType, BuildingEffect> = {
   [BuildingType.BARRACKS]: { enablesLandRecruit: true },
   [BuildingType.MARKET]: { tradeRatio: 2, yieldBonus: { gold: 1 } },
-  [BuildingType.GRANARY]: { grainStorageBonus: 2, siegeHoldoutBonus: 2 },
+  [BuildingType.GRANARY]: { siegeHoldoutBonus: 2 },
   [BuildingType.SHIPYARD]: { enablesNavalBuild: true, fleetCapBonus: 1 },
   [BuildingType.TEMPLE]: { yieldBonus: { faith: 1 }, tags: ["morale"] },
+  // (the TEMPLE "morale" tag's numeric value is TEMPLE_MORALE_BONUS below)
   [BuildingType.WALLS]: { tags: ["fortification"] },
   [BuildingType.UNIVERSITY]: { drawBonus: 1, tags: ["prestige-minor"] },
 };
+
+/**
+ * §9.1 Church/Mosque: "+1 defender morale" — the numeric value behind the
+ * TEMPLE "morale" tag (marshal economy minor: the effect was documented but
+ * had no constant and no consumer). Added as data for the combat consumer
+ * (defender rout-threshold shift when the defended province has a TEMPLE);
+ * the consumption wiring lands with the minors follow-up combat pass.
+ */
+export const TEMPLE_MORALE_BONUS = 1;
 
 export interface GreatWorkDef {
   cost: Partial<ResourceBundle>;
@@ -641,6 +652,14 @@ export const GREAT_BOMBARD = {
   unlockOmenId: "omen-34",
   /** Moves 1 province/round (a full Move action); may NOT enter MOUNTAINS. */
   movePerRound: 1,
+  /**
+   * §8.4 capture row (marshal combat minor): the canon gives a captor the
+   * OPTION to "spike" the captured gun — destroy it permanently instead of
+   * taking it intact. `false` = default capture behaviour stays
+   * transfer-intact; the Stage-B combat consumer reads a per-capture
+   * `spikeCapturedBombard` choice against this default. Data-only for now.
+   */
+  spikeOnCapture: false,
 } as const;
 
 /**
@@ -966,13 +985,15 @@ export const ERA_BOUNDARIES: Record<1 | 2 | 3, [number, number]> = {
 /** Base action budget per player per round (§10.0); only certain CARDS → 5. */
 export const ACTIONS_PER_ROUND = 4;
 /**
- * @deprecated FL-11 / CANON #2 — the University grants a +1 TACTIC-CARD DRAW
- * (see {@link TACTIC.universityDrawBonus}), NOT a 5th action. Only card-posted
- * `action_bonus` modifiers may raise the budget to 5. This constant is now 0 so
- * the still-present `resetActionBudgets` branch in roundLoop.ts is a no-op; the
- * roundLoop agent should delete that branch + this export (one-line removal).
+ * §10.0 hard ceiling on the per-round action budget: "certain cards raise the
+ * budget to 5" — to 5, never beyond. roundLoop.ts::resetActionBudgets clamps
+ * `ACTIONS_PER_ROUND + action_bonus modifiers` to this (marshal actions nit:
+ * stacked card bonuses were previously uncapped).
  */
-export const UNIVERSITY_ACTION_BONUS = 0;
+export const MAX_ACTIONS_PER_ROUND = 5;
+// UNIVERSITY_ACTION_BONUS DELETED (marshal actions nit): a dead @deprecated
+// 0-valued export — FL-11/CANON #2 settled that the University grants a +1
+// tactic-card DRAW (TACTIC.universityDrawBonus), never a 5th action.
 
 /**
  * Omen draw counts (resolves the circular §12/EVENT_CARDS gap). One shared

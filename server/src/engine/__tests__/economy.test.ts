@@ -30,7 +30,8 @@ import {
 } from "../economy.js";
 import { EngineError } from "../actions.js";
 import { makeRng } from "../rng.js";
-import { GREAT_BOMBARD, MERC_REVOLT_PILLAGE } from "../balance.js";
+import { expireRoundModifiers, getModifiers } from "../modifiers.js";
+import { GREAT_BOMBARD, MERC_REVOLT_PILLAGE, TRADE } from "../balance.js";
 
 /** Tag an army's units as mercenaries (§6.2/§4.4). */
 function tagMercs(stack: Army, mercs: Partial<Record<UnitType, number>>): Army {
@@ -110,9 +111,12 @@ describe("computeIncome — §4.2 taxation multipliers", () => {
 // ---------------------------------------------------------------------------
 
 describe("upkeep — §4.4 starvation desertion", () => {
+  // NOTE (§6.1 no-home-upkeep): these fixtures campaign IN THE FIELD (edirne is
+  // p2-owned) — a levy garrisoning its owner's home province now owes 0 grain
+  // and would unbalance the ledgers below; see the dedicated §6.1 suite.
   it("deserts lowest-value first (LEVY before INFANTRY)", () => {
     const state = fresh();
-    state.armies = [army("p1", "selymbria", { [UnitType.LEVY]: 1, [UnitType.INFANTRY]: 1 })];
+    state.armies = [army("p1", "edirne", { [UnitType.LEVY]: 1, [UnitType.INFANTRY]: 1 })];
     state.fleets = [];
     state.players[0].treasury.grain = 1; // due 2, deficit 1 → one LEVY deserts
     const out = upkeep(state);
@@ -123,7 +127,7 @@ describe("upkeep — §4.4 starvation desertion", () => {
 
   it("charges mercenaries double grain upkeep (MERC_UPKEEP_MULTIPLIER)", () => {
     const state = fresh();
-    const merc = army("p1", "selymbria", { [UnitType.LEVY]: 2 });
+    const merc = army("p1", "edirne", { [UnitType.LEVY]: 2 });
     (merc as { mercenaries?: Partial<Record<UnitType, number>> }).mercenaries = {
       [UnitType.LEVY]: 2,
     };
@@ -137,7 +141,7 @@ describe("upkeep — §4.4 starvation desertion", () => {
 
   it("deserts mercenaries FIRST even when they are higher-value than regulars", () => {
     const state = fresh();
-    const stack = army("p1", "selymbria", { [UnitType.LEVY]: 1, [UnitType.CAVALRY]: 1 });
+    const stack = army("p1", "edirne", { [UnitType.LEVY]: 1, [UnitType.CAVALRY]: 1 });
     (stack as { mercenaries?: Partial<Record<UnitType, number>> }).mercenaries = {
       [UnitType.CAVALRY]: 1,
     };
@@ -296,48 +300,114 @@ describe("trade routes — §5.2 formula", () => {
   });
 });
 
-describe("applyIncomePhase — §5.3 piracy", () => {
-  it("sinks an unescorted merchant on a 1d6 <= 2 roll, else it survives", () => {
-    const state = fresh();
-    state.fleets = [galleyFleet("p1", "constantinople")]; // no WARSHIP escort
-    addRoute(state, "p1", "constantinople", "selymbria", ["bosphorus"], "f-p1");
-    // The very first RNG draw of the Income phase is this route's piracy check.
-    const expectedRoll = makeRng(state.rngSeed, state.rngCursor).rollD6();
-    const out = applyIncomePhase(state);
-    const routeGone = !out.activeModifiers.some((m) => m.kind === "trade_route");
-    const fleet = out.fleets.find((f) => f.id === "f-p1");
-    if (expectedRoll <= 2) {
-      expect(routeGone).toBe(true); // §5.3 sunk → route broken
-      expect(fleet?.units[UnitType.GALLEY] ?? 0).toBe(0);
-    } else {
-      expect(routeGone).toBe(false);
-      expect(fleet?.units[UnitType.GALLEY]).toBe(1);
+// §5.3 piracy — RAID SPLIT (minors list economy.ts:625): raid-occurrence and
+// sinking are SEPARATE dice. A raid suppresses that route's income THIS Income
+// phase; only a further sink roll (1d6 <= TRADE.piracySinkRoll) also removes the
+// galley and breaks the route. Tests steer the deterministic seeded stream by
+// picking a cursor whose next draws produce the wanted hit/miss sequence.
+describe("applyIncomePhase — §5.3 piracy (raid split: income loss vs sinking)", () => {
+  /** First cursor ≥ start whose next d6 draws hit (<= piracySinkRoll) per `wanted`. */
+  function cursorWhere(seed: number, start: number, wanted: boolean[]): number {
+    for (let c = start; c < start + 100_000; c += 1) {
+      const rng = makeRng(seed, c);
+      if (wanted.every((hit) => (rng.rollD6() <= TRADE.piracySinkRoll) === hit)) {
+        return c;
+      }
     }
+    throw new Error("no cursor produces the wanted piracy roll sequence");
+  }
+
+  /**
+   * Unescorted single-route fixture. The FIRST Income-phase rng draws are this
+   * route's raid (and, on a raid, sink) checks; `rolls` forces their outcomes.
+   * Land upkeep isolated away (armies cleared); route pays 2+3+1+0 = 6.
+   */
+  function piracyFixture(rolls: boolean[]): GameState {
+    const state = fresh();
+    state.armies = [];
+    state.fleets = [galleyFleet("p1", "constantinople")]; // off-lane: no escort
+    addRoute(state, "p1", "constantinople", "selymbria", ["sea-of-marmara"], "f-p1");
+    state.rngCursor = cursorWhere(state.rngSeed, state.rngCursor, rolls);
+    return state;
+  }
+
+  it("no raid: the route pays in full and the merchantman is untouched", () => {
+    const state = piracyFixture([false]); // raid roll misses
+    const goldBefore = state.players[0].treasury.gold;
+    const out = applyIncomePhase(state);
+    expect(out.players[0].treasury.gold - goldBefore).toBe(13 + 6); // route paid
+    expect(out.fleets.find((f) => f.id === "f-p1")?.units[UnitType.GALLEY]).toBe(1);
+    const mod = out.activeModifiers.find((m) => m.kind === "trade_route");
+    expect(mod).toBeDefined();
+    expect(mod!.data?.raidedRound).toBeUndefined(); // never stamped
+  });
+
+  it("raided but NOT sunk: income suppressed THIS phase, galley + route survive and pay again next round", () => {
+    const state = piracyFixture([true, false]); // raid hits, sink roll misses
+    const goldBefore = state.players[0].treasury.gold;
+    const out = applyIncomePhase(state);
+    // §5.3 "loses that round's route income": province gold only, no route gold.
+    expect(out.players[0].treasury.gold - goldBefore).toBe(13);
+    // The merchantman SURVIVES and the route persists (stamped, not broken).
+    expect(out.fleets.find((f) => f.id === "f-p1")?.units[UnitType.GALLEY]).toBe(1);
+    const mod = out.activeModifiers.find((m) => m.kind === "trade_route");
+    expect(mod).toBeDefined();
+    expect(mod!.data?.raidedRound).toBe(out.round);
+    // The raid is chronicled.
+    expect(out.log.some((l) => (l.data as { raided?: boolean })?.raided === true)).toBe(true);
+    // The suppression lasts EXACTLY this Income: next round the route pays again.
+    const nextRound = structuredClone(out) as GameState;
+    nextRound.round += 1;
+    expect(computeIncome(nextRound).perPlayer.p1.gold).toBe(13 + 6);
+  });
+
+  it("raided AND sunk: income suppressed, the galley is removed and the route broken", () => {
+    const state = piracyFixture([true, true]); // raid hits, sink hits
+    const goldBefore = state.players[0].treasury.gold;
+    const out = applyIncomePhase(state);
+    expect(out.players[0].treasury.gold - goldBefore).toBe(13); // no route gold
+    expect(out.fleets.find((f) => f.id === "f-p1")?.units[UnitType.GALLEY]).toBe(0); // sunk
+    expect(out.activeModifiers.some((m) => m.kind === "trade_route")).toBe(false); // broken
+    expect(out.log.some((l) => (l.data as { sunk?: boolean })?.sunk === true)).toBe(true);
   });
 
   it("a friendly GALLEY war fleet in the lane escorts and prevents piracy (§5.3, FL-15)", () => {
     const state = fresh();
+    state.armies = [];
     state.fleets = [
       galleyFleet("p1", "constantinople"), // merchantman (id f-p1), off-lane
       {
         id: "escort",
         ownerId: "p1",
-        locationId: "bosphorus",
+        locationId: "sea-of-marmara",
         units: { ...emptyUnits(), [UnitType.GALLEY]: 1 }, // GALLEY, not WARSHIP
       },
     ];
-    addRoute(state, "p1", "constantinople", "selymbria", ["bosphorus"], "f-p1");
+    addRoute(state, "p1", "constantinople", "selymbria", ["sea-of-marmara"], "f-p1");
+    // Steer the dice to raid-AND-sink: the escort must bypass them entirely.
+    state.rngCursor = cursorWhere(state.rngSeed, state.rngCursor, [true, true]);
     const out = applyIncomePhase(state);
-    // A galley (war fleet per §5.3) escorting the hop prevents the sink outright,
-    // regardless of the piracy die → route stays intact and no galley is lost.
-    expect(out.activeModifiers.some((m) => m.kind === "trade_route")).toBe(true);
+    // A galley (war fleet per §5.3) escorting the hop prevents the raid outright,
+    // regardless of the piracy dice → route intact, no galley lost, no raid stamp.
+    const mod = out.activeModifiers.find((m) => m.kind === "trade_route");
+    expect(mod).toBeDefined();
+    expect(mod!.data?.raidedRound).toBeUndefined();
     expect(out.fleets.find((f) => f.id === "f-p1")?.units[UnitType.GALLEY]).toBe(1);
+    expect(out.log.some((l) => (l.data as { raided?: boolean })?.raided === true)).toBe(false);
   });
 
   it("advances and persists the RNG cursor (determinism)", () => {
     const state = fresh();
     const out = applyIncomePhase(state);
     expect(out.rngCursor).toBeGreaterThanOrEqual(state.rngCursor);
+  });
+
+  it("is deterministic: the same seed/cursor replays the identical piracy outcome", () => {
+    const a = applyIncomePhase(piracyFixture([true, false]));
+    const b = applyIncomePhase(piracyFixture([true, false]));
+    expect(b.rngCursor).toBe(a.rngCursor);
+    expect(b.players[0].treasury).toEqual(a.players[0].treasury);
+    expect(b.fleets).toEqual(a.fleets);
   });
 });
 
@@ -581,7 +651,8 @@ describe("economy modifier readers — §4/§5", () => {
 
   it("'upkeep_mod' changes the grain a faction owes at upkeep (§4.4)", () => {
     const state = fresh();
-    state.armies = [army("p1", "selymbria", { [UnitType.LEVY]: 1 })]; // due 1 grain
+    // Field levy (edirne is p2-owned): due 1 grain (§6.1 home levies owe 0).
+    state.armies = [army("p1", "edirne", { [UnitType.LEVY]: 1 })];
     state.fleets = [];
     state.players[0].treasury.grain = 5;
     addMod(state, "upkeep_mod", { value: 2, target: { faction: Faction.BYZANTIUM } });
@@ -640,7 +711,8 @@ describe("applyTrade CONVERT — §4.3/§5 specialty 1:1 lane", () => {
 describe("upkeep — §4.4 mercenary double-rate desertion", () => {
   it("deserts mercenaries at double rate: each merc relieves its doubled upkeep", () => {
     const state = fresh();
-    const stack = army("p1", "selymbria", { [UnitType.LEVY]: 3 });
+    // Field fixture (edirne is p2-owned): §6.1 home levies would owe 0.
+    const stack = army("p1", "edirne", { [UnitType.LEVY]: 3 });
     (stack as { mercenaries?: Partial<Record<UnitType, number>> }).mercenaries = {
       [UnitType.LEVY]: 3,
     };
@@ -712,11 +784,12 @@ describe("upkeep — §4.4/§6.3 elite-mercenary variant heads (FL-10)", () => {
 
   it("variant mercenaries desert FIRST, before regular units, at the doubled rate", () => {
     const state = fresh();
-    // One regular LEVY plus one VARANGIAN_REMNANT INFANTRY head.
+    // One regular LEVY plus one VARANGIAN_REMNANT INFANTRY head, in the FIELD
+    // (edirne is p2-owned — a §6.1 home levy would owe 0 and skew the ledger).
     state.armies = [
       variantArmy(
         "p1",
-        "selymbria",
+        "edirne",
         [{ base: UnitType.INFANTRY, variant: "VARANGIAN_REMNANT", count: 1 }],
         { [UnitType.LEVY]: 1 },
       ),
@@ -734,22 +807,28 @@ describe("upkeep — §4.4/§6.3 elite-mercenary variant heads (FL-10)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// §4.4/§11 DELTA 5 — unpaid-mercenary desertion PILLAGES the host province
+// EVENT_CARDS #22 `mercenary-revolt` / ratified errata E5b — unpaid-mercenary
+// desertion PILLAGES the host province: −2 gold to the owner AND yield 0 next
+// Income (both printed halves; formerly mis-cited as §4.4/§11 "DELTA 5").
 // ---------------------------------------------------------------------------
 
-describe("upkeep — §4.4/§11 unpaid-merc desertion pillages host (DELTA 5)", () => {
+describe("upkeep — EVENT_CARDS #22/E5b unpaid-merc desertion pillages host", () => {
   it("strips MERC_REVOLT_PILLAGE gold from the host province's owner when an unpaid merc deserts", () => {
     const state = fresh();
-    // One mercenary LEVY hosted at selymbria (owned by p1); no grain to feed it.
+    // One mercenary INFANTRY hosted at selymbria (owned by p1); no grain to feed
+    // it. (INFANTRY, not LEVY: a home-garrison levy owes 0 grain under §6.1 and
+    // would never desert.)
     state.armies = [
-      tagMercs(army("p1", "selymbria", { [UnitType.LEVY]: 1 }), { [UnitType.LEVY]: 1 }),
+      tagMercs(army("p1", "selymbria", { [UnitType.INFANTRY]: 1 }), {
+        [UnitType.INFANTRY]: 1,
+      }),
     ];
     state.fleets = [];
     state.players[0].treasury.grain = 0; // due 2 (merc ×2) → deficit 2 → merc deserts
     state.players[0].treasury.gold = 10;
     const out = upkeep(state);
-    expect(out.armies[0].units[UnitType.LEVY]).toBe(0); // unpaid merc deserted
-    // DELTA 5: the deserting company pillages its host (selymbria, p1-owned).
+    expect(out.armies[0].units[UnitType.INFANTRY]).toBe(0); // unpaid merc deserted
+    // #22/E5b gold half: the deserting company pillages its host (selymbria, p1-owned).
     expect(out.players[0].treasury.gold).toBe(10 - MERC_REVOLT_PILLAGE.pillageGold);
     // A pillage entry is chronicled.
     expect(out.log.some((l) => (l.data as { pillageGold?: number })?.pillageGold)).toBe(
@@ -768,37 +847,69 @@ describe("upkeep — §4.4/§11 unpaid-merc desertion pillages host (DELTA 5)", 
     state.players[0].treasury.gold = 10; // merc owner
     state.players[1].treasury.gold = 10; // host (edirne) owner
     const out = upkeep(state);
-    // §4.4/§11: the HOST province owner (p2) is robbed; the merc owner (p1) is not.
+    // #22/E5b: the HOST province owner (p2) is robbed; the merc owner (p1) is not.
     expect(out.players[1].treasury.gold).toBe(10 - MERC_REVOLT_PILLAGE.pillageGold);
     expect(out.players[0].treasury.gold).toBe(10);
   });
 
   it("does NOT pillage on ordinary (non-mercenary) desertion", () => {
     const state = fresh();
-    // A regular (un-tagged) LEVY that starves and deserts — no pillage.
-    state.armies = [army("p1", "selymbria", { [UnitType.LEVY]: 1 })];
+    // A regular (un-tagged) INFANTRY that starves and deserts — no pillage.
+    state.armies = [army("p1", "selymbria", { [UnitType.INFANTRY]: 1 })];
     state.fleets = [];
-    state.players[0].treasury.grain = 0; // due 1 → deficit 1 → regular LEVY deserts
+    state.players[0].treasury.grain = 0; // due 1 → deficit 1 → regular unit deserts
     state.players[0].treasury.gold = 10;
     const out = upkeep(state);
-    expect(out.armies[0].units[UnitType.LEVY]).toBe(0); // deserted...
-    expect(out.players[0].treasury.gold).toBe(10); // ...but no pillage (DELTA 5 merc-only)
+    expect(out.armies[0].units[UnitType.INFANTRY]).toBe(0); // deserted...
+    expect(out.players[0].treasury.gold).toBe(10); // ...but no pillage (#22/E5b merc-only)
+    // The YIELD half never fires for ordinary desertion either.
+    expect(getModifiers(out, "no_income", { provinceId: "selymbria" })).toHaveLength(0);
   });
 
   it("clamps the pillage at zero gold (never negative)", () => {
     const state = fresh();
     state.armies = [
-      tagMercs(army("p1", "selymbria", { [UnitType.LEVY]: 1 }), { [UnitType.LEVY]: 1 }),
+      tagMercs(army("p1", "selymbria", { [UnitType.INFANTRY]: 1 }), {
+        [UnitType.INFANTRY]: 1,
+      }),
     ];
     state.fleets = [];
     state.players[0].treasury.grain = 0;
-    state.players[0].treasury.gold = 1; // less than pillageGold (4) → floors at 0
+    state.players[0].treasury.gold = 1; // less than pillageGold → floors at 0
     const out = upkeep(state);
     expect(out.players[0].treasury.gold).toBe(0);
   });
 
-  it("does not pillage when the host province is neutral (no owner to rob)", () => {
+  it("E5b YIELD half: the pillaged host yields 0 at exactly the NEXT Income (#22 'yield 0 next round')", () => {
     const state = fresh();
+    state.armies = [
+      tagMercs(army("p1", "selymbria", { [UnitType.INFANTRY]: 1 }), {
+        [UnitType.INFANTRY]: 1,
+      }),
+    ];
+    state.fleets = [];
+    state.players[0].treasury.grain = 0; // deficit → the unpaid merc deserts + pillages
+    state.players[0].treasury.gold = 10;
+    const out = upkeep(state);
+    // Both halves landed: gold stripped AND a 1-round no_income suppression posted.
+    expect(out.players[0].treasury.gold).toBe(10 - MERC_REVOLT_PILLAGE.pillageGold);
+    const mods = getModifiers(out, "no_income", { provinceId: "selymbria" });
+    expect(mods).toHaveLength(1);
+    expect(mods[0].expiresRound).toBe(out.round + 1);
+    // NEXT Income (round + 1): selymbria (1 gold in Byzantium's 13) yields nothing.
+    const nextRound = structuredClone(out) as GameState;
+    nextRound.round += 1;
+    expect(computeIncome(nextRound).perPlayer.p1.gold).toBe(12);
+    // EXACTLY once: the round-(N+1) cleanup retires the modifier, income recovers.
+    const cleaned = expireRoundModifiers(nextRound);
+    expect(getModifiers(cleaned, "no_income", { provinceId: "selymbria" })).toHaveLength(0);
+    expect(computeIncome(cleaned).perPlayer.p1.gold).toBe(13);
+  });
+
+  it("does not pillage GOLD when the host province is neutral (no owner to rob)", () => {
+    const state = fresh();
+    // A neutral province is NOT a §6.1 home for the merc's owner, so the levy
+    // still owes its doubled grain and deserts.
     const merc = tagMercs(army("p1", "selymbria", { [UnitType.LEVY]: 1 }), {
       [UnitType.LEVY]: 1,
     });
@@ -810,6 +921,8 @@ describe("upkeep — §4.4/§11 unpaid-merc desertion pillages host (DELTA 5)", 
     const out = upkeep(state);
     expect(out.armies[0].units[UnitType.LEVY]).toBe(0); // still deserts
     expect(out.players[0].treasury.gold).toBe(10); // nobody controls the host → no theft
+    // The E5b YIELD half still lands on the sacked land itself.
+    expect(getModifiers(out, "no_income", { provinceId: "selymbria" })).toHaveLength(1);
   });
 });
 
@@ -938,7 +1051,9 @@ describe("upkeep — faction-scoped base-LEVY grain lever (Ottoman devshirme, PR
   it("an OTTOMAN player's base levies owe 0 grain upkeep (devshirme)", () => {
     const state = fresh();
     // p2 is OTTOMAN — the FACTION_LEVY_ECONOMY[OTTOMAN].grainUpkeep = 0 holder.
-    state.armies = [army("p2", "edirne", { [UnitType.LEVY]: 3 })];
+    // Fielded on FOREIGN soil (selymbria is p1-owned) so the §6.1 home-province
+    // exemption cannot mask the devshirme lever being tested.
+    state.armies = [army("p2", "selymbria", { [UnitType.LEVY]: 3 })];
     state.fleets = [];
     state.players[1].treasury.grain = 5;
     const out = upkeep(state);
@@ -951,8 +1066,9 @@ describe("upkeep — faction-scoped base-LEVY grain lever (Ottoman devshirme, PR
 
   it("a non-Ottoman player's base levies still owe the base 1 grain each", () => {
     const state = fresh();
-    // p1 is BYZANTIUM (no lever) — its levies pay the plain UNIT_STATS base rate.
-    state.armies = [army("p1", "selymbria", { [UnitType.LEVY]: 3 })];
+    // p1 is BYZANTIUM (no lever) — its FIELD levies pay the plain UNIT_STATS base
+    // rate (edirne is p2-owned; §6.1 exempts only home garrisons).
+    state.armies = [army("p1", "edirne", { [UnitType.LEVY]: 3 })];
     state.fleets = [];
     state.players[0].treasury.grain = 5;
     const out = upkeep(state);
@@ -962,9 +1078,10 @@ describe("upkeep — faction-scoped base-LEVY grain lever (Ottoman devshirme, PR
 
   it("Ottoman devshirme levies never desert for grain; other units still starve (shortfall/desertion intact)", () => {
     const state = fresh();
-    // p2 (OTTOMAN) fields 2 base levies (0 grain each) + 1 INFANTRY (base 1 grain).
+    // p2 (OTTOMAN) fields 2 base levies (0 grain each) + 1 INFANTRY (base 1
+    // grain) on FOREIGN soil (selymbria is p1-owned — devshirme, not §6.1 home).
     state.armies = [
-      army("p2", "edirne", { [UnitType.LEVY]: 2, [UnitType.INFANTRY]: 1 }),
+      army("p2", "selymbria", { [UnitType.LEVY]: 2, [UnitType.INFANTRY]: 1 }),
     ];
     state.fleets = [];
     // due = 2 × 0 (devshirme levy) + 1 × 1 (infantry) = 1; no grain → deficit 1.
@@ -976,6 +1093,93 @@ describe("upkeep — faction-scoped base-LEVY grain lever (Ottoman devshirme, PR
     expect(a.units[UnitType.LEVY]).toBe(2); // devshirme levies spared
     expect(a.units[UnitType.INFANTRY]).toBe(0); // starved to cover the deficit
     expect(out.players[1].treasury.grain).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §6.1 LEVY "no map upkeep in home province" (minors list economy.ts:478;
+// balance UNIT_STATS[LEVY].special "no-home-upkeep" tag)
+// ---------------------------------------------------------------------------
+
+describe("upkeep — §6.1 LEVY no-home-upkeep (home garrison owes 0 grain)", () => {
+  it("a LEVY garrisoning its owner's HOME province owes 0 grain (and never starves)", () => {
+    const state = fresh();
+    // selymbria is p1-owned: home garrison for p1's militia.
+    state.armies = [army("p1", "selymbria", { [UnitType.LEVY]: 3 })];
+    state.fleets = [];
+    state.players[0].treasury.grain = 5;
+    const out = upkeep(state);
+    // DELTA: nothing drawn (the field rate would take 3, leaving 2)...
+    expect(out.players[0].treasury.grain).toBe(5);
+    // ...and the whole stack survives.
+    expect(out.armies[0].units[UnitType.LEVY]).toBe(3);
+  });
+
+  it("the SAME levies in the FIELD pay the base 1 grain each (§6.1 exempts only home)", () => {
+    const state = fresh();
+    // edirne is p2-owned: p1's levies campaign abroad.
+    state.armies = [army("p1", "edirne", { [UnitType.LEVY]: 3 })];
+    state.fleets = [];
+    state.players[0].treasury.grain = 5;
+    const out = upkeep(state);
+    expect(out.players[0].treasury.grain).toBe(2); // 5 − 3×1
+    expect(out.armies[0].units[UnitType.LEVY]).toBe(3);
+  });
+
+  it("NEUTRAL soil is not home: the levy still pays", () => {
+    const state = fresh();
+    state.provinces.find((p) => p.id === "selymbria")!.ownerId = null;
+    state.armies = [army("p1", "selymbria", { [UnitType.LEVY]: 2 })];
+    state.fleets = [];
+    state.players[0].treasury.grain = 5;
+    const out = upkeep(state);
+    expect(out.players[0].treasury.grain).toBe(3); // 5 − 2×1
+  });
+
+  it("home levies (0 relief) are never culled to cover another unit's deficit", () => {
+    const state = fresh();
+    // 2 home levies (owe 0) + 1 INFANTRY (owes 1) at p1-owned selymbria, grain 0.
+    state.armies = [
+      army("p1", "selymbria", { [UnitType.LEVY]: 2, [UnitType.INFANTRY]: 1 }),
+    ];
+    state.fleets = [];
+    state.players[0].treasury.grain = 0; // due 1 → deficit 1
+    const out = upkeep(state);
+    const a = out.armies[0];
+    // The desertion ledger mirrors the bill: the 0-grain home levies relieve
+    // nothing and are spared; the INFANTRY that actually owes grain starves.
+    expect(a.units[UnitType.LEVY]).toBe(2);
+    expect(a.units[UnitType.INFANTRY]).toBe(0);
+  });
+
+  it("composes with Ottoman devshirme WITHOUT double-application (0 at home AND in the field)", () => {
+    const state = fresh();
+    // p2 (OTTOMAN) fields levies at HOME (edirne) and ABROAD (selymbria, p1's).
+    state.armies = [
+      army("p2", "edirne", { [UnitType.LEVY]: 2 }),
+      { ...army("p2", "selymbria", { [UnitType.LEVY]: 2 }), id: "a-p2-field" },
+    ];
+    state.fleets = [];
+    state.players[1].treasury.grain = 5;
+    const out = upkeep(state);
+    // Devshirme (field) + home exemption (home) each resolve to 0 exactly once —
+    // the levers never stack into a negative bill or phantom relief.
+    expect(out.players[1].treasury.grain).toBe(5);
+    expect(out.armies[0].units[UnitType.LEVY]).toBe(2);
+    expect(out.armies[1].units[UnitType.LEVY]).toBe(2);
+  });
+
+  it("computeIncome's grain SHORTFALL projection honours the home exemption", () => {
+    const home = fresh();
+    // Zero all grain yields so the shortfall projection exposes the raw bill.
+    for (const p of home.provinces) p.yields = { ...p.yields, grain: 0 };
+    home.armies = [army("p1", "selymbria", { [UnitType.LEVY]: 3 })];
+    home.fleets = [];
+    home.players[0].treasury.grain = 0;
+    const field = structuredClone(home) as GameState;
+    field.armies[0].locationId = "edirne";
+    expect(computeIncome(home).shortfall.p1).toBe(0); // home garrison: 0 due
+    expect(computeIncome(field).shortfall.p1).toBe(3); // same host abroad: 3 due
   });
 });
 
