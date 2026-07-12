@@ -28,6 +28,12 @@ export interface LobbyPlayerState {
    * this seat; it is NEVER included in broadcast payloads.
    */
   sessionToken: string;
+  /**
+   * True for AI-opponent seats (see ../lobby/botSeats.ts). Bot seats never
+   * hold a socket; they are always `connected` but do NOT keep a room alive
+   * for the empty-room reaper.
+   */
+  isBot?: boolean;
 }
 
 /** A single game room. */
@@ -98,10 +104,11 @@ export class LobbyManager {
 
   /**
    * Recompute a room's empty-since marker after any connectivity change.
-   * A room is "empty" when it has zero connected players.
+   * A room is "empty" when it has zero connected HUMAN players — bot seats
+   * are always "connected" but must never keep an abandoned room alive.
    */
-  private refreshEmptySince(room: Room): void {
-    if (room.players.some((p) => p.connected)) {
+  refreshEmptySince(room: Room): void {
+    if (room.players.some((p) => p.connected && !p.isBot)) {
       room.emptySince = null;
     } else if (room.emptySince === null) {
       room.emptySince = this.now();
@@ -346,6 +353,7 @@ export class LobbyManager {
         faction: p.faction,
         isHost: p.isHost,
         connected: p.connected,
+        ...(p.isBot ? { isBot: true } : {}),
       })),
       startedByHost: room.startedByHost,
     };

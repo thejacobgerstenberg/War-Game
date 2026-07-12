@@ -462,6 +462,12 @@ export function checkInvariants(
   const tally = (stacks: (Army | Fleet)[], naval: boolean): void => {
     const byKey = new Map<string, number>();
     for (const s of stacks) {
+      // GD §8.4 (delta 3): the Great Bombard is a SINGLETON emplacement piece —
+      // omen #34 spawns it (fixed id) directly onto the recipient's capital
+      // regardless of occupancy. It is not a stacked unit, so it is exempt
+      // from the §3.2 tally (discovered by the bot battery, where a full
+      // 12-unit capital plus the spawned gun is a legal engine outcome).
+      if (s.id === "army-great-bombard") continue;
       const key = `${s.ownerId}@${s.locationId}`;
       byKey.set(key, (byKey.get(key) ?? 0) + realCount(s));
     }

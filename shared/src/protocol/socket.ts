@@ -18,6 +18,10 @@ export const SOCKET_EVENTS = {
   LEAVE_GAME: "leave_game",
   /** In-game player command, dispatched to the engine reducer. */
   GAME_ACTION: "game_action",
+  /** Host-only: seat an AI opponent in the lobby. */
+  ADD_BOT: "add_bot",
+  /** Host-only: remove a bot seat (lobby only, before start). */
+  REMOVE_BOT: "remove_bot",
 
   // Server -> Client
   GAME_CREATED: "game_created",
@@ -77,6 +81,24 @@ export interface GameActionPayload {
   action: GameAction;
 }
 
+/** Difficulty tiers an AI opponent can be seated at. */
+export type BotDifficulty = "EASY" | "NORMAL" | "HARD";
+
+/**
+ * Host-only request to seat an AI opponent. The server picks the bot's
+ * faction (first unclaimed) and names it after that faction's historical
+ * ruler; the new seat appears in the next `lobby_update` with `isBot: true`.
+ */
+export interface AddBotPayload {
+  difficulty: BotDifficulty;
+}
+
+/** Host-only request to remove a bot seat (lobby only, before game start). */
+export interface RemoveBotPayload {
+  /** The bot seat's player id, as seen in `lobby_update`. */
+  botPlayerId: string;
+}
+
 // ---------------------------------------------------------------------------
 // Server -> Client payloads
 // ---------------------------------------------------------------------------
@@ -100,6 +122,11 @@ export interface LobbyPlayer {
   isHost: boolean;
   /** False while the seat's socket is dropped (seat held for rejoin). */
   connected: boolean;
+  /**
+   * True for AI-opponent seats (host-added via `add_bot`, or a disconnected
+   * human seat taken over by a bot). Absent/false for human seats.
+   */
+  isBot?: boolean;
 }
 
 export interface LobbyUpdatePayload {
@@ -158,6 +185,8 @@ export interface ClientToServerEvents {
   [SOCKET_EVENTS.START_GAME]: () => void;
   [SOCKET_EVENTS.LEAVE_GAME]: () => void;
   [SOCKET_EVENTS.GAME_ACTION]: (payload: GameActionPayload) => void;
+  [SOCKET_EVENTS.ADD_BOT]: (payload: AddBotPayload) => void;
+  [SOCKET_EVENTS.REMOVE_BOT]: (payload: RemoveBotPayload) => void;
 }
 
 export interface ServerToClientEvents {

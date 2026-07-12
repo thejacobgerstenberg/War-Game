@@ -18,12 +18,16 @@ import {
   type ServerToClientEvents,
 } from "@imperium/shared";
 import { LobbyManager, LobbyError, MAX_PLAYERS } from "./lobby/lobbyManager.js";
+import { BotRoster } from "./lobby/botSeats.js";
+import { Difficulty } from "./bots/types.js";
 import { log } from "./log.js";
 import {
+  parseAddBotPayload,
   parseCreateGamePayload,
   parseJoinGamePayload,
   parsePickFactionPayload,
   parseRejoinGamePayload,
+  parseRemoveBotPayload,
 } from "./validate.js";
 
 type ImperiumServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -74,6 +78,10 @@ export interface CreateAppOptions {
 export function createApp(options: CreateAppOptions = {}) {
   const corsOrigins = parseCorsOrigins();
   const lobby = new LobbyManager();
+  // Bot-controlled seats (host-added + abandoned-seat takeovers). The
+  // takeover sweep itself is called from the game_action dispatch loop when
+  // that lands (there is no per-round tick without it).
+  const botRoster = new BotRoster();
 
   // Periodic empty-room reap (§2 ROOM_TTL_SECONDS). LobbyManager owns the
   // eligibility logic; this sweep just ticks it and logs the results. It is
@@ -301,6 +309,50 @@ export function createApp(options: CreateAppOptions = {}) {
     );
 
     socket.on(
+      SOCKET_EVENTS.ADD_BOT,
+      boundary(SOCKET_EVENTS.ADD_BOT, (raw) => {
+        const parsed = parseAddBotPayload(raw);
+        if (!parsed.ok) return emitError(parsed.error);
+        if (!roomCode || !playerId) {
+          return emitError("You are not in a game.");
+        }
+        const room = lobby.getRoom(roomCode);
+        if (!room) return emitError("You are not in a game.");
+        // Wire BotDifficulty and the Difficulty enum share values by design.
+        const bot = botRoster.addBot(
+          room,
+          playerId,
+          parsed.value.difficulty as Difficulty,
+        );
+        broadcastLobby(roomCode);
+        log(
+          "info",
+          "bot_added",
+          `${bot.name} (${parsed.value.difficulty} bot) seated by the host`,
+          { roomCode },
+        );
+      }),
+    );
+
+    socket.on(
+      SOCKET_EVENTS.REMOVE_BOT,
+      boundary(SOCKET_EVENTS.REMOVE_BOT, (raw) => {
+        const parsed = parseRemoveBotPayload(raw);
+        if (!parsed.ok) return emitError(parsed.error);
+        if (!roomCode || !playerId) {
+          return emitError("You are not in a game.");
+        }
+        const room = lobby.getRoom(roomCode);
+        if (!room) return emitError("You are not in a game.");
+        botRoster.removeBot(room, playerId, parsed.value.botPlayerId);
+        broadcastLobby(roomCode);
+        log("info", "bot_removed", "bot seat removed by the host", {
+          roomCode,
+        });
+      }),
+    );
+
+    socket.on(
       SOCKET_EVENTS.LEAVE_GAME,
       boundary(SOCKET_EVENTS.LEAVE_GAME, () => {
         if (!roomCode || !playerId) return;
@@ -340,7 +392,7 @@ export function createApp(options: CreateAppOptions = {}) {
     });
   });
 
-  return { app, httpServer, io, lobby, startReaper, stopReaper };
+  return { app, httpServer, io, lobby, botRoster, startReaper, stopReaper };
 }
 
 /**
