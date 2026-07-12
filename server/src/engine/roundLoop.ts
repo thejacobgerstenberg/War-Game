@@ -20,6 +20,7 @@ import {
 import {
   ACTIONS_PER_ROUND,
   ERA_BOUNDARIES,
+  MAX_ACTIONS_PER_ROUND,
   ROUNDS,
   WALL_REPAIR_PER_ROUND,
   WALL_TIERS,
@@ -71,7 +72,12 @@ function resetActionBudgets(state: GameState): GameState {
     ...state,
     players: state.players.map((p) => ({
       ...p,
-      actionsRemaining: ACTIONS_PER_ROUND + bonusFor(p.id, p.faction),
+      // §10.0 (marshal nit): cards raise the budget TO 5, never beyond — clamp
+      // stacked action_bonus modifiers at MAX_ACTIONS_PER_ROUND.
+      actionsRemaining: Math.min(
+        MAX_ACTIONS_PER_ROUND,
+        ACTIONS_PER_ROUND + bonusFor(p.id, p.faction),
+      ),
     })),
   };
 }

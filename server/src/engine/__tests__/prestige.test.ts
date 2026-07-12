@@ -383,7 +383,7 @@ describe("scorePrestige — §13.3 secret objectives scored only at game end", (
     // §13.1 sea-majority trade monopoly (DELTA 2) — this test isolates the
     // objective-scoring contribution alone.
     const plains = s.provinces
-      .filter((p) => !p.isCapitalOf && !(p.highValue ?? 0) && !p.coastal)
+      .filter((p) => !p.isCapitalOf && !(p.highValue ?? 0) && !p.port)
       .slice(0, 3)
       .map((p) => p.id);
     expect(plains.length).toBe(3);
@@ -410,7 +410,7 @@ describe("scorePrestige — §13.3 secret objectives scored only at game end", (
     // form a §13.1 sea-majority trade monopoly (DELTA 2, +2) — this test measures
     // ONLY the three independent +4 objective awards (ratified DELTA 4).
     const plains = s.provinces
-      .filter((p) => !p.isCapitalOf && !(p.highValue ?? 0) && !p.coastal)
+      .filter((p) => !p.isCapitalOf && !(p.highValue ?? 0) && !p.port)
       .slice(0, 3)
       .map((p) => p.id);
     expect(plains.length).toBe(3);

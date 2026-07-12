@@ -27,6 +27,7 @@ import {
   runRevolts,
 } from "../diplomacy.js";
 import { scorePrestige } from "../prestige.js";
+import { expireRoundModifiers } from "../modifiers.js";
 import { EngineError } from "../actions.js";
 import { PRESTIGE_VALUES, UNJUSTIFIED_WAR_PRESTIGE, VASSAL } from "../balance.js";
 import { makeRng } from "../rng.js";
@@ -561,35 +562,47 @@ describe("declareWar — §11 delta 5 unjustified-war cost", () => {
     expect(scored.players[0].conquestPrestige ?? 0).toBe(0);
   });
 
-  it.each(["claim", "crusade"] as const)(
-    "a JUSTIFIED (%s) DECLARE_WAR posts NO prestige_pending and costs nothing",
+  it("ONLY a `claim` DECLARE_WAR posts NO prestige_pending and costs nothing (E5a narrowing)", () => {
+    // Marshal FULL-MINORS answer-key item: "unjustified-war justification enum
+    // broader than ratified casus belli (only 'claim' exempts the E5a −1; both
+    // isJustifiedWar copies)".
+    const s = fresh();
+    const before = s.players[0].prestige;
+    const out = declareWar(s, declareWarAction("p1", Faction.OTTOMAN, "claim"));
+    expect(pendingFor(out, "p1")).toBeUndefined();
+    expect(out.players[0].prestige).toBe(before);
+    expect(out.wars).toContainEqual({ a: "p1", b: "p2", startedRound: s.round });
+    const logged = [...out.log].reverse().find((l) => l.type === "diplomacy");
+    expect(logged?.data?.justified).toBe(true);
+    expect(logged?.data?.unjustifiedPenalty).toBe(0);
+  });
+
+  it.each(["crusade", "vassal-defense", "ally-call"] as const)(
+    "a %s DECLARE_WAR is RECORDED but does NOT exempt the E5a −1 (pending ratification)",
     (justification) => {
+      // Marshal answer-key narrowing: crusade / vassal-defense / ally-call ride
+      // the wire and land in the log verbatim, but the −1 prestige_pending is
+      // still posted — only `claim` is ratified casus belli.
       const s = fresh();
-      const before = s.players[0].prestige;
       const out = declareWar(s, declareWarAction("p1", Faction.OTTOMAN, justification));
-      expect(pendingFor(out, "p1")).toBeUndefined();
-      expect(out.players[0].prestige).toBe(before);
-      expect(out.wars).toContainEqual({ a: "p1", b: "p2", startedRound: s.round });
+      const pend = pendingFor(out, "p1");
+      expect(pend?.value).toBe(-UNJUSTIFIED_WAR_PRESTIGE);
+      expect(pend?.data?.reason).toBe("unjustified_war");
       const logged = [...out.log].reverse().find((l) => l.type === "diplomacy");
-      expect(logged?.data?.justified).toBe(true);
-      expect(logged?.data?.unjustifiedPenalty).toBe(0);
+      expect(logged?.data?.justification).toBe(justification); // recorded…
+      expect(logged?.data?.justified).toBe(false); // …but not exempting
+      expect(logged?.data?.unjustifiedPenalty).toBe(UNJUSTIFIED_WAR_PRESTIGE);
     },
   );
 
-  it("vassal-defense is justified ONLY when the declarer actually holds a vassal", () => {
-    // No vassal held → the claim is implausible → unjustified (still costs −1).
-    const noVassal = declareWar(
-      fresh(),
-      declareWarAction("p1", Faction.OTTOMAN, "vassal-defense"),
-    );
-    expect(pendingFor(noVassal, "p1")?.value).toBe(-UNJUSTIFIED_WAR_PRESTIGE);
-
-    // Holding a vassal makes the same justification valid → no cost.
+  it("vassal-defense posts the −1 even when the declarer ACTUALLY holds a vassal (not ratified)", () => {
+    // Previously a held vassal made vassal-defense exempting; under the E5a
+    // narrowing the plausibility no longer matters — the penalty still posts.
     const held = fresh();
     minorById(held, "ragusa").vassalOf = "p1";
     held.players[0].vassals = ["ragusa"];
     const out = declareWar(held, declareWarAction("p1", Faction.OTTOMAN, "vassal-defense"));
-    expect(pendingFor(out, "p1")).toBeUndefined();
+    expect(pendingFor(out, "p1")?.value).toBe(-UNJUSTIFIED_WAR_PRESTIGE);
   });
 
   it("re-declaring an existing war levies NO fresh unjustified-war penalty (single, deduped)", () => {
@@ -634,6 +647,69 @@ describe("declareWar — §11 delta 5 unjustified-war cost", () => {
         (m) => m.kind === "prestige_pending" && m.data?.playerId === "p1",
       ),
     ).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TRUCE reader (marshal Stage-B residual) — declareWar under a live truce
+// ---------------------------------------------------------------------------
+
+describe("declareWar — truce modifier suspends A↔B war declarations (TRUCE_ACTIVE)", () => {
+  /** The round-scoped `truce` shape a-death-in-the-palace posts (tactics.ts). */
+  const withTruce = (s: GameState, parties: [string, string]): GameState => ({
+    ...s,
+    activeModifiers: [
+      ...s.activeModifiers,
+      {
+        id: "tactic:a-death-in-the-palace:truce:0",
+        sourceCardId: "a-death-in-the-palace",
+        scope: "round",
+        kind: "truce",
+        data: { parties, tactic: "a-death-in-the-palace" },
+      },
+    ],
+  });
+
+  it("rejects DECLARE_WAR between the truce parties with TRUCE_ACTIVE (no war, no penalty)", () => {
+    const s = withTruce(fresh(), ["p1", "p2"]);
+    expect(() =>
+      declareWar(s, { type: "DECLARE_WAR", player: "p1", target: Faction.OTTOMAN }),
+    ).toThrowError(expect.objectContaining({ code: "TRUCE_ACTIVE" }));
+    // The truce binds BOTH ways — the named rival cannot declare back either.
+    expect(() =>
+      declareWar(s, { type: "DECLARE_WAR", player: "p2", target: Faction.BYZANTIUM }),
+    ).toThrowError(expect.objectContaining({ code: "TRUCE_ACTIVE" }));
+  });
+
+  it("leaves THIRD parties untouched — an outside player still declares freely", () => {
+    const seats3: SeatInput[] = [
+      ...seats,
+      { id: "p3", name: "Corvinus", faction: Faction.HUNGARY, isHost: false },
+    ];
+    const s = withTruce(
+      structuredClone(createInitialState("ROOM01", seats3, 12345)),
+      ["p1", "p2"],
+    );
+    // p3 is no party to the p1↔p2 truce: war on p2 opens normally.
+    const out = declareWar(s, { type: "DECLARE_WAR", player: "p3", target: Faction.OTTOMAN });
+    expect(out.wars).toContainEqual({ a: "p3", b: "p2", startedRound: s.round });
+    // And p1 may still declare on p3 (only the p1↔p2 pair is bound).
+    const out2 = declareWar(s, { type: "DECLARE_WAR", player: "p1", target: Faction.HUNGARY });
+    expect(out2.wars).toContainEqual({ a: "p1", b: "p3", startedRound: s.round });
+  });
+
+  it("expiry restores hostilities — after round cleanup the same declaration succeeds", () => {
+    const s = withTruce(fresh(), ["p1", "p2"]);
+    // The truce is round-scoped; roundLoop's cleanup (expireRoundModifiers)
+    // drops it ("until the start of your next turn").
+    const lapsed = expireRoundModifiers(s);
+    expect(lapsed.activeModifiers.some((m) => m.kind === "truce")).toBe(false);
+    const out = declareWar(lapsed, {
+      type: "DECLARE_WAR",
+      player: "p1",
+      target: Faction.OTTOMAN,
+    });
+    expect(out.wars).toContainEqual({ a: "p1", b: "p2", startedRound: s.round });
   });
 });
 

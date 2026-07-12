@@ -310,8 +310,13 @@ const CHRISTIAN_FACTIONS: Faction[] = [
 function pickFrom(ctx: EventEffectContext, options: string[]): string {
   if (ctx.choice && options.includes(ctx.choice)) return ctx.choice;
   if (ctx.targetProvinceId && options.includes(ctx.targetProvinceId)) return ctx.targetProvinceId;
-  const idx = (ctx.rng.rollD6() - 1) % options.length;
-  return options[idx];
+  // MARSHAL FIX (minors follow-up, events): the old `(rollD6() − 1) % len`
+  // fallback was modulo-BIASED whenever the option count does not divide 6 —
+  // for the 4 Earthquake cities (#25) constantinople/gallipoli each landed on
+  // 2/6 of draws vs 1/6 for rhodes/thessalonica. Uniform pick instead: a single
+  // rng.next() draw (still exactly one cursor step, so the seed/cursor stream
+  // stays deterministic and replayable) scaled by the option count.
+  return options[Math.floor(ctx.rng.next() * options.length)];
 }
 
 // ---------------------------------------------------------------------------
@@ -437,12 +442,17 @@ const e10: EventEffect = (state, ctx) => {
 // the raid always struck the FIRST owned coastal province in the array —
 // Constantinople, a Marmara/Bosphorus city that fronts none of the named seas.
 // Now: pick the raided sea (choice/target else rng), then rng-pick a victim among
-// the OWNED coastal provinces actually bordering that sea (ADJACENCY province↔sea
+// the OWNED shore provinces actually bordering that sea (ADJACENCY province↔sea
 // edges). Deterministic — every draw comes from ctx.rng (seed/cursor stream).
+// CALL-SITE DECISION (coastal→port rename): a corsair raid strikes any SHORE
+// province of the named sea — the borders-sea predicate, not harbor status. The
+// `neighborsOf(p.id).includes(zoneId)` edge test IS that predicate for the
+// raided zone, so no `.port` gate applies (a portless shore like thessaly is
+// a legal victim).
 const e11: EventEffect = (state, ctx) => {
   const shoreOf = (zoneId: string): Province[] =>
     state.provinces.filter(
-      (p) => p.coastal && p.ownerId != null && neighborsOf(p.id).includes(zoneId),
+      (p) => p.ownerId != null && neighborsOf(p.id).includes(zoneId),
     );
   let sea = pickFrom(ctx, CORSAIR_SEAS);
   let victims = shoreOf(sea);
@@ -470,22 +480,55 @@ const e11: EventEffect = (state, ctx) => {
   });
 };
 
-// #12 Serbian Despotate Submits — serbia vassalises to stronger of Hungary/Ottoman, else garrison +1.
+// #12 Serbian Despotate Submits — serbia vassalises to whichever of Hungary/
+// Ottoman is ADJACENT and stronger; else stays Independent, minor garrison +1.
+// MARSHAL FIX (minors follow-up, events #12; EVENT_CARDS.md Era I #12): the card
+// reads "`serbia` becomes a vassal of whichever of Hungary/Ottoman is ADJACENT
+// and stronger (standard vassal benefits — GAME_DESIGN.md §11.5). If neither
+// qualifies, serbia stays Independent and its garrison +1." Three divergences
+// fixed against that text:
+//   1. ADJACENCY was never checked — a seated Hungary/Ottoman owning no province
+//      bordering serbia could still take the vassal. A candidate now qualifies
+//      only if in play AND owning a province with a serbia ADJACENCY edge.
+//   2. An invented "+2 gold tribute" was granted to the lord — the card grants
+//      no immediate gold; the standard §11.5 benefits (tribute at Income,
+//      callable levies) flow from the `vassalOf` pointer via the vassal
+//      subsystem.
+//   3. The no-lord garrison +1 was posted on the PROVINCE garrison, not the
+//      NpcMinor ledger that vassalize/diplomacy reads — now shiftMinorGarrison.
+// "Stronger" stays the province-count proxy; a both-qualify tie → Hungary
+// (see AMBIGUITIES omen-12).
 const e12: EventEffect = (state, ctx) => {
-  const hun = factionProvinceCount(state, Faction.HUNGARY);
-  const ott = factionProvinceCount(state, Faction.OTTOMAN);
-  const lordFaction = hun < 0 && ott < 0 ? null : hun >= ott ? Faction.HUNGARY : Faction.OTTOMAN;
+  const serbiaAdjacent = new Set(neighborsOf("serbia"));
+  const qualifies = (faction: Faction): boolean => {
+    const pl = playerByFaction(state, faction);
+    return (
+      pl != null &&
+      state.provinces.some((p) => p.ownerId === pl.id && serbiaAdjacent.has(p.id))
+    );
+  };
+  const hunQualifies = qualifies(Faction.HUNGARY);
+  const ottQualifies = qualifies(Faction.OTTOMAN);
+  const lordFaction =
+    hunQualifies && ottQualifies
+      ? factionProvinceCount(state, Faction.HUNGARY) >=
+        factionProvinceCount(state, Faction.OTTOMAN)
+        ? Faction.HUNGARY
+        : Faction.OTTOMAN
+      : hunQualifies
+        ? Faction.HUNGARY
+        : ottQualifies
+          ? Faction.OTTOMAN
+          : null;
   if (!lordFaction) {
-    const s = mapProvince(state, "serbia", (p) => shiftGarrison(p, 1));
-    return eventLog(s, ctx, "Serbian Despotate: neither Hungary nor Ottoman qualifies; Serbia stays Independent (garrison +1).");
+    const s = shiftMinorGarrison(state, "serbia", 1);
+    return eventLog(s, ctx, "Serbian Despotate: neither Hungary nor Ottoman is adjacent and stronger; Serbia stays Independent (garrison +1).");
   }
   const lord = playerByFaction(state, lordFaction)!;
-  let s = setMinorVassal(state, "serbia", lord.id);
-  s = grantRes(s, lord.id, { gold: 2 });
-  return eventLog(s, ctx, `Serbian Despotate submits to ${lordFaction} (+2 gold tribute, +1 levy/round to the lord).`, {
+  const s = setMinorVassal(state, "serbia", lord.id);
+  return eventLog(s, ctx, `Serbian Despotate submits to ${lordFaction}: serbia becomes its vassal with the standard §11.5 benefits (tribute at Income, callable levies).`, {
     lord: lord.id,
-    tributeGold: 2,
-    levyPerRound: 1,
+    minor: "serbia",
   });
 };
 
@@ -1000,8 +1043,12 @@ function spawnGreatBombard(
   }
   const provinceId = target.id;
   const s = emplaceGreatBombard(state, recipient, target);
+  // MARSHAL FIX (minors follow-up, Stage-A nit 3): the no-Ottoman branch is a
+  // DETERMINISTIC AWARD to the richest court (highest combined gold+marble,
+  // turn-order tiebreak — see highestGoldMarbleHolder), not a bid auction; the
+  // log no longer says "wins the auction".
   const message = auction
-    ? `The Great Bombard Forged: no Ottoman in play — Orban sells to the highest bidder (gold + marble). ${recipient.name} wins the auction and receives the Great Bombard free, emplaced at ${provinceId}.`
+    ? `The Great Bombard Forged: no Ottoman in play — Orban offers his monster gun to the richest court. ${recipient.name}, holding the most combined gold and marble, is awarded the Great Bombard free, emplaced at ${provinceId}.`
     : `The Great Bombard Forged: Orban casts the monster cannon — the Ottoman receives the Great Bombard free, emplaced at ${provinceId}.`;
   return eventLog(s, ctx, message, {
     greatBombard: true,
@@ -1095,10 +1142,14 @@ const e39: EventEffect = (state, ctx) => {
 };
 
 // #40 Drought — all desert/plains −1 grain; Alexandria and Cairo −2 grain (low Nile).
+// TerrainType.DESERT was removed (no province is authored desert after the
+// Cairo→CITY / Tunis→COAST registry fixes), so the printed "desert" half of the
+// card resolves to nothing — only PLAINS take the −1; Alexandria/Cairo keep
+// their explicit −2.
 const e40: EventEffect = (state, ctx) => {
   let s: GameState = state;
   const arid = s.provinces
-    .filter((p) => p.terrain === TerrainType.DESERT || p.terrain === TerrainType.PLAINS)
+    .filter((p) => p.terrain === TerrainType.PLAINS)
     .map((p) => p.id)
     .filter((id) => id !== "alexandria" && id !== "cairo");
   s = grantToControllers(s, arid, { grain: -1 });
@@ -1243,7 +1294,7 @@ export const EVENT_CARDS: EventCard[] = [
   { id: omenCardId(9), n: 9, slug: "discovery-of-alum", name: "Discovery of Alum", tag: "Good", era: 1, duration: "Standing", eventDuration: "STANDING", targeting: "PROVINCE", effects: { goldDelta: 2, durationRounds: 0, provinces: ["chios"] }, effect: e9 },
   { id: omenCardId(10), n: 10, slug: "marriage-alliance", name: "Marriage Alliance", tag: "Good", era: 1, duration: "Held", eventDuration: "HELD", targeting: "DRAWER", effects: { goldDelta: 3 }, effect: e10 },
   { id: omenCardId(11), n: 11, slug: "corsair-raid", name: "Corsair Raid", tag: "Ill", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "SEA_ZONE", effects: { goldDelta: -2, tradeDelta: -1, seaZones: CORSAIR_SEAS }, effect: e11 },
-  { id: omenCardId(12), n: 12, slug: "serbian-despotate-submits", name: "Serbian Despotate Submits", tag: "Mixed", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "MINOR", effects: { goldDelta: 2, garrisonDelta: 1, minors: ["serbia"] }, effect: e12 },
+  { id: omenCardId(12), n: 12, slug: "serbian-despotate-submits", name: "Serbian Despotate Submits", tag: "Mixed", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "MINOR", effects: { garrisonDelta: 1, minors: ["serbia"] }, effect: e12 },
   { id: omenCardId(13), n: 13, slug: "ragusan-tribute", name: "Ragusan Tribute", tag: "Good", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "MINOR", effects: { goldDelta: 3, minors: ["ragusa"] }, effect: e13 },
   { id: omenCardId(14), n: 14, slug: "plague-of-locusts", name: "Plague of Locusts", tag: "Ill", era: 1, duration: "Immediate", eventDuration: "IMMEDIATE", targeting: "GLOBAL", effects: { grainDelta: -2 }, effect: e14 },
   { id: omenCardId(15), n: 15, slug: "hussite-mercenaries", name: "Hussite Handgunners for Hire", tag: "Good", era: 1, duration: "Immediate", eventDuration: "GRANT", targeting: "GLOBAL", effects: {}, effect: e15 },
@@ -1410,7 +1461,7 @@ export const AMBIGUITIES: CardAmbiguity[] = [
     id: "omen-12",
     card: "Serbian Despotate Submits",
     interpretation:
-      "'stronger neighbour' resolved by province count (Hungary vs Ottoman); ties → Hungary. Adjacency is not checked (both are treated as adjacent to Serbia per the map). If neither faction is in play, Serbia stays Independent with garrison +1.",
+      "MARSHAL-FIXED (minors follow-up): 'adjacent and stronger' — adjacency IS checked (a candidate must be in play AND own a province with a serbia ADJACENCY edge); 'stronger' resolved by province count; a both-qualify tie → Hungary. No gold changes hands (the printed 'standard vassal benefits' — GD §11.5 tribute at Income, callable levies — flow from the vassalOf pointer via the vassal subsystem). If neither faction qualifies, Serbia stays Independent with +1 on the NpcMinor garrison ledger (the ledger vassalize/diplomacy reads), not the province garrison.",
   },
   {
     id: "omen-13",

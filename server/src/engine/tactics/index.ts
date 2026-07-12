@@ -15,6 +15,8 @@ export {
   discardToHandLimit,
   queueTactic,
   playTactic,
+  playSiegeTactic,
+  playGlobalTactic,
   resolveTacticEffect,
   type BattleSide,
   type TacticEffectContext,

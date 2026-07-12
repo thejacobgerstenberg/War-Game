@@ -40,6 +40,7 @@ import {
   type ResourceBundle,
   type TacticCardId,
 } from "@imperium/shared";
+import { bordersSea } from "./adjacency.js";
 import { EngineError } from "./actions.js";
 import { GREAT_WORK_COSTS, TACTIC, TACTIC_HAND_LIMIT, TREASON_GATE } from "./balance.js";
 import { appendLog } from "./logEntry.js";
@@ -780,10 +781,14 @@ export function resolveTacticEffect(
         throw new EngineError("NO_TARGET", "chain-across-the-horn needs a target province");
       }
       const chained = next.provinces.find((p) => p.id === ctx.targetProvinceId);
-      if (!chained || chained.ownerId !== ctx.playerId || !chained.coastal) {
+      // CALL-SITE DECISION (coastal→port rename): amphibious-assault
+      // eligibility is the PHYSICAL "borders a sea" predicate (bordersSea) —
+      // any shore province can be amphibiously assaulted, so any held shore
+      // province is a legal chain target; harbor status is irrelevant.
+      if (!chained || chained.ownerId !== ctx.playerId || !bordersSea(chained.id)) {
         throw new EngineError(
           "BAD_TARGET",
-          "chain-across-the-horn targets a coastal province the player holds",
+          "chain-across-the-horn targets a sea-bordering province the player holds",
         );
       }
       next = postModifier(next, cardId, "wall_mod", {

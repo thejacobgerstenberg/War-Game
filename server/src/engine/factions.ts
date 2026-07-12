@@ -245,7 +245,11 @@ export const FACTION_STARTS: Record<Faction, FactionStart> = {
           "Byzantium may spend faith to sway Orthodox neutrals toward neutrality " +
           "or alliance instead of paying gold.",
         effects: ["constantinople-+2-faith-per-round", "spend-faith-to-sway-orthodox-neutrals"],
-        provinceRefs: ["constantinople", "serbia", "trebizond", "wallachia", "morea", "athens"],
+        // Marshal Stage-A nit 2: FACTIONS.md L82 lists the sway-able Orthodox
+        // neutrals as serbia/trebizond/wallachia/EPIRUS/THESSALY/athens — the
+        // old seed wrote `morea` (a Byzantine home despotate, not a neutral).
+        // Power-flavour refs only (never objective-scored), aligned to the doc.
+        provinceRefs: ["constantinople", "serbia", "trebizond", "wallachia", "epirus", "thessaly", "athens"],
       },
       {
         id: "reconquista-of-the-romans",
@@ -446,8 +450,8 @@ export const FACTION_STARTS: Record<Faction, FactionStart> = {
         // OR/count major (FACTIONS.md L176 "Control 8 ports, mandatorily including
         // crete, negroponte, and corfu"): the old seed encoded ONLY the 3 mandatory
         // ports, silently dropping the "8 ports" count clause. minPorts (STAGE-A-PREP;
-        // port = coastal province per §5.2) restores the count; the 3 mandatory
-        // inclusions stay as the implicit all-of provinceRefs.
+        // port = `Province.port`, MAP.md "Port?" = Y, per §5.2) restores the count;
+        // the 3 mandatory inclusions stay as the implicit all-of provinceRefs.
         id: "ven-stato-da-mar",
         description: "Stato da Màr: control 8 ports, mandatorily including crete, negroponte, and corfu.",
         provinceRefs: ["crete", "negroponte", "corfu"],
@@ -557,7 +561,7 @@ export const FACTION_STARTS: Record<Faction, FactionStart> = {
         // state.provinces → always false, Genoa −4 vs the 71-78 thresholds).
         // Re-encoded per the text: control kaffa AND chios (implicit all-of
         // provinceRefs) AND at least one OTHER Black Sea/Aegean port (anyOf — the
-        // coastal provinces bordering black-sea-west/black-sea-east/aegean on the
+        // PORT provinces bordering black-sea-west/black-sea-east/aegean on the
         // canonical map, excl. the mandatory kaffa/chios), while NEITHER Black Sea
         // zone is blockaded by a rival at game end (zonesNotEnemyBlockaded reads
         // SeaZone.blockadedBy; STAGE-A-PREP).

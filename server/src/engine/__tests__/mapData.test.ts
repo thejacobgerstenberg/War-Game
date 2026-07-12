@@ -56,7 +56,7 @@ describe("MAP.md §3 registry — cairo (marshal map MAJOR)", () => {
   it("is a CITY per the registry row (was mis-authored DESERT)", () => {
     // MAP.md §3: | `cairo` | Cairo | Levant & Egypt | city | gold | faith | N | T2 | Independent | Mamluk capital. HV(3). |
     expect(cairo.terrain).toBe(TerrainType.CITY);
-    expect(cairo.coastal).toBe(false); // registry coastal = N
+    expect(cairo.port).toBe(false); // registry Port? = N
     expect(cairo.highValue).toBe(3); // HV(3)
     expect(cairo.garrison).toBe(2);
   });
@@ -92,7 +92,7 @@ describe("MAP.md §3 registry — tunis (marshal map MINOR)", () => {
   it("is COAST per the registry row (was mis-authored DESERT)", () => {
     // MAP.md §3: | `tunis` | Tunis | Western Mediterranean | coast | gold | grain | Y | T1 | Independent | Hafsid corsair nest. |
     expect(tunis.terrain).toBe(TerrainType.COAST);
-    expect(tunis.coastal).toBe(true); // registry coastal = Y
+    expect(tunis.port).toBe(true); // registry Port? = Y
     expect(tunis.garrison).toBe(1);
     const hpTier = MAP_WALL_TIER[1]; // registry T1
     expect(tunis.walls.tier).toBe(hpTier);
@@ -170,6 +170,8 @@ describe("cairo city behaviours (engine outcome of the terrain fix)", () => {
     // constants that make it so, from balance.ts (never hardcoded elsewhere).
     expect(UNIT_STATS[UnitType.INFANTRY].mv).toBe(1);
     expect(TERRAIN_MOVE_COST[TerrainType.CITY]).toBe(1);
-    expect(TERRAIN_MOVE_COST[TerrainType.DESERT]).toBe(2);
+    // DESERT itself is gone from TerrainType (nothing is authored desert after
+    // the cairo/tunis registry fixes), so its cost row no longer exists to pin.
+    expect((TerrainType as Record<string, string>)["DESERT"]).toBeUndefined();
   });
 });

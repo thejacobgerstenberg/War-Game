@@ -286,7 +286,7 @@ function freshNoOmen(): GameState {
 describe("§8.1/§8.2.5 — per-round wall repair (marshal major: not only on siege-lift)", () => {
   it("a damaged, un-besieged wall regains +1 HP each round at INCOME, clamped to tier max", () => {
     const s = freshNoOmen();
-    const prov = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    const prov = s.provinces.find((p) => !p.port && !p.isCapitalOf)!;
     prov.walls = { tier: 2, hp: WALL_TIERS[2].hp - 2 }; // 4 of 6
     const hpOf = (st: GameState): number => st.provinces.find((p) => p.id === prov.id)!.walls.hp;
 
@@ -306,7 +306,7 @@ describe("§8.1/§8.2.5 — per-round wall repair (marshal major: not only on si
 
   it("a wall under an ACTIVE siege does NOT repair", () => {
     const s = freshNoOmen();
-    const prov = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    const prov = s.provinces.find((p) => !p.port && !p.isCapitalOf)!;
     prov.ownerId = "p1";
     prov.walls = { tier: 2, hp: 3 };
     s.armies.push(army("bes-1", "p2", prov.id, 5));
@@ -320,7 +320,7 @@ describe("§8.1/§8.2.5 — per-round wall repair (marshal major: not only on si
 
   it("repair resumes once the siege lifts (besiegers marched away)", () => {
     const s = freshNoOmen();
-    const prov = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    const prov = s.provinces.find((p) => !p.port && !p.isCapitalOf)!;
     prov.ownerId = "p1";
     prov.walls = { tier: 2, hp: 3 };
     // The besieging army is NOT in the province (marched away): §8.2 step-1 siege
@@ -349,7 +349,7 @@ describe("§8.2 step 4 — COMBAT fights an assault ONLY when declared (SIEGE_AS
    */
   function besiegedFixture(assaultDeclared: boolean): GameState {
     const s = freshNoOmen();
-    const prov = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    const prov = s.provinces.find((p) => !p.port && !p.isCapitalOf)!;
     prov.ownerId = "p1";
     prov.walls = { tier: 2, hp: 0 };
     prov.garrison = 1;
@@ -411,7 +411,7 @@ describe("COMBAT containment — a throwing resolution never blocks advancePhase
     };
     s.pendingBattles = [boom];
     // A REAL siege alongside it that must still resolve (ghost besiegers → lift).
-    const siegedProv = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    const siegedProv = s.provinces.find((p) => !p.port && !p.isCapitalOf)!;
     siegedProv.ownerId = "p1";
     siegedProv.walls = { tier: 2, hp: 3 };
     s.siegeStates = [siegeEntry(siegedProv.id, { besiegingArmyIds: ["ghost-army"] })];
@@ -435,7 +435,7 @@ describe("COMBAT containment — a throwing resolution never blocks advancePhase
 
   it("a throwing SIEGE is skipped+logged and its stale assault declaration is cleared by the round loop", () => {
     const s = freshNoOmen();
-    const prov = s.provinces.find((p) => !p.coastal && !p.isCapitalOf)!;
+    const prov = s.provinces.find((p) => !p.port && !p.isCapitalOf)!;
     prov.ownerId = "p1";
     prov.walls = { tier: 2, hp: 6 };
     s.armies.push(army("bes-1", "p2", prov.id, 5));
