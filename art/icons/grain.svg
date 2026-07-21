@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="grain-icon" role="img" aria-labelledby="grain-title">
+  <title id="grain-title">Grain — bound wheat sheaf</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — resource icon: GRAIN
+       Bound wheat sheaf: three serrated ears fanned above a
+       binding band, straw skirt flaring below. Single-color
+       silhouette: every mark is currentColor; straw texture is
+       cut-out negative space (fill-rule evenodd).
+       ============================================================ -->
+
+  <defs>
+    <!-- == one ear of wheat + its stalk ==
+         Solid kernels (overlapping ellipses) stacked in pairs
+         along the rachis, tip kernel upright; stalk runs down to
+         the sheaf waist. The group is pre-translated so the center
+         ear sits at x=32 with its tip near y=4; side ears reuse it
+         rotated about the waist (32,42). -->
+    <g id="grain-ear-stem" fill="currentColor" transform="translate(32 5)">
+      <ellipse cx="0" cy="4" rx="2.6" ry="5"/>
+      <ellipse cx="-2.9" cy="8" rx="2.6" ry="5" transform="rotate(-26 -2.9 8)"/>
+      <ellipse cx="2.9" cy="8" rx="2.6" ry="5" transform="rotate(26 2.9 8)"/>
+      <ellipse cx="-2.9" cy="12.5" rx="2.6" ry="5" transform="rotate(-26 -2.9 12.5)"/>
+      <ellipse cx="2.9" cy="12.5" rx="2.6" ry="5" transform="rotate(26 2.9 12.5)"/>
+      <ellipse cx="-2.9" cy="17" rx="2.6" ry="5" transform="rotate(-26 -2.9 17)"/>
+      <ellipse cx="2.9" cy="17" rx="2.6" ry="5" transform="rotate(26 2.9 17)"/>
+      <rect x="-1.75" y="6" width="3.5" height="34" rx="1.7"/>
+    </g>
+  </defs>
+
+  <!-- == three ears fanned from the waist; the center ear carries
+       one extra kernel pair so the side ears stay distinct == -->
+  <use href="#grain-ear-stem"/>
+  <g fill="currentColor">
+    <ellipse cx="29.1" cy="26.5" rx="2.6" ry="5" transform="rotate(-26 29.1 26.5)"/>
+    <ellipse cx="34.9" cy="26.5" rx="2.6" ry="5" transform="rotate(26 34.9 26.5)"/>
+  </g>
+  <use href="#grain-ear-stem" transform="rotate(-31 32 42)"/>
+  <use href="#grain-ear-stem" transform="rotate(31 32 42)"/>
+
+  <!-- == straw skirt flaring below the tie, split by two cut-out
+       slits into three bundles == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M26 44 L38 44 L43 58 Q32 60.5 21 58 Z
+    M28.5 47 L26 56.8 L28.5 57.3 L31 47 Z
+    M35.5 47 L38 56.8 L35.5 57.3 L33 47 Z"/>
+
+  <!-- == binding band across the waist == -->
+  <rect fill="currentColor" x="21.5" y="39" width="21" height="6.5" rx="3"/>
+</svg>

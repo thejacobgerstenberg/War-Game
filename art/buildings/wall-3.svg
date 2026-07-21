@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" id="wall-3-building" role="img" aria-labelledby="wall-3-title">
+  <title id="wall-3-title">Wall III — grand Theodosian double wall with flanking towers</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — building icon: WALL III
+       Theodosian land walls: two tall crenellated towers flank a
+       double curtain — the higher inner wall shows its own row of
+       merlons above the lower outer wall (a strip of daylight
+       between them tells the two lines apart), with the gate
+       arched through the outer wall. Tallest, densest wall tier.
+       currentColor only.
+       ============================================================ -->
+
+  <!-- == left flanking tower with arrow-slit cut-out == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M3 44.5 V4.5 H6 V9 H7.5 V4.5 H10.5 V9 H12 V4.5 H15 V44.5 Z
+    M8.1 15 H10 V23 H8.1 Z"/>
+
+  <!-- == right flanking tower with arrow-slit cut-out == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M33 44.5 V4.5 H36 V9 H37.5 V4.5 H40.5 V9 H42 V4.5 H45 V44.5 Z
+    M38.1 15 H40 V23 H38.1 Z"/>
+
+  <!-- == inner (higher) curtain: its merlons ride above the
+       daylight strip that separates the two wall lines == -->
+  <path fill="currentColor" d="
+    M14.5 22.5 V16.5 H16.5 V12.5 H19.9 V16.5 H22.3 V12.5 H25.7 V16.5 H28.1 V12.5 H31.5 V16.5 H33.5 V22.5 Z"/>
+
+  <!-- == outer (lower) curtain with the arched gate cut through == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M14.5 44.5 V29.3 H16.5 V25.8 H19.9 V29.3 H22.3 V25.8 H25.7 V29.3 H28.1 V25.8 H31.5 V29.3 H33.5 V44.5 Z
+    M20 44.5 V36.3 Q20 32.8 24 32.8 Q28 32.8 28 36.3 V44.5 Z"/>
+</svg>

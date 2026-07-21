@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="professional-token" role="img" aria-labelledby="professional-token-title">
+  <title id="professional-token-title">Professional — armored soldier with kite shield and raised sword</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — unit token: PROFESSIONAL
+       Man-at-arms behind a tall kite shield, sword raised at the
+       right, crested helm with negative-space eye slits. The big
+       kite silhouette + crest fin are the 28px identifiers.
+       currentColor only.
+       ============================================================ -->
+
+  <g fill="currentColor">
+    <!-- == crest brush arched over the helm, tapered at the ends == -->
+    <path d="M22 11 Q29.5 -1.5 37 11 Q29.5 5.5 22 11 Z"/>
+
+    <!-- == great helm: flat-sided dome, single eye slit cut evenodd == -->
+    <path fill-rule="evenodd" d="
+      M23 21.5 L23 13.5 Q23 7.2 29.5 7.2 Q36 7.2 36 13.5 L36 21.5 Z
+      M26.2 13.6 L32.8 13.6 L32.8 16.6 L26.2 16.6 Z"/>
+
+    <!-- == kite shield with negative-space cross == -->
+    <path fill-rule="evenodd" d="
+      M20.5 26 Q20.5 24 23 24 L36 24 Q38.5 24 38.5 26
+      Q38.5 40 29.5 51 Q20.5 40 20.5 26 Z
+      M27.9 28.5 L31.1 28.5 L31.1 32.4 L35 32.4 L35 35.6
+      L31.1 35.6 L31.1 39.5 L27.9 39.5 L27.9 35.6 L24 35.6
+      L24 32.4 L27.9 32.4 Z"/>
+
+    <!-- == sword raised at the right: tip, blade, guard, grip == -->
+    <path d="M45.5 9.5 L48.7 4 L51.9 9.5 Z"/>
+    <rect x="47" y="8.5" width="3.4" height="23.5"/>
+    <rect x="42.7" y="31" width="12" height="3.4" rx="1.2"/>
+    <rect x="47" y="34.4" width="3.4" height="6.5"/>
+    <circle cx="48.7" cy="43" r="2.7"/>
+
+    <!-- == sword arm from behind the shield to the grip == -->
+    <rect x="36.5" y="34.8" width="11" height="3.6" rx="1.8"/>
+
+    <!-- == legs peeking past the shield taper == -->
+    <rect x="22.5" y="44" width="4" height="13" rx="1.5"/>
+    <rect x="32.5" y="44" width="4" height="13" rx="1.5"/>
+  </g>
+</svg>

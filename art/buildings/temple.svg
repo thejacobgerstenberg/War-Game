@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" id="temple-building" role="img" aria-labelledby="temple-title">
+  <title id="temple-title">Temple — domed Byzantine church with cross finial</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — building icon: TEMPLE
+       Byzantine church: Greek-cross finial over a saucer dome on
+       a windowed drum, rounded shoulder vaults, and a broad nave
+       with arched door and windows cut out as negative space.
+       currentColor silhouette only.
+       ============================================================ -->
+
+  <!-- == cross finial == -->
+  <g fill="currentColor">
+    <rect x="22.75" y="3" width="2.5" height="8.5"/>
+    <rect x="20.5" y="5.4" width="7" height="2.5"/>
+  </g>
+
+  <!-- == dome == -->
+  <path fill="currentColor" d="M13.5 23 Q13.5 11.2 24 11.2 Q34.5 11.2 34.5 23 Z"/>
+
+  <!-- == drum with three window slits == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M14 22.5 H34 V27 H14 Z
+    M18.3 23.3 H20.3 V26.3 H18.3 Z
+    M23 23.3 H25 V26.3 H23 Z
+    M27.7 23.3 H29.7 V26.3 H27.7 Z"/>
+
+  <!-- == rounded shoulder vaults flanking the drum == -->
+  <g fill="currentColor">
+    <path d="M8 27.5 Q8.4 22.8 14.8 22.8 L14.8 27.5 Z"/>
+    <path d="M40 27.5 Q39.6 22.8 33.2 22.8 L33.2 27.5 Z"/>
+  </g>
+
+  <!-- == nave: arched door and two arched windows cut out == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M8 27 H40 V44.5 H8 Z
+    M21 44.5 V36 Q21 33 24 33 Q27 33 27 36 V44.5 Z
+    M12.8 40 V34.8 Q12.8 32.6 14.8 32.6 Q16.8 32.6 16.8 34.8 V40 Z
+    M31.2 40 V34.8 Q31.2 32.6 33.2 32.6 Q35.2 32.6 35.2 34.8 V40 Z"/>
+</svg>

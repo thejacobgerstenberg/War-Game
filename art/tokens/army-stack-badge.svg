@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" id="army-stack-badge-token" role="img" aria-labelledby="army-stack-badge-token-title">
+  <title id="army-stack-badge-token-title">Army stack badge — laurel-rimmed roundel with unit count</title>
+
+  <!-- ============================================================
+       IMPERIUM: Twilight of Empires — unit token: ARMY STACK BADGE
+       Round laurel-rimmed roundel: outer currentColor ring, two
+       laurel branches climbing the band, central currentColor
+       disc carrying the stack count in parchment Cinzel. The
+       client overwrites the text content of
+       #army-stack-badge-count-slot at runtime.
+       ============================================================ -->
+
+  <!-- == master laurel leaf (reused, rotated about the centre) == -->
+  <defs>
+    <path id="army-stack-badge-leaf" d="M0 0 Q3 -4 9 -1.4 Q4.6 3.2 0 0 Z"/>
+  </defs>
+
+  <!-- == outer ring == -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M4 32 A28 28 0 1 0 60 32 A28 28 0 1 0 4 32 Z
+    M7.5 32 A24.5 24.5 0 1 1 56.5 32 A24.5 24.5 0 1 1 7.5 32 Z"/>
+
+  <!-- == laurel: two stem arcs from a bottom knot, open at top,
+       with splayed leaves along each stem == -->
+  <g stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M32 52.5 A20.5 20.5 0 0 1 18.8 16.3"/>
+    <path d="M32 52.5 A20.5 20.5 0 0 0 45.2 16.3"/>
+  </g>
+  <g fill="currentColor">
+    <circle cx="32" cy="52.5" r="2.7"/>
+    <!-- left branch, climbing counter-clockwise -->
+    <g id="army-stack-badge-branch-left">
+      <use href="#army-stack-badge-leaf" transform="translate(22.4 50.1) rotate(188)"/>
+      <use href="#army-stack-badge-leaf" transform="rotate(27 32 32) translate(22.4 50.1) rotate(188)"/>
+      <use href="#army-stack-badge-leaf" transform="rotate(54 32 32) translate(22.4 50.1) rotate(188)"/>
+      <use href="#army-stack-badge-leaf" transform="rotate(81 32 32) translate(22.4 50.1) rotate(188)"/>
+      <use href="#army-stack-badge-leaf" transform="rotate(108 32 32) translate(22.4 50.1) rotate(188)"/>
+    </g>
+    <!-- right branch, climbing clockwise -->
+    <g id="army-stack-badge-branch-right">
+      <use href="#army-stack-badge-leaf" transform="translate(41.6 50.1) rotate(-8)"/>
+      <use href="#army-stack-badge-leaf" transform="rotate(-27 32 32) translate(41.6 50.1) rotate(-8)"/>
+      <use href="#army-stack-badge-leaf" transform="rotate(-54 32 32) translate(41.6 50.1) rotate(-8)"/>
+      <use href="#army-stack-badge-leaf" transform="rotate(-81 32 32) translate(41.6 50.1) rotate(-8)"/>
+      <use href="#army-stack-badge-leaf" transform="rotate(-108 32 32) translate(41.6 50.1) rotate(-8)"/>
+    </g>
+  </g>
+
+  <!-- == central disc == -->
+  <circle fill="currentColor" cx="32" cy="32" r="15.5"/>
+
+  <!-- == count slot: client sets the number at runtime == -->
+  <text id="army-stack-badge-count-slot" x="32" y="41" font-family="Cinzel, serif"
+        font-size="26" text-anchor="middle" fill="#F0E6D2">3</text>
+</svg>

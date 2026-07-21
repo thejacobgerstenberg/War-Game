@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-labelledby="ottomans-title ottomans-desc">
+  <title id="ottomans-title">Ottomans (Osmanli)</title>
+  <desc id="ottomans-desc">Faction crest: a gold crescent moon, horns toward the upper right, with a gold eight-point star nestled in its opening, on a blood-crimson shield with a gold rim and Greek-key band.</desc>
+
+  <!-- ==================== DEFS ==================== -->
+  <defs>
+    <!-- Canonical shield outline, reused for coat, clip and rim -->
+    <path id="ottomans-shield-outline" d="M100 12 L180 36 V118 C180 178 148 212 100 228 C52 212 20 178 20 118 V36 Z"/>
+
+    <clipPath id="ottomans-shield-clip">
+      <use href="#ottomans-shield-outline"/>
+    </clipPath>
+  </defs>
+
+  <!-- ==================== SHIELD BASE COAT ==================== -->
+  <use href="#ottomans-shield-outline" fill="#7A1F2B"/>
+
+  <!-- ==================== CHARGE (clipped to shield) ==================== -->
+  <g clip-path="url(#ottomans-shield-clip)">
+
+    <!-- ......... Greek-key band along the top edge ......... -->
+    <g id="ottomans-key-band">
+      <path d="M20 36 L100 12 L180 36 L180 48 L100 24 L20 48 Z"
+            fill="#C9A227"/>
+      <!-- simplified meander, left slope -->
+      <g transform="translate(22,47) rotate(-16.7)">
+        <path d="M0 -1 H5 V-5 H10 V-1 H15 V-5 H20 V-1 H25 V-5 H30 V-1 H35 V-5 H40 V-1 H45 V-5 H50 V-1 H55 V-5 H60 V-1 H65 V-5 H70 V-1 H75 V-5 H80"
+              fill="none" stroke="#7A1F2B" stroke-width="2.5"/>
+      </g>
+      <!-- simplified meander, right slope (mirror) -->
+      <g transform="translate(178,47) rotate(16.7) scale(-1,1)">
+        <path d="M0 -1 H5 V-5 H10 V-1 H15 V-5 H20 V-1 H25 V-5 H30 V-1 H35 V-5 H40 V-1 H45 V-5 H50 V-1 H55 V-5 H60 V-1 H65 V-5 H70 V-1 H75 V-5 H80"
+              fill="none" stroke="#7A1F2B" stroke-width="2.5"/>
+      </g>
+      <path d="M20 48 L100 24 L180 48" fill="none" stroke="#2B2118" stroke-width="2"/>
+    </g>
+
+    <!-- ......... Crescent moon, horns toward the upper right ......... -->
+    <!-- Outer circle c(98,138) r58; bite circle c(112.14,123.86) r50, offset 20 up-right.
+         Horn tips at the circle intersections; body thickness 28 at the back. -->
+    <g id="ottomans-crescent">
+      <path d="M85.95 81.26
+               A58 58 0 1 0 154.74 150.05
+               A50 50 0 1 1 85.95 81.26
+               Z"
+            fill="#C9A227" stroke="#2B2118" stroke-width="3" stroke-linejoin="round"/>
+      <!-- moon-shading detail line along the body midline -->
+      <path d="M109.39 180.5 A44 44 0 0 1 55.5 126.61"
+            fill="none" stroke="#2B2118" stroke-width="2.5" stroke-opacity="0.4"
+            stroke-linecap="round"/>
+    </g>
+
+    <!-- ......... Eight-point star nestled in the crescent opening ......... -->
+    <!-- c(118,118), outer radius 22, inner radius 10, one point due up -->
+    <path id="ottomans-star"
+          d="M118 96 L121.83 108.76 L133.56 102.44 L127.24 114.17
+             L140 118 L127.24 121.83 L133.56 133.56 L121.83 127.24
+             L118 140 L114.17 127.24 L102.44 133.56 L108.76 121.83
+             L96 118 L108.76 114.17 L102.44 102.44 L114.17 108.76 Z"
+          fill="#C9A227" stroke="#2B2118" stroke-width="2.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- ==================== RIM: gold band flanked by thin ink lines ==================== -->
+  <use href="#ottomans-shield-outline" fill="none" stroke="#2B2118" stroke-width="10.5"/>
+  <use href="#ottomans-shield-outline" fill="none" stroke="#C9A227" stroke-width="6"/>
+</svg>
